@@ -1,14 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, Filter, Plus, Image, Video, Music, FileText, Sparkles } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Plus, Image, Video, Music, FileText, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { Dropdown } from '@/components/ui/Dropdown';
 import { MediaGrid } from '@/components/assets/MediaGrid';
 import { MediaViewer } from '@/components/assets/MediaViewer';
 import { GenerateImageModal } from '@/components/media/GenerateImageModal';
 import { GenerateVideoModal } from '@/components/media/GenerateVideoModal';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface MediaItem {
   id: string;
@@ -25,161 +25,178 @@ interface MediaItem {
   prompt?: string;
 }
 
+interface Patient {
+  id: string;
+  name: string;
+  avatarUrl?: string;
+}
+
 export function AssetsClient() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [showGenerateVideoModal, setShowGenerateVideoModal] = useState(false);
+  const [media, setMedia] = useState<MediaItem[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // Mock data - In real implementation, this would come from API
-  const mockMedia: MediaItem[] = [
-    {
-      id: '1',
-      type: 'image',
-      title: 'Hope Rising',
-      url: '/images/generated/hope-rising.jpg',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop',
-      patientName: 'Emma Wilson',
-      sessionName: 'Session with Emma - Oct 15',
-      createdAt: new Date(2025, 9, 15),
-      tags: ['hope', 'resilience', 'nature'],
-      prompt: 'A serene mountain landscape at sunrise, symbolizing hope and new beginnings',
-    },
-    {
-      id: '2',
-      type: 'video',
-      title: 'Journey of Healing',
-      url: '/videos/generated/journey.mp4',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=400&h=400&fit=crop',
-      patientName: 'Emma Wilson',
-      sessionName: 'Session with Emma - Oct 20',
-      createdAt: new Date(2025, 9, 20),
-      duration: 125,
-      tags: ['journey', 'growth', 'transformation'],
-      prompt: 'A visual journey through forest paths, symbolizing personal growth',
-    },
-    {
-      id: '3',
-      type: 'quote',
-      title: 'Strength Quote',
-      url: '',
-      text: "I'm stronger than I thought. Even in difficult moments, there's a part of me that knows how to cope.",
-      patientName: 'Emma Wilson',
-      sessionName: 'Session with Emma - Oct 22',
-      createdAt: new Date(2025, 9, 22),
-      tags: ['strength', 'resilience', 'self-awareness'],
-    },
-    {
-      id: '4',
-      type: 'audio',
-      title: 'Reflection Background Music',
-      url: '/audio/generated/reflection.mp3',
-      patientName: 'Emma Wilson',
-      sessionName: 'Session with Emma - Oct 25',
-      createdAt: new Date(2025, 9, 25),
-      duration: 180,
-      tags: ['ambient', 'calming', 'meditation'],
-    },
-    {
-      id: '5',
-      type: 'image',
-      title: 'Inner Peace',
-      url: '/images/generated/inner-peace.jpg',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
-      patientName: 'Michael Chen',
-      sessionName: 'Session with Michael - Oct 28',
-      createdAt: new Date(2025, 9, 28),
-      tags: ['peace', 'mindfulness', 'balance'],
-      prompt: 'A tranquil zen garden with carefully placed stones and flowing water',
-    },
-    {
-      id: '6',
-      type: 'video',
-      title: 'Overcoming Challenges',
-      url: '/videos/generated/overcoming.mp4',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1454496522488-7a8e488e8606?w=400&h=400&fit=crop',
-      patientName: 'Sarah Martinez',
-      sessionName: 'Group Therapy - Oct 29',
-      createdAt: new Date(2025, 9, 29),
-      duration: 95,
-      tags: ['resilience', 'courage', 'triumph'],
-      prompt: 'A person climbing a mountain, reaching the summit at golden hour',
-    },
-  ];
+  // Fetch media from API
+  useEffect(() => {
+    fetchMedia();
+    fetchPatients();
+  }, [filterType]);
 
-  const filterOptions = [
-    { value: 'all', label: 'All Types' },
-    { value: 'image', label: 'Images' },
-    { value: 'video', label: 'Videos' },
-    { value: 'audio', label: 'Audio' },
-    { value: 'quote', label: 'Quotes' },
-  ];
+  const fetchMedia = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (filterType !== 'all') {
+        params.append('type', filterType);
+      }
+      if (searchQuery) {
+        params.append('search', searchQuery);
+      }
 
-  // Filter media based on search and type
-  const filteredMedia = mockMedia.filter((item) => {
-    const matchesSearch =
-      searchQuery === '' ||
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.tags?.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      const response = await fetch(`/api/media?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch media');
 
-    const matchesType = filterType === 'all' || item.type === filterType;
+      const data = await response.json();
 
-    return matchesSearch && matchesType;
-  });
+      // Transform API data to MediaItem format
+      const transformedMedia: MediaItem[] = data.media.map((item: any) => ({
+        id: item.id,
+        type: item.mediaType,
+        title: item.title,
+        url: item.mediaUrl,
+        thumbnailUrl: item.thumbnailUrl,
+        patientName: item.patientName,
+        sessionName: item.sessionTitle,
+        createdAt: new Date(item.createdAt),
+        duration: item.durationSeconds,
+        tags: item.tags || [],
+        prompt: item.generationPrompt,
+      }));
 
-  const handleDelete = (itemId: string) => {
-    // In real implementation, call API to delete
-    console.log('Deleting item:', itemId);
+      setMedia(transformedMedia);
+      setError('');
+    } catch (err) {
+      console.error('Failed to fetch media:', err);
+      setError('Failed to load media. Please try again.');
+      setMedia([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleGenerateImage = (imageUrl: string, prompt: string) => {
-    // In real implementation, save to API
-    const newImage: MediaItem = {
-      id: Date.now().toString(),
-      type: 'image',
-      title: prompt.slice(0, 50),
-      url: imageUrl,
-      thumbnailUrl: imageUrl,
-      createdAt: new Date(),
-      tags: ['ai-generated'],
-      prompt,
-    };
-    console.log('Generated image:', newImage);
-    // mockMedia.push(newImage); // Would update state in real implementation
+  const fetchPatients = async () => {
+    try {
+      const response = await fetch('/api/patients');
+      if (!response.ok) throw new Error('Failed to fetch patients');
+
+      const data = await response.json();
+      setPatients(data.patients || []);
+    } catch (err) {
+      console.error('Failed to fetch patients:', err);
+    }
   };
 
-  const handleGenerateVideo = (videoUrl: string, prompt: string) => {
-    // In real implementation, save to API
-    const newVideo: MediaItem = {
-      id: Date.now().toString(),
-      type: 'video',
-      title: prompt.slice(0, 50),
-      url: videoUrl,
-      thumbnailUrl: videoUrl,
-      createdAt: new Date(),
-      tags: ['ai-generated'],
-      prompt,
-    };
-    console.log('Generated video:', newVideo);
-    // mockMedia.push(newVideo); // Would update state in real implementation
+  // Search handler with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery !== undefined) {
+        fetchMedia();
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleDelete = async (itemId: string) => {
+    try {
+      const response = await fetch(`/api/media/${itemId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete media');
+
+      // Refresh media list
+      fetchMedia();
+    } catch (err) {
+      console.error('Failed to delete media:', err);
+      alert('Failed to delete media. Please try again.');
+    }
   };
 
-  // Mock patients for image generation
-  const mockPatients = [
-    { id: '1', name: 'Emma Wilson', avatarUrl: 'https://i.pravatar.cc/150?img=1' },
-    { id: '2', name: 'Michael Chen', avatarUrl: 'https://i.pravatar.cc/150?img=3' },
-    { id: '3', name: 'Sarah Martinez' },
-  ];
+  const handleGenerateImage = async (imageUrl: string, prompt: string, patientId?: string) => {
+    try {
+      const response = await fetch('/api/media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          patientId: patientId || patients[0]?.id,
+          createdByTherapistId: user?.uid,
+          title: prompt.slice(0, 100),
+          mediaType: 'image',
+          mediaUrl: imageUrl,
+          thumbnailUrl: imageUrl,
+          sourceType: 'generated',
+          generationPrompt: prompt,
+          aiModel: 'dall-e-3',
+          tags: ['ai-generated'],
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save generated image');
+
+      // Refresh media list
+      fetchMedia();
+      setShowGenerateModal(false);
+    } catch (err) {
+      console.error('Failed to save generated image:', err);
+      alert('Failed to save generated image. Please try again.');
+    }
+  };
+
+  const handleGenerateVideo = async (videoUrl: string, prompt: string, patientId?: string) => {
+    try {
+      const response = await fetch('/api/media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          patientId: patientId || patients[0]?.id,
+          createdByTherapistId: user?.uid,
+          title: prompt.slice(0, 100),
+          mediaType: 'video',
+          mediaUrl: videoUrl,
+          thumbnailUrl: videoUrl,
+          sourceType: 'generated',
+          generationPrompt: prompt,
+          aiModel: 'runway-gen3',
+          tags: ['ai-generated'],
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save generated video');
+
+      // Refresh media list
+      fetchMedia();
+      setShowGenerateVideoModal(false);
+    } catch (err) {
+      console.error('Failed to save generated video:', err);
+      alert('Failed to save generated video. Please try again.');
+    }
+  };
 
   // Count by type
   const counts = {
-    all: mockMedia.length,
-    image: mockMedia.filter((m) => m.type === 'image').length,
-    video: mockMedia.filter((m) => m.type === 'video').length,
-    audio: mockMedia.filter((m) => m.type === 'audio').length,
-    quote: mockMedia.filter((m) => m.type === 'quote').length,
+    all: media.length,
+    image: media.filter((m) => m.type === 'image').length,
+    video: media.filter((m) => m.type === 'video').length,
+    audio: media.filter((m) => m.type === 'audio').length,
+    quote: media.filter((m) => m.type === 'quote').length,
   };
 
   return (
@@ -257,14 +274,14 @@ export function AssetsClient() {
         </button>
       </div>
 
-      {/* Search & Filters */}
+      {/* Search & Actions */}
       <div className="flex items-center gap-3 mb-6">
         <div className="flex-1">
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by title, patient, or tags..."
-            icon={<Search className="w-4 h-4" />}
+            leftIcon={<Search className="w-4 h-4" />}
           />
         </div>
         <Button variant="primary" onClick={() => setShowGenerateModal(true)}>
@@ -281,12 +298,39 @@ export function AssetsClient() {
         </Button>
       </div>
 
-      {/* Media Grid */}
-      <MediaGrid
-        items={filteredMedia}
-        onItemClick={setSelectedItem}
-        onDelete={handleDelete}
-      />
+      {/* Error Message */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          {error}
+        </div>
+      )}
+
+      {/* Loading State */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
+        </div>
+      ) : media.length === 0 ? (
+        <div className="text-center py-12">
+          <Image className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No media found</h3>
+          <p className="text-sm text-gray-600 mb-6">
+            {searchQuery
+              ? 'Try adjusting your search or filters'
+              : 'Start by generating or uploading media assets'}
+          </p>
+          <Button variant="primary" onClick={() => setShowGenerateModal(true)}>
+            <Sparkles className="w-4 h-4 mr-2" />
+            Generate Your First Image
+          </Button>
+        </div>
+      ) : (
+        <MediaGrid
+          items={media}
+          onItemClick={setSelectedItem}
+          onDelete={handleDelete}
+        />
+      )}
 
       {/* Media Viewer Modal */}
       {selectedItem && (
@@ -301,7 +345,7 @@ export function AssetsClient() {
         isOpen={showGenerateModal}
         onClose={() => setShowGenerateModal(false)}
         onGenerate={handleGenerateImage}
-        patients={mockPatients}
+        patients={patients}
       />
 
       {/* Generate Video Modal */}
@@ -309,7 +353,7 @@ export function AssetsClient() {
         isOpen={showGenerateVideoModal}
         onClose={() => setShowGenerateVideoModal(false)}
         onGenerate={handleGenerateVideo}
-        patients={mockPatients}
+        patients={patients}
       />
     </div>
   );

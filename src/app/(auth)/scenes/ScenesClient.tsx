@@ -26,11 +26,7 @@ interface MediaItem {
   duration?: number;
 }
 
-interface ScenesClientProps {
-  locale: string;
-}
-
-export function ScenesClient({ locale }: ScenesClientProps) {
+export function ScenesClient() {
   const [sceneName, setSceneName] = useState('Untitled Scene');
   const [clips, setClips] = useState<Clip[]>([]);
   const [totalDuration, setTotalDuration] = useState(60); // 60 seconds default
@@ -135,7 +131,7 @@ export function ScenesClient({ locale }: ScenesClientProps) {
         <div className="col-span-2 flex flex-col gap-6 h-full">
           {/* Preview Area */}
           <div className="aspect-video bg-gray-900 rounded-lg flex items-center justify-center overflow-hidden">
-            {clips.length > 0 ? (
+            {clips.length > 0 && clips[0] ? (
               <div className="relative w-full h-full">
                 {/* Show first clip as preview */}
                 <img

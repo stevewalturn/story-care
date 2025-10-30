@@ -5,14 +5,15 @@ import { eq } from 'drizzle-orm';
 
 // GET /api/media/[id]
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const [media] = await db
       .select()
       .from(mediaLibrary)
-      .where(eq(mediaLibrary.id, params.id))
+      .where(eq(mediaLibrary.id, id))
       .limit(1);
 
     if (!media) {
@@ -35,9 +36,10 @@ export async function GET(
 // PUT /api/media/[id]
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { title, tags, thumbnailUrl } = body;
 
@@ -49,7 +51,7 @@ export async function PUT(
         thumbnailUrl,
         updatedAt: new Date(),
       })
-      .where(eq(mediaLibrary.id, params.id))
+      .where(eq(mediaLibrary.id, id))
       .returning();
 
     if (!updatedMedia) {
@@ -71,16 +73,17 @@ export async function PUT(
 
 // DELETE /api/media/[id]
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const [deletedMedia] = await db
+    const { id } = await params;
+    const deletedMedia = await db
       .delete(mediaLibrary)
-      .where(eq(mediaLibrary.id, params.id))
+      .where(eq(mediaLibrary.id, id))
       .returning();
 
-    if (!deletedMedia) {
+    if (!deletedMedia || (Array.isArray(deletedMedia) && deletedMedia.length === 0)) {
       return NextResponse.json(
         { error: 'Media not found' },
         { status: 404 }

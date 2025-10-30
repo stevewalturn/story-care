@@ -1,18 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { speakers } from '@/models/Schema';
+import { speakers, transcripts } from '@/models/Schema';
 import { eq } from 'drizzle-orm';
 
 // GET /api/sessions/[id]/speakers - Get speakers for a session
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+
+    // First get the transcript for this session
+    const [transcript] = await db
+      .select()
+      .from(transcripts)
+      .where(eq(transcripts.sessionId, id))
+      .limit(1);
+
+    if (!transcript) {
+      return NextResponse.json({ speakers: [] });
+    }
+
     const speakersList = await db
       .select()
       .from(speakers)
-      .where(eq(speakers.sessionId, params.id))
+      .where(eq(speakers.transcriptId, transcript.id))
       .orderBy(speakers.speakerLabel);
 
     return NextResponse.json({ speakers: speakersList });
@@ -28,9 +41,10 @@ export async function GET(
 // PUT /api/sessions/[id]/speakers - Update/save speaker assignments
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { speakers: speakersData } = body;
 
@@ -41,19 +55,33 @@ export async function PUT(
       );
     }
 
-    // Delete existing speakers for this session
-    await db.delete(speakers).where(eq(speakers.sessionId, params.id));
+    // First get the transcript for this session
+    const [transcript] = await db
+      .select()
+      .from(transcripts)
+      .where(eq(transcripts.sessionId, id))
+      .limit(1);
+
+    if (!transcript) {
+      return NextResponse.json(
+        { error: 'No transcript found for this session' },
+        { status: 404 }
+      );
+    }
+
+    // Delete existing speakers for this transcript
+    await db.delete(speakers).where(eq(speakers.transcriptId, transcript.id));
 
     // Insert new speaker assignments
     if (speakersData.length > 0) {
       await db.insert(speakers).values(
         speakersData.map((speaker) => ({
-          sessionId: params.id,
+          transcriptId: transcript.id,
           speakerLabel: speaker.speakerLabel,
           speakerType: speaker.speakerType,
           speakerName: speaker.speakerName,
-          segmentCount: speaker.segmentCount,
-          sampleAudioUrl: speaker.sampleAudioUrl,
+          totalUtterances: speaker.totalUtterances || 0,
+          totalDurationSeconds: speaker.totalDurationSeconds || 0,
         }))
       );
     }
@@ -62,7 +90,7 @@ export async function PUT(
     const updatedSpeakers = await db
       .select()
       .from(speakers)
-      .where(eq(speakers.sessionId, params.id))
+      .where(eq(speakers.transcriptId, transcript.id))
       .orderBy(speakers.speakerLabel);
 
     return NextResponse.json({ speakers: updatedSpeakers });

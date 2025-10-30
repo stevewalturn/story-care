@@ -24,19 +24,23 @@ interface Story {
   createdAt: Date;
 }
 
-export default function StoryViewPage({ params }: { params: { storyId: string } }) {
+export default function StoryViewPage({ params }: { params: Promise<{ storyId: string }> }) {
   const [story, setStory] = useState<Story | null>(null);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [showCover, setShowCover] = useState(true);
+  const [_storyId, setStoryId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Fetch story data
-    // In real implementation: fetch(`/api/stories/${params.storyId}`)
-    // For now, use mock data
-    setStory({
-      id: params.storyId,
+    // Unwrap params Promise
+    params.then(({ storyId: id }) => {
+      setStoryId(id);
+      // Fetch story data
+      // In real implementation: fetch(`/api/stories/${id}`)
+      // For now, use mock data
+      setStory({
+        id,
       patientName: 'Emma',
       title: 'Journey to Inner Peace',
       description: 'A story of resilience, growth, and discovering inner strength',
@@ -81,8 +85,9 @@ export default function StoryViewPage({ params }: { params: { storyId: string } 
         },
       ],
       createdAt: new Date(2025, 9, 20),
+      });
     });
-  }, [params.storyId]);
+  }, [params]);
 
   if (!story) {
     return (
@@ -148,6 +153,14 @@ export default function StoryViewPage({ params }: { params: { storyId: string } 
             </Button>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (!currentPage) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <p className="text-white">Loading...</p>
       </div>
     );
   }

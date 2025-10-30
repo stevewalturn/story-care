@@ -1,23 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { users } from '@/models/Schema';
-import { eq, like } from 'drizzle-orm';
+import { eq, like, and } from 'drizzle-orm';
 
 // GET /api/patients - List patients
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
-    const therapistId = searchParams.get('therapistId');
 
-    let query = db
-      .select()
-      .from(users)
-      .where(eq(users.role, 'patient'));
+    let query = db.select().from(users);
 
+    const conditions = [eq(users.role, 'patient')];
     if (search) {
-      query = query.where(like(users.name, `%${search}%`)) as any;
+      conditions.push(like(users.name, `%${search}%`));
     }
+
+    query = query.where(and(...conditions)) as any;
 
     const patientsList = await query;
 
@@ -35,7 +34,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, email, phone, referenceImageUrl, notes } = body;
+    const { name, email, phone, referenceImageUrl, notes: _notes } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -44,7 +43,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const [patient] = await db
+    const patientResult = await db
       .insert(users)
       .values({
         name,
@@ -54,6 +53,15 @@ export async function POST(request: NextRequest) {
         role: 'patient',
       })
       .returning();
+
+    const patient = Array.isArray(patientResult) && patientResult.length > 0 ? patientResult[0] : null;
+
+    if (!patient) {
+      return NextResponse.json(
+        { error: 'Failed to create patient' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ patient }, { status: 201 });
   } catch (error) {

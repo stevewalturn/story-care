@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
             avatarUrl: users.avatarUrl,
           })
           .from(groupMembers)
-          .innerJoin(users, eq(groupMembers.userId, users.id))
+          .innerJoin(users, eq(groupMembers.patientId, users.id))
           .where(eq(groupMembers.groupId, group.id));
 
         return {
@@ -75,11 +75,18 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
+    if (!group) {
+      return NextResponse.json(
+        { error: 'Failed to create group' },
+        { status: 500 }
+      );
+    }
+
     // Add members
     await db.insert(groupMembers).values(
-      memberIds.map((userId: string) => ({
+      memberIds.map((patientId: string) => ({
         groupId: group.id,
-        userId,
+        patientId,
       }))
     );
 
@@ -91,7 +98,7 @@ export async function POST(request: NextRequest) {
         avatarUrl: users.avatarUrl,
       })
       .from(groupMembers)
-      .innerJoin(users, eq(groupMembers.userId, users.id))
+      .innerJoin(users, eq(groupMembers.patientId, users.id))
       .where(eq(groupMembers.groupId, group.id));
 
     return NextResponse.json(

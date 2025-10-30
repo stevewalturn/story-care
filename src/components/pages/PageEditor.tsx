@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, GripVertical, Trash2, Eye, Settings, Type, Image as ImageIcon, Video, FileText, MessageCircle, ListChecks } from 'lucide-react';
+import { GripVertical, Trash2, Eye, Type, Image as ImageIcon, Video, FileText, MessageCircle, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Dropdown } from '@/components/ui/Dropdown';
 
 type BlockType = 'text' | 'image' | 'video' | 'quote' | 'reflection' | 'survey';
 
@@ -28,7 +27,7 @@ interface PageEditorProps {
 }
 
 export function PageEditor({
-  pageId,
+  pageId: _pageId,
   initialTitle = 'Untitled Page',
   initialBlocks = [],
   onSave,
@@ -87,7 +86,14 @@ export function PageEditor({
 
     const newBlocks = [...blocks];
     const swapIndex = direction === 'up' ? index - 1 : index + 1;
-    [newBlocks[index], newBlocks[swapIndex]] = [newBlocks[swapIndex], newBlocks[index]];
+
+    // Swap blocks with safety check
+    const temp = newBlocks[index];
+    if (temp && newBlocks[swapIndex]) {
+      newBlocks[index] = newBlocks[swapIndex]!;
+      newBlocks[swapIndex] = temp;
+    }
+
     newBlocks.forEach((b, i) => (b.order = i));
     setBlocks(newBlocks);
   };
@@ -176,7 +182,7 @@ export function PageEditor({
     }
   };
 
-  const selectedBlock = blocks.find((b) => b.id === selectedBlockId);
+  const _selectedBlock = blocks.find((b) => b.id === selectedBlockId);
 
   return (
     <div className="h-full flex flex-col">

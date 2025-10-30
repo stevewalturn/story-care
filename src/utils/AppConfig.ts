@@ -1,23 +1,6 @@
-import type { LocalizationResource } from '@clerk/types';
-import type { LocalePrefixMode } from 'next-intl/routing';
-import { enUS, frFR } from '@clerk/localizations';
-
-const localePrefix: LocalePrefixMode = 'as-needed';
-
-// FIXME: Update this configuration file based on your project information
+// StoryCare Application Configuration
 export const AppConfig = {
-  name: 'Nextjs Starter',
-  locales: ['en', 'fr'],
-  defaultLocale: 'en',
-  localePrefix,
-};
-
-const supportedLocales: Record<string, LocalizationResource> = {
-  en: enUS,
-  fr: frFR,
-};
-
-export const ClerkLocalizations = {
-  defaultLocale: enUS,
-  supportedLocales,
+  name: 'StoryCare',
+  description: 'AI-Powered Narrative Therapy Platform',
+  url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
 };

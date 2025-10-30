@@ -5,15 +5,16 @@ import { eq, asc } from 'drizzle-orm';
 
 // GET /api/sessions/[id]/transcript - Get transcript and utterances
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // Fetch transcript
     const [transcript] = await db
       .select()
       .from(transcripts)
-      .where(eq(transcripts.sessionId, params.id))
+      .where(eq(transcripts.sessionId, id))
       .limit(1);
 
     if (!transcript) {
@@ -29,9 +30,9 @@ export async function GET(
         id: utterances.id,
         speakerId: utterances.speakerId,
         text: utterances.text,
-        startTime: utterances.startTime,
-        endTime: utterances.endTime,
-        confidence: utterances.confidence,
+        startTimeSeconds: utterances.startTimeSeconds,
+        endTimeSeconds: utterances.endTimeSeconds,
+        confidenceScore: utterances.confidenceScore,
         speaker: {
           speakerLabel: speakers.speakerLabel,
           speakerType: speakers.speakerType,
@@ -41,7 +42,7 @@ export async function GET(
       .from(utterances)
       .leftJoin(speakers, eq(utterances.speakerId, speakers.id))
       .where(eq(utterances.transcriptId, transcript.id))
-      .orderBy(asc(utterances.startTime));
+      .orderBy(asc(utterances.startTimeSeconds));
 
     return NextResponse.json({
       transcript,
@@ -59,9 +60,10 @@ export async function GET(
 // POST /api/sessions/[id]/transcript - Create/update transcript
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { fullText, utterances: utterancesData } = body;
 
@@ -69,7 +71,7 @@ export async function POST(
     const [existingTranscript] = await db
       .select()
       .from(transcripts)
-      .where(eq(transcripts.sessionId, params.id))
+      .where(eq(transcripts.sessionId, id))
       .limit(1);
 
     let transcript;
@@ -92,22 +94,30 @@ export async function POST(
       [transcript] = await db
         .insert(transcripts)
         .values({
-          sessionId: params.id,
+          sessionId: id,
           fullText,
         })
         .returning();
     }
 
+    if (!transcript) {
+      return NextResponse.json(
+        { error: 'Failed to create or update transcript' },
+        { status: 500 }
+      );
+    }
+
     // Insert utterances if provided
     if (utterancesData && Array.isArray(utterancesData) && utterancesData.length > 0) {
       await db.insert(utterances).values(
-        utterancesData.map((utterance: any) => ({
+        utterancesData.map((utterance: any, index: number) => ({
           transcriptId: transcript.id,
           speakerId: utterance.speakerId,
           text: utterance.text,
-          startTime: utterance.startTime,
-          endTime: utterance.endTime,
-          confidence: utterance.confidence,
+          startTimeSeconds: utterance.startTime?.toString() || '0',
+          endTimeSeconds: utterance.endTime?.toString() || '0',
+          confidenceScore: utterance.confidence?.toString() || null,
+          sequenceNumber: utterance.sequenceNumber !== undefined ? utterance.sequenceNumber : index,
         }))
       );
     }

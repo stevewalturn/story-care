@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { PostHogProvider } from '@/components/analytics/PostHogProvider';
+import { DemoBadge } from '@/components/DemoBadge';
 import '@/styles/global.css';
 
 export const metadata: Metadata = {
@@ -35,7 +37,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body suppressHydrationWarning>
+        <PostHogProvider>
+          {children}
+        </PostHogProvider>
+
+        <DemoBadge />
+      </body>
     </html>
   );
 }

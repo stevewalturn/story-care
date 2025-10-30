@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { logOut } from '@/libs/Firebase';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard,
   Folder,
@@ -28,6 +29,7 @@ const navItems = [
 ];
 
 export function Sidebar() {
+  const { user } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -72,11 +74,17 @@ export function Sidebar() {
       <div className="p-4 border-t border-gray-200">
         <div className="flex items-center mb-3">
           <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-            <span className="text-sm font-medium text-gray-600">NH</span>
+            <span className="text-sm font-medium text-gray-600">
+              {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+            </span>
           </div>
           <div className="ml-3 flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">Noah Hendler</p>
-            <p className="text-xs text-gray-500 truncate">noahhendler@gmail.com</p>
+            <p className="text-sm font-medium text-gray-900 truncate">
+              {user?.displayName || user?.email?.split('@')[0] || 'User'}
+            </p>
+            <p className="text-xs text-gray-500 truncate">
+              {user?.email || ''}
+            </p>
           </div>
         </div>
         <button

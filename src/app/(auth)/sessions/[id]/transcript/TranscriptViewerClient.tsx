@@ -23,7 +23,7 @@ interface TranscriptViewerClientProps {
 
 export function TranscriptViewerClient({
   sessionId,
-  locale,
+  locale: _locale,
 }: TranscriptViewerClientProps) {
   const [showAIModal, setShowAIModal] = useState(false);
   const [selectedContext, setSelectedContext] = useState<{

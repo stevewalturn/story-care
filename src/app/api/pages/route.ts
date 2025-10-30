@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     if (patientId) {
       query = query.where(eq(storyPages.patientId, patientId)) as any;
     } else if (therapistId) {
-      query = query.where(eq(storyPages.therapistId, therapistId)) as any;
+      query = query.where(eq(storyPages.createdByTherapistId, therapistId)) as any;
     }
 
     const pages = await query.orderBy(desc(storyPages.updatedAt));
@@ -62,12 +62,19 @@ export async function POST(request: NextRequest) {
     const [page] = await db
       .insert(storyPages)
       .values({
-        therapistId,
+        createdByTherapistId: therapistId,
         patientId,
         title,
-        isPublished: false,
+        status: 'draft',
       })
       .returning();
+
+    if (!page) {
+      return NextResponse.json(
+        { error: 'Failed to create page' },
+        { status: 500 }
+      );
+    }
 
     // Create blocks if provided
     if (blocks && Array.isArray(blocks)) {
@@ -76,8 +83,11 @@ export async function POST(request: NextRequest) {
           db.insert(pageBlocks).values({
             pageId: page.id,
             blockType: block.type,
-            order: index,
-            content: block.content || {},
+            sequenceNumber: index,
+            mediaId: block.mediaId || null,
+            sceneId: block.sceneId || null,
+            textContent: block.textContent || null,
+            settings: block.settings || null,
           }),
         ),
       );

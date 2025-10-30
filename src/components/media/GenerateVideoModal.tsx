@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Film, Loader2, Check, Play } from 'lucide-react';
+import { X, Film, Loader2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 interface Patient {
@@ -40,7 +40,7 @@ export function GenerateVideoModal({
   isOpen,
   onClose,
   onGenerate,
-  patients = [],
+  patients: _patients = [],
 }: GenerateVideoModalProps) {
   const [prompt, setPrompt] = useState('');
   const [duration, setDuration] = useState('10');

@@ -5,14 +5,15 @@ import { eq } from 'drizzle-orm';
 
 // GET /api/groups/[id] - Get single group
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const [group] = await db
       .select()
       .from(groups)
-      .where(eq(groups.id, params.id))
+      .where(eq(groups.id, id))
       .limit(1);
 
     if (!group) {
@@ -30,7 +31,7 @@ export async function GET(
         avatarUrl: users.avatarUrl,
       })
       .from(groupMembers)
-      .innerJoin(users, eq(groupMembers.userId, users.id))
+      .innerJoin(users, eq(groupMembers.patientId, users.id))
       .where(eq(groupMembers.groupId, group.id));
 
     return NextResponse.json({ group: { ...group, members } });
@@ -46,9 +47,10 @@ export async function GET(
 // PUT /api/groups/[id] - Update group
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { name, description, memberIds } = body;
 
@@ -60,7 +62,7 @@ export async function PUT(
         description: description || null,
         updatedAt: new Date(),
       })
-      .where(eq(groups.id, params.id))
+      .where(eq(groups.id, id))
       .returning();
 
     if (!updatedGroup) {
@@ -73,14 +75,14 @@ export async function PUT(
     // Update members if provided
     if (memberIds) {
       // Remove existing members
-      await db.delete(groupMembers).where(eq(groupMembers.groupId, params.id));
+      await db.delete(groupMembers).where(eq(groupMembers.groupId, id));
 
       // Add new members
       if (memberIds.length > 0) {
         await db.insert(groupMembers).values(
-          memberIds.map((userId: string) => ({
-            groupId: params.id,
-            userId,
+          memberIds.map((patientId: string) => ({
+            groupId: id,
+            patientId,
           }))
         );
       }
@@ -94,8 +96,8 @@ export async function PUT(
         avatarUrl: users.avatarUrl,
       })
       .from(groupMembers)
-      .innerJoin(users, eq(groupMembers.userId, users.id))
-      .where(eq(groupMembers.groupId, params.id));
+      .innerJoin(users, eq(groupMembers.patientId, users.id))
+      .where(eq(groupMembers.groupId, id));
 
     return NextResponse.json({ group: { ...updatedGroup, members } });
   } catch (error) {
@@ -109,17 +111,18 @@ export async function PUT(
 
 // DELETE /api/groups/[id] - Delete group
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // Delete group members first (cascade)
-    await db.delete(groupMembers).where(eq(groupMembers.groupId, params.id));
+    await db.delete(groupMembers).where(eq(groupMembers.groupId, id));
 
     // Delete group
     const [deletedGroup] = await db
       .delete(groups)
-      .where(eq(groups.id, params.id))
+      .where(eq(groups.id, id))
       .returning();
 
     if (!deletedGroup) {

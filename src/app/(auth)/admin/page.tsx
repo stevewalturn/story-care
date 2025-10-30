@@ -1,12 +1,6 @@
-import { setRequestLocale } from 'next-intl/server';
 import { Shield, Users, Settings, Database } from 'lucide-react';
 
-export default async function AdminPage(props: {
-  params: Promise<{ locale: string }>;
-}) {
-  const { locale } = await props.params;
-  setRequestLocale(locale);
-
+export default async function AdminPage() {
   return (
     <div className="p-8">
       <div className="max-w-4xl mx-auto text-center py-16">

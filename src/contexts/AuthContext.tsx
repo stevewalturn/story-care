@@ -39,16 +39,38 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthChange((authUser) => {
+    const unsubscribe = onAuthChange(async (authUser) => {
       setUser(authUser);
       setLoading(false);
 
-      // Redirect based on auth state
-      if (!authUser && typeof window !== 'undefined') {
-        const publicPaths = ['/sign-in', '/sign-up', '/'];
-        const currentPath = window.location.pathname;
-        if (!publicPaths.some((path) => currentPath.includes(path))) {
-          router.push('/sign-in');
+      // Set or clear session cookie based on auth state
+      if (authUser) {
+        try {
+          const idToken = await authUser.getIdToken();
+          // Set session cookie via API route
+          await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken }),
+          });
+        } catch (error) {
+          console.error('Failed to set session cookie:', error);
+        }
+      } else {
+        // Clear session cookie when user signs out
+        try {
+          await fetch('/api/auth/session', { method: 'DELETE' });
+        } catch (error) {
+          console.error('Failed to clear session cookie:', error);
+        }
+
+        // Redirect to sign-in if not on a public path
+        if (typeof window !== 'undefined') {
+          const publicPaths = ['/sign-in', '/sign-up', '/'];
+          const currentPath = window.location.pathname;
+          if (!publicPaths.some((path) => currentPath.includes(path))) {
+            router.push('/sign-in');
+          }
         }
       }
     });

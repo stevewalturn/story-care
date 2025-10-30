@@ -1,24 +1,33 @@
-import type { NextFetchEvent, NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { detectBot } from '@arcjet/next';
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import createMiddleware from 'next-intl/middleware';
 import { NextResponse } from 'next/server';
 import arcjet from '@/libs/Arcjet';
-import { routing } from './libs/I18nRouting';
 
-const handleI18nRouting = createMiddleware(routing);
+// Protected routes that require authentication
+const protectedRoutes = [
+  '/dashboard',
+  '/sessions',
+  '/assets',
+  '/scenes',
+  '/pages',
+  '/patients',
+  '/groups',
+  '/prompts',
+  '/admin',
+];
 
-const isProtectedRoute = createRouteMatcher([
-  '/dashboard(.*)',
-  '/:locale/dashboard(.*)',
-]);
+// Auth pages (sign-in, sign-up)
+const authPages = ['/sign-in', '/sign-up'];
 
-const isAuthPage = createRouteMatcher([
-  '/sign-in(.*)',
-  '/:locale/sign-in(.*)',
-  '/sign-up(.*)',
-  '/:locale/sign-up(.*)',
-]);
+// Check if the request path starts with any protected route
+function isProtectedRoute(pathname: string): boolean {
+  return protectedRoutes.some(route => pathname.startsWith(route));
+}
+
+// Check if the request path is an auth page
+function isAuthPage(pathname: string): boolean {
+  return authPages.some(page => pathname.startsWith(page));
+}
 
 // Improve security with Arcjet
 const aj = arcjet.withRule(
@@ -34,12 +43,9 @@ const aj = arcjet.withRule(
   }),
 );
 
-// Currently, with database connections, Webpack is faster than Turbopack in production environment at runtime.
-// Then, unfortunately, Webpack doesn't support `proxy.ts` on Vercel yet, here is the error: "Error: ENOENT: no such file or directory, lstat '/vercel/path0/.next/server/proxy.js'"
-export default async function middleware(
-  request: NextRequest,
-  event: NextFetchEvent,
-) {
+export default async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
   // Verify the request with Arcjet
   // Use `process.env` instead of Env to reduce bundle size in middleware
   if (process.env.ARCJET_KEY) {
@@ -50,26 +56,34 @@ export default async function middleware(
     }
   }
 
-  // Clerk keyless mode doesn't work with i18n, this is why we need to run the middleware conditionally
-  if (
-    isAuthPage(request) || isProtectedRoute(request)
-  ) {
-    return clerkMiddleware(async (auth, req) => {
-      if (isProtectedRoute(req)) {
-        const locale = req.nextUrl.pathname.match(/(\/.*)\/dashboard/)?.at(1) ?? '';
+  // Check if the route is protected
+  if (isProtectedRoute(pathname)) {
+    // Get the session token from cookies
+    const sessionToken = request.cookies.get('session')?.value;
 
-        const signInUrl = new URL(`${locale}/sign-in`, req.url);
+    if (!sessionToken) {
+      // Redirect to sign-in if no session token
+      const signInUrl = new URL('/sign-in', request.url);
+      signInUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(signInUrl);
+    }
 
-        await auth.protect({
-          unauthenticatedUrl: signInUrl.toString(),
-        });
-      }
-
-      return handleI18nRouting(req);
-    })(request, event);
+    // Session cookie is set by /api/auth/session endpoint
+    // The cookie contains the Firebase ID token
+    // In production with more traffic, verify the token with Firebase Admin SDK
+    // to prevent unauthorized access with expired or invalid tokens
   }
 
-  return handleI18nRouting(request);
+  // If user is authenticated and trying to access auth pages, redirect to dashboard
+  if (isAuthPage(pathname)) {
+    const sessionToken = request.cookies.get('session')?.value;
+
+    if (sessionToken) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {

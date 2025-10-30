@@ -73,7 +73,7 @@ export const questionTypeEnum = pgEnum('question_type', [
 // USERS & AUTHENTICATION
 // ============================================================================
 
-export const usersSchema = pgTable('users', {
+export const usersSchema: any = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: varchar('email', { length: 255 }).unique().notNull(),
   name: varchar('name', { length: 255 }).notNull(),
@@ -224,7 +224,7 @@ export const utterancesSchema = pgTable('utterances', {
 // MEDIA LIBRARY
 // ============================================================================
 
-export const mediaLibrarySchema = pgTable('media_library', {
+export const mediaLibrarySchema: any = pgTable('media_library', {
   id: uuid('id').primaryKey().defaultRandom(),
 
   // Ownership
@@ -319,6 +319,33 @@ export const notesSchema = pgTable('notes', {
   // Context
   sessionId: uuid('session_id').references(() => sessionsSchema.id),
   tags: text('tags').array(),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================================================
+// THERAPEUTIC PROMPTS
+// ============================================================================
+
+export const therapeuticPromptsSchema = pgTable('therapeutic_prompts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  // Ownership (null for system prompts)
+  therapistId: uuid('therapist_id').references(() => usersSchema.id),
+
+  // Prompt content
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description'),
+  promptText: text('prompt_text').notNull(),
+
+  // Classification
+  category: varchar('category', { length: 100 }).notNull(), // 'image-generation', 'video-generation', 'analysis', 'reflection'
+  tags: text('tags').array(),
+
+  // Usage
+  isFavorite: boolean('is_favorite').default(false),
+  useCount: integer('use_count').default(0),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -550,6 +577,32 @@ export const patientPageInteractionsSchema = pgTable('patient_page_interactions'
 });
 
 // ============================================================================
+// TABLE ALIASES (for convenience)
+// ============================================================================
+
+// Export table schemas both with and without 'Schema' suffix
+export const users = usersSchema;
+export const groups = groupsSchema;
+export const groupMembers = groupMembersSchema;
+export const sessions = sessionsSchema;
+export const transcripts = transcriptsSchema;
+export const speakers = speakersSchema;
+export const utterances = utterancesSchema;
+export const mediaLibrary = mediaLibrarySchema;
+export const quotes = quotesSchema;
+export const notes = notesSchema;
+export const therapeuticPrompts = therapeuticPromptsSchema;
+export const scenes = scenesSchema;
+export const sceneClips = sceneClipsSchema;
+export const storyPages = storyPagesSchema;
+export const pageBlocks = pageBlocksSchema;
+export const reflectionQuestions = reflectionQuestionsSchema;
+export const surveyQuestions = surveyQuestionsSchema;
+export const reflectionResponses = reflectionResponsesSchema;
+export const surveyResponses = surveyResponsesSchema;
+export const patientPageInteractions = patientPageInteractionsSchema;
+
+// ============================================================================
 // EXPORTS (for type inference)
 // ============================================================================
 
@@ -579,6 +632,9 @@ export type NewQuote = typeof quotesSchema.$inferInsert;
 
 export type Note = typeof notesSchema.$inferSelect;
 export type NewNote = typeof notesSchema.$inferInsert;
+
+export type TherapeuticPrompt = typeof therapeuticPromptsSchema.$inferSelect;
+export type NewTherapeuticPrompt = typeof therapeuticPromptsSchema.$inferInsert;
 
 export type Scene = typeof scenesSchema.$inferSelect;
 export type NewScene = typeof scenesSchema.$inferInsert;

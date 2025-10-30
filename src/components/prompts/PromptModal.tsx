@@ -9,7 +9,7 @@ interface Prompt {
   id?: string;
   title: string;
   description: string;
-  content: string;
+  promptText: string;
   category: string;
   tags: string[];
   isFavorite?: boolean;
@@ -36,7 +36,7 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
     prompt || {
       title: '',
       description: '',
-      content: '',
+      promptText: '',
       category: 'visualization',
       tags: [],
       isFavorite: false,
@@ -116,8 +116,8 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
               Prompt Content *
             </label>
             <textarea
-              value={formData.content}
-              onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+              value={formData.promptText}
+              onChange={(e) => setFormData({ ...formData, promptText: e.target.value })}
               placeholder="The detailed AI prompt that will be used to generate images..."
               className="w-full h-40 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
               required
@@ -209,7 +209,7 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
             <Button
               type="submit"
               variant="primary"
-              disabled={!formData.title || !formData.description || !formData.content}
+              disabled={!formData.title || !formData.description || !formData.promptText}
             >
               {prompt ? 'Update Prompt' : 'Create Prompt'}
             </Button>

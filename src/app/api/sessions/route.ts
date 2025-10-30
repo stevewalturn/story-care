@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { sessions, users, groups } from '@/models/Schema';
-import { eq, desc, and } from 'drizzle-orm';
+import { sessions, users } from '@/models/Schema';
+import { eq, desc } from 'drizzle-orm';
 
 // GET /api/sessions - List all sessions
 export async function GET(request: NextRequest) {
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
         sessionDate: sessions.sessionDate,
         sessionType: sessions.sessionType,
         audioUrl: sessions.audioUrl,
-        status: sessions.status,
+        transcriptionStatus: sessions.transcriptionStatus,
         createdAt: sessions.createdAt,
         patient: {
           id: users.id,
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!therapistId || !title || !sessionDate || !sessionType) {
+    if (!therapistId || !title || !sessionDate || !sessionType || !audioUrl) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 },
@@ -82,20 +82,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create session
-    const [newSession] = await db
+    // Create session with validated values (fields are validated above)
+    const sessionResult = await db
       .insert(sessions)
       .values({
         therapistId,
         patientId: sessionType === 'individual' ? patientId : null,
         groupId: sessionType === 'group' ? groupId : null,
         title,
-        sessionDate: new Date(sessionDate),
+        sessionDate: new Date(sessionDate).toISOString().split('T')[0],
         sessionType,
         audioUrl,
-        status: 'uploaded',
-      })
+        transcriptionStatus: 'pending',
+      } as any)
       .returning();
+
+    const newSession = Array.isArray(sessionResult) && sessionResult.length > 0 ? sessionResult[0] : null;
+
+    if (!newSession) {
+      return NextResponse.json(
+        { error: 'Failed to create session' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ session: newSession }, { status: 201 });
   } catch (error) {

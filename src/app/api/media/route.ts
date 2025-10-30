@@ -1,30 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { mediaLibrary } from '@/models/Schema';
-import { eq, and, or, like, desc } from 'drizzle-orm';
+import { mediaLibrary, users, sessions } from '@/models/Schema';
+import { eq, and, or, ilike, desc, sql } from 'drizzle-orm';
 
 // GET /api/media - List media files
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get('patientId');
-    const sessionId = searchParams.get('sessionId');
+    const sourceSessionId = searchParams.get('sessionId');
     const mediaType = searchParams.get('type');
     const search = searchParams.get('search');
 
-    let query = db.select().from(mediaLibrary);
+    // Select with patient and session info
+    let query = db
+      .select({
+        id: mediaLibrary.id,
+        title: mediaLibrary.title,
+        description: mediaLibrary.description,
+        mediaType: mediaLibrary.mediaType,
+        mediaUrl: mediaLibrary.mediaUrl,
+        thumbnailUrl: mediaLibrary.thumbnailUrl,
+        durationSeconds: mediaLibrary.durationSeconds,
+        tags: mediaLibrary.tags,
+        generationPrompt: mediaLibrary.generationPrompt,
+        sourceType: mediaLibrary.sourceType,
+        createdAt: mediaLibrary.createdAt,
+        patientId: mediaLibrary.patientId,
+        patientName: users.name,
+        sessionTitle: sessions.title,
+      })
+      .from(mediaLibrary)
+      .leftJoin(users, eq(mediaLibrary.patientId, users.id))
+      .leftJoin(sessions, eq(mediaLibrary.sourceSessionId, sessions.id));
 
     // Build filters
     const filters = [];
     if (patientId) filters.push(eq(mediaLibrary.patientId, patientId));
-    if (sessionId) filters.push(eq(mediaLibrary.sessionId, sessionId));
-    if (mediaType) filters.push(eq(mediaLibrary.mediaType, mediaType));
+    if (sourceSessionId) filters.push(eq(mediaLibrary.sourceSessionId, sourceSessionId));
+    if (mediaType && mediaType !== 'all') {
+      filters.push(eq(mediaLibrary.mediaType, mediaType as any));
+    }
     if (search) {
       filters.push(
         or(
-          like(mediaLibrary.title, `%${search}%`),
-          like(mediaLibrary.tags, `%${search}%`),
-        ),
+          ilike(mediaLibrary.title, `%${search}%`),
+          ilike(users.name, `%${search}%`),
+          sql`${mediaLibrary.tags}::text ilike ${`%${search}%`}`
+        )
       );
     }
 
@@ -49,40 +72,56 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
-      sessionId,
       patientId,
-      mediaType,
+      createdByTherapistId,
       title,
-      url,
-      storagePath,
+      description,
+      mediaType,
+      mediaUrl,
       thumbnailUrl,
-      duration,
-      generatedPrompt,
+      durationSeconds,
+      sourceType,
+      sourceSessionId,
+      generationPrompt,
+      aiModel,
       tags,
     } = body;
 
-    if (!mediaType || !title || !url) {
+    if (!patientId || !createdByTherapistId || !mediaType || !title || !mediaUrl || !sourceType) {
       return NextResponse.json(
-        { error: 'mediaType, title, and url are required' },
+        { error: 'Missing required fields' },
         { status: 400 },
       );
     }
 
-    const [media] = await db
+    const mediaResult = await db
       .insert(mediaLibrary)
       .values({
-        sessionId: sessionId || null,
-        patientId: patientId || null,
-        mediaType,
+        patientId,
+        createdByTherapistId,
         title,
-        url,
-        storagePath: storagePath || null,
+        description: description || null,
+        mediaType,
+        mediaUrl,
         thumbnailUrl: thumbnailUrl || null,
-        duration: duration || null,
-        generatedPrompt: generatedPrompt || null,
+        durationSeconds: durationSeconds || null,
+        sourceType,
+        sourceSessionId: sourceSessionId || null,
+        generationPrompt: generationPrompt || null,
+        aiModel: aiModel || null,
         tags: tags || null,
+        status: 'completed',
       })
       .returning();
+
+    const media = Array.isArray(mediaResult) && mediaResult.length > 0 ? mediaResult[0] : null;
+
+    if (!media) {
+      return NextResponse.json(
+        { error: 'Failed to create media record' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ media }, { status: 201 });
   } catch (error) {

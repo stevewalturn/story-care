@@ -8,10 +8,10 @@ interface Prompt {
   id: string;
   title: string;
   description: string;
-  content: string;
+  promptText: string;
   category: string;
   tags: string[];
-  usageCount: number;
+  useCount: number;
   createdAt: Date;
   isFavorite?: boolean;
 }
@@ -49,7 +49,7 @@ export default function PromptsPage() {
 
   const handleSelectPrompt = (prompt: Prompt) => {
     // Copy to clipboard and show notification
-    navigator.clipboard.writeText(prompt.content);
+    navigator.clipboard.writeText(prompt.promptText);
     console.log('Selected prompt:', prompt.id);
     // In real implementation, could also open the generate image modal with this prompt pre-filled
   };

@@ -38,15 +38,19 @@ This document provides guidance for AI assistants (like Claude) working on this 
 
 ### Authentication
 - **Auth Provider**: Firebase Authentication (Google Identity Platform)
-  - Most complex component to set up
   - Supports passwordless authentication, magic links, MFA
   - Social auth: Google, Facebook, Twitter, GitHub, Apple
   - Email/Password, Phone authentication
-  - User management via Admin SDK
-  - Reference: [Essential user management features](https://clerk.com/articles/essential-user-management-features-startups)
+  - User management via Firebase Admin SDK
+  - Session management with JWT tokens (24-hour expiration)
+  - HIPAA-compliant with proper BAA (Business Associate Agreement)
 - **Implementation**: Firebase JS SDK + Next.js
+  - Client-side: Firebase JS SDK (`firebase/auth`)
+  - Server-side: Firebase Admin SDK (`firebase-admin/auth`)
   - Environment variables: `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, etc.
+  - Auth state management with React Context
   - Auth routes located at: `src/app/[locale]/(auth)/`
+  - Protected routes use middleware to verify ID tokens
 
 ### AI Services
 - **Speech-to-Text**: Deepgram
@@ -76,14 +80,14 @@ When implementing features, consider these scaling targets:
 - **Styling**: Tailwind CSS 4
 - **UI**: React 19 with React Compiler
 - **Forms**: React Hook Form + Zod validation
-- **i18n**: next-intl with Crowdin integration
+- **Language**: English only (no i18n)
 
 ### Backend & API
 - **API Routes**: Next.js App Router route handlers
 - **Database ORM**: DrizzleORM
 - **Validation**: Zod schemas
 - **Security**: Arcjet (bot detection, WAF, rate limiting)
-- **Middleware**: Custom middleware for security and i18n
+- **Middleware**: Custom middleware for authentication and security
 
 ### Testing & Quality
 - **Unit Tests**: Vitest + Browser mode
@@ -147,21 +151,20 @@ When implementing features, consider these scaling targets:
 ```
 src/
 ├── app/                      # Next.js App Router
-│   └── [locale]/            # i18n routing
-│       ├── (auth)/          # Authenticated routes (Therapist/Admin)
-│       │   ├── dashboard/   # Engagement dashboard
-│       │   ├── sessions/    # Session library and upload
-│       │   ├── assets/      # Patient content library
-│       │   ├── scenes/      # Scene editor
-│       │   ├── pages/       # Story page builder
-│       │   ├── admin/       # Admin panel
-│       │   └── layout.tsx   # Auth layout with sidebar
-│       ├── (patient)/       # Patient-facing routes
-│       │   ├── story/[id]/  # Story page viewer
-│       │   └── layout.tsx   # Patient layout
-│       ├── api/             # API routes (StoryCare endpoints)
-│       ├── layout.tsx       # Root layout
-│       └── global-error.tsx
+│   ├── (auth)/              # Authenticated routes (Therapist/Admin)
+│   │   ├── dashboard/       # Engagement dashboard
+│   │   ├── sessions/        # Session library and upload
+│   │   ├── assets/          # Patient content library
+│   │   ├── scenes/          # Scene editor
+│   │   ├── pages/           # Story page builder
+│   │   ├── admin/           # Admin panel
+│   │   └── layout.tsx       # Auth layout with sidebar
+│   ├── (patient)/           # Patient-facing routes
+│   │   ├── story/[id]/      # Story page viewer
+│   │   └── layout.tsx       # Patient layout
+│   ├── api/                 # API routes (StoryCare endpoints)
+│   ├── layout.tsx           # Root layout
+│   └── global-error.tsx
 ├── components/              # React components
 │   ├── layout/             # Sidebar, TopBar, UserMenu
 │   ├── sessions/           # SessionCard, UploadModal, SpeakerLabeling
@@ -177,13 +180,11 @@ src/
 │   ├── DB.ts               # Database client
 │   ├── Env.ts              # Environment validation
 │   ├── Firebase.ts         # Firebase Auth config
+│   ├── FirebaseAdmin.ts    # Firebase Admin SDK
 │   ├── GCS.ts              # Google Cloud Storage
 │   ├── Deepgram.ts         # Transcription API
 │   ├── OpenAI.ts           # AI services (GPT-4, DALL-E)
 │   └── Logger.ts           # Logging config
-├── locales/                 # Translation files
-│   ├── en.json
-│   └── fr.json
 ├── models/                  # Database schemas (DrizzleORM)
 │   └── Schema.ts           # All tables: users, sessions, transcripts,
 │                           # media_library, scenes, story_pages, etc.
@@ -228,58 +229,87 @@ tests/
 - Use absolute imports with `@` prefix
 
 ### Database Operations
+
+**StoryCare Database Schema Overview** (see PRD.md for complete schema):
+- `users` - Therapists, patients, admins (with role field)
+- `groups` - Therapy groups
+- `sessions` - Therapy session records with audio URLs
+- `transcripts` - Session transcripts from Deepgram
+- `speakers` - Identified speakers in sessions
+- `utterances` - Individual speech segments with timestamps
+- `media_library` - Generated images, videos, audio
+- `quotes` - Extracted meaningful quotes from transcripts
+- `scenes` - Assembled video scenes with timeline
+- `story_pages` - Patient-facing content pages
+- `page_blocks` - Content blocks within story pages
+- `reflection_questions` - Questions for patient reflection
+- `survey_questions` - Survey questions for patient feedback
+- `reflection_responses` - Patient answers to reflections
+- `survey_responses` - Patient survey submissions
+- `patient_page_interactions` - Engagement tracking
+
 ```typescript
 // Define schema in src/models/Schema.ts
+import { pgTable, uuid, text, timestamp, varchar, serial } from 'drizzle-orm/pg-core';
+
 export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
-  email: text('email').notNull(),
+  id: uuid('id').primaryKey().defaultRandom(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  name: varchar('name', { length: 255 }).notNull(),
+  role: varchar('role', { length: 50 }).notNull(), // 'therapist', 'patient', 'admin'
+  firebaseUid: varchar('firebase_uid', { length: 255 }).unique(),
+  therapistId: uuid('therapist_id').references(() => users.id),
+  referenceImageUrl: text('reference_image_url'), // For AI generation
   createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
 });
 
 // Use in components/routes
 import { db } from '@/libs/DB';
 import { users } from '@/models/Schema';
+import { eq } from 'drizzle-orm';
 
-const userList = await db.select().from(users);
+// Fetch therapist's patients
+const patients = await db
+  .select()
+  .from(users)
+  .where(eq(users.therapistId, therapistId));
 ```
 
 ### API Routes
 ```typescript
-// src/app/[locale]/api/example/route.ts
+// src/app/api/sessions/route.ts
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { verifyIdToken } from '@/libs/FirebaseAdmin';
 
 const schema = z.object({
-  name: z.string(),
+  title: z.string(),
+  sessionDate: z.string(),
+  sessionType: z.enum(['individual', 'group']),
 });
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const validated = schema.parse(body);
+  // Verify authentication
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
-  // Your logic here
+  const token = authHeader.substring(7);
 
-  return NextResponse.json({ success: true });
-}
-```
+  try {
+    const user = await verifyIdToken(token);
+    const body = await request.json();
+    const validated = schema.parse(body);
 
-### i18n Implementation
-```typescript
-// Server components
-import { getTranslations } from 'next-intl/server';
+    // Your logic here with validated data
+    // user.uid contains the Firebase user ID
 
-export default async function Page() {
-  const t = await getTranslations('HomePage');
-  return <h1>{t('title')}</h1>;
-}
-
-// Client components
-'use client';
-import { useTranslations } from 'next-intl';
-
-export default function ClientComponent() {
-  const t = useTranslations('HomePage');
-  return <h1>{t('title')}</h1>;
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  }
 }
 ```
 
@@ -287,7 +317,7 @@ export default function ClientComponent() {
 
 ### Required for Development
 ```bash
-# Firebase Authentication
+# Firebase Authentication (Client-side)
 NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
@@ -295,11 +325,22 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 
+# Firebase Admin SDK (Server-side)
+FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
+# Or separate fields:
+FIREBASE_ADMIN_PROJECT_ID=your_project_id
+FIREBASE_ADMIN_CLIENT_EMAIL=firebase-adminsdk@...iam.gserviceaccount.com
+FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+
 # Database (PGlite for local, Neon for production)
 DATABASE_URL=postgresql://...
 
 # Security
 ARCJET_KEY=ajkey_...
+
+# StoryCare App Configuration
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_APP_NAME=StoryCare
 ```
 
 ### Production Only
@@ -329,11 +370,22 @@ CHECKLY_ACCOUNT_ID=...
 DEEPGRAM_API_KEY=...
 OPENAI_API_KEY=...
 
-# Storage
+# Google Cloud Storage (for media files)
 GCS_PROJECT_ID=...
 GCS_CLIENT_EMAIL=...
 GCS_PRIVATE_KEY=...
 GCS_BUCKET_NAME=...
+
+# Email & SMS Notifications
+SENDGRID_API_KEY=...
+TWILIO_ACCOUNT_SID=...
+TWILIO_AUTH_TOKEN=...
+TWILIO_PHONE_NUMBER=...
+
+# Video Processing (FFmpeg or Cloudinary)
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
 ```
 
 ## Common Commands
@@ -367,7 +419,6 @@ npm run lint             # Check linting
 npm run lint:fix         # Fix linting issues
 npm run check:types      # Type checking
 npm run check:deps       # Unused dependencies
-npm run check:i18n       # Translation validation
 ```
 
 ## Development Workflow
@@ -379,9 +430,8 @@ npm run check:i18n       # Translation validation
 4. **Run migration**: `npm run db:migrate`
 5. **Implement feature**: Add components, API routes, etc.
 6. **Add tests**: Unit tests (*.test.tsx), E2E tests (*.e2e.ts)
-7. **Update translations**: Add keys to `src/locales/en.json`
-8. **Run quality checks**: `npm run lint && npm run check:types && npm run test`
-9. **Commit with conventional commits**: `npm run commit`
+7. **Run quality checks**: `npm run lint && npm run check:types && npm run test`
+8. **Commit with conventional commits**: `npm run commit`
 
 ### Database Schema Changes
 ```bash
@@ -465,19 +515,29 @@ Located in `src/libs/Arcjet.ts`:
 ### Required Environment Variables in Vercel
 - All variables from `.env.production`
 - `DATABASE_URL` pointing to Neon PostgreSQL
-- `CLERK_SECRET_KEY` for authentication
+- Firebase Authentication variables (both client and server)
+- `FIREBASE_SERVICE_ACCOUNT_KEY` for Firebase Admin SDK
 - `SENTRY_AUTH_TOKEN` for error monitoring
 - `ARCJET_KEY` for security
+- `DEEPGRAM_API_KEY` for transcription
+- `OPENAI_API_KEY` for AI features
+- `GCS_*` variables for media storage
 
 ### Pre-deployment Checklist
 - [ ] All tests passing
 - [ ] Type checking clean
 - [ ] No linting errors
-- [ ] Environment variables configured
+- [ ] Environment variables configured in Vercel
 - [ ] Database migrations ready
+- [ ] Firebase project created and configured
+- [ ] Firebase Admin SDK credentials set
 - [ ] Sentry project created
 - [ ] Arcjet configured
-- [ ] Analytics set up
+- [ ] PostHog analytics set up
+- [ ] Deepgram API key configured
+- [ ] OpenAI API key configured
+- [ ] Google Cloud Storage bucket created
+- [ ] Business Associate Agreements (BAA) signed for HIPAA compliance
 
 ## Troubleshooting
 
@@ -487,9 +547,14 @@ Located in `src/libs/Arcjet.ts`:
 - Check Neon dashboard for connection limits
 
 ### Authentication Issues
-- Verify Clerk keys are set correctly
-- Check Clerk dashboard for API status
-- Review middleware configuration
+- Verify Firebase configuration in `.env.local` or Vercel dashboard
+- Check Firebase Console for project status and authentication settings
+- Ensure Firebase Admin SDK credentials are valid (service account JSON)
+- Review middleware configuration in `src/middleware.ts`
+- Verify ID token verification logic on API routes
+- Check browser console for Firebase SDK errors
+- Ensure auth domain is properly configured (`your-project.firebaseapp.com`)
+- For production: Verify custom domain is added to Firebase Auth authorized domains
 
 ### Build Failures
 - Run `npm run build-local` to test locally
@@ -502,26 +567,205 @@ Located in `src/libs/Arcjet.ts`:
 - Review PostHog analytics for slow pages
 - Consider edge caching strategies
 
+## Firebase Authentication Implementation
+
+### Client-Side Authentication (Browser)
+```typescript
+// src/libs/Firebase.ts
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
+
+export const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+```
+
+### Server-Side Authentication (API Routes)
+```typescript
+// src/libs/FirebaseAdmin.ts
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+
+if (!getApps().length) {
+  initializeApp({
+    credential: cert({
+      projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    }),
+  });
+}
+
+export const adminAuth = getAuth();
+
+// Verify ID token on API routes
+export async function verifyIdToken(token: string) {
+  try {
+    const decodedToken = await adminAuth.verifyIdToken(token);
+    return { uid: decodedToken.uid, email: decodedToken.email };
+  } catch (error) {
+    throw new Error('Unauthorized');
+  }
+}
+```
+
+### Protected API Route Pattern
+```typescript
+// src/app/api/sessions/route.ts
+import { NextResponse } from 'next/server';
+import { verifyIdToken } from '@/libs/FirebaseAdmin';
+import { db } from '@/libs/DB';
+import { sessions } from '@/models/Schema';
+
+export async function POST(request: Request) {
+  // Get token from Authorization header
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const token = authHeader.substring(7);
+
+  try {
+    const user = await verifyIdToken(token);
+
+    // Your protected logic here
+    // User is authenticated, proceed with request
+    const body = await request.json();
+
+    // Example: Create a session
+    const [newSession] = await db.insert(sessions).values({
+      title: body.title,
+      sessionDate: body.sessionDate,
+      therapistId: user.uid,
+      // ... other fields
+    }).returning();
+
+    return NextResponse.json({ session: newSession });
+  } catch (error) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+}
+```
+
+### Auth Context Provider
+```typescript
+// src/components/providers/AuthProvider.tsx
+'use client';
+
+import { createContext, useContext, useEffect, useState } from 'react';
+import { User, onAuthStateChanged } from 'firebase/auth';
+import { auth } from '@/libs/Firebase';
+
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  idToken: string | null;
+}
+
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  loading: true,
+  idToken: null,
+});
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [idToken, setIdToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setUser(user);
+      if (user) {
+        const token = await user.getIdToken();
+        setIdToken(token);
+      } else {
+        setIdToken(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  return (
+    <AuthContext.Provider value={{ user, loading, idToken }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export const useAuth = () => useContext(AuthContext);
+```
+
+### HIPAA Compliance with Firebase
+
+**Important Considerations:**
+1. **Sign BAA with Google**: Required for HIPAA compliance
+   - Available for Firebase projects on Blaze (pay-as-you-go) plan
+   - Must be requested through Google Cloud sales
+
+2. **Data Storage**:
+   - Do NOT store PHI in Firebase Realtime Database or Firestore
+   - Store PHI only in HIPAA-compliant Neon PostgreSQL
+   - Firebase Auth user metadata should not contain PHI
+
+3. **Audit Logging**:
+   - Log all authentication events (login, logout, password reset)
+   - Store audit logs in PostgreSQL, not Firebase
+   - Track who accessed what patient data and when
+
+4. **Session Management**:
+   - Implement 24-hour token expiration
+   - Force re-authentication for sensitive operations
+   - Implement automatic logout after inactivity
+
+5. **MFA Requirement**:
+   - Require MFA for all therapist accounts in production
+   - Configure via Firebase Console under Authentication > Sign-in method
+
 ## AI Integration Guidelines
 
 When implementing AI features (Deepgram, OpenAI):
 
 ### API Route Pattern
 ```typescript
-// src/app/[locale]/api/ai/transcribe/route.ts
+// src/app/api/ai/transcribe/route.ts
 import { NextResponse } from 'next/server';
 import { createClient } from '@deepgram/sdk';
+import { verifyIdToken } from '@/libs/FirebaseAdmin';
 
 export async function POST(request: Request) {
+  // Verify authentication
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const token = authHeader.substring(7);
+
   try {
+    const user = await verifyIdToken(token);
     const deepgram = createClient(process.env.DEEPGRAM_API_KEY!);
     const { audioUrl } = await request.json();
 
     // Process with Deepgram
     const result = await deepgram.listen.prerecorded.transcribeUrl(
       { url: audioUrl },
-      { model: 'nova-2', smart_format: true }
+      { model: 'nova-2', smart_format: true, diarize: true }
     );
+
+    // Store result in database to avoid re-processing
+    // await db.insert(transcripts).values({ ... });
 
     return NextResponse.json(result);
   } catch (error) {
@@ -553,14 +797,17 @@ export async function POST(request: Request) {
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Tailwind CSS](https://tailwindcss.com/docs)
 - [DrizzleORM](https://orm.drizzle.team/docs/overview)
-- [Clerk Authentication](https://clerk.com/docs)
+- [Firebase Authentication](https://firebase.google.com/docs/auth)
+- [Firebase Admin SDK](https://firebase.google.com/docs/admin/setup)
 - [Arcjet Security](https://docs.arcjet.com/)
 
 ### Monitoring & Tools
 - [Vercel Dashboard](https://vercel.com/dashboard)
+- [Firebase Console](https://console.firebase.google.com/)
 - [Sentry Dashboard](https://sentry.io/)
 - [PostHog Analytics](https://posthog.com/)
 - [Neon Console](https://console.neon.tech/)
+- [Google Cloud Console](https://console.cloud.google.com/) (for GCS)
 
 ### AI Services
 - [Deepgram Docs](https://developers.deepgram.com/)
@@ -608,8 +855,60 @@ export async function POST(request: Request) {
 - Review Vercel analytics for traffic patterns
 - Plan for connection pooling at scale
 
+## StoryCare-Specific Implementation Notes
+
+### Application URLs
+- **Local Development**: `http://localhost:3000`
+- **Production**: TBD (configure in Vercel)
+- **App Name**: StoryCare (used in navigation, emails, notifications)
+
+### Language Support
+- **English Only**: No internationalization (i18n) or localization
+- All UI text, labels, and content are in English
+- No `[locale]` routing - direct app routes
+- No translation files or next-intl dependency
+- Simplifies routing structure: `/dashboard` instead of `/en/dashboard`
+
+### Key Features Implementation Status
+Refer to PRD.md for detailed specifications of:
+- Session Library & Upload Flow (Screenshots 1-4)
+- Transcription & Speaker Diarization (Screenshot 5)
+- Transcript Analysis with AI Assistant (Screenshots 6-7)
+- Image & Video Generation (Screenshots 8-9)
+- Patient Content Library (Screenshots 10-11)
+- Scene Editor with Timeline (Screenshot 12)
+- Story Page Builder (Screenshots 13-14)
+- Dashboard & Analytics (Screenshot 15)
+
+### HIPAA Compliance Checklist
+- [ ] Sign Business Associate Agreement (BAA) with all third-party services:
+  - [ ] Neon (database)
+  - [ ] Google Cloud Platform (storage)
+  - [ ] Firebase/Google (authentication)
+  - [ ] Deepgram (transcription)
+  - [ ] Vercel (hosting)
+  - [ ] Sentry (error tracking)
+- [ ] Enable audit logging for all PHI access
+- [ ] Implement automatic session timeout (24 hours)
+- [ ] Enable MFA for all therapist accounts
+- [ ] Configure data encryption at rest and in transit
+- [ ] Set up 7-year audit log retention
+- [ ] Implement patient data export functionality
+- [ ] Configure data deletion workflows (90-day soft delete)
+- [ ] Document incident response procedures
+
+### Cost Optimization Tips
+- Cache Deepgram transcriptions in database to avoid re-processing
+- Use GPT-3.5 for simple tasks, GPT-4 for complex analysis
+- Implement rate limiting on AI API calls with Arcjet
+- Optimize image sizes before uploading to GCS
+- Use Next.js Image component for automatic optimization
+- Implement edge caching for public story pages
+- Monitor PostHog events to track feature usage and costs
+
 ---
 
-**Last Updated**: 2025-10-29
+**Last Updated**: 2025-10-30
 **Maintained By**: Development Team
-**Questions?**: Refer to README.md or contact the team
+**Product**: StoryCare Digital Therapeutic Platform
+**Questions?**: Refer to README.md or PRD.md

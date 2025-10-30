@@ -71,23 +71,25 @@ export function AIAssistant({
     setIsLoading(true);
 
     try {
-      // In real implementation, call OpenAI API
-      // const response = await fetch('/api/ai/chat', {
-      //   method: 'POST',
-      //   body: JSON.stringify({
-      //     sessionId,
-      //     messages: [...messages, userMessage],
-      //     context: contextText,
-      //   }),
-      // });
+      // Call OpenAI API via our backend
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          messages: [...messages, userMessage],
+          context: contextText,
+        }),
+      });
 
-      // Mock response
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      if (!response.ok) throw new Error('AI request failed');
+
+      const data = await response.json();
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: generateMockResponse(messageText),
+        content: data.message || 'I apologize, but I could not generate a response.',
         timestamp: new Date(),
       };
 
@@ -110,22 +112,6 @@ export function AIAssistant({
     await navigator.clipboard.writeText(text);
     setCopiedId(messageId);
     setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const generateMockResponse = (userInput: string) => {
-    if (userInput.toLowerCase().includes('analyze')) {
-      return 'This passage reveals several key therapeutic themes:\n\n1. **Emotional Processing**: The client is expressing vulnerability and working through difficult emotions.\n\n2. **Narrative Reconstruction**: There are signs of the client beginning to reframe their story in a more empowering way.\n\n3. **Therapeutic Alliance**: The interaction shows strong rapport and trust between therapist and client.\n\nWould you like me to explore any of these themes further?';
-    }
-
-    if (userInput.toLowerCase().includes('quote')) {
-      return 'I\'ve identified this powerful quote that could be used in the patient\'s story:\n\n"[Extract from selected text]"\n\nThis quote demonstrates resilience and growth. Would you like me to suggest how to incorporate it into a story page?';
-    }
-
-    if (userInput.toLowerCase().includes('image')) {
-      return 'Based on this passage, I recommend generating an image that captures:\n\n**Visual Theme**: [Theme from text]\n**Mood**: [Mood description]\n**Suggested Prompt**: "[AI image generation prompt]"\n\nWould you like me to refine this prompt or generate the image?';
-    }
-
-    return 'I\'ve analyzed the selected text. Here are my insights:\n\n- This passage contains important emotional content\n- It could be valuable for the patient\'s therapeutic narrative\n- Consider using it as a foundation for reflection questions\n\nHow would you like to proceed?';
   };
 
   return (

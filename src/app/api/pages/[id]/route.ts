@@ -8,7 +8,7 @@ interface RouteContext {
 }
 
 // GET /api/pages/[id] - Get page with blocks
-export async function GET(request: NextRequest, context: RouteContext) {
+export async function GET(_request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
 
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .select()
       .from(pageBlocks)
       .where(eq(pageBlocks.pageId, id))
-      .orderBy(pageBlocks.order);
+      .orderBy(pageBlocks.sequenceNumber);
 
     return NextResponse.json({ page, blocks });
   } catch (error) {
@@ -42,14 +42,14 @@ export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
     const body = await request.json();
-    const { title, blocks, isPublished } = body;
+    const { title, blocks, status } = body;
 
     // Update page
     const updateData: any = { updatedAt: new Date() };
     if (title !== undefined) updateData.title = title;
-    if (isPublished !== undefined) {
-      updateData.isPublished = isPublished;
-      if (isPublished) updateData.publishedAt = new Date();
+    if (status !== undefined) {
+      updateData.status = status;
+      if (status === 'published') updateData.publishedAt = new Date();
     }
 
     const [page] = await db
@@ -73,8 +73,11 @@ export async function PUT(request: NextRequest, context: RouteContext) {
           db.insert(pageBlocks).values({
             pageId: id,
             blockType: block.type,
-            order: index,
-            content: block.content || {},
+            sequenceNumber: index,
+            mediaId: block.mediaId || null,
+            sceneId: block.sceneId || null,
+            textContent: block.textContent || null,
+            settings: block.settings || null,
           }),
         ),
       );
@@ -91,7 +94,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 }
 
 // DELETE /api/pages/[id] - Delete page
-export async function DELETE(request: NextRequest, context: RouteContext) {
+export async function DELETE(_request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
 

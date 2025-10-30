@@ -5,7 +5,7 @@ import { chat, type ChatMessage } from '@/libs/OpenAI';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { messages, context, sessionId } = body;
+    const { messages, context, sessionId: _sessionId } = body;
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(

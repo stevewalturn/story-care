@@ -5,10 +5,11 @@ import { eq } from 'drizzle-orm';
 
 // GET /api/sessions/[id] - Get single session
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const [session] = await db
       .select({
         id: sessions.id,
@@ -16,8 +17,8 @@ export async function GET(
         sessionDate: sessions.sessionDate,
         sessionType: sessions.sessionType,
         audioUrl: sessions.audioUrl,
-        audioDuration: sessions.audioDuration,
-        status: sessions.status,
+        audioDurationSeconds: sessions.audioDurationSeconds,
+        transcriptionStatus: sessions.transcriptionStatus,
         createdAt: sessions.createdAt,
         updatedAt: sessions.updatedAt,
         therapistId: sessions.therapistId,
@@ -25,7 +26,7 @@ export async function GET(
         groupId: sessions.groupId,
       })
       .from(sessions)
-      .where(eq(sessions.id, params.id))
+      .where(eq(sessions.id, id))
       .limit(1);
 
     if (!session) {
@@ -75,7 +76,7 @@ export async function GET(
           avatarUrl: users.avatarUrl,
         })
         .from(groupMembers)
-        .innerJoin(users, eq(groupMembers.userId, users.id))
+        .innerJoin(users, eq(groupMembers.patientId, users.id))
         .where(eq(groupMembers.groupId, session.groupId));
 
       return NextResponse.json({
@@ -102,23 +103,24 @@ export async function GET(
 // PUT /api/sessions/[id] - Update session
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
-    const { title, sessionDate, audioUrl, audioDuration, status } = body;
+    const { title, sessionDate, audioUrl, audioDurationSeconds, transcriptionStatus } = body;
 
     const [updatedSession] = await db
       .update(sessions)
       .set({
         title,
-        sessionDate: sessionDate ? new Date(sessionDate) : undefined,
+        sessionDate,
         audioUrl,
-        audioDuration,
-        status,
+        audioDurationSeconds,
+        transcriptionStatus,
         updatedAt: new Date(),
       })
-      .where(eq(sessions.id, params.id))
+      .where(eq(sessions.id, id))
       .returning();
 
     if (!updatedSession) {
@@ -140,13 +142,14 @@ export async function PUT(
 
 // DELETE /api/sessions/[id] - Delete session
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const [deletedSession] = await db
       .delete(sessions)
-      .where(eq(sessions.id, params.id))
+      .where(eq(sessions.id, id))
       .returning();
 
     if (!deletedSession) {

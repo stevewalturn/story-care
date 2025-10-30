@@ -65,70 +65,7 @@ export function TranscriptAnalysis({ sessionId, transcriptText }: TranscriptAnal
       setAnalysis(data.analysis);
     } catch (err: any) {
       setError(err.message || 'Failed to analyze transcript');
-      // Mock data for demo
-      setAnalysis({
-        sentiment: {
-          overall: 'positive',
-          score: 0.72,
-          breakdown: {
-            positive: 60,
-            neutral: 30,
-            negative: 10,
-          },
-        },
-        keyQuotes: [
-          {
-            text: "I'm stronger than I thought. Even in difficult moments, there's a part of me that knows how to cope.",
-            speaker: 'Emma',
-            significance: 'Demonstrates significant self-awareness and resilience',
-          },
-          {
-            text: "It's like I'm finally seeing myself from the outside.",
-            speaker: 'Emma',
-            significance: 'Metacognitive insight - key breakthrough moment',
-          },
-        ],
-        therapeuticInsights: [
-          {
-            category: 'Progress',
-            insight: 'Patient shows increased self-awareness through journaling practice',
-            timestamp: '1:30',
-          },
-          {
-            category: 'Coping Skills',
-            insight: 'Recognition of internal coping mechanisms emerging',
-            timestamp: '5:45',
-          },
-          {
-            category: 'Trust',
-            insight: 'Working on self-trust and internal validation',
-            timestamp: '8:20',
-          },
-        ],
-        progressIndicators: [
-          {
-            indicator: 'Self-Awareness',
-            status: 'improving',
-            description: 'Demonstrates metacognitive insights and pattern recognition',
-          },
-          {
-            indicator: 'Coping Mechanisms',
-            status: 'improving',
-            description: 'Identifying and utilizing internal resources',
-          },
-          {
-            indicator: 'Emotional Regulation',
-            status: 'stable',
-            description: 'Maintaining consistent emotional awareness',
-          },
-        ],
-        suggestedTopics: [
-          'Self-trust and internal validation',
-          'Continuing journaling practice',
-          'Exploring coping strategies in specific situations',
-          'Building on resilience discoveries',
-        ],
-      });
+      setAnalysis(null);
     } finally {
       setIsAnalyzing(false);
     }

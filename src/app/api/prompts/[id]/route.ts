@@ -6,9 +6,10 @@ import { eq } from 'drizzle-orm';
 // PUT /api/prompts/[id]
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { title, description, promptText, category, tags, isFavorite } = body;
 
@@ -23,7 +24,7 @@ export async function PUT(
         isFavorite,
         updatedAt: new Date(),
       })
-      .where(eq(therapeuticPrompts.id, params.id))
+      .where(eq(therapeuticPrompts.id, id))
       .returning();
 
     if (!updatedPrompt) {
@@ -45,13 +46,14 @@ export async function PUT(
 
 // DELETE /api/prompts/[id]
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const [deletedPrompt] = await db
       .delete(therapeuticPrompts)
-      .where(eq(therapeuticPrompts.id, params.id))
+      .where(eq(therapeuticPrompts.id, id))
       .returning();
 
     if (!deletedPrompt) {

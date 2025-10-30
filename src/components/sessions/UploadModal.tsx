@@ -25,7 +25,7 @@ export interface SessionUploadData {
 export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   const [formData, setFormData] = useState<SessionUploadData>({
     title: '',
-    sessionDate: new Date().toISOString().split('T')[0],
+    sessionDate: new Date().toISOString().split('T')[0] || '',
     sessionType: 'individual',
     patientId: '',
     groupId: '',
@@ -51,13 +51,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
         })
         .catch((err) => {
           console.error('Failed to fetch patients:', err);
-          // Fallback to mock data
-          setPatients([
-            { value: '', label: 'Select a patient...' },
-            { value: '1', label: 'Emma Wilson' },
-            { value: '2', label: 'Michael Chen' },
-            { value: '3', label: 'Sarah Martinez' },
-          ]);
+          setPatients([{ value: '', label: 'Select a patient...' }]);
         });
 
       // Fetch groups
@@ -72,12 +66,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
         })
         .catch((err) => {
           console.error('Failed to fetch groups:', err);
-          // Fallback to mock data
-          setGroups([
-            { value: '', label: 'Select a group...' },
-            { value: '1', label: "Men's Support Group" },
-            { value: '2', label: 'Anxiety Management' },
-          ]);
+          setGroups([{ value: '', label: 'Select a group...' }]);
         });
     }
   }, [isOpen]);

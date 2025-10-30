@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Search, Play, Pause, ChevronDown, Sparkles } from 'lucide-react';
+import { Search, Play, Pause, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 
@@ -140,7 +140,7 @@ export function TranscriptViewer({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search transcript..."
-              icon={<Search className="w-4 h-4" />}
+              leftIcon={<Search className="w-4 h-4" />}
             />
           </div>
           {audioUrl && (

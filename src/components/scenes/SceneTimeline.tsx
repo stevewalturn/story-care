@@ -31,7 +31,7 @@ export function SceneTimeline({
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
-  const [draggingClipId, setDraggingClipId] = useState<string | null>(null);
+  const [_draggingClipId, _setDraggingClipId] = useState<string | null>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
 
   // Handle playback

@@ -8,12 +8,12 @@ interface SessionCardProps {
   type: 'individual' | 'group';
   patientName?: string;
   groupName?: string;
-  sessionCount: number;
+  sessionCount?: number;
   onClick?: () => void;
 }
 
 export function SessionCard({
-  title,
+  title: _title,
   date,
   type,
   patientName,

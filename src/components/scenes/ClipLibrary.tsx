@@ -3,7 +3,7 @@
 import { Search, Image as ImageIcon, Video, Music, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface MediaItem {
   id: string;
@@ -20,51 +20,57 @@ interface ClipLibraryProps {
 export function ClipLibrary({ onAddToTimeline }: ClipLibraryProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'image' | 'video' | 'audio'>('all');
+  const [media, setMedia] = useState<MediaItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock media library
-  const mockMedia: MediaItem[] = [
-    {
-      id: '1',
-      type: 'image',
-      title: 'Hope Rising',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&h=200&fit=crop',
-    },
-    {
-      id: '2',
-      type: 'image',
-      title: 'Inner Peace',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop',
-    },
-    {
-      id: '3',
-      type: 'video',
-      title: 'Journey of Healing',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=200&h=200&fit=crop',
-      duration: 125,
-    },
-    {
-      id: '4',
-      type: 'video',
-      title: 'Overcoming Challenges',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1454496522488-7a8e488e8606?w=200&h=200&fit=crop',
-      duration: 95,
-    },
-    {
-      id: '5',
-      type: 'audio',
-      title: 'Reflection Background',
-      thumbnailUrl: '',
-      duration: 180,
-    },
-    {
-      id: '6',
-      type: 'image',
-      title: 'Growth & Transformation',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=200&h=200&fit=crop',
-    },
-  ];
+  // Fetch media from API
+  useEffect(() => {
+    fetchMedia();
+  }, [filterType]);
 
-  const filteredMedia = mockMedia.filter((item) => {
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchMedia();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const fetchMedia = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (filterType !== 'all') {
+        params.append('type', filterType);
+      }
+      if (searchQuery) {
+        params.append('search', searchQuery);
+      }
+
+      const response = await fetch(`/api/media?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch media');
+
+      const data = await response.json();
+
+      // Transform API data to MediaItem format
+      const transformedMedia: MediaItem[] = data.media.map((item: any) => ({
+        id: item.id,
+        type: item.mediaType,
+        title: item.title,
+        thumbnailUrl: item.thumbnailUrl || '',
+        duration: item.durationSeconds,
+      }));
+
+      setMedia(transformedMedia);
+    } catch (error) {
+      console.error('Failed to fetch media:', error);
+      setMedia([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredMedia = media.filter((item) => {
     const matchesSearch =
       searchQuery === '' ||
       item.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -101,7 +107,7 @@ export function ClipLibrary({ onAddToTimeline }: ClipLibraryProps) {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search media..."
-          icon={<Search className="w-4 h-4" />}
+          leftIcon={<Search className="w-4 h-4" />}
         />
       </div>
 
@@ -151,63 +157,71 @@ export function ClipLibrary({ onAddToTimeline }: ClipLibraryProps) {
 
       {/* Media Grid */}
       <div className="flex-1 overflow-y-auto p-4">
-        <div className="space-y-2">
-          {filteredMedia.map((item) => (
-            <div
-              key={item.id}
-              className="group relative border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-all bg-white"
-            >
-              <div className="flex items-center gap-3 p-3">
-                {/* Thumbnail */}
-                <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
-                  {item.type === 'audio' ? (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Music className="w-6 h-6 text-gray-400" />
-                    </div>
-                  ) : (
-                    <img
-                      src={item.thumbnailUrl}
-                      alt={item.title}
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-sm text-gray-900 truncate">
-                    {item.title}
-                  </h4>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="inline-flex items-center gap-1 text-xs text-gray-600">
-                      {getIcon(item.type)}
-                      <span className="capitalize">{item.type}</span>
-                    </span>
-                    {item.duration && (
-                      <span className="text-xs text-gray-500">
-                        {formatDuration(item.duration)}
-                      </span>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filteredMedia.map((item) => (
+              <div
+                key={item.id}
+                className="group relative border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-all bg-white"
+              >
+                <div className="flex items-center gap-3 p-3">
+                  {/* Thumbnail */}
+                  <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
+                    {item.type === 'audio' || !item.thumbnailUrl ? (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Music className="w-6 h-6 text-gray-400" />
+                      </div>
+                    ) : (
+                      <img
+                        src={item.thumbnailUrl}
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                      />
                     )}
                   </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-sm text-gray-900 truncate">
+                      {item.title}
+                    </h4>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="inline-flex items-center gap-1 text-xs text-gray-600">
+                        {getIcon(item.type)}
+                        <span className="capitalize">{item.type}</span>
+                      </span>
+                      {item.duration && (
+                        <span className="text-xs text-gray-500">
+                          {formatDuration(item.duration)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Add button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onAddToTimeline(item, item.duration || 5)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
                 </div>
-
-                {/* Add button */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onAddToTimeline(item, item.duration || 5)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
 
-        {filteredMedia.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-sm text-gray-500">No media found</p>
+            {filteredMedia.length === 0 && !loading && (
+              <div className="text-center py-12">
+                <p className="text-sm text-gray-500">
+                  {searchQuery ? 'No media found matching your search' : 'No media available'}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>

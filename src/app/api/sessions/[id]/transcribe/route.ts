@@ -9,7 +9,7 @@ interface RouteContext {
 }
 
 // POST /api/sessions/[id]/transcribe - Transcribe audio
-export async function POST(request: NextRequest, context: RouteContext) {
+export async function POST(_request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
 
@@ -33,21 +33,25 @@ export async function POST(request: NextRequest, context: RouteContext) {
     // Update status to processing
     await db
       .update(sessions)
-      .set({ status: 'processing' })
+      .set({ transcriptionStatus: 'processing' })
       .where(eq(sessions.id, id));
 
     // Transcribe audio
     const result = await transcribeAudio(session.audioUrl);
 
     // Create transcript
-    const [transcript] = await db
+    const transcriptResult = await db
       .insert(transcripts)
       .values({
         sessionId: id,
         fullText: result.text,
-        duration: result.duration,
       })
       .returning();
+
+    const transcript = transcriptResult[0];
+    if (!transcript) {
+      throw new Error('Failed to create transcript');
+    }
 
     // Group utterances by speaker
     const speakerMap = new Map<number, string>();
@@ -68,17 +72,22 @@ export async function POST(request: NextRequest, context: RouteContext) {
           0,
         );
 
-        const [speaker] = await db
+        const speakerResult = await db
           .insert(speakers)
           .values({
             transcriptId: transcript.id,
-            label,
+            speakerLabel: label,
             speakerType: null,
-            name: '',
-            utteranceCount: speakerUtterances.length,
-            totalDuration,
+            speakerName: null,
+            totalUtterances: speakerUtterances.length,
+            totalDurationSeconds: Math.round(totalDuration),
           })
           .returning();
+
+        const speaker = speakerResult[0];
+        if (!speaker) {
+          throw new Error('Failed to create speaker');
+        }
 
         return { speakerNum, speaker };
       }),
@@ -86,18 +95,19 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     // Create utterance records
     await Promise.all(
-      result.utterances.map(async (utterance) => {
+      result.utterances.map(async (utterance, index) => {
         const speakerRecord = speakerRecords.find(
           (s) => s.speakerNum === utterance.speaker,
         );
-        if (speakerRecord) {
+        if (speakerRecord && speakerRecord.speaker) {
           await db.insert(utterances).values({
             transcriptId: transcript.id,
             speakerId: speakerRecord.speaker.id,
             text: utterance.transcript,
-            startTime: utterance.start,
-            endTime: utterance.end,
-            confidence: utterance.confidence,
+            startTimeSeconds: utterance.start.toString(),
+            endTimeSeconds: utterance.end.toString(),
+            confidenceScore: utterance.confidence ? utterance.confidence.toString() : null,
+            sequenceNumber: index,
           });
         }
       }),
@@ -106,7 +116,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     // Update session status to transcribed
     await db
       .update(sessions)
-      .set({ status: 'transcribed' })
+      .set({ transcriptionStatus: 'completed' })
       .where(eq(sessions.id, id));
 
     return NextResponse.json({
@@ -121,7 +131,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
     await db
       .update(sessions)
-      .set({ status: 'error' })
+      .set({ transcriptionStatus: 'failed' })
       .where(eq(sessions.id, id));
 
     return NextResponse.json(

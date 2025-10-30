@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Save to database
-    const [media] = await db
+    const media = await db
       .insert(mediaLibrary)
       .values({
         sessionId: sessionId || null,

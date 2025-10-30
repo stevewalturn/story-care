@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, FileText, Eye, Edit2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { PageEditor } from '@/components/pages/PageEditor';
-import { Modal } from '@/components/ui/Modal';
+import { } from '@/components/ui/Modal';
 
 interface StoryPage {
   id: string;
@@ -16,34 +16,35 @@ interface StoryPage {
   blockCount: number;
 }
 
-interface PagesClientProps {
-  locale: string;
-}
-
-export function PagesClient({ locale }: PagesClientProps) {
-  const [pages, setPages] = useState<StoryPage[]>([
-    {
-      id: '1',
-      title: 'Emma\'s Journey: Finding Strength',
-      patientName: 'Emma Wilson',
-      isPublished: true,
-      createdAt: new Date(2025, 9, 15),
-      updatedAt: new Date(2025, 9, 20),
-      blockCount: 8,
-    },
-    {
-      id: '2',
-      title: 'Reflections on Growth',
-      patientName: 'Emma Wilson',
-      isPublished: false,
-      createdAt: new Date(2025, 9, 22),
-      updatedAt: new Date(2025, 9, 25),
-      blockCount: 5,
-    },
-  ]);
-
+export function PagesClient() {
+  const [pages, setPages] = useState<StoryPage[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showEditor, setShowEditor] = useState(false);
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchPages();
+  }, []);
+
+  const fetchPages = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/pages');
+      if (!response.ok) throw new Error('Failed to fetch pages');
+
+      const data = await response.json();
+      setPages(data.pages.map((p: any) => ({
+        ...p,
+        createdAt: new Date(p.createdAt),
+        updatedAt: new Date(p.updatedAt),
+      })));
+    } catch (error) {
+      console.error('Failed to fetch pages:', error);
+      setPages([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCreatePage = () => {
     setEditingPageId(null);
@@ -55,16 +56,41 @@ export function PagesClient({ locale }: PagesClientProps) {
     setShowEditor(true);
   };
 
-  const handleSavePage = (title: string, blocks: any[]) => {
-    console.log('Saving page:', { title, blocks });
-    // In real implementation, save to API
-    setShowEditor(false);
-    alert('Page saved successfully!');
+  const handleSavePage = async (title: string, blocks: any[]) => {
+    try {
+      const endpoint = editingPageId ? `/api/pages/${editingPageId}` : '/api/pages';
+      const method = editingPageId ? 'PUT' : 'POST';
+
+      const response = await fetch(endpoint, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, blocks }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save page');
+
+      await fetchPages();
+      setShowEditor(false);
+    } catch (error) {
+      console.error('Failed to save page:', error);
+      alert('Failed to save page. Please try again.');
+    }
   };
 
-  const handleDeletePage = (pageId: string) => {
-    if (confirm('Are you sure you want to delete this page?')) {
-      setPages(pages.filter((p) => p.id !== pageId));
+  const handleDeletePage = async (pageId: string) => {
+    if (!confirm('Are you sure you want to delete this page?')) return;
+
+    try {
+      const response = await fetch(`/api/pages/${pageId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete page');
+
+      await fetchPages();
+    } catch (error) {
+      console.error('Failed to delete page:', error);
+      alert('Failed to delete page. Please try again.');
     }
   };
 
@@ -78,6 +104,14 @@ export function PagesClient({ locale }: PagesClientProps) {
     if (diffDays < 7) return `${diffDays} days ago`;
     return date.toLocaleDateString();
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
@@ -149,7 +183,7 @@ export function PagesClient({ locale }: PagesClientProps) {
                   size="sm"
                   onClick={() => {
                     // Preview functionality
-                    alert('Preview will open patient-facing view');
+                    window.open(`/story/${page.id}`, '_blank');
                   }}
                 >
                   <Eye className="w-4 h-4" />

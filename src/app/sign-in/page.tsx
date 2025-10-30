@@ -25,7 +25,24 @@ export default function SignInPage() {
       setError(signInError);
       setLoading(false);
     } else if (user) {
-      router.push('/dashboard');
+      try {
+        // Get the ID token and set session cookie
+        const idToken = await user.getIdToken();
+        await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+        });
+
+        // Get the redirect URL from query params or default to dashboard
+        const searchParams = new URLSearchParams(window.location.search);
+        const redirect = searchParams.get('redirect') || '/dashboard';
+        router.push(redirect);
+      } catch (error) {
+        console.error('Failed to set session:', error);
+        setError('Failed to complete sign in. Please try again.');
+        setLoading(false);
+      }
     }
   };
 
