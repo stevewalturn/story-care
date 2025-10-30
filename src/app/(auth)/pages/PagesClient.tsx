@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { PageEditor } from '@/components/pages/PageEditor';
 import { Button } from '@/components/ui/Button';
 import { } from '@/components/ui/Modal';
+import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch, authenticatedPost, authenticatedPut, authenticatedDelete } from '@/utils/AuthenticatedFetch';
 
 type StoryPage = {
   id: string;
@@ -17,6 +19,7 @@ type StoryPage = {
 };
 
 export function PagesClient() {
+  const { user } = useAuth();
   const [pages, setPages] = useState<StoryPage[]>([]);
   const [loading, setLoading] = useState(true);
   const [showEditor, setShowEditor] = useState(false);
@@ -29,7 +32,7 @@ export function PagesClient() {
   const fetchPages = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/pages');
+      const response = await authenticatedFetch('/api/pages', user);
       if (!response.ok) {
         throw new Error('Failed to fetch pages');
       }
@@ -60,14 +63,12 @@ export function PagesClient() {
 
   const handleSavePage = async (title: string, blocks: any[]) => {
     try {
-      const endpoint = editingPageId ? `/api/pages/${editingPageId}` : '/api/pages';
-      const method = editingPageId ? 'PUT' : 'POST';
-
-      const response = await fetch(endpoint, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, blocks }),
-      });
+      let response;
+      if (editingPageId) {
+        response = await authenticatedPut(`/api/pages/${editingPageId}`, user, { title, blocks });
+      } else {
+        response = await authenticatedPost('/api/pages', user, { title, blocks });
+      }
 
       if (!response.ok) {
         throw new Error('Failed to save page');
@@ -87,9 +88,7 @@ export function PagesClient() {
     }
 
     try {
-      const response = await fetch(`/api/pages/${pageId}`, {
-        method: 'DELETE',
-      });
+      const response = await authenticatedDelete(`/api/pages/${pageId}`, user);
 
       if (!response.ok) {
         throw new Error('Failed to delete page');

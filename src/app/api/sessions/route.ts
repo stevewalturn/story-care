@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (patient.therapistId !== user.uid && user.role !== 'admin') {
+      if (patient.therapistId !== user.uid && user.role !== 'therapist' && user.role !== 'admin') {
         return NextResponse.json(
           { error: 'Forbidden: You can only create sessions for your assigned patients' },
           { status: 403 },

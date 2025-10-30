@@ -1,13 +1,13 @@
 import type { NextRequest } from 'next/server';
 import type { ChatMessage } from '@/libs/OpenAI';
 import { NextResponse } from 'next/server';
-import { chat } from '@/libs/OpenAI';
+import { logPHIAccess } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
+import { chat } from '@/libs/OpenAI';
+import { requireSessionAccess } from '@/middleware/RBACMiddleware';
 import { aiChatMessages } from '@/models/Schema';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
-import { logPHIAccess } from '@/libs/AuditLogger';
-import { checkRateLimit, getClientIP, aiRateLimit } from '@/utils/RateLimiter';
-import { requireSessionAccess } from '@/middleware/RBACMiddleware';
+import { aiRateLimit, checkRateLimit, getClientIP } from '@/utils/RateLimiter';
 
 // POST /api/ai/chat - Chat with AI assistant
 // HIPAA COMPLIANCE: Requires authentication, rate limiting, and audit logging

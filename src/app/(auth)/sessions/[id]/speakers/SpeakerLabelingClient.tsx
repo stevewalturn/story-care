@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { SpeakerLabeling } from '@/components/sessions/SpeakerLabeling';
 import { useAuth } from '@/contexts/AuthContext';
-import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
+import { authenticatedFetch, authenticatedPut } from '@/utils/AuthenticatedFetch';
 
 type Speaker = {
   id: string;

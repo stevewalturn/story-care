@@ -431,8 +431,9 @@ export const scenesSchema = pgTable('scenes', {
 
   // Output
   videoUrl: text('video_url'),
+  assembledVideoUrl: text('assembled_video_url'),
   thumbnailUrl: text('thumbnail_url'),
-  durationSeconds: integer('duration_seconds'),
+  durationSeconds: varchar('duration_seconds', { length: 50 }),
 
   // Audio settings
   backgroundAudioUrl: text('background_audio_url'),

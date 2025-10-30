@@ -148,7 +148,7 @@ export function getClientInfo(request: Request): {
 
   // x-forwarded-for may contain multiple IPs (client, proxy1, proxy2)
   // Take the first one (original client IP)
-  const ipAddress = forwardedFor?.split(',')[0].trim() || realIp || 'unknown';
+  const ipAddress = forwardedFor?.split(',')[0]?.trim() || realIp || 'unknown';
 
   const userAgent = request.headers.get('user-agent') || 'unknown';
 

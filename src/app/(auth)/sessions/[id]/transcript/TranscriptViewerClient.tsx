@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AIAssistant } from '@/components/sessions/AIAssistant';
-import { TranscriptViewer } from '@/components/sessions/TranscriptViewer';
-import { Modal } from '@/components/ui/Modal';
+import { AnalyzeSelectionModal } from '@/components/sessions/AnalyzeSelectionModal';
+import { GenerateImageModal } from '@/components/sessions/GenerateImageModal';
+import { GenerateVideoModal } from '@/components/sessions/GenerateVideoModal';
 
 type Utterance = {
   id: string;
@@ -23,15 +23,19 @@ type TranscriptViewerClientProps = {
 export function TranscriptViewerClient({
   sessionId,
 }: TranscriptViewerClientProps) {
-  const [showAIModal, setShowAIModal] = useState(false);
-  const [selectedContext, setSelectedContext] = useState<{
-    text: string;
-    utteranceIds: string[];
-  } | null>(null);
   const [utterances, setUtterances] = useState<Utterance[]>([]);
   const [audioUrl, setAudioUrl] = useState<string | undefined>();
+  const [sessionTitle, setSessionTitle] = useState<string>('');
+  const [patientName, setPatientName] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Modal states
+  const [showAnalyzeModal, setShowAnalyzeModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [selectedText, setSelectedText] = useState('');
+  const [_selectedUtteranceIds, _setSelectedUtteranceIds] = useState<string[]>([]);
 
   // Fetch session and transcript data
   useEffect(() => {
@@ -39,13 +43,15 @@ export function TranscriptViewerClient({
       try {
         setIsLoading(true);
 
-        // Fetch session to get audio URL
+        // Fetch session to get audio URL and title
         const sessionResponse = await fetch(`/api/sessions/${sessionId}`);
         if (!sessionResponse.ok) {
           throw new Error('Failed to fetch session');
         }
         const sessionData = await sessionResponse.json();
         setAudioUrl(sessionData.session.audioUrl);
+        setSessionTitle(sessionData.session.title);
+        setPatientName(sessionData.session.patient?.name || sessionData.session.group?.name || 'Unknown');
 
         // Fetch transcript and utterances
         const transcriptResponse = await fetch(`/api/sessions/${sessionId}/transcript`);
@@ -78,52 +84,1018 @@ export function TranscriptViewerClient({
     fetchData();
   }, [sessionId]);
 
-  const handleTextSelect = (text: string, utteranceIds: string[]) => {
-    setSelectedContext({ text, utteranceIds });
-    setShowAIModal(true);
+  // Handler for text selection
+  const handleTextSelection = () => {
+    const selection = window.getSelection();
+    const text = selection?.toString().trim();
+
+    if (text && text.length > 10) {
+      setSelectedText(text);
+      setShowAnalyzeModal(true);
+    }
+  };
+
+  // Handler for analyze option
+  const handleAnalyze = async (optionId: string, text: string) => {
+    console.log('Analyzing:', optionId, text);
+
+    // Route to appropriate modal based on option
+    if (optionId === 'create-image' || optionId === 'potential-images') {
+      setShowImageModal(true);
+    } else {
+      // Send to AI chat for analysis
+      // This will be handled by the AI Assistant panel
+    }
+  };
+
+  // Handler for image generation
+  const handleGenerateImage = async (prompt: string, useReference: boolean, referenceImageUrl?: string) => {
+    try {
+      const response = await fetch('/api/ai/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          sessionId,
+          useReference,
+          referenceImageUrl,
+          selectedText,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate image');
+      }
+
+      const data = await response.json();
+      console.log('Image generated:', data);
+      // Trigger library refresh
+    } catch (error) {
+      console.error('Error generating image:', error);
+    }
+  };
+
+  // Handler for video generation
+  const handleGenerateVideo = async (imageId: string, duration: number) => {
+    try {
+      const response = await fetch('/api/ai/generate-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageId,
+          duration,
+          sessionId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate video');
+      }
+
+      const data = await response.json();
+      console.log('Video generated:', data);
+      // Trigger library refresh
+    } catch (error) {
+      console.error('Error generating video:', error);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+          <p className="text-gray-500">Loading transcript...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <h3 className="mb-2 text-lg font-semibold text-red-600">Error Loading Transcript</h3>
+          <p className="mb-4 text-gray-500">{error}</p>
+          <button
+            onClick={() => window.location.href = '/sessions'}
+            className="text-indigo-600 hover:text-indigo-700"
+          >
+            Back to Sessions
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (utterances.length === 0) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <h3 className="mb-2 text-lg font-semibold text-gray-900">No Transcript Available</h3>
+          <p className="mb-4 text-gray-500">
+            The transcript is still being processed. Please check back in a few moments.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-indigo-600 hover:text-indigo-700"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex h-screen bg-gray-50">
+        {/* Left Panel - Transcript */}
+        <div className="w-[400px] border-r border-gray-200 bg-white flex flex-col">
+          <TranscriptPanel
+            sessionId={sessionId}
+            sessionTitle={sessionTitle}
+            utterances={utterances}
+            audioUrl={audioUrl}
+            onTextSelection={handleTextSelection}
+          />
+        </div>
+
+        {/* Center Panel - AI Assistant */}
+        <div className="flex-1 flex flex-col">
+          <AIAssistantPanel
+            sessionId={sessionId}
+            patientName={patientName}
+            sessionTitle={sessionTitle}
+          />
+        </div>
+
+        {/* Right Panel - Library */}
+        <div className="w-[400px] border-l border-gray-200 bg-white flex flex-col">
+          <LibraryPanel
+            sessionId={sessionId}
+            patientName={patientName}
+          />
+        </div>
+      </div>
+
+      {/* Modals */}
+      <AnalyzeSelectionModal
+        isOpen={showAnalyzeModal}
+        onClose={() => setShowAnalyzeModal(false)}
+        selectedText={selectedText}
+        onAnalyze={handleAnalyze}
+      />
+
+      <GenerateImageModal
+        isOpen={showImageModal}
+        onClose={() => setShowImageModal(false)}
+        onGenerate={handleGenerateImage}
+        patientName={patientName}
+        initialPrompt={selectedText}
+      />
+
+      <GenerateVideoModal
+        isOpen={showVideoModal}
+        onClose={() => setShowVideoModal(false)}
+        onGenerate={handleGenerateVideo}
+      />
+    </>
+  );
+}
+
+// Transcript Panel Component
+function TranscriptPanel({
+  sessionId,
+  sessionTitle,
+  utterances,
+  audioUrl,
+  onTextSelection,
+}: {
+  sessionId: string;
+  sessionTitle: string;
+  utterances: Utterance[];
+  audioUrl?: string;
+  onTextSelection: () => void;
+}) {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredUtterances = searchQuery
+    ? utterances.filter(u =>
+        u.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        u.speakerName.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : utterances;
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
     <>
-      <div className="p-8">
-        <div className="mb-6">
-          <h1 className="mb-2 text-2xl font-bold text-gray-900">
-            Session Transcript
-          </h1>
-          <p className="text-sm text-gray-600">
-            Select text to analyze with AI or extract quotes
-          </p>
+      {/* Header */}
+      <div className="border-b border-gray-200 p-4">
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => window.location.href = '/sessions'}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h2 className="text-sm font-semibold text-gray-900">{sessionTitle}</h2>
+          <button className="text-gray-500 hover:text-gray-700">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
         </div>
 
-        <TranscriptViewer
-          sessionId={sessionId}
-          utterances={mockUtterances}
-          audioUrl="/audio/session-sample.mp3"
-          onTextSelect={handleTextSelect}
-        />
-      </div>
+        {/* Audio Player */}
+        {audioUrl && (
+          <div className="mb-4">
+            <audio src={audioUrl} controls className="w-full" />
+          </div>
+        )}
 
-      {/* AI Assistant Modal */}
-      <Modal
-        isOpen={showAIModal}
-        onClose={() => {
-          setShowAIModal(false);
-          setSelectedContext(null);
-        }}
-        title=""
-      >
-        <div className="h-[600px]">
-          <AIAssistant
-            sessionId={sessionId}
-            contextText={selectedContext?.text}
-            initialPrompt="Analyze the key themes in this passage"
-            onClose={() => {
-              setShowAIModal(false);
-              setSelectedContext(null);
-            }}
+        {/* Search */}
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search transcript..."
+            className="w-full rounded-lg border border-gray-200 py-2 pl-10 pr-4 text-sm focus:border-indigo-500 focus:outline-none"
           />
         </div>
-      </Modal>
+      </div>
+
+      {/* Prompt */}
+      <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
+        <p className="text-xs text-gray-500 flex items-center gap-2">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          Select text to analyze or extract quotes
+        </p>
+      </div>
+
+      {/* Transcript Messages */}
+      <div
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+        onMouseUp={onTextSelection}
+      >
+        {filteredUtterances.map((utterance) => (
+          <div key={utterance.id} className="flex gap-3">
+            {/* Avatar */}
+            <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
+              utterance.speakerType === 'therapist' ? 'bg-blue-100' : 'bg-green-100'
+            }`}>
+              <svg className={`h-4 w-4 ${
+                utterance.speakerType === 'therapist' ? 'text-blue-600' : 'text-green-600'
+              }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+
+            {/* Message Content */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className="text-sm font-semibold text-gray-900">{utterance.speakerName}</span>
+                <span className="text-xs text-gray-500">
+                  {formatTime(utterance.startTime)} - {formatTime(utterance.endTime)}
+                </span>
+              </div>
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                {utterance.text}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Re-label Button */}
+      <div className="border-t border-gray-200 p-4">
+        <button
+          onClick={() => window.location.href = `/sessions/${sessionId}/speakers`}
+          className="w-full flex items-center justify-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          </svg>
+          Re-label Speakers
+        </button>
+      </div>
+    </>
+  );
+}
+
+// AI Assistant Panel Component
+function AIAssistantPanel({
+  sessionId,
+  patientName,
+  sessionTitle,
+}: {
+  sessionId: string;
+  patientName: string;
+  sessionTitle: string;
+}) {
+  const [prompt, setPrompt] = useState('');
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [_isLoadingHistory, _setIsLoadingHistory] = useState(true);
+  const [transcriptContext, _setTranscriptContext] = useState('');
+
+  // Load chat history on mount
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      try {
+        _setIsLoadingHistory(true);
+        const response = await fetch(`/api/sessions/${sessionId}/chat`);
+
+        if (response.ok) {
+          const data = await response.json();
+          const loadedMessages = data.messages.map((msg: any) => ({
+            role: msg.role,
+            content: msg.content,
+          }));
+          setMessages(loadedMessages);
+        }
+      } catch (error) {
+        console.error('Error loading chat history:', error);
+      } finally {
+        _setIsLoadingHistory(false);
+      }
+    };
+
+    loadChatHistory();
+  }, [sessionId]);
+
+  const handleSendMessage = async (messageText?: string) => {
+    const textToSend = messageText || prompt;
+    if (!textToSend.trim() || isLoading) return;
+
+    const userMessage = { role: 'user' as const, content: textToSend };
+    setMessages(prev => [...prev, userMessage]);
+    setPrompt('');
+    setIsLoading(true);
+
+    try {
+      // TODO: Get therapistId from auth context
+      const therapistId = 'temp-therapist-id'; // Placeholder until Firebase Auth is integrated
+
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [...messages, userMessage],
+          context: transcriptContext,
+          sessionId,
+          therapistId,
+          selectedText: transcriptContext, // Pass selected text if any
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
+      }
+
+      const data = await response.json();
+      setMessages(prev => [...prev, { role: 'assistant', content: data.message }]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages(prev => [
+        ...prev,
+        { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleExamplePrompt = (exampleText: string) => {
+    handleSendMessage(exampleText);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  return (
+    <>
+      {/* Header */}
+      <div className="border-b border-gray-200 bg-white p-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">
+              AI Assistant ({patientName}'s Narrative)
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">Session: {sessionTitle}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+              AI Analysis Ready
+            </span>
+            <button
+              onClick={() => setMessages([])}
+              className="text-gray-500 hover:text-gray-700"
+              title="Clear chat"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Chat Messages or Empty State */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {messages.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center">
+            <div className="text-center max-w-md">
+              {/* Chat Icon */}
+              <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-blue-50">
+                <svg className="h-12 w-12 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </div>
+
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Therapeutic Chat Assistant</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Ask questions about this session, request insights, or describe what you'd like to visualize.
+              </p>
+
+              {/* Example Prompts */}
+              <div className="text-left mb-6 space-y-3">
+                <div className="text-xs font-medium text-gray-700 mb-2">For Analysis:</div>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => handleExamplePrompt('What are the key themes in this session?')}
+                    className="w-full text-left text-xs text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded transition-colors"
+                  >
+                    "What are the key themes in this session?"
+                  </button>
+                  <button
+                    onClick={() => handleExamplePrompt('How is the patient progressing?')}
+                    className="w-full text-left text-xs text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded transition-colors"
+                  >
+                    "How is the patient progressing?"
+                  </button>
+                </div>
+
+                <div className="text-xs font-medium text-gray-700 mb-2 mt-4">For Media:</div>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => handleExamplePrompt('Create an image showing the patient\'s main metaphor')}
+                    className="w-full text-left text-xs text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded transition-colors"
+                  >
+                    "Create an image showing the patient's main metaphor"
+                  </button>
+                  <button
+                    onClick={() => handleExamplePrompt('Visualize the patient\'s journey from problem to solution')}
+                    className="w-full text-left text-xs text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded transition-colors"
+                  >
+                    "Visualize the patient's journey from problem to solution"
+                  </button>
+                </div>
+              </div>
+
+              {/* Prompt Selector */}
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="h-4 w-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                  <span className="text-xs font-medium text-gray-700">Choose a favorite prompt...</span>
+                  <svg className="h-4 w-4 text-gray-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                {message.role === 'assistant' && (
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100">
+                    <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                )}
+                <div
+                  className={`max-w-[80%] rounded-lg px-4 py-3 ${
+                    message.role === 'user'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-100 text-gray-900'
+                  }`}
+                >
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                </div>
+                {message.role === 'user' && (
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-200">
+                    <svg className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+            ))}
+            {isLoading && (
+              <div className="flex gap-3">
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100">
+                  <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div className="bg-gray-100 rounded-lg px-4 py-3">
+                  <div className="flex gap-1">
+                    <div className="h-2 w-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="h-2 w-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="h-2 w-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Chat Input */}
+      <div className="border-t border-gray-200 p-4 bg-white">
+        <div className="relative">
+          <input
+            type="text"
+            value={prompt}
+            onChange={e => setPrompt(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Chat about this transcript, or select text to begin..."
+            className="w-full rounded-lg border border-gray-200 py-3 pl-4 pr-12 text-sm focus:border-indigo-500 focus:outline-none"
+            disabled={isLoading}
+          />
+          <button
+            onClick={() => handleSendMessage()}
+            disabled={isLoading || !prompt.trim()}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-600 hover:text-indigo-700 disabled:text-gray-400 disabled:cursor-not-allowed"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// Library Panel Component
+function LibraryPanel({
+  sessionId,
+  patientName,
+}: {
+  sessionId: string;
+  patientName: string;
+}) {
+  const [activeTab, setActiveTab] = useState<'media' | 'quotes' | 'notes' | 'profile'>('media');
+  const [media, setMedia] = useState<any[]>([]);
+  const [quotes, setQuotes] = useState<any[]>([]);
+  const [isLoadingMedia, setIsLoadingMedia] = useState(true);
+  const [isLoadingQuotes, setIsLoadingQuotes] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'image' | 'video' | 'audio'>('all');
+
+  // Load media for this session
+  useEffect(() => {
+    const loadMedia = async () => {
+      try {
+        setIsLoadingMedia(true);
+        const params = new URLSearchParams({
+          sessionId,
+        });
+
+        if (filterType !== 'all') {
+          params.append('type', filterType);
+        }
+
+        if (searchQuery) {
+          params.append('search', searchQuery);
+        }
+
+        const response = await fetch(`/api/media?${params.toString()}`);
+
+        if (response.ok) {
+          const data = await response.json();
+          setMedia(data.media || []);
+        }
+      } catch (error) {
+        console.error('Error loading media:', error);
+      } finally {
+        setIsLoadingMedia(false);
+      }
+    };
+
+    if (activeTab === 'media') {
+      loadMedia();
+    }
+  }, [sessionId, activeTab, filterType, searchQuery]);
+
+  // Load quotes for this session
+  useEffect(() => {
+    const loadQuotes = async () => {
+      try {
+        setIsLoadingQuotes(true);
+        const params = new URLSearchParams({
+          sessionId,
+        });
+
+        if (searchQuery) {
+          params.append('search', searchQuery);
+        }
+
+        const response = await fetch(`/api/quotes?${params.toString()}`);
+
+        if (response.ok) {
+          const data = await response.json();
+          setQuotes(data.quotes || []);
+        }
+      } catch (error) {
+        console.error('Error loading quotes:', error);
+      } finally {
+        setIsLoadingQuotes(false);
+      }
+    };
+
+    if (activeTab === 'quotes') {
+      loadQuotes();
+    }
+  }, [sessionId, activeTab, searchQuery]);
+
+  // Helper function to format date
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'today';
+    if (diffDays === 1) return '1 day ago';
+    if (diffDays < 30) return `${diffDays} days ago`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+    return `${Math.floor(diffDays / 365)} years ago`;
+  };
+
+  // Get counts by type
+  const videosCount = media.filter(m => m.mediaType === 'video').length;
+  const imagesCount = media.filter(m => m.mediaType === 'image').length;
+  const audioCount = media.filter(m => m.mediaType === 'audio').length;
+
+  return (
+    <>
+      {/* Header */}
+      <div className="border-b border-gray-200 p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Library</h2>
+          <div className="flex gap-2">
+            <button className="text-gray-500 hover:text-gray-700">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+            </button>
+            <button className="text-gray-500 hover:text-gray-700">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Patient Selector */}
+        <div className="mb-4">
+          <select className="w-full rounded-lg border border-gray-200 py-2 px-3 text-sm focus:border-indigo-500 focus:outline-none">
+            <option>{patientName}</option>
+          </select>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 border-b border-gray-200 -mb-px">
+          {['Media', 'Quotes', 'Notes', 'Profile'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab.toLowerCase() as any)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === tab.toLowerCase()
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Media Tab Content */}
+      {activeTab === 'media' && (
+        <>
+          {/* Controls */}
+          <div className="border-b border-gray-200 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-900">Media ({media.length})</h3>
+              <div className="flex gap-2">
+                <button className="text-gray-500 hover:text-gray-700">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+                <button className="flex items-center gap-1 text-sm text-gray-700 hover:text-gray-900">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  Upload
+                </button>
+                <button className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Create
+                </button>
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search"
+                  className="w-full rounded-lg border border-gray-200 py-1.5 pl-8 pr-3 text-xs focus:border-indigo-500 focus:outline-none"
+                />
+                <svg className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <select
+                className="rounded-lg border border-gray-200 py-1.5 px-3 text-xs focus:border-indigo-500 focus:outline-none"
+              >
+                <option>All Sources</option>
+                <option>Generated</option>
+                <option>Uploaded</option>
+              </select>
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value as any)}
+                className="rounded-lg border border-gray-200 py-1.5 px-3 text-xs focus:border-indigo-500 focus:outline-none"
+              >
+                <option value="all">All Types</option>
+                <option value="image">Images</option>
+                <option value="video">Videos</option>
+                <option value="audio">Audio</option>
+              </select>
+            </div>
+
+            {/* Category Tabs */}
+            <div className="flex gap-4 text-xs">
+              <button
+                onClick={() => setFilterType('all')}
+                className={filterType === 'all' ? 'text-indigo-600 font-medium' : 'text-gray-500 hover:text-gray-700'}
+              >
+                All ({media.length})
+              </button>
+              <button
+                onClick={() => setFilterType('video')}
+                className={filterType === 'video' ? 'text-indigo-600 font-medium' : 'text-gray-500 hover:text-gray-700'}
+              >
+                Videos ({videosCount})
+              </button>
+              <button
+                onClick={() => setFilterType('image')}
+                className={filterType === 'image' ? 'text-indigo-600 font-medium' : 'text-gray-500 hover:text-gray-700'}
+              >
+                Images ({imagesCount})
+              </button>
+              <button
+                onClick={() => setFilterType('audio')}
+                className={filterType === 'audio' ? 'text-indigo-600 font-medium' : 'text-gray-500 hover:text-gray-700'}
+              >
+                Music ({audioCount})
+              </button>
+            </div>
+          </div>
+
+          {/* Media Grid */}
+          <div className="flex-1 overflow-y-auto p-4">
+            {isLoadingMedia ? (
+              <div className="text-center py-12">
+                <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                <p className="text-sm text-gray-500">Loading media...</p>
+              </div>
+            ) : media.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+                  <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <p className="text-sm text-gray-500">No media yet for this session</p>
+                <p className="text-xs text-gray-400 mt-1">Generated content will appear here</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {media.map((item) => (
+                  <div
+                    key={item.id}
+                    className="group rounded-lg border border-gray-200 overflow-hidden hover:border-indigo-300 hover:shadow-sm transition-all cursor-pointer"
+                  >
+                    {/* Thumbnail */}
+                    <div className="relative aspect-video bg-gray-100">
+                      {item.mediaType === 'video' ? (
+                        <>
+                          <img
+                            src={item.thumbnailUrl || item.mediaUrl}
+                            alt={item.title}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 group-hover:bg-indigo-600 transition-colors">
+                              <svg className="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                              </svg>
+                            </div>
+                          </div>
+                        </>
+                      ) : item.mediaType === 'image' ? (
+                        <img
+                          src={item.thumbnailUrl || item.mediaUrl}
+                          alt={item.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="p-3">
+                      <h4 className="text-sm font-medium text-gray-900 mb-1 line-clamp-1">
+                        {item.title}
+                      </h4>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
+                        <span className="capitalize">{item.mediaType}</span>
+                        <span>•</span>
+                        <span>{formatDate(item.createdAt)}</span>
+                      </div>
+                      {item.description && (
+                        <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                          {item.description}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-1">
+                        {item.tags && item.tags.length > 0 && item.tags.map((tag: string, idx: number) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                        {item.sourceType && (
+                          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                            {item.sourceType.replace('_', ' ')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Quotes Tab */}
+      {activeTab === 'quotes' && (
+        <div className="flex-1 overflow-y-auto p-4">
+          {isLoadingQuotes ? (
+            <div className="text-center py-12">
+              <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+              <p className="text-sm text-gray-500">Loading quotes...</p>
+            </div>
+          ) : quotes.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-sm text-gray-500">No quotes extracted yet</p>
+              <p className="text-xs text-gray-400 mt-1">Select text from the transcript to create quotes</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {quotes.map((quote) => (
+                <div
+                  key={quote.id}
+                  className="rounded-lg border border-gray-200 p-4 hover:border-indigo-300 hover:shadow-sm transition-all"
+                >
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-gray-700">
+                        {quote.speakerName || quote.speakerType || 'Unknown'}
+                      </span>
+                      {quote.startTimeSeconds && (
+                        <span className="text-xs text-gray-500">
+                          {Math.floor(Number(quote.startTimeSeconds) / 60)}:{(Number(quote.startTimeSeconds) % 60).toFixed(0).padStart(2, '0')} -
+                          {Math.floor(Number(quote.endTimeSeconds) / 60)}:{(Number(quote.endTimeSeconds) % 60).toFixed(0).padStart(2, '0')}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {quote.priority && (
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          quote.priority === 'high' ? 'bg-red-100 text-red-700' :
+                          quote.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {quote.priority}-Priority
+                        </span>
+                      )}
+                      <button className="text-gray-400 hover:text-gray-600">
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Quote Text */}
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                    {quote.quoteText}
+                  </p>
+
+                  {/* Tags */}
+                  {quote.tags && quote.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-3">
+                      {quote.tags.map((tag: string, idx: number) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  {quote.notes && (
+                    <p className="text-xs text-gray-500 mt-2 italic">
+                      Note: {quote.notes}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Notes Tab */}
+      {activeTab === 'notes' && (
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="text-center py-12">
+            <p className="text-sm text-gray-500">Notes coming soon</p>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Tab */}
+      {activeTab === 'profile' && (
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="text-center py-12">
+            <p className="text-sm text-gray-500">Patient profile coming soon</p>
+          </div>
+        </div>
+      )}
     </>
   );
 }

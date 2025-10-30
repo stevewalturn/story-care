@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     // Convert file to buffer
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = require('buffer').Buffer.from(arrayBuffer);
+    const buffer = require('node:buffer').Buffer.from(arrayBuffer);
 
     // 4. UPLOAD TO GCS (PHI storage)
     const { url, path } = await uploadFile(buffer, file.name, {

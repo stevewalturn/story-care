@@ -223,7 +223,7 @@ done
 ```json
 {
   "error": "Too many upload attempts. Please try again later.",
-  "retryAfter": 3456  // Seconds until rate limit resets
+  "retryAfter": 3456 // Seconds until rate limit resets
 }
 ```
 

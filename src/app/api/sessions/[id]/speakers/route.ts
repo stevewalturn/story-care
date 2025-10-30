@@ -70,20 +70,25 @@ export async function PUT(
       );
     }
 
-    // Delete existing speakers for this transcript
-    await db.delete(speakers).where(eq(speakers.transcriptId, transcript.id));
-
-    // Insert new speaker assignments
+    // Update existing speakers instead of deleting and recreating
+    // This preserves the speaker IDs that utterances reference
     if (speakersData.length > 0) {
-      await db.insert(speakers).values(
-        speakersData.map(speaker => ({
-          transcriptId: transcript.id,
-          speakerLabel: speaker.speakerLabel,
-          speakerType: speaker.speakerType,
-          speakerName: speaker.speakerName,
-          totalUtterances: speaker.totalUtterances || 0,
-          totalDurationSeconds: speaker.totalDurationSeconds || 0,
-        })),
+      await Promise.all(
+        speakersData.map(async (speaker) => {
+          // Each speaker should have an id from the client
+          if (speaker.id) {
+            await db
+              .update(speakers)
+              .set({
+                speakerLabel: speaker.speakerLabel,
+                speakerType: speaker.speakerType,
+                speakerName: speaker.speakerName,
+                totalUtterances: speaker.totalUtterances || 0,
+                totalDurationSeconds: speaker.totalDurationSeconds || 0,
+              })
+              .where(eq(speakers.id, speaker.id));
+          }
+        }),
       );
     }
 

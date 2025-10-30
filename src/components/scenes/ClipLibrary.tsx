@@ -15,9 +15,10 @@ type MediaItem = {
 
 type ClipLibraryProps = {
   onAddToTimeline: (media: MediaItem, duration: number) => void;
+  patientId?: string;
 };
 
-export function ClipLibrary({ onAddToTimeline }: ClipLibraryProps) {
+export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'image' | 'video' | 'audio'>('all');
   const [media, setMedia] = useState<MediaItem[]>([]);
@@ -25,21 +26,29 @@ export function ClipLibrary({ onAddToTimeline }: ClipLibraryProps) {
 
   // Fetch media from API
   useEffect(() => {
-    fetchMedia();
-  }, [filterType]);
+    if (patientId) {
+      fetchMedia();
+    }
+  }, [filterType, patientId]);
 
   // Debounced search
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchMedia();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+    if (patientId) {
+      const timer = setTimeout(() => {
+        fetchMedia();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [searchQuery, patientId]);
 
   const fetchMedia = async () => {
+    if (!patientId) return;
+
     try {
       setLoading(true);
       const params = new URLSearchParams();
+      params.append('patientId', patientId);
       if (filterType !== 'all') {
         params.append('type', filterType);
       }
