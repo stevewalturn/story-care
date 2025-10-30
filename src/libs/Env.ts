@@ -1,0 +1,88 @@
+import { createEnv } from '@t3-oss/env-nextjs';
+import * as z from 'zod';
+
+export const Env = createEnv({
+  server: {
+    // Database
+    DATABASE_URL: z.string().min(1),
+
+    // Firebase Admin SDK (Server-side)
+    FIREBASE_PROJECT_ID: z.string().min(1).optional(),
+    FIREBASE_CLIENT_EMAIL: z.string().email().optional(),
+    FIREBASE_PRIVATE_KEY: z.string().min(1).optional(),
+
+    // Google Cloud Storage
+    GCS_PROJECT_ID: z.string().min(1).optional(),
+    GCS_CLIENT_EMAIL: z.string().email().optional(),
+    GCS_PRIVATE_KEY: z.string().min(1).optional(),
+    GCS_BUCKET_NAME: z.string().min(1).optional(),
+
+    // AI Services
+    DEEPGRAM_API_KEY: z.string().optional(),
+    OPENAI_API_KEY: z.string().optional(),
+  },
+  client: {
+    NEXT_PUBLIC_APP_URL: z.string().optional(),
+
+    // Firebase Client SDK (Public)
+    NEXT_PUBLIC_FIREBASE_API_KEY: z.string().min(1),
+    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: z.string().min(1),
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID: z.string().min(1),
+    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: z.string().min(1),
+    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: z.string().min(1),
+    NEXT_PUBLIC_FIREBASE_APP_ID: z.string().min(1),
+    NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: z.string().optional(),
+
+    // Monitoring
+    NEXT_PUBLIC_BETTER_STACK_SOURCE_TOKEN: z.string().optional(),
+    NEXT_PUBLIC_BETTER_STACK_INGESTING_HOST: z.string().optional(),
+    NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
+    NEXT_PUBLIC_POSTHOG_HOST: z.string().optional(),
+    NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
+  },
+  shared: {
+    NODE_ENV: z.enum(['test', 'development', 'production']).optional(),
+  },
+  // You need to destructure all the keys manually
+  runtimeEnv: {
+    // Database
+    DATABASE_URL: process.env.DATABASE_URL,
+
+    // Firebase Admin SDK
+    FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
+    FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL,
+    FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY,
+
+    // Google Cloud Storage
+    GCS_PROJECT_ID: process.env.GCS_PROJECT_ID,
+    GCS_CLIENT_EMAIL: process.env.GCS_CLIENT_EMAIL,
+    GCS_PRIVATE_KEY: process.env.GCS_PRIVATE_KEY,
+    GCS_BUCKET_NAME: process.env.GCS_BUCKET_NAME,
+
+    // AI Services
+    DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+
+    // Client vars
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+
+    // Firebase Client SDK
+    NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+
+    // Monitoring
+    NEXT_PUBLIC_BETTER_STACK_SOURCE_TOKEN: process.env.NEXT_PUBLIC_BETTER_STACK_SOURCE_TOKEN,
+    NEXT_PUBLIC_BETTER_STACK_INGESTING_HOST: process.env.NEXT_PUBLIC_BETTER_STACK_INGESTING_HOST,
+    NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
+    NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
+
+    // Shared
+    NODE_ENV: process.env.NODE_ENV,
+  },
+});
