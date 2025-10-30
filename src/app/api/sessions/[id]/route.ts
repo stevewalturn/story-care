@@ -3,14 +3,23 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { groupMembers, groups, sessions, users } from '@/models/Schema';
+import { handleAuthError } from '@/utils/AuthHelpers';
+import { logPHIAccess, logPHIDelete, logPHIUpdate } from '@/libs/AuditLogger';
+import { handleRBACError, requireSessionAccess } from '@/middleware/RBACMiddleware';
 
 // GET /api/sessions/[id] - Get single session
+// HIPAA COMPLIANCE: Requires authentication, RBAC, and logs access
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
+
+    // 1. AUTHENTICATION & AUTHORIZATION: Verify user has access to this session
+    const user = await requireSessionAccess(request, id);
+
+    // 2. FETCH SESSION
     const [session] = await db
       .select({
         id: sessions.id,
@@ -50,6 +59,9 @@ export async function GET(
         .where(eq(users.id, session.patientId))
         .limit(1);
 
+      // 3. AUDIT LOG: Record PHI access
+      await logPHIAccess(user.uid, 'session', id, request);
+
       return NextResponse.json({
         session: {
           ...session,
@@ -80,6 +92,9 @@ export async function GET(
         .innerJoin(users, eq(groupMembers.patientId, users.id))
         .where(eq(groupMembers.groupId, session.groupId));
 
+      // 3. AUDIT LOG: Record PHI access
+      await logPHIAccess(user.uid, 'session', id, request);
+
       return NextResponse.json({
         session: {
           ...session,
@@ -91,26 +106,50 @@ export async function GET(
       });
     }
 
+    // 3. AUDIT LOG: Record PHI access
+    await logPHIAccess(user.uid, 'session', id, request);
+
     return NextResponse.json({ session });
   } catch (error) {
     console.error('Error fetching session:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch session' },
-      { status: 500 },
-    );
+    if (error instanceof Error && error.message.includes('Forbidden')) {
+      return handleRBACError(error);
+    }
+    return handleAuthError(error);
   }
 }
 
 // PUT /api/sessions/[id] - Update session
+// HIPAA COMPLIANCE: Requires authentication, RBAC, and logs updates
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
+
+    // 1. AUTHENTICATION & AUTHORIZATION: Verify user has access to this session
+    const user = await requireSessionAccess(request, id);
+
+    // 2. VALIDATE INPUT
     const body = await request.json();
     const { title, sessionDate, audioUrl, audioDurationSeconds, transcriptionStatus } = body;
 
+    // Get current session for audit log
+    const [currentSession] = await db
+      .select()
+      .from(sessions)
+      .where(eq(sessions.id, id))
+      .limit(1);
+
+    if (!currentSession) {
+      return NextResponse.json(
+        { error: 'Session not found' },
+        { status: 404 },
+      );
+    }
+
+    // 3. UPDATE SESSION
     const [updatedSession] = await db
       .update(sessions)
       .set({
@@ -126,46 +165,92 @@ export async function PUT(
 
     if (!updatedSession) {
       return NextResponse.json(
-        { error: 'Session not found' },
-        { status: 404 },
+        { error: 'Failed to update session' },
+        { status: 500 },
       );
     }
+
+    // 4. AUDIT LOG: Record PHI update with changes
+    await logPHIUpdate(user.uid, 'session', id, request, {
+      changedFields: Object.keys(body),
+      oldValues: {
+        title: currentSession.title,
+        sessionDate: currentSession.sessionDate,
+        transcriptionStatus: currentSession.transcriptionStatus,
+      },
+      newValues: {
+        title,
+        sessionDate,
+        transcriptionStatus,
+      },
+    });
 
     return NextResponse.json({ session: updatedSession });
   } catch (error) {
     console.error('Error updating session:', error);
-    return NextResponse.json(
-      { error: 'Failed to update session' },
-      { status: 500 },
-    );
+    if (error instanceof Error && error.message.includes('Forbidden')) {
+      return handleRBACError(error);
+    }
+    return handleAuthError(error);
   }
 }
 
-// DELETE /api/sessions/[id] - Delete session
+// DELETE /api/sessions/[id] - Soft delete session
+// HIPAA COMPLIANCE: Soft delete with audit logging
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
-    const [deletedSession] = await db
-      .delete(sessions)
-      .where(eq(sessions.id, id))
-      .returning();
 
-    if (!deletedSession) {
+    // 1. AUTHENTICATION & AUTHORIZATION: Verify user has access to this session
+    const user = await requireSessionAccess(request, id);
+
+    // 2. CHECK IF SESSION EXISTS
+    const [existingSession] = await db
+      .select()
+      .from(sessions)
+      .where(eq(sessions.id, id))
+      .limit(1);
+
+    if (!existingSession) {
       return NextResponse.json(
         { error: 'Session not found' },
         { status: 404 },
       );
     }
 
+    // 3. SOFT DELETE: Mark as deleted instead of hard delete (HIPAA compliance)
+    const [deletedSession] = await db
+      .update(sessions)
+      .set({
+        deletedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(sessions.id, id))
+      .returning();
+
+    if (!deletedSession) {
+      return NextResponse.json(
+        { error: 'Failed to delete session' },
+        { status: 500 },
+      );
+    }
+
+    // 4. AUDIT LOG: Record PHI deletion
+    await logPHIDelete(user.uid, 'session', id, request, {
+      softDelete: true,
+      sessionTitle: existingSession.title,
+      sessionType: existingSession.sessionType,
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting session:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete session' },
-      { status: 500 },
-    );
+    if (error instanceof Error && error.message.includes('Forbidden')) {
+      return handleRBACError(error);
+    }
+    return handleAuthError(error);
   }
 }

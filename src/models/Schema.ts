@@ -68,6 +68,17 @@ export const questionTypeEnum = pgEnum('question_type', [
   'scale',
   'emotion',
 ]);
+export const auditActionEnum = pgEnum('audit_action', [
+  'create',
+  'read',
+  'update',
+  'delete',
+  'export',
+  'auth_success',
+  'auth_failed',
+  'logout',
+]);
+export const chatRoleEnum = pgEnum('chat_role', ['user', 'assistant', 'system']);
 
 // ============================================================================
 // USERS & AUTHENTICATION
@@ -94,6 +105,9 @@ export const usersSchema: any = pgTable('users', {
 
   // Firebase Auth
   firebaseUid: varchar('firebase_uid', { length: 255 }).unique(),
+
+  // Soft delete for HIPAA compliance
+  deletedAt: timestamp('deleted_at'),
 });
 
 // ============================================================================
@@ -155,6 +169,9 @@ export const sessionsSchema = pgTable('sessions', {
   // Metadata
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+
+  // Soft delete for HIPAA compliance (PHI data)
+  deletedAt: timestamp('deleted_at'),
 });
 
 export const transcriptsSchema = pgTable('transcripts', {
@@ -174,6 +191,9 @@ export const transcriptsSchema = pgTable('transcripts', {
   // Status
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+
+  // Soft delete for HIPAA compliance (PHI data)
+  deletedAt: timestamp('deleted_at'),
 });
 
 export const speakersSchema = pgTable('speakers', {
@@ -221,6 +241,38 @@ export const utterancesSchema = pgTable('utterances', {
 });
 
 // ============================================================================
+// AI CHAT MESSAGES
+// ============================================================================
+
+export const aiChatMessagesSchema = pgTable('ai_chat_messages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  // Context
+  sessionId: uuid('session_id')
+    .references(() => sessionsSchema.id, { onDelete: 'cascade' })
+    .notNull(),
+  therapistId: uuid('therapist_id')
+    .references(() => usersSchema.id)
+    .notNull(),
+
+  // Message
+  role: chatRoleEnum('role').notNull(),
+  content: text('content').notNull(),
+
+  // Transcript selection context
+  selectedText: text('selected_text'),
+  selectedUtteranceIds: uuid('selected_utterance_ids').array(),
+
+  // Generated media reference (if this message resulted in media generation)
+  generatedMediaId: uuid('generated_media_id'),
+
+  // Generation metadata
+  promptType: varchar('prompt_type', { length: 100 }), // 'image', 'video', 'analysis', 'quote', etc.
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ============================================================================
 // MEDIA LIBRARY
 // ============================================================================
 
@@ -258,6 +310,10 @@ export const mediaLibrarySchema: any = pgTable('media_library', {
   aiModel: varchar('ai_model', { length: 100 }),
   referenceImageUrl: text('reference_image_url'),
 
+  // Chat context (if generated from AI chat)
+  chatMessageId: uuid('chat_message_id'), // References ai_chat_messages
+  sourceSelection: text('source_selection'), // Original transcript text selected
+
   // Tags (array of strings)
   tags: text('tags').array(),
 
@@ -266,6 +322,9 @@ export const mediaLibrarySchema: any = pgTable('media_library', {
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+
+  // Soft delete for HIPAA compliance (PHI data)
+  deletedAt: timestamp('deleted_at'),
 });
 
 // ============================================================================
@@ -549,6 +608,36 @@ export const surveyResponsesSchema = pgTable('survey_responses', {
 });
 
 // ============================================================================
+// AUDIT LOGGING (HIPAA Compliance)
+// ============================================================================
+
+export const auditLogsSchema = pgTable('audit_logs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  // User who performed the action
+  userId: uuid('user_id')
+    .references(() => usersSchema.id)
+    .notNull(),
+
+  // Action details
+  action: auditActionEnum('action').notNull(),
+  resourceType: varchar('resource_type', { length: 50 }).notNull(), // 'session', 'patient', 'media', etc.
+  resourceId: uuid('resource_id'), // ID of the resource accessed/modified (nullable for auth events)
+
+  // Request details
+  ipAddress: varchar('ip_address', { length: 45 }), // IPv6 max length
+  userAgent: text('user_agent'),
+  requestMethod: varchar('request_method', { length: 10 }), // GET, POST, PUT, DELETE
+  requestPath: text('request_path'),
+
+  // Additional context
+  metadata: jsonb('metadata'), // Any additional info (old values, new values, etc.)
+
+  // Timestamp
+  timestamp: timestamp('timestamp').defaultNow().notNull(),
+});
+
+// ============================================================================
 // ENGAGEMENT TRACKING
 // ============================================================================
 
@@ -588,6 +677,7 @@ export const sessions = sessionsSchema;
 export const transcripts = transcriptsSchema;
 export const speakers = speakersSchema;
 export const utterances = utterancesSchema;
+export const aiChatMessages = aiChatMessagesSchema;
 export const mediaLibrary = mediaLibrarySchema;
 export const quotes = quotesSchema;
 export const notes = notesSchema;
@@ -601,6 +691,7 @@ export const surveyQuestions = surveyQuestionsSchema;
 export const reflectionResponses = reflectionResponsesSchema;
 export const surveyResponses = surveyResponsesSchema;
 export const patientPageInteractions = patientPageInteractionsSchema;
+export const auditLogs = auditLogsSchema;
 
 // ============================================================================
 // EXPORTS (for type inference)
@@ -623,6 +714,9 @@ export type NewSpeaker = typeof speakersSchema.$inferInsert;
 
 export type Utterance = typeof utterancesSchema.$inferSelect;
 export type NewUtterance = typeof utterancesSchema.$inferInsert;
+
+export type AiChatMessage = typeof aiChatMessagesSchema.$inferSelect;
+export type NewAiChatMessage = typeof aiChatMessagesSchema.$inferInsert;
 
 export type MediaLibrary = typeof mediaLibrarySchema.$inferSelect;
 export type NewMediaLibrary = typeof mediaLibrarySchema.$inferInsert;
@@ -659,3 +753,6 @@ export type NewSurveyResponse = typeof surveyResponsesSchema.$inferInsert;
 
 export type PatientPageInteraction = typeof patientPageInteractionsSchema.$inferSelect;
 export type NewPatientPageInteraction = typeof patientPageInteractionsSchema.$inferInsert;
+
+export type AuditLog = typeof auditLogsSchema.$inferSelect;
+export type NewAuditLog = typeof auditLogsSchema.$inferInsert;

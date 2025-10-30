@@ -59,12 +59,13 @@ export async function POST(request: Request) {
     }
 
     // Set session cookie with the Firebase ID token
+    // HIPAA COMPLIANCE: 24-hour session maximum
     const cookieStore = await cookies();
     cookieStore.set('session', idToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 5, // 5 days
+      maxAge: 60 * 60 * 24, // 24 hours (HIPAA compliant)
       path: '/',
     });
 

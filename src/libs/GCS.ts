@@ -47,10 +47,10 @@ export async function uploadFile(
     return { url, path };
   }
 
-  // Generate signed URL (valid for 7 days)
+  // Generate signed URL (valid for 1 hour - HIPAA compliant for PHI)
   const [signedUrl] = await fileObject.getSignedUrl({
     action: 'read',
-    expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    expires: Date.now() + 60 * 60 * 1000, // 1 hour
   });
 
   return { url: signedUrl, path };
@@ -66,15 +66,19 @@ export async function deleteFile(path: string): Promise<void> {
 
 /**
  * Get a signed URL for a file
+ * HIPAA COMPLIANCE: Short expiration for PHI access
+ *
+ * @param path - File path in GCS bucket
+ * @param expiresInHours - Expiration time in hours (default: 1 hour)
  */
 export async function getSignedUrl(
   path: string,
-  expiresInDays = 7,
+  expiresInHours = 1,
 ): Promise<string> {
   const file = bucket.file(path);
   const [signedUrl] = await file.getSignedUrl({
     action: 'read',
-    expires: Date.now() + expiresInDays * 24 * 60 * 60 * 1000,
+    expires: Date.now() + expiresInHours * 60 * 60 * 1000, // Default 1 hour
   });
   return signedUrl;
 }
