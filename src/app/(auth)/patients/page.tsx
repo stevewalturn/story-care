@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientList } from '@/components/patients/PatientList';
 import { PatientModal } from '@/components/patients/PatientModal';
+import { authenticatedFetch, authenticatedPost, authenticatedPut, authenticatedDelete } from '@/utils/AuthenticatedFetch';
 
 interface Patient {
   id: string;
@@ -35,7 +36,7 @@ export default function PatientsPage() {
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/patients?therapistId=${user.uid}`);
+      const response = await authenticatedFetch(`/api/patients?therapistId=${user.uid}`, user);
       if (response.ok) {
         const data = await response.json();
         setPatients(data.patients || []);
@@ -63,11 +64,7 @@ export default function PatientsPage() {
     try {
       if (editingPatient) {
         // Update existing patient
-        const response = await fetch(`/api/patients/${editingPatient.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(patientData),
-        });
+        const response = await authenticatedPut(`/api/patients/${editingPatient.id}`, user, patientData);
 
         if (response.ok) {
           // Refresh the list
@@ -77,13 +74,9 @@ export default function PatientsPage() {
         }
       } else {
         // Create new patient - assign to current therapist
-        const response = await fetch('/api/patients', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...patientData,
-            therapistId: user?.uid,
-          }),
+        const response = await authenticatedPost('/api/patients', user, {
+          ...patientData,
+          therapistId: user?.uid,
         });
 
         if (response.ok) {
@@ -102,9 +95,7 @@ export default function PatientsPage() {
 
   const handleDelete = async (patientId: string) => {
     try {
-      const response = await fetch(`/api/patients/${patientId}`, {
-        method: 'DELETE',
-      });
+      const response = await authenticatedDelete(`/api/patients/${patientId}`, user);
 
       if (response.ok) {
         // Refresh the list

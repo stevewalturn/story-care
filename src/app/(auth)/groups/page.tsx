@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { GroupList } from '@/components/groups/GroupList';
 import { GroupModal } from '@/components/groups/GroupModal';
 import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch, authenticatedPost, authenticatedPut, authenticatedDelete } from '@/utils/AuthenticatedFetch';
 
 type GroupMember = {
   id: string;
@@ -35,7 +36,7 @@ export default function GroupsPage() {
   const fetchGroups = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/groups?therapistId=${user?.uid}`);
+      const response = await authenticatedFetch(`/api/groups?therapistId=${user?.uid}`, user);
       if (!response.ok) {
         throw new Error('Failed to fetch groups');
       }
@@ -54,7 +55,7 @@ export default function GroupsPage() {
 
   const fetchPatients = async () => {
     try {
-      const response = await fetch('/api/patients');
+      const response = await authenticatedFetch('/api/patients', user);
       if (!response.ok) {
         throw new Error('Failed to fetch patients');
       }
@@ -80,14 +81,10 @@ export default function GroupsPage() {
     try {
       if (editingGroup) {
         // Update existing group
-        const response = await fetch(`/api/groups/${editingGroup.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: groupData.name,
-            description: groupData.description,
-            memberIds: groupData.members?.map(m => m.id),
-          }),
+        const response = await authenticatedPut(`/api/groups/${editingGroup.id}`, user, {
+          name: groupData.name,
+          description: groupData.description,
+          memberIds: groupData.members?.map(m => m.id),
         });
 
         if (!response.ok) {
@@ -95,15 +92,11 @@ export default function GroupsPage() {
         }
       } else {
         // Create new group
-        const response = await fetch('/api/groups', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: groupData.name,
-            description: groupData.description,
-            memberIds: groupData.members?.map(m => m.id),
-            therapistId: user?.uid,
-          }),
+        const response = await authenticatedPost('/api/groups', user, {
+          name: groupData.name,
+          description: groupData.description,
+          memberIds: groupData.members?.map(m => m.id),
+          therapistId: user?.uid,
         });
 
         if (!response.ok) {
@@ -126,9 +119,7 @@ export default function GroupsPage() {
     }
 
     try {
-      const response = await fetch(`/api/groups/${groupId}`, {
-        method: 'DELETE',
-      });
+      const response = await authenticatedDelete(`/api/groups/${groupId}`, user);
 
       if (!response.ok) {
         throw new Error('Failed to delete group');
