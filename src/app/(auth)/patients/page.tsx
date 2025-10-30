@@ -120,8 +120,9 @@ export default function PatientsPage() {
   return (
     <div className="p-8">
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-gray-500">Loading patients...</div>
+        <div className="text-center py-16">
+          <div className="w-16 h-16 mx-auto border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
+          <p className="text-gray-500">Loading patients...</p>
         </div>
       ) : (
         <PatientList

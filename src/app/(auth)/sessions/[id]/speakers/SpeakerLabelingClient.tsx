@@ -15,12 +15,10 @@ interface Speaker {
 
 interface SpeakerLabelingClientProps {
   sessionId: string;
-  locale: string;
 }
 
 export function SpeakerLabelingClient({
   sessionId,
-  locale,
 }: SpeakerLabelingClientProps) {
   const router = useRouter();
 
@@ -53,11 +51,11 @@ export function SpeakerLabelingClient({
     console.log('Saving speakers:', speakers);
 
     // Navigate to transcript viewer
-    router.push(`/${locale}/sessions/${sessionId}/transcript`);
+    router.push(`/sessions/${sessionId}/transcript`);
   };
 
   const handleCancel = () => {
-    router.push(`/${locale}/sessions`);
+    router.push(`/sessions`);
   };
 
   return (

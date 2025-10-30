@@ -24,7 +24,7 @@ type TranscriptViewerProps = {
 };
 
 export function TranscriptViewer({
-  sessionId,
+  sessionId: _sessionId,
   utterances,
   audioUrl,
   onTextSelect,

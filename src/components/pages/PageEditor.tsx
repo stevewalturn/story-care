@@ -182,7 +182,6 @@ export function PageEditor({
     }
   };
 
-  const _selectedBlock = blocks.find(b => b.id === selectedBlockId);
 
   return (
     <div className="flex h-full flex-col">

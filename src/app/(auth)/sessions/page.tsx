@@ -74,29 +74,13 @@ export default function SessionsPage() {
       return;
     }
 
+    if (!data.audioUrl) {
+      alert('Please wait for the file to finish uploading');
+      return;
+    }
+
     try {
-      // 1. Upload audio file to GCS (if audioFile exists)
-      let audioUrl = '';
-      if (data.audioFile) {
-        const formData = new FormData();
-        formData.append('file', data.audioFile);
-        formData.append('sessionId', `temp-${Date.now()}`);
-
-        const uploadResponse = await fetch('/api/sessions/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!uploadResponse.ok) {
-          const errorData = await uploadResponse.json();
-          throw new Error(errorData.error || 'Failed to upload audio file');
-        }
-
-        const uploadData = await uploadResponse.json();
-        audioUrl = uploadData.url;
-      }
-
-      // 2. Create session record in database
+      // File is already uploaded to GCS, use the provided audioUrl
       const sessionData = {
         therapistId: user.uid,
         title: data.title,
@@ -104,7 +88,7 @@ export default function SessionsPage() {
         sessionType: data.sessionType,
         patientId: data.patientId || null,
         groupId: data.groupId || null,
-        audioUrl,
+        audioUrl: data.audioUrl,
       };
 
       const response = await fetch('/api/sessions', {
@@ -120,16 +104,16 @@ export default function SessionsPage() {
 
       const { session } = await response.json();
 
-      // 3. Trigger transcription with Deepgram
+      // Trigger transcription with Deepgram
       await fetch(`/api/sessions/${session.id}/transcribe`, {
         method: 'POST',
       });
 
-      // 4. Close modal and refresh sessions list
+      // Close modal and refresh sessions list
       setIsUploadModalOpen(false);
       await fetchSessions();
 
-      // 5. Navigate to speaker labeling page
+      // Navigate to speaker labeling page
       window.location.href = `/sessions/${session.id}/speakers`;
     } catch (error) {
       console.error('Error uploading session:', error);

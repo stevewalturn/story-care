@@ -1,13 +1,13 @@
 import { SpeakerLabelingClient } from './SpeakerLabelingClient';
 
 export default async function SpeakersPage(props: {
-  params: Promise<{ locale: string; id: string }>;
+  params: Promise<{ id: string }>;
 }) {
-  const { locale, id } = await props.params;
+  const { id } = await props.params;
 
   // In real implementation, fetch session and speakers data
   // const session = await getSession(id);
   // const speakers = await getSpeakers(id);
 
-  return <SpeakerLabelingClient sessionId={id} locale={locale} />;
+  return <SpeakerLabelingClient sessionId={id} />;
 }

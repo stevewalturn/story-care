@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { eq, like } from 'drizzle-orm';
+import { and, eq, like } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { groupMembers, groups, users } from '@/models/Schema';
@@ -9,19 +9,33 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
-    const therapistId = searchParams.get('therapistId');
+    const therapistFirebaseUid = searchParams.get('therapistId');
 
-    let query = db.select().from(groups);
+    const conditions = [];
 
     if (search) {
-      query = query.where(like(groups.name, `%${search}%`)) as any;
+      conditions.push(like(groups.name, `%${search}%`));
     }
 
-    if (therapistId) {
-      query = query.where(eq(groups.therapistId, therapistId)) as any;
+    // If therapistId is provided, it's a Firebase UID, so we need to look up the user first
+    if (therapistFirebaseUid) {
+      const [therapist] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.firebaseUid, therapistFirebaseUid))
+        .limit(1);
+
+      if (!therapist) {
+        // User doesn't exist yet in database, return empty groups array
+        return NextResponse.json({ groups: [] });
+      }
+
+      conditions.push(eq(groups.therapistId, therapist.id));
     }
 
-    const groupsList = await query;
+    const groupsList = conditions.length > 0
+      ? await db.select().from(groups).where(and(...conditions))
+      : await db.select().from(groups);
 
     // Fetch members for each group
     const groupsWithMembers = await Promise.all(
@@ -57,7 +71,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, description, memberIds, therapistId } = body;
+    const { name, description, memberIds, therapistId: therapistFirebaseUid } = body;
 
     if (!name || !memberIds || memberIds.length === 0) {
       return NextResponse.json(
@@ -66,13 +80,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Convert Firebase UID to database UUID if provided
+    let therapistDbId = null;
+    if (therapistFirebaseUid) {
+      const [therapist] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.firebaseUid, therapistFirebaseUid))
+        .limit(1);
+
+      if (!therapist) {
+        return NextResponse.json(
+          { error: 'Therapist not found' },
+          { status: 404 },
+        );
+      }
+
+      therapistDbId = therapist.id;
+    }
+
     // Create group
     const [group] = await db
       .insert(groups)
       .values({
         name,
         description: description || null,
-        therapistId: therapistId || null,
+        therapistId: therapistDbId,
       })
       .returning();
 

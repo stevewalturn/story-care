@@ -9,11 +9,11 @@ type Patient = {
   id: string;
   name: string;
   email: string;
-  phone: string;
   referenceImageUrl?: string;
+  avatarUrl?: string;
   sessionCount: number;
   lastSession?: string;
-  createdAt: Date;
+  createdAt: string | Date;
 };
 
 type PatientListProps = {
@@ -120,11 +120,7 @@ export function PatientList({
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2 text-gray-600">
                 <span className="font-medium">Email:</span>
-                <span className="truncate">{patient.email || 'N/A'}</span>
-              </div>
-              <div className="flex items-center gap-2 text-gray-600">
-                <span className="font-medium">Phone:</span>
-                <span>{patient.phone || 'N/A'}</span>
+                <span className="truncate">{patient.email || 'Not provided'}</span>
               </div>
             </div>
 

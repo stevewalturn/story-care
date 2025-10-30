@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { therapeuticPrompts } from '@/models/Schema';
+import { therapeuticPrompts, users } from '@/models/Schema';
 import { eq, like, desc, or } from 'drizzle-orm';
 
 // GET /api/prompts - List prompts
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
-      therapistId,
+      therapistId: therapistFirebaseUid,
       title,
       description,
       promptText,
@@ -63,10 +63,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Convert Firebase UID to database UUID if provided
+    let therapistDbId = null;
+    if (therapistFirebaseUid) {
+      const [therapist] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.firebaseUid, therapistFirebaseUid))
+        .limit(1);
+
+      if (therapist) {
+        therapistDbId = therapist.id;
+      }
+      // Note: We don't return 404 here since therapistId is optional
+    }
+
     const [prompt] = await db
       .insert(therapeuticPrompts)
       .values({
-        therapistId: therapistId || null,
+        therapistId: therapistDbId,
         title,
         description: description || null,
         promptText,

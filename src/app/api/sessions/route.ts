@@ -8,12 +8,26 @@ import { sessions, users } from '@/models/Schema';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const therapistId = searchParams.get('therapistId');
+    const therapistFirebaseUid = searchParams.get('therapistId');
 
-    if (!therapistId) {
+    if (!therapistFirebaseUid) {
       return NextResponse.json(
         { error: 'therapistId is required' },
         { status: 400 },
+      );
+    }
+
+    // Convert Firebase UID to database UUID
+    const [therapist] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.firebaseUid, therapistFirebaseUid))
+      .limit(1);
+
+    if (!therapist) {
+      return NextResponse.json(
+        { error: 'Therapist not found' },
+        { status: 404 },
       );
     }
 
@@ -34,7 +48,7 @@ export async function GET(request: NextRequest) {
       })
       .from(sessions)
       .leftJoin(users, eq(sessions.patientId, users.id))
-      .where(eq(sessions.therapistId, therapistId))
+      .where(eq(sessions.therapistId, therapist.id))
       .orderBy(desc(sessions.createdAt));
 
     return NextResponse.json({ sessions: sessionsList });
@@ -52,7 +66,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
-      therapistId,
+      therapistId: therapistFirebaseUid,
       title,
       sessionDate,
       sessionType,
@@ -62,7 +76,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!therapistId || !title || !sessionDate || !sessionType || !audioUrl) {
+    if (!therapistFirebaseUid || !title || !sessionDate || !sessionType || !audioUrl) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 },
@@ -83,11 +97,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Convert Firebase UID to database UUID
+    const [therapist] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.firebaseUid, therapistFirebaseUid))
+      .limit(1);
+
+    if (!therapist) {
+      return NextResponse.json(
+        { error: 'Therapist not found' },
+        { status: 404 },
+      );
+    }
+
     // Create session with validated values (fields are validated above)
     const sessionResult = await db
       .insert(sessions)
       .values({
-        therapistId,
+        therapistId: therapist.id,
         patientId: sessionType === 'individual' ? patientId : null,
         groupId: sessionType === 'group' ? groupId : null,
         title,

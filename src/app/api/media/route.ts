@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       patientId,
-      createdByTherapistId,
+      createdByTherapistId: therapistFirebaseUid,
       title,
       description,
       mediaType,
@@ -92,10 +92,24 @@ export async function POST(request: NextRequest) {
       tags,
     } = body;
 
-    if (!patientId || !createdByTherapistId || !mediaType || !title || !mediaUrl || !sourceType) {
+    if (!patientId || !therapistFirebaseUid || !mediaType || !title || !mediaUrl || !sourceType) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 },
+      );
+    }
+
+    // Convert Firebase UID to database UUID
+    const [therapist] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.firebaseUid, therapistFirebaseUid))
+      .limit(1);
+
+    if (!therapist) {
+      return NextResponse.json(
+        { error: 'Therapist not found' },
+        { status: 404 },
       );
     }
 
@@ -103,7 +117,7 @@ export async function POST(request: NextRequest) {
       .insert(mediaLibrary)
       .values({
         patientId,
-        createdByTherapistId,
+        createdByTherapistId: therapist.id,
         title,
         description: description || null,
         mediaType,

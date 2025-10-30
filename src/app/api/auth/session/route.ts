@@ -1,5 +1,9 @@
+import { eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { db } from '@/libs/DB';
+import { adminAuth } from '@/libs/FirebaseAdmin';
+import { users } from '@/models/Schema';
 
 export async function POST(request: Request) {
   try {
@@ -9,9 +13,52 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing idToken' }, { status: 400 });
     }
 
+    // Verify the token with Firebase Admin SDK
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    const { uid, email, name } = decodedToken;
+
+    // Check if user exists in database by Firebase UID
+    const [existingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.firebaseUid, uid))
+      .limit(1);
+
+    if (!existingUser) {
+      // Check if user exists by email (user created before Firebase auth)
+      const [userByEmail] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email || ''))
+        .limit(1);
+
+      if (userByEmail) {
+        // Update existing user with Firebase UID
+        await db
+          .update(users)
+          .set({
+            firebaseUid: uid,
+            lastLoginAt: new Date(),
+          })
+          .where(eq(users.id, userByEmail.id));
+      } else {
+        // Create new user in database
+        await db.insert(users).values({
+          firebaseUid: uid,
+          email: email || '',
+          name: name || email?.split('@')[0] || 'User',
+          role: 'therapist', // Default to therapist role, can be updated later
+        });
+      }
+    } else {
+      // Update last login time
+      await db
+        .update(users)
+        .set({ lastLoginAt: new Date() })
+        .where(eq(users.firebaseUid, uid));
+    }
+
     // Set session cookie with the Firebase ID token
-    // In production, you should verify the token with Firebase Admin SDK
-    // For now, we'll set a simple session cookie
     const cookieStore = await cookies();
     cookieStore.set('session', idToken, {
       httpOnly: true,

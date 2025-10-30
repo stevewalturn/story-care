@@ -2,21 +2,33 @@ import type { NextRequest } from 'next/server';
 import { desc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { pageBlocks, storyPages } from '@/models/Schema';
+import { pageBlocks, storyPages, users } from '@/models/Schema';
 
 // GET /api/pages - List story pages
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get('patientId');
-    const therapistId = searchParams.get('therapistId');
+    const therapistFirebaseUid = searchParams.get('therapistId');
 
     let query = db.select().from(storyPages);
 
     if (patientId) {
       query = query.where(eq(storyPages.patientId, patientId)) as any;
-    } else if (therapistId) {
-      query = query.where(eq(storyPages.createdByTherapistId, therapistId)) as any;
+    } else if (therapistFirebaseUid) {
+      // Convert Firebase UID to database UUID
+      const [therapist] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.firebaseUid, therapistFirebaseUid))
+        .limit(1);
+
+      if (therapist) {
+        query = query.where(eq(storyPages.createdByTherapistId, therapist.id)) as any;
+      } else {
+        // If therapist not found, return empty array
+        return NextResponse.json({ pages: [] });
+      }
     }
 
     const pages = await query.orderBy(desc(storyPages.updatedAt));
@@ -50,12 +62,26 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { therapistId, patientId, title, blocks } = body;
+    const { therapistId: therapistFirebaseUid, patientId, title, blocks } = body;
 
-    if (!therapistId || !patientId || !title) {
+    if (!therapistFirebaseUid || !patientId || !title) {
       return NextResponse.json(
         { error: 'therapistId, patientId, and title are required' },
         { status: 400 },
+      );
+    }
+
+    // Convert Firebase UID to database UUID
+    const [therapist] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.firebaseUid, therapistFirebaseUid))
+      .limit(1);
+
+    if (!therapist) {
+      return NextResponse.json(
+        { error: 'Therapist not found' },
+        { status: 404 },
       );
     }
 
@@ -63,7 +89,7 @@ export async function POST(request: NextRequest) {
     const [page] = await db
       .insert(storyPages)
       .values({
-        createdByTherapistId: therapistId,
+        createdByTherapistId: therapist.id,
         patientId,
         title,
         status: 'draft',

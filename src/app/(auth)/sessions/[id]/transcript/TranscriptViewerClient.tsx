@@ -18,12 +18,10 @@ type Utterance = {
 
 type TranscriptViewerClientProps = {
   sessionId: string;
-  locale: string;
 };
 
 export function TranscriptViewerClient({
   sessionId,
-  locale: _locale,
 }: TranscriptViewerClientProps) {
   const [showAIModal, setShowAIModal] = useState(false);
   const [selectedContext, setSelectedContext] = useState<{
