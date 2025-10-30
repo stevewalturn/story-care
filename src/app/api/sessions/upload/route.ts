@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     });
 
     // 5. AUDIT LOG: Record PHI file upload
-    await logPHICreate(user.uid, 'media', path, request, {
+    await logPHICreate(user.dbUserId, 'media', path, request, {
       fileName: file.name,
       fileSize: file.size,
       contentType: file.type,

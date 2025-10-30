@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AnalyzeSelectionModal } from '@/components/sessions/AnalyzeSelectionModal';
 import { GenerateImageModal } from '@/components/sessions/GenerateImageModal';
 import { GenerateVideoModal } from '@/components/sessions/GenerateVideoModal';
+import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 
@@ -37,8 +38,10 @@ export function TranscriptViewerClient({
   const [showAnalyzeModal, setShowAnalyzeModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [_selectedUtteranceIds, _setSelectedUtteranceIds] = useState<string[]>([]);
+  const [aiPrompt, setAiPrompt] = useState<string | null>(null);
 
   // Fetch session and transcript data
   useEffect(() => {
@@ -102,12 +105,65 @@ export function TranscriptViewerClient({
   const handleAnalyze = async (optionId: string, text: string) => {
     console.log('Analyzing:', optionId, text);
 
-    // Route to appropriate modal based on option
-    if (optionId === 'create-image' || optionId === 'potential-images') {
+    // Route to appropriate modal/action based on option
+    if (optionId === 'save-quote') {
+      setShowQuoteModal(true);
+    } else if (optionId === 'extract-quotes') {
+      // AI Quote Extraction
+      const prompt = `You are a therapeutic quote extraction assistant. Analyze the following transcript text and extract the most meaningful, therapeutically significant quotes.
+
+For each quote, identify:
+1. The exact quote text
+2. Why it's therapeutically significant
+3. Suggested tags (e.g., breakthrough, resistance, metaphor, emotion, pattern)
+4. Suggested priority (low, medium, high)
+
+Format your response as a JSON array like this:
+[
+  {
+    "quote": "exact quote text here",
+    "significance": "why this quote matters",
+    "tags": ["tag1", "tag2"],
+    "priority": "high"
+  }
+]
+
+Transcript text:
+"${text}"`;
+
+      setSelectedText(text);
+      setAiPrompt(prompt);
+    } else if (optionId === 'create-image' || optionId === 'potential-images') {
       setShowImageModal(true);
     } else {
       // Send to AI chat for analysis
-      // This will be handled by the AI Assistant panel
+      // Find the analysis option to get its full prompt
+      const analyzeOptions = [
+        {
+          id: 'therapeutic-alliance',
+          title: 'Therapeutic Alliance Analysis',
+          description: 'Analyze the transcript for indicators of the therapeutic alliance. How is the relationship between therapist and patient?',
+        },
+        {
+          id: 'clinical-note',
+          title: 'Group Clinical Note',
+          description: 'You are a licensed clinical professional creating a detailed Group Therapy Progress Note for a narrative therapy session.',
+        },
+        {
+          id: 'potential-scenes',
+          title: 'Potential Scenes',
+          description: 'You are an expert narrative therapist and filmmaker. Your task is to identify powerful, scene-worthy moments from the transcript.',
+        },
+      ];
+
+      const option = analyzeOptions.find(o => o.id === optionId);
+      if (option) {
+        // Trigger AI analysis by setting the prompt text with context
+        const prompt = `${option.description}\n\nSelected text:\n"${text}"`;
+        // Send this to the AI panel
+        setSelectedText(text);
+        setAiPrompt(prompt);
+      }
     }
   };
 
@@ -152,6 +208,45 @@ export function TranscriptViewerClient({
       // Trigger library refresh
     } catch (error) {
       console.error('Error generating video:', error);
+    }
+  };
+
+  // Handler for saving quote
+  const handleSaveQuote = async (quoteData: {
+    quoteText: string;
+    priority: 'low' | 'medium' | 'high';
+    tags: string[];
+    notes: string;
+  }) => {
+    try {
+      // Get patient ID from session
+      const sessionResponse = await authenticatedFetch(`/api/sessions/${sessionId}`, user);
+      if (!sessionResponse.ok) {
+        throw new Error('Failed to fetch session');
+      }
+      const sessionData = await sessionResponse.json();
+      const patientId = sessionData.session.patientId;
+
+      if (!patientId) {
+        throw new Error('No patient associated with this session');
+      }
+
+      const response = await authenticatedPost('/api/quotes', user, {
+        ...quoteData,
+        patientId,
+        sessionId,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save quote');
+      }
+
+      const data = await response.json();
+      console.log('Quote saved:', data);
+      // TODO: Trigger quotes list refresh in library panel
+    } catch (error) {
+      console.error('Error saving quote:', error);
+      throw error;
     }
   };
 
@@ -223,6 +318,8 @@ export function TranscriptViewerClient({
             patientName={patientName}
             sessionTitle={sessionTitle}
             user={user}
+            triggerPrompt={aiPrompt}
+            onPromptSent={() => setAiPrompt(null)}
           />
         </div>
 
@@ -242,6 +339,13 @@ export function TranscriptViewerClient({
         onClose={() => setShowAnalyzeModal(false)}
         selectedText={selectedText}
         onAnalyze={handleAnalyze}
+      />
+
+      <SaveQuoteModal
+        isOpen={showQuoteModal}
+        onClose={() => setShowQuoteModal(false)}
+        selectedText={selectedText}
+        onSave={handleSaveQuote}
       />
 
       <GenerateImageModal
@@ -400,17 +504,22 @@ function AIAssistantPanel({
   patientName,
   sessionTitle,
   user,
+  triggerPrompt,
+  onPromptSent,
 }: {
   sessionId: string;
   patientName: string;
   sessionTitle: string;
   user: any;
+  triggerPrompt: string | null;
+  onPromptSent: () => void;
 }) {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [_isLoadingHistory, _setIsLoadingHistory] = useState(true);
   const [transcriptContext, _setTranscriptContext] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load chat history on mount
   useEffect(() => {
@@ -436,6 +545,19 @@ function AIAssistantPanel({
 
     loadChatHistory();
   }, [sessionId, user]);
+
+  // Watch for trigger prompt from analyze modal
+  useEffect(() => {
+    if (triggerPrompt) {
+      handleSendMessage(triggerPrompt);
+      onPromptSent();
+    }
+  }, [triggerPrompt]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
 
   const handleSendMessage = async (messageText?: string) => {
     const textToSend = messageText || prompt;
@@ -626,6 +748,8 @@ function AIAssistantPanel({
                 </div>
               </div>
             )}
+            {/* Auto-scroll anchor */}
+            <div ref={messagesEndRef} />
           </div>
         )}
       </div>

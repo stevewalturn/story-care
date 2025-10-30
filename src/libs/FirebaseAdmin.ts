@@ -60,6 +60,7 @@ export async function verifyIdToken(token: string) {
 
     return {
       uid: decodedToken.uid,
+      dbUserId: dbUser.id, // Database UUID
       email: decodedToken.email || null,
       emailVerified: decodedToken.email_verified || false,
       role: dbUser.role as 'therapist' | 'patient' | 'admin',

@@ -60,7 +60,7 @@ export async function GET(
         .limit(1);
 
       // 3. AUDIT LOG: Record PHI access
-      await logPHIAccess(user.uid, 'session', id, request);
+      await logPHIAccess(user.dbUserId, 'session', id, request);
 
       return NextResponse.json({
         session: {
@@ -93,7 +93,7 @@ export async function GET(
         .where(eq(groupMembers.groupId, session.groupId));
 
       // 3. AUDIT LOG: Record PHI access
-      await logPHIAccess(user.uid, 'session', id, request);
+      await logPHIAccess(user.dbUserId, 'session', id, request);
 
       return NextResponse.json({
         session: {
@@ -107,7 +107,7 @@ export async function GET(
     }
 
     // 3. AUDIT LOG: Record PHI access
-    await logPHIAccess(user.uid, 'session', id, request);
+    await logPHIAccess(user.dbUserId, 'session', id, request);
 
     return NextResponse.json({ session });
   } catch (error) {
@@ -171,7 +171,7 @@ export async function PUT(
     }
 
     // 4. AUDIT LOG: Record PHI update with changes
-    await logPHIUpdate(user.uid, 'session', id, request, {
+    await logPHIUpdate(user.dbUserId, 'session', id, request, {
       changedFields: Object.keys(body),
       oldValues: {
         title: currentSession.title,
@@ -239,7 +239,7 @@ export async function DELETE(
     }
 
     // 4. AUDIT LOG: Record PHI deletion
-    await logPHIDelete(user.uid, 'session', id, request, {
+    await logPHIDelete(user.dbUserId, 'session', id, request, {
       softDelete: true,
       sessionTitle: existingSession.title,
       sessionType: existingSession.sessionType,

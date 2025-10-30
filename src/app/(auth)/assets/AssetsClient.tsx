@@ -33,10 +33,12 @@ export function AssetsClient() {
   const [filterSource, setFilterSource] = useState('all');
   const [filterType, setFilterType] = useState<'all' | 'image' | 'video' | 'audio'>('all');
 
-  // Load patients on mount
+  // Load patients on mount (only when user is available)
   useEffect(() => {
-    loadPatients();
-  }, []);
+    if (user) {
+      loadPatients();
+    }
+  }, [user]);
 
   // Load media when patient or filters change
   useEffect(() => {
@@ -60,8 +62,15 @@ export function AssetsClient() {
   }, [selectedPatient, activeTab, searchQuery]);
 
   const loadPatients = async () => {
+    if (!user) return;
+
     try {
-      const response = await authenticatedFetch('/api/patients', user);
+      // Pass the therapist's Firebase UID to filter patients
+      const params = new URLSearchParams({
+        therapistId: user.uid,
+      });
+
+      const response = await authenticatedFetch(`/api/patients?${params.toString()}`, user);
       if (response.ok) {
         const data = await response.json();
         setPatients(data.patients || []);

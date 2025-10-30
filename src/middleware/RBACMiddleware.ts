@@ -53,7 +53,7 @@ export async function requirePatientAccess(
   }
 
   // Patient accessing their own data
-  if (user.role === 'patient' && user.uid === patientId) {
+  if (user.role === 'patient' && user.dbUserId === patientId) {
     return user;
   }
 
@@ -67,7 +67,7 @@ export async function requirePatientAccess(
       throw new Error('Patient not found');
     }
 
-    if (patient.therapistId === user.uid) {
+    if (patient.therapistId === user.dbUserId) {
       return user;
     }
   }
@@ -117,14 +117,14 @@ export async function requireSessionAccess(
   }
 
   // Therapist accessing their own session
-  if (user.role === 'therapist' && session.therapistId === user.uid) {
+  if (user.role === 'therapist' && session.therapistId === user.dbUserId) {
     return user;
   }
 
   // Patient accessing their own session
   if (user.role === 'patient') {
     // Individual session assigned to this patient
-    if (session.patientId === user.uid) {
+    if (session.patientId === user.dbUserId) {
       return user;
     }
 
@@ -134,7 +134,7 @@ export async function requireSessionAccess(
         where: (groupMembers, { and, eq, isNull }) =>
           and(
             eq(groupMembers.groupId, session.groupId!),
-            eq(groupMembers.patientId, user.uid),
+            eq(groupMembers.patientId, user.dbUserId),
             isNull(groupMembers.leftAt), // Still active member
           ),
       });
@@ -177,12 +177,12 @@ export async function requireMediaAccess(
   }
 
   // Therapist accessing media they created
-  if (user.role === 'therapist' && media.createdByTherapistId === user.uid) {
+  if (user.role === 'therapist' && media.createdByTherapistId === user.dbUserId) {
     return user;
   }
 
   // Patient accessing their own media
-  if (user.role === 'patient' && media.patientId === user.uid) {
+  if (user.role === 'patient' && media.patientId === user.dbUserId) {
     return user;
   }
 
@@ -192,7 +192,7 @@ export async function requireMediaAccess(
       where: eq(users.id, media.patientId),
     });
 
-    if (patient?.therapistId === user.uid) {
+    if (patient?.therapistId === user.dbUserId) {
       return user;
     }
   }
@@ -229,12 +229,12 @@ export async function requireStoryPageAccess(
   }
 
   // Therapist accessing page they created
-  if (user.role === 'therapist' && page.createdByTherapistId === user.uid) {
+  if (user.role === 'therapist' && page.createdByTherapistId === user.dbUserId) {
     return user;
   }
 
   // Patient accessing their own page (if published)
-  if (user.role === 'patient' && page.patientId === user.uid) {
+  if (user.role === 'patient' && page.patientId === user.dbUserId) {
     // Check if page is published or patient-visible
     if (page.status === 'published') {
       return user;
@@ -274,7 +274,7 @@ export async function requireGroupAccess(
   }
 
   // Therapist accessing their own group
-  if (user.role === 'therapist' && group.therapistId === user.uid) {
+  if (user.role === 'therapist' && group.therapistId === user.dbUserId) {
     return user;
   }
 
@@ -284,7 +284,7 @@ export async function requireGroupAccess(
       where: (groupMembers, { and, eq, isNull }) =>
         and(
           eq(groupMembers.groupId, groupId),
-          eq(groupMembers.patientId, user.uid),
+          eq(groupMembers.patientId, user.dbUserId),
           isNull(groupMembers.leftAt), // Still active member
         ),
     });
@@ -329,7 +329,7 @@ export async function canCreateForPatient(
     throw new Error('Patient not found');
   }
 
-  if (patient.therapistId !== user.uid) {
+  if (patient.therapistId !== user.dbUserId) {
     throw new Error(
       'Forbidden: You can only create resources for your assigned patients',
     );

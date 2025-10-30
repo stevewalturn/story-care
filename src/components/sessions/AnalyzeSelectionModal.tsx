@@ -13,6 +13,21 @@ type AnalyzeOption = {
 
 const ANALYZE_OPTIONS: AnalyzeOption[] = [
   {
+    id: 'save-quote',
+    title: 'Save as Quote',
+    description: 'Save this selection to the patient\'s quote library with tags and notes.',
+    category: 'library',
+    icon: 'bookmark',
+  },
+  {
+    id: 'extract-quotes',
+    title: 'Extract Meaningful Quotes (AI)',
+    description: 'AI will analyze the selected text and extract the most meaningful, therapeutically significant quotes.',
+    category: 'ai_extraction',
+    badge: 'AI',
+    icon: 'sparkles',
+  },
+  {
     id: 'therapeutic-alliance',
     title: 'Therapeutic Alliance Analysis',
     description: 'Analyze the transcript for indicators of the therapeutic alliance. How is the relationship between therapist and patient?',
@@ -119,11 +134,16 @@ export function AnalyzeSelectionModal({
                 <div className="flex items-start gap-3">
                   {/* Icon */}
                   <div className={`flex-shrink-0 mt-0.5 ${
-                    option.icon === 'sparkles' ? 'text-purple-500' : 'text-blue-500'
+                    option.icon === 'sparkles' ? 'text-purple-500' :
+                    option.icon === 'bookmark' ? 'text-green-500' : 'text-blue-500'
                   }`}>
                     {option.icon === 'sparkles' ? (
                       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                      </svg>
+                    ) : option.icon === 'bookmark' ? (
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                       </svg>
                     ) : (
                       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

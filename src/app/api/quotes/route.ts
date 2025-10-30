@@ -3,6 +3,7 @@ import { and, desc, eq, ilike, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { quotes, sessions, speakers } from '@/models/Schema';
+import { requireTherapist, handleAuthError } from '@/utils/AuthHelpers';
 
 // GET /api/quotes - List quotes
 export async function GET(request: NextRequest) {
@@ -76,6 +77,9 @@ export async function GET(request: NextRequest) {
 // POST /api/quotes - Create quote
 export async function POST(request: NextRequest) {
   try {
+    // 1. AUTHENTICATE
+    const user = await requireTherapist(request);
+
     const body = await request.json();
     const {
       patientId,
@@ -87,13 +91,12 @@ export async function POST(request: NextRequest) {
       priority,
       tags,
       notes,
-      createdByTherapistId,
     } = body;
 
     // Validate required fields
-    if (!patientId || !quoteText || !createdByTherapistId) {
+    if (!patientId || !quoteText) {
       return NextResponse.json(
-        { error: 'Missing required fields: patientId, quoteText, createdByTherapistId' },
+        { error: 'Missing required fields: patientId, quoteText' },
         { status: 400 },
       );
     }
@@ -111,16 +114,13 @@ export async function POST(request: NextRequest) {
         priority: priority || 'medium',
         tags: tags || null,
         notes: notes || null,
-        createdByTherapistId,
+        createdByTherapistId: user.dbUserId,
       })
       .returning();
 
     return NextResponse.json({ quote: newQuote }, { status: 201 });
   } catch (error) {
     console.error('Error creating quote:', error);
-    return NextResponse.json(
-      { error: 'Failed to create quote' },
-      { status: 500 },
-    );
+    return handleAuthError(error);
   }
 }

@@ -19,7 +19,8 @@ import { verifyIdToken } from '@/libs/FirebaseAdmin';
  * User information from verified ID token
  */
 export interface AuthenticatedUser {
-  uid: string;
+  uid: string; // Firebase UID
+  dbUserId: string; // Database UUID
   email: string | null;
   emailVerified: boolean;
   role: 'therapist' | 'patient' | 'admin';
@@ -217,8 +218,8 @@ export function getClientInfo(request: Request): {
  * - Therapists can access their assigned patients only
  *
  * @param user - Authenticated user
- * @param patientId - Patient UUID
- * @param patientTherapistId - Therapist UUID assigned to patient
+ * @param patientId - Patient UUID (database ID)
+ * @param patientTherapistId - Therapist UUID (database ID) assigned to patient
  * @returns True if user has access
  *
  * @example
@@ -243,13 +244,13 @@ export function canAccessPatient(
     return true;
   }
 
-  // Patient can access their own data
-  if (user.role === 'patient' && user.uid === patientId) {
+  // Patient can access their own data (compare database UUIDs)
+  if (user.role === 'patient' && user.dbUserId === patientId) {
     return true;
   }
 
-  // Therapist can access their assigned patients
-  if (user.role === 'therapist' && user.uid === patientTherapistId) {
+  // Therapist can access their assigned patients (compare database UUIDs)
+  if (user.role === 'therapist' && user.dbUserId === patientTherapistId) {
     return true;
   }
 

@@ -623,7 +623,7 @@ export const auditLogsSchema = pgTable('audit_logs', {
   // Action details
   action: auditActionEnum('action').notNull(),
   resourceType: varchar('resource_type', { length: 50 }).notNull(), // 'session', 'patient', 'media', etc.
-  resourceId: uuid('resource_id'), // ID of the resource accessed/modified (nullable for auth events)
+  resourceId: text('resource_id'), // ID of the resource accessed/modified (nullable for auth events, can be UUID or other identifier like file path)
 
   // Request details
   ipAddress: varchar('ip_address', { length: 45 }), // IPv6 max length

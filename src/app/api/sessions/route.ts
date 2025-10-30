@@ -34,12 +34,12 @@ export async function GET(request: NextRequest) {
       .where(
         user.role === 'admin'
           ? isNull(sessions.deletedAt) // Admin sees all sessions
-          : eq(sessions.therapistId, user.uid), // Therapist sees only their sessions
+          : eq(sessions.therapistId, user.dbUserId), // Therapist sees only their sessions
       )
       .orderBy(desc(sessions.createdAt));
 
     // 3. AUDIT LOG: Record PHI access
-    await logPHIAccess(user.uid, 'session', 'list', request);
+    await logPHIAccess(user.dbUserId, 'session', 'list', request);
 
     return NextResponse.json({ sessions: sessionsList });
   } catch (error) {
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (patient.therapistId !== user.uid && user.role !== 'therapist' && user.role !== 'admin') {
+      if (patient.therapistId !== user.dbUserId && user.role !== 'therapist' && user.role !== 'admin') {
         return NextResponse.json(
           { error: 'Forbidden: You can only create sessions for your assigned patients' },
           { status: 403 },
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     const sessionResult = await db
       .insert(sessions)
       .values({
-        therapistId: user.uid,
+        therapistId: user.dbUserId, // Use database UUID instead of Firebase UID
         patientId: sessionType === 'individual' ? patientId : null,
         groupId: sessionType === 'group' ? groupId : null,
         title,
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. AUDIT LOG: Record session creation
-    await logPHIAccess(user.uid, 'session', newSession.id, request);
+    await logPHIAccess(user.dbUserId, 'session', newSession.id, request);
 
     return NextResponse.json({ session: newSession }, { status: 201 });
   } catch (error) {

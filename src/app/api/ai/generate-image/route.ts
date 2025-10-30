@@ -3,11 +3,16 @@ import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { uploadFile } from '@/libs/GCS';
 import { generateImage, generateImagePrompt } from '@/libs/OpenAI';
-import { mediaLibrary } from '@/models/Schema';
+import { mediaLibrary, sessions } from '@/models/Schema';
+import { requireTherapist, handleAuthError } from '@/utils/AuthHelpers';
+import { eq } from 'drizzle-orm';
 
 // POST /api/ai/generate-image - Generate image with DALL-E
 export async function POST(request: NextRequest) {
   try {
+    // 1. AUTHENTICATE
+    const user = await requireTherapist(request);
+
     const body = await request.json();
     const { prompt, text, theme, sessionId, patientId, title } = body;
 
@@ -46,17 +51,36 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    // Save to database
-    const media = await db
+    // 2. GET PATIENT ID from session if not provided
+    let finalPatientId = patientId;
+    if (!finalPatientId && sessionId) {
+      const session = await db.query.sessions.findFirst({
+        where: eq(sessions.id, sessionId),
+      });
+      finalPatientId = session?.patientId;
+    }
+
+    if (!finalPatientId) {
+      return NextResponse.json(
+        { error: 'Patient ID is required (either directly or via session)' },
+        { status: 400 },
+      );
+    }
+
+    // 3. Save to database
+    const [media] = await db
       .insert(mediaLibrary)
       .values({
-        sessionId: sessionId || null,
-        patientId: patientId || null,
-        mediaType: 'image',
+        patientId: finalPatientId,
+        createdByTherapistId: user.dbUserId,
         title: title || 'AI Generated Image',
-        url: gcsUrl,
-        storagePath: path,
-        generatedPrompt: finalPrompt,
+        mediaType: 'image',
+        mediaUrl: gcsUrl,
+        sourceType: 'generated',
+        sourceSessionId: sessionId || null,
+        generationPrompt: finalPrompt,
+        aiModel: 'dall-e-3',
+        status: 'completed',
       })
       .returning();
 
@@ -66,9 +90,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Image generation error:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate image' },
-      { status: 500 },
-    );
+    return handleAuthError(error);
   }
 }

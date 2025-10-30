@@ -84,7 +84,7 @@ ${context ? `\n\nSession Context:\n${context}` : ''}`,
           // Save user message
           await db.insert(aiChatMessages).values({
             sessionId,
-            therapistId: user.uid,
+            therapistId: user.dbUserId,
             role: 'user',
             content: lastUserMessage.content,
             selectedText: selectedText || null,
@@ -95,7 +95,7 @@ ${context ? `\n\nSession Context:\n${context}` : ''}`,
         // Save assistant response
         await db.insert(aiChatMessages).values({
           sessionId,
-          therapistId: user.uid,
+          therapistId: user.dbUserId,
           role: 'assistant',
           content: response,
         });
@@ -106,7 +106,7 @@ ${context ? `\n\nSession Context:\n${context}` : ''}`,
     }
 
     // 7. AUDIT LOG: Record AI processing of PHI
-    await logPHIAccess(user.uid, 'session', sessionId || 'chat', request);
+    await logPHIAccess(user.dbUserId, 'session', sessionId || 'chat', request);
 
     return NextResponse.json({ message: response });
   } catch (error) {
