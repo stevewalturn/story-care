@@ -4,6 +4,7 @@ import { CheckSquare, FileText, MessageCircle, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 interface DashboardStats {
   activePatients: number;
@@ -29,7 +30,7 @@ export default function DashboardPage() {
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/dashboard/stats?therapistId=${user.uid}`);
+      const response = await authenticatedFetch(`/api/dashboard/stats?therapistId=${user.uid}`, user);
       if (response.ok) {
         const data = await response.json();
         setStats(data);
@@ -112,6 +113,40 @@ export default function DashboardPage() {
             iconColor={metric.iconColor}
           />
         ))}
+      </div>
+
+      {/* Coming Soon Sections */}
+      <div className="space-y-6">
+        {/* Patient Engagement Section */}
+        <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
+          <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Patient Engagement</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Track patient activity, engagement metrics, and view detailed insights for each patient.
+          </p>
+          <p className="text-xs text-gray-500">Coming soon</p>
+        </div>
+
+        {/* Recent Responses Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
+            <MessageCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Recent Reflections</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              View the latest reflection responses from your patients.
+            </p>
+            <p className="text-xs text-gray-500">Coming soon</p>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
+            <CheckSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Recent Survey Responses</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Track survey responses and analyze patient feedback.
+            </p>
+            <p className="text-xs text-gray-500">Coming soon</p>
+          </div>
+        </div>
       </div>
     </div>
   );
