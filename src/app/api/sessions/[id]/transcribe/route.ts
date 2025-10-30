@@ -4,15 +4,21 @@ import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { transcribeAudio } from '@/libs/Deepgram';
 import { sessions, speakers, transcripts, utterances } from '@/models/Schema';
+import { requireSessionAccess } from '@/middleware/RBACMiddleware';
+import { logPHICreate } from '@/libs/AuditLogger';
+import { handleAuthError } from '@/utils/AuthHelpers';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
 // POST /api/sessions/[id]/transcribe - Transcribe audio
-export async function POST(_request: NextRequest, context: RouteContext) {
+export async function POST(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
+
+    // Verify user has access to this session
+    const user = await requireSessionAccess(request, id);
 
     // Get session
     const [session] = await db
@@ -120,12 +126,24 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       .set({ transcriptionStatus: 'completed' })
       .where(eq(sessions.id, id));
 
+    // Log PHI creation (transcript generation)
+    await logPHICreate(user.uid, 'transcript', transcript.id, request, {
+      sessionId: id,
+      speakerCount: speakerRecords.length,
+      utteranceCount: result.utterances.length,
+      duration: result.duration,
+    });
+
     return NextResponse.json({
       transcript,
       speakers: speakerRecords.map(s => s.speaker),
       utteranceCount: result.utterances.length,
     });
   } catch (error) {
+    if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('Forbidden'))) {
+      return handleAuthError(error);
+    }
+
     console.error('Error transcribing session:', error);
 
     // Update session status to error

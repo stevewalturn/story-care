@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const imageResponse = await fetch(imageUrl);
     const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
 
-    const { url: gcsUrl, path } = await uploadFile(
+    const { url: gcsUrl } = await uploadFile(
       imageBuffer,
       `generated-${Date.now()}.png`,
       {
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Save to database
-    const [media] = await db
+    const result = await db
       .insert(mediaLibrary)
       .values({
         patientId: finalPatientId,
@@ -83,6 +83,8 @@ export async function POST(request: NextRequest) {
         status: 'completed',
       })
       .returning();
+
+    const media = (result as any[])[0];
 
     return NextResponse.json({
       media,

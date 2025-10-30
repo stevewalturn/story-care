@@ -2,14 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { users } from '@/models/Schema';
 import { eq } from 'drizzle-orm';
+import { handleAuthError } from '@/utils/AuthHelpers';
+import { logPHIAccess } from '@/libs/AuditLogger';
+import { requirePatientAccess } from '@/middleware/RBACMiddleware';
 
 // GET /api/patients/[id] - Get a single patient
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+
+    // Verify user has access to this patient
+    const user = await requirePatientAccess(request, id);
 
     const [patient] = await db
       .select()
@@ -21,8 +27,14 @@ export async function GET(
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
 
+    // Log PHI access
+    await logPHIAccess(user.uid, 'user', id, request);
+
     return NextResponse.json({ patient });
   } catch (error) {
+    if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('Forbidden'))) {
+      return handleAuthError(error);
+    }
     console.error('Error fetching patient:', error);
     return NextResponse.json(
       { error: 'Failed to fetch patient' },
@@ -38,6 +50,10 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+
+    // Verify user has access to this patient (only therapist/admin can update)
+    const user = await requirePatientAccess(request, id);
+
     const body = await request.json();
     const { name, email, referenceImageUrl, avatarUrl } = body;
 
@@ -61,8 +77,17 @@ export async function PUT(
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
 
+    // Log PHI modification
+    const { logPHIUpdate } = await import('@/libs/AuditLogger');
+    await logPHIUpdate(user.uid, 'user', id, request, {
+      changedFields: Object.keys(updateData),
+    });
+
     return NextResponse.json({ patient: updatedPatient });
   } catch (error) {
+    if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('Forbidden'))) {
+      return handleAuthError(error);
+    }
     console.error('Error updating patient:', error);
     return NextResponse.json(
       { error: 'Failed to update patient' },
@@ -73,11 +98,22 @@ export async function PUT(
 
 // DELETE /api/patients/[id] - Delete patient
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+
+    // Verify user has access to this patient (only therapist/admin can delete)
+    const user = await requirePatientAccess(request, id);
+
+    // Only admin can delete patients
+    if (user.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden: Only admins can delete patients' },
+        { status: 403 }
+      );
+    }
 
     const deletedPatient = await db
       .delete(users)
@@ -88,8 +124,17 @@ export async function DELETE(
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
 
+    // Log PHI deletion
+    const { logPHIDelete } = await import('@/libs/AuditLogger');
+    await logPHIDelete(user.uid, 'user', id, request, {
+      deletedBy: user.email,
+    });
+
     return NextResponse.json({ message: 'Patient deleted successfully' });
   } catch (error) {
+    if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('Forbidden'))) {
+      return handleAuthError(error);
+    }
     console.error('Error deleting patient:', error);
     return NextResponse.json(
       { error: 'Failed to delete patient' },

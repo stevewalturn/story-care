@@ -6,11 +6,13 @@ import { useRouter } from 'next/navigation';
 import {
   createContext,
   use,
+  useCallback,
   useEffect,
+  useRef,
   useState,
 
 } from 'react';
-import { onAuthChange } from '@/libs/Firebase';
+import { auth, onAuthChange } from '@/libs/Firebase';
 
 type AuthContextType = {
   user: User | null;
@@ -38,6 +40,61 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // HIPAA COMPLIANCE: 15-minute idle timeout
+  const IDLE_TIMEOUT = 15 * 60 * 1000; // 15 minutes in milliseconds
+
+  const handleSignOut = useCallback(async () => {
+    try {
+      await auth.signOut();
+      await fetch('/api/auth/session', { method: 'DELETE' });
+      router.push('/sign-in');
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  }, [router]);
+
+  const resetIdleTimer = useCallback(() => {
+    // Clear existing timer
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+    }
+
+    // Only set timer if user is authenticated
+    if (user) {
+      idleTimerRef.current = setTimeout(() => {
+        console.log('Session timed out due to inactivity');
+        handleSignOut();
+      }, IDLE_TIMEOUT);
+    }
+  }, [user, handleSignOut, IDLE_TIMEOUT]);
+
+  // Set up idle timeout monitoring
+  useEffect(() => {
+    if (!user) return;
+
+    // Events that indicate user activity
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+
+    // Reset timer on any user activity
+    events.forEach(event => {
+      window.addEventListener(event, resetIdleTimer);
+    });
+
+    // Start the timer
+    resetIdleTimer();
+
+    // Cleanup
+    return () => {
+      events.forEach(event => {
+        window.removeEventListener(event, resetIdleTimer);
+      });
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+      }
+    };
+  }, [user, resetIdleTimer]);
 
   useEffect(() => {
     const unsubscribe = onAuthChange(async (authUser) => {

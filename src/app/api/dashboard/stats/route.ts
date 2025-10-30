@@ -7,16 +7,26 @@ import {
   surveyResponsesSchema
 } from '@/models/Schema';
 import { eq, and, count } from 'drizzle-orm';
+import { requireAuth, handleAuthError } from '@/utils/AuthHelpers';
+import { logAudit, getClientInfo } from '@/libs/AuditLogger';
 
 // GET /api/dashboard/stats - Get dashboard statistics
 export async function GET(request: NextRequest) {
   try {
+    // Require authentication
+    const user = await requireAuth(request);
+
     const { searchParams } = new URL(request.url);
     const therapistFirebaseUid = searchParams.get('therapistId');
 
     // Convert Firebase UID to database UUID if provided
     let therapistDbId: string | null = null;
-    if (therapistFirebaseUid) {
+
+    // For therapists: only show their own stats
+    // For admins: can view any therapist's stats
+    if (user.role === 'therapist') {
+      therapistDbId = user.dbUserId;
+    } else if (user.role === 'admin' && therapistFirebaseUid) {
       const [therapist] = await db
         .select({ id: users.id })
         .from(users)
@@ -24,6 +34,12 @@ export async function GET(request: NextRequest) {
         .limit(1);
 
       therapistDbId = therapist?.id || null;
+    } else if (user.role === 'patient') {
+      // Patients cannot access dashboard stats
+      return NextResponse.json(
+        { error: 'Forbidden: Patients cannot access dashboard stats' },
+        { status: 403 }
+      );
     }
 
     // Count active patients (patients with therapistId)
@@ -107,6 +123,16 @@ export async function GET(request: NextRequest) {
       writtenReflections = reflectionResponsesResult[0]?.count || 0;
     }
 
+    // Log dashboard access
+    await logAudit({
+      userId: user.uid,
+      action: 'read',
+      resourceType: 'user',
+      resourceId: 'stats',
+      ...getClientInfo(request),
+      metadata: { therapistId: therapistDbId },
+    });
+
     return NextResponse.json({
       activePatients,
       publishedPages,
@@ -114,6 +140,9 @@ export async function GET(request: NextRequest) {
       writtenReflections,
     });
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      return handleAuthError(error);
+    }
     console.error('Error fetching dashboard stats:', error);
     return NextResponse.json(
       { error: 'Failed to fetch dashboard stats' },

@@ -3,14 +3,21 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { mediaLibrary } from '@/models/Schema';
+import { requireMediaAccess } from '@/middleware/RBACMiddleware';
+import { logPHIAccess } from '@/libs/AuditLogger';
+import { handleAuthError } from '@/utils/AuthHelpers';
 
 // GET /api/media/[id]
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
+
+    // Verify user has access to this media
+    const user = await requireMediaAccess(request, id);
+
     const [media] = await db
       .select()
       .from(mediaLibrary)
@@ -24,8 +31,14 @@ export async function GET(
       );
     }
 
+    // Log PHI access
+    await logPHIAccess(user.uid, 'media', id, request);
+
     return NextResponse.json({ media });
   } catch (error) {
+    if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('Forbidden'))) {
+      return handleAuthError(error);
+    }
     console.error('Error fetching media:', error);
     return NextResponse.json(
       { error: 'Failed to fetch media' },
@@ -41,6 +54,10 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+
+    // Verify user has access to this media
+    const user = await requireMediaAccess(request, id);
+
     const body = await request.json();
     const { title, tags, thumbnailUrl } = body;
 
@@ -62,8 +79,17 @@ export async function PUT(
       );
     }
 
+    // Log PHI modification
+    const { logPHIUpdate } = await import('@/libs/AuditLogger');
+    await logPHIUpdate(user.uid, 'media', id, request, {
+      changedFields: ['title', 'tags', 'thumbnailUrl'],
+    });
+
     return NextResponse.json({ media: updatedMedia });
   } catch (error) {
+    if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('Forbidden'))) {
+      return handleAuthError(error);
+    }
     console.error('Error updating media:', error);
     return NextResponse.json(
       { error: 'Failed to update media' },
@@ -74,11 +100,15 @@ export async function PUT(
 
 // DELETE /api/media/[id]
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
+
+    // Verify user has access to this media
+    const user = await requireMediaAccess(request, id);
+
     const deletedMedia = await db
       .delete(mediaLibrary)
       .where(eq(mediaLibrary.id, id))
@@ -91,11 +121,21 @@ export async function DELETE(
       );
     }
 
+    // Log PHI deletion
+    const { logPHIDelete } = await import('@/libs/AuditLogger');
+    const mediaArray = deletedMedia as any[];
+    await logPHIDelete(user.uid, 'media', id, request, {
+      mediaType: mediaArray[0]?.mediaType,
+    });
+
     // TODO: Delete from GCS storage
     // await deleteFile(deletedMedia.storagePath);
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('Forbidden'))) {
+      return handleAuthError(error);
+    }
     console.error('Error deleting media:', error);
     return NextResponse.json(
       { error: 'Failed to delete media' },
