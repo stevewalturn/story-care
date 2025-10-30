@@ -40,8 +40,8 @@ export async function verifyIdToken(token: string) {
     const decodedToken = await adminAuth.verifyIdToken(token);
     return {
       uid: decodedToken.uid,
-      email: decodedToken.email,
-      emailVerified: decodedToken.email_verified,
+      email: decodedToken.email || null,
+      emailVerified: decodedToken.email_verified || false,
       role: decodedToken.role,
     };
   } catch (error) {

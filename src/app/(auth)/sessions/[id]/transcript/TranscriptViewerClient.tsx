@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { AnalyzeSelectionModal } from '@/components/sessions/AnalyzeSelectionModal';
 import { GenerateImageModal } from '@/components/sessions/GenerateImageModal';
 import { GenerateVideoModal } from '@/components/sessions/GenerateVideoModal';
+import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 
 type Utterance = {
   id: string;
@@ -23,6 +25,7 @@ type TranscriptViewerClientProps = {
 export function TranscriptViewerClient({
   sessionId,
 }: TranscriptViewerClientProps) {
+  const { user } = useAuth();
   const [utterances, setUtterances] = useState<Utterance[]>([]);
   const [audioUrl, setAudioUrl] = useState<string | undefined>();
   const [sessionTitle, setSessionTitle] = useState<string>('');
@@ -44,7 +47,7 @@ export function TranscriptViewerClient({
         setIsLoading(true);
 
         // Fetch session to get audio URL and title
-        const sessionResponse = await fetch(`/api/sessions/${sessionId}`);
+        const sessionResponse = await authenticatedFetch(`/api/sessions/${sessionId}`, user);
         if (!sessionResponse.ok) {
           throw new Error('Failed to fetch session');
         }
@@ -54,7 +57,7 @@ export function TranscriptViewerClient({
         setPatientName(sessionData.session.patient?.name || sessionData.session.group?.name || 'Unknown');
 
         // Fetch transcript and utterances
-        const transcriptResponse = await fetch(`/api/sessions/${sessionId}/transcript`);
+        const transcriptResponse = await authenticatedFetch(`/api/sessions/${sessionId}/transcript`, user);
         if (!transcriptResponse.ok) {
           throw new Error('Failed to fetch transcript');
         }
@@ -111,16 +114,12 @@ export function TranscriptViewerClient({
   // Handler for image generation
   const handleGenerateImage = async (prompt: string, useReference: boolean, referenceImageUrl?: string) => {
     try {
-      const response = await fetch('/api/ai/generate-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt,
-          sessionId,
-          useReference,
-          referenceImageUrl,
-          selectedText,
-        }),
+      const response = await authenticatedPost('/api/ai/generate-image', user, {
+        prompt,
+        sessionId,
+        useReference,
+        referenceImageUrl,
+        selectedText,
       });
 
       if (!response.ok) {
@@ -138,14 +137,10 @@ export function TranscriptViewerClient({
   // Handler for video generation
   const handleGenerateVideo = async (imageId: string, duration: number) => {
     try {
-      const response = await fetch('/api/ai/generate-video', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageId,
-          duration,
-          sessionId,
-        }),
+      const response = await authenticatedPost('/api/ai/generate-video', user, {
+        imageId,
+        duration,
+        sessionId,
       });
 
       if (!response.ok) {
@@ -227,6 +222,7 @@ export function TranscriptViewerClient({
             sessionId={sessionId}
             patientName={patientName}
             sessionTitle={sessionTitle}
+            user={user}
           />
         </div>
 
@@ -235,6 +231,7 @@ export function TranscriptViewerClient({
           <LibraryPanel
             sessionId={sessionId}
             patientName={patientName}
+            user={user}
           />
         </div>
       </div>
@@ -402,10 +399,12 @@ function AIAssistantPanel({
   sessionId,
   patientName,
   sessionTitle,
+  user,
 }: {
   sessionId: string;
   patientName: string;
   sessionTitle: string;
+  user: any;
 }) {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
@@ -418,7 +417,7 @@ function AIAssistantPanel({
     const loadChatHistory = async () => {
       try {
         _setIsLoadingHistory(true);
-        const response = await fetch(`/api/sessions/${sessionId}/chat`);
+        const response = await authenticatedFetch(`/api/sessions/${sessionId}/chat`, user);
 
         if (response.ok) {
           const data = await response.json();
@@ -436,7 +435,7 @@ function AIAssistantPanel({
     };
 
     loadChatHistory();
-  }, [sessionId]);
+  }, [sessionId, user]);
 
   const handleSendMessage = async (messageText?: string) => {
     const textToSend = messageText || prompt;
@@ -448,19 +447,12 @@ function AIAssistantPanel({
     setIsLoading(true);
 
     try {
-      // TODO: Get therapistId from auth context
-      const therapistId = 'temp-therapist-id'; // Placeholder until Firebase Auth is integrated
-
-      const response = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [...messages, userMessage],
-          context: transcriptContext,
-          sessionId,
-          therapistId,
-          selectedText: transcriptContext, // Pass selected text if any
-        }),
+      const response = await authenticatedPost('/api/ai/chat', user, {
+        messages: [...messages, userMessage],
+        context: transcriptContext,
+        sessionId,
+        therapistId: user?.uid || 'temp-therapist-id',
+        selectedText: transcriptContext, // Pass selected text if any
       });
 
       if (!response.ok) {
@@ -669,9 +661,11 @@ function AIAssistantPanel({
 function LibraryPanel({
   sessionId,
   patientName,
+  user,
 }: {
   sessionId: string;
   patientName: string;
+  user: any;
 }) {
   const [activeTab, setActiveTab] = useState<'media' | 'quotes' | 'notes' | 'profile'>('media');
   const [media, setMedia] = useState<any[]>([]);
@@ -698,7 +692,7 @@ function LibraryPanel({
           params.append('search', searchQuery);
         }
 
-        const response = await fetch(`/api/media?${params.toString()}`);
+        const response = await authenticatedFetch(`/api/media?${params.toString()}`, user);
 
         if (response.ok) {
           const data = await response.json();
@@ -714,7 +708,7 @@ function LibraryPanel({
     if (activeTab === 'media') {
       loadMedia();
     }
-  }, [sessionId, activeTab, filterType, searchQuery]);
+  }, [sessionId, activeTab, filterType, searchQuery, user]);
 
   // Load quotes for this session
   useEffect(() => {
@@ -729,7 +723,7 @@ function LibraryPanel({
           params.append('search', searchQuery);
         }
 
-        const response = await fetch(`/api/quotes?${params.toString()}`);
+        const response = await authenticatedFetch(`/api/quotes?${params.toString()}`, user);
 
         if (response.ok) {
           const data = await response.json();
@@ -745,7 +739,7 @@ function LibraryPanel({
     if (activeTab === 'quotes') {
       loadQuotes();
     }
-  }, [sessionId, activeTab, searchQuery]);
+  }, [sessionId, activeTab, searchQuery, user]);
 
   // Helper function to format date
   const formatDate = (dateString: string) => {

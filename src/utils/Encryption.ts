@@ -21,7 +21,6 @@ import crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16; // 128 bits
-const AUTH_TAG_LENGTH = 16; // 128 bits
 const KEY_LENGTH = 32; // 256 bits
 
 /**
@@ -127,6 +126,10 @@ export function decrypt(encryptedData: string): string {
 
     const [ivHex, authTagHex, ciphertext] = parts;
 
+    if (!ivHex || !authTagHex || !ciphertext) {
+      throw new Error('Invalid encrypted data format');
+    }
+
     // Convert from hex
     const iv = Buffer.from(ivHex, 'hex');
     const authTag = Buffer.from(authTagHex, 'hex');
@@ -138,8 +141,7 @@ export function decrypt(encryptedData: string): string {
     decipher.setAuthTag(authTag);
 
     // Decrypt the data
-    let decrypted = decipher.update(ciphertext, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
+    const decrypted = decipher.update(ciphertext, 'hex', 'utf8') + decipher.final('utf8');
 
     return decrypted;
   } catch (error) {
