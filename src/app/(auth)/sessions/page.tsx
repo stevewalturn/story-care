@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Search, Filter } from 'lucide-react';
+import type { SessionUploadData } from '@/components/sessions/UploadModal';
+import { Filter, Plus, Search } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { SessionCard } from '@/components/sessions/SessionCard';
+import { UploadModal } from '@/components/sessions/UploadModal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { SessionCard } from '@/components/sessions/SessionCard';
-import { UploadModal, type SessionUploadData } from '@/components/sessions/UploadModal';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface Session {
+type Session = {
   id: string;
   title: string;
   date: string;
@@ -16,7 +17,7 @@ interface Session {
   patientName?: string;
   groupName?: string;
   sessionCount?: number;
-}
+};
 
 export default function SessionsPage() {
   const { user } = useAuth();
@@ -33,7 +34,9 @@ export default function SessionsPage() {
   }, [user]);
 
   const fetchSessions = async () => {
-    if (!user?.uid) return;
+    if (!user?.uid) {
+      return;
+    }
 
     try {
       setIsLoading(true);
@@ -62,9 +65,9 @@ export default function SessionsPage() {
   const filteredSessions = sessions.filter((session) => {
     const searchLower = searchTerm.toLowerCase();
     return (
-      session.title.toLowerCase().includes(searchLower) ||
-      session.patientName?.toLowerCase().includes(searchLower) ||
-      session.groupName?.toLowerCase().includes(searchLower)
+      session.title.toLowerCase().includes(searchLower)
+      || session.patientName?.toLowerCase().includes(searchLower)
+      || session.groupName?.toLowerCase().includes(searchLower)
     );
   });
 
@@ -121,13 +124,36 @@ export default function SessionsPage() {
     }
   };
 
+  const handleDelete = async (sessionId: string) => {
+    if (!confirm('Are you sure you want to delete this session? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete session');
+      }
+
+      // Refresh sessions list
+      await fetchSessions();
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete session. Please try again.');
+    }
+  };
+
   return (
     <div className="p-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Sessions</h1>
-          <p className="text-gray-500 mt-1">
+          <p className="mt-1 text-gray-500">
             Upload and manage therapy session recordings
           </p>
         </div>
@@ -135,69 +161,74 @@ export default function SessionsPage() {
           variant="primary"
           onClick={() => setIsUploadModalOpen(true)}
         >
-          <Plus className="w-5 h-5 mr-2" />
+          <Plus className="mr-2 h-5 w-5" />
           New Session
         </Button>
       </div>
 
       {/* Search and Filters */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="mb-6 flex items-center gap-4">
         <div className="flex-1">
           <Input
             placeholder="Search sessions, patients, or groups..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            leftIcon={<Search className="w-4 h-4" />}
+            onChange={e => setSearchTerm(e.target.value)}
+            leftIcon={<Search className="h-4 w-4" />}
           />
         </div>
         <Button variant="secondary">
-          <Filter className="w-4 h-4 mr-2" />
+          <Filter className="mr-2 h-4 w-4" />
           Filters
         </Button>
       </div>
 
       {/* Session Grid */}
-      {isLoading ? (
-        <div className="text-center py-16">
-          <div className="w-16 h-16 mx-auto border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-gray-500">Loading sessions...</p>
-        </div>
-      ) : filteredSessions.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <Search className="w-8 h-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            {searchTerm ? 'No sessions found' : 'No sessions yet'}
-          </h3>
-          <p className="text-gray-500 mb-6">
-            {searchTerm
-              ? 'Try adjusting your search'
-              : 'Get started by uploading your first session'}
-          </p>
-          {!searchTerm && (
-            <Button
-              variant="primary"
-              onClick={() => setIsUploadModalOpen(true)}
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              Upload First Session
-            </Button>
-          )}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredSessions.map((session) => (
-            <SessionCard
-              key={session.id}
-              {...session}
-              onClick={() => {
-                window.location.href = `/sessions/${session.id}/transcript`;
-              }}
-            />
-          ))}
-        </div>
-      )}
+      {isLoading
+        ? (
+            <div className="py-16 text-center">
+              <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+              <p className="text-gray-500">Loading sessions...</p>
+            </div>
+          )
+        : filteredSessions.length === 0
+          ? (
+              <div className="py-16 text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+                  <Search className="h-8 w-8 text-gray-400" />
+                </div>
+                <h3 className="mb-2 text-lg font-semibold text-gray-900">
+                  {searchTerm ? 'No sessions found' : 'No sessions yet'}
+                </h3>
+                <p className="mb-6 text-gray-500">
+                  {searchTerm
+                    ? 'Try adjusting your search'
+                    : 'Get started by uploading your first session'}
+                </p>
+                {!searchTerm && (
+                  <Button
+                    variant="primary"
+                    onClick={() => setIsUploadModalOpen(true)}
+                  >
+                    <Plus className="mr-2 h-5 w-5" />
+                    Upload First Session
+                  </Button>
+                )}
+              </div>
+            )
+          : (
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {filteredSessions.map(session => (
+                  <SessionCard
+                    key={session.id}
+                    {...session}
+                    onClick={() => {
+                      window.location.href = `/sessions/${session.id}/transcript`;
+                    }}
+                    onDelete={() => handleDelete(session.id)}
+                  />
+                ))}
+              </div>
+            )}
 
       {/* Upload Modal */}
       <UploadModal

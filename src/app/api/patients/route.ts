@@ -9,12 +9,30 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
+    const therapistFirebaseUid = searchParams.get('therapistId');
 
     let query = db.select().from(users);
 
     const conditions = [eq(users.role, 'patient')];
+
     if (search) {
       conditions.push(like(users.name, `%${search}%`));
+    }
+
+    // Add therapist filtering
+    if (therapistFirebaseUid) {
+      const [therapist] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.firebaseUid, therapistFirebaseUid))
+        .limit(1);
+
+      if (therapist) {
+        conditions.push(eq(users.therapistId, therapist.id));
+      } else {
+        // Therapist not found, return empty array
+        return NextResponse.json({ patients: [] });
+      }
     }
 
     query = query.where(and(...conditions)) as any;
@@ -35,7 +53,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, email, phone, referenceImageUrl, notes: _notes } = body;
+    const {
+      name,
+      email,
+      referenceImageUrl,
+      therapistId: therapistFirebaseUid,
+    } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -44,14 +67,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Convert Firebase UID to database UUID
+    let therapistDbId = null;
+    if (therapistFirebaseUid) {
+      const [therapist] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.firebaseUid, therapistFirebaseUid))
+        .limit(1);
+
+      if (!therapist) {
+        return NextResponse.json(
+          { error: 'Therapist not found' },
+          { status: 404 },
+        );
+      }
+
+      therapistDbId = therapist.id;
+    }
+
     const patientResult = await db
       .insert(users)
       .values({
         name,
         email: email || null,
-        phone: phone || null,
         avatarUrl: referenceImageUrl || null,
         role: 'patient',
+        therapistId: therapistDbId,
       })
       .returning();
 

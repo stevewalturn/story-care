@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AIAssistant } from '@/components/sessions/AIAssistant';
 import { TranscriptViewer } from '@/components/sessions/TranscriptViewer';
 import { Modal } from '@/components/ui/Modal';
@@ -28,90 +28,55 @@ export function TranscriptViewerClient({
     text: string;
     utteranceIds: string[];
   } | null>(null);
+  const [utterances, setUtterances] = useState<Utterance[]>([]);
+  const [audioUrl, setAudioUrl] = useState<string | undefined>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data - In real implementation, this would come from API
-  const mockUtterances: Utterance[] = [
-    {
-      id: '1',
-      speakerId: 'spk1',
-      speakerName: 'Dr. Sarah',
-      speakerType: 'therapist',
-      text: 'Good morning. How have you been feeling since our last session?',
-      startTime: 0,
-      endTime: 5,
-      confidence: 0.95,
-    },
-    {
-      id: '2',
-      speakerId: 'spk2',
-      speakerName: 'Emma',
-      speakerType: 'patient',
-      text: 'I\'ve been reflecting a lot on what we discussed. It\'s been challenging but also enlightening.',
-      startTime: 6,
-      endTime: 12,
-      confidence: 0.92,
-    },
-    {
-      id: '3',
-      speakerId: 'spk1',
-      speakerName: 'Dr. Sarah',
-      speakerType: 'therapist',
-      text: 'That\'s wonderful to hear. Can you tell me more about what felt enlightening?',
-      startTime: 13,
-      endTime: 18,
-      confidence: 0.94,
-    },
-    {
-      id: '4',
-      speakerId: 'spk2',
-      speakerName: 'Emma',
-      speakerType: 'patient',
-      text: 'I started writing down my thoughts each day, like you suggested. And I noticed patterns in how I respond to stress. It\'s like I\'m finally seeing myself from the outside.',
-      startTime: 19,
-      endTime: 30,
-      confidence: 0.91,
-    },
-    {
-      id: '5',
-      speakerId: 'spk1',
-      speakerName: 'Dr. Sarah',
-      speakerType: 'therapist',
-      text: 'That\'s a significant insight. When you say you\'re seeing yourself from the outside, what does that perspective reveal?',
-      startTime: 31,
-      endTime: 39,
-      confidence: 0.96,
-    },
-    {
-      id: '6',
-      speakerId: 'spk2',
-      speakerName: 'Emma',
-      speakerType: 'patient',
-      text: 'It reveals that I\'m stronger than I thought. That even in difficult moments, there\'s a part of me that knows how to cope. It\'s just about learning to trust that part more.',
-      startTime: 40,
-      endTime: 52,
-      confidence: 0.93,
-    },
-    {
-      id: '7',
-      speakerId: 'spk1',
-      speakerName: 'Dr. Sarah',
-      speakerType: 'therapist',
-      text: 'That\'s beautiful, Emma. You\'re describing a really important shift in your narrative. Tell me more about that stronger part of yourself.',
-      startTime: 53,
-      endTime: 62,
-      confidence: 0.95,
-    },
-    {
-      id: '8',
-      speakerId: 'spk2',
-      speakerName: 'Emma',
-      speakerType: 'patient',
-      text: 'Well, it\'s the part that got me through last year when everything felt impossible. The part that kept showing up, even when I didn\'t feel like it. I think I\'ve been so focused on what went wrong that I forgot about all the small victories.',
-      startTime: 63,
-      endTime: 80,
-      confidence: 0.90,
-    },
-  ];
+  // Fetch session and transcript data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+
+        // Fetch session to get audio URL
+        const sessionResponse = await fetch(`/api/sessions/${sessionId}`);
+        if (!sessionResponse.ok) {
+          throw new Error('Failed to fetch session');
+        }
+        const sessionData = await sessionResponse.json();
+        setAudioUrl(sessionData.session.audioUrl);
+
+        // Fetch transcript and utterances
+        const transcriptResponse = await fetch(`/api/sessions/${sessionId}/transcript`);
+        if (!transcriptResponse.ok) {
+          throw new Error('Failed to fetch transcript');
+        }
+        const transcriptData = await transcriptResponse.json();
+
+        // Transform API data to match component interface
+        const transformedUtterances: Utterance[] = transcriptData.utterances.map((u: any) => ({
+          id: u.id,
+          speakerId: u.speakerId,
+          speakerName: u.speaker?.speakerName || u.speaker?.speakerLabel || 'Unknown',
+          speakerType: u.speaker?.speakerType || 'patient',
+          text: u.text,
+          startTime: parseFloat(u.startTimeSeconds || '0'),
+          endTime: parseFloat(u.endTimeSeconds || '0'),
+          confidence: parseFloat(u.confidenceScore || '1'),
+        }));
+
+        setUtterances(transformedUtterances);
+      } catch (err) {
+        console.error('Error fetching transcript:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load transcript');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [sessionId]);
 
   const handleTextSelect = (text: string, utteranceIds: string[]) => {
     setSelectedContext({ text, utteranceIds });

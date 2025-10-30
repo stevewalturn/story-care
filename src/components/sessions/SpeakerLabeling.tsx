@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Play, Pause, User, Users } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -24,7 +24,7 @@ interface SpeakerLabelingProps {
 }
 
 export function SpeakerLabeling({
-  sessionId: _sessionId,
+  sessionId,
   speakers: initialSpeakers,
   onSave,
   onCancel,
@@ -33,6 +33,8 @@ export function SpeakerLabeling({
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [mergeMode, setMergeMode] = useState(false);
   const [selectedForMerge, setSelectedForMerge] = useState<string[]>([]);
+  const [loadingAudio, setLoadingAudio] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const speakerTypeOptions = [
     { value: 'therapist', label: 'Therapist' },
@@ -56,15 +58,79 @@ export function SpeakerLabeling({
     );
   };
 
-  const handlePlayPause = (speakerId: string) => {
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  const handlePlayPause = async (speakerId: string, audioUrl?: string) => {
     if (playingId === speakerId) {
-      // Pause - In real implementation, pause audio
+      // Pause current audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
       setPlayingId(null);
-    } else {
-      // Play - In real implementation, play audio
+      return;
+    }
+
+    if (!audioUrl) {
+      // Generate sample audio URL from API if not provided
+      try {
+        setLoadingAudio(speakerId);
+        const response = await fetch(`/api/sessions/${sessionId}/speakers/${speakerId}/audio`);
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch audio sample');
+        }
+
+        const data = await response.json();
+        audioUrl = data.audioUrl;
+
+        // Update speaker with audio URL for future plays
+        setSpeakers(prev =>
+          prev.map(s => s.id === speakerId ? { ...s, sampleAudioUrl: audioUrl } : s)
+        );
+      } catch (error) {
+        console.error('Error fetching audio sample:', error);
+        alert('Failed to load audio sample. Please try again.');
+        setLoadingAudio(null);
+        return;
+      } finally {
+        setLoadingAudio(null);
+      }
+    }
+
+    // Stop any currently playing audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+
+    // Create and play new audio
+    const audio = new Audio(audioUrl);
+    audioRef.current = audio;
+
+    audio.addEventListener('ended', () => {
+      setPlayingId(null);
+    });
+
+    audio.addEventListener('error', () => {
+      console.error('Error playing audio');
+      alert('Failed to play audio sample. The file may be corrupted or unavailable.');
+      setPlayingId(null);
+    });
+
+    try {
+      await audio.play();
       setPlayingId(speakerId);
-      // Simulate audio ending after 3 seconds
-      setTimeout(() => setPlayingId(null), 3000);
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      alert('Failed to play audio. Please try again.');
+      setPlayingId(null);
     }
   };
 
@@ -200,12 +266,18 @@ export function SpeakerLabeling({
                 </div>
 
                 {/* Play Sample Button */}
-                {speaker.sampleAudioUrl && !mergeMode && (
+                {!mergeMode && (
                   <Button
                     variant="icon"
-                    onClick={() => handlePlayPause(speaker.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePlayPause(speaker.id, speaker.sampleAudioUrl);
+                    }}
+                    disabled={loadingAudio === speaker.id}
                   >
-                    {playingId === speaker.id ? (
+                    {loadingAudio === speaker.id ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" />
+                    ) : playingId === speaker.id ? (
                       <Pause className="w-4 h-4" />
                     ) : (
                       <Play className="w-4 h-4" />

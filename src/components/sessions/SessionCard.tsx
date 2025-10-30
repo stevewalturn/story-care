@@ -1,4 +1,4 @@
-import { Calendar, Folder, User, Users } from 'lucide-react';
+import { Calendar, Folder, Trash2, User, Users } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 
 type SessionCardProps = {
@@ -10,6 +10,7 @@ type SessionCardProps = {
   groupName?: string;
   sessionCount?: number;
   onClick?: () => void;
+  onDelete?: () => void;
 };
 
 export function SessionCard({
@@ -20,7 +21,15 @@ export function SessionCard({
   groupName,
   sessionCount,
   onClick,
+  onDelete,
 }: SessionCardProps) {
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    if (onDelete) {
+      onDelete();
+    }
+  };
+
   return (
     <Card hover onClick={onClick}>
       <div className="p-6">
@@ -38,9 +47,20 @@ export function SessionCard({
 
           {/* Content */}
           <div className="min-w-0 flex-1">
-            <h3 className="truncate text-base font-semibold text-gray-900">
-              {patientName || groupName}
-            </h3>
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="truncate text-base font-semibold text-gray-900">
+                {patientName || groupName}
+              </h3>
+              {onDelete && (
+                <button
+                  onClick={handleDelete}
+                  className="flex-shrink-0 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                  title="Delete session"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
             <p className="mt-1 text-sm text-gray-500">
               {sessionCount}
               {' '}

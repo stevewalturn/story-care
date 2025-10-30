@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 type UploadModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onUpload: (data: SessionUploadData) => void;
+  onUpload: (data: SessionUploadData) => Promise<void>;
 };
 
 export type SessionUploadData = {
@@ -42,6 +42,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch patients and groups when modal opens
   useEffect(() => {
@@ -160,12 +161,21 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.audioFile || !formData.title) {
       return;
     }
-    onUpload(formData);
-    onClose();
+
+    try {
+      setIsSubmitting(true);
+      // Don't close modal yet - let parent handle it after successful upload
+      await onUpload(formData);
+    } catch (error) {
+      console.error('Error submitting session:', error);
+      // Error is already handled in parent, just reset submitting state
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const canSubmit
@@ -173,6 +183,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       && formData.audioFile
       && formData.audioUrl
       && !uploadingFile
+      && !isSubmitting
       && ((formData.sessionType === 'individual' && formData.patientId)
         || (formData.sessionType === 'group' && formData.groupId));
 
@@ -193,7 +204,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
             onClick={handleSubmit}
             disabled={!canSubmit}
           >
-            Continue to Speaker Labeling
+            {isSubmitting ? 'Creating Session...' : 'Continue to Speaker Labeling'}
           </Button>
         </>
       )}
@@ -268,7 +279,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
               relative rounded-xl border-2 border-dashed p-12 text-center transition-colors
               ${dragActive ? 'border-indigo-600 bg-indigo-50' : 'border-gray-300 bg-gray-50'}
               ${formData.audioFile ? 'border-green-300 bg-green-50' : ''}
-              ${uploadingFile ? 'border-indigo-300 bg-indigo-50 cursor-wait' : ''}
+              ${uploadingFile ? 'cursor-wait border-indigo-300 bg-indigo-50' : ''}
             `}
           >
             <input
@@ -283,19 +294,20 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
               ? (
                   <div className="space-y-3">
                     <div className="mx-auto flex h-12 w-12 items-center justify-center">
-                      <div className="h-12 w-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                      <div className="h-12 w-12 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900">
                         Uploading file...
                       </p>
                       <p className="mt-1 text-xs text-gray-500">
-                        {uploadProgress}% complete
+                        {uploadProgress}
+                        % complete
                       </p>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="h-2 w-full rounded-full bg-gray-200">
                       <div
-                        className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                        className="h-2 rounded-full bg-indigo-600 transition-all duration-300"
                         style={{ width: `${uploadProgress}%` }}
                       />
                     </div>
