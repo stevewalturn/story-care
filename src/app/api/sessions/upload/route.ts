@@ -1,15 +1,38 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import { logPHICreate } from '@/libs/AuditLogger';
 import { uploadFile } from '@/libs/GCS';
+import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
+import { checkRateLimit, getClientIP, uploadRateLimit } from '@/utils/RateLimiter';
 
 // POST /api/sessions/upload - Upload audio file to GCS
-// Note: Body parser is automatically disabled for FormData in App Router
+// HIPAA COMPLIANCE: Requires authentication, rate limiting, and audit logging
+// CRITICAL: This endpoint handles PHI (patient audio recordings)
 export async function POST(request: NextRequest) {
   try {
+    // 1. RATE LIMITING: Prevent upload abuse (10 uploads per hour)
+    const clientIP = getClientIP(request);
+    const rateLimitResult = checkRateLimit(`upload:${clientIP}`, uploadRateLimit);
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Too many upload attempts. Please try again later.',
+          retryAfter: Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000),
+        },
+        { status: 429 },
+      );
+    }
+
+    // 2. AUTHENTICATION: Verify user is a therapist or admin
+    const user = await requireTherapist(request);
+
+    // 3. VALIDATE FILE SIZE
     const contentLength = request.headers.get('content-length');
     const maxSize = 500 * 1024 * 1024; // 500MB
 
     // Check content length before parsing
-    if (contentLength && parseInt(contentLength, 10) > maxSize) {
+    if (contentLength && Number.parseInt(contentLength, 10) > maxSize) {
       return NextResponse.json(
         { error: 'File too large. Maximum size is 500MB.' },
         { status: 413 },
@@ -52,13 +75,21 @@ export async function POST(request: NextRequest) {
 
     // Convert file to buffer
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const buffer = require('buffer').Buffer.from(arrayBuffer);
 
-    // Upload to GCS
+    // 4. UPLOAD TO GCS (PHI storage)
     const { url, path } = await uploadFile(buffer, file.name, {
       folder: 'sessions/audio',
       contentType: file.type || 'audio/mpeg',
-      makePublic: false,
+      makePublic: false, // HIPAA: Never make PHI files public
+    });
+
+    // 5. AUDIT LOG: Record PHI file upload
+    await logPHICreate(user.uid, 'media', path, request, {
+      fileName: file.name,
+      fileSize: file.size,
+      contentType: file.type,
+      uploadType: 'session_audio',
     });
 
     return NextResponse.json({
@@ -70,10 +101,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error uploading file:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to upload file';
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 },
-    );
+    return handleAuthError(error);
   }
 }

@@ -1,7 +1,6 @@
 import type { NextRequest } from 'next/server';
-import { detectBot } from '@arcjet/next';
 import { NextResponse } from 'next/server';
-import arcjet from '@/libs/Arcjet';
+import { verifyIdToken } from '@/libs/FirebaseAdmin';
 
 // Protected routes that require authentication
 const protectedRoutes = [
@@ -29,32 +28,8 @@ function isAuthPage(pathname: string): boolean {
   return authPages.some(page => pathname.startsWith(page));
 }
 
-// Improve security with Arcjet
-const aj = arcjet.withRule(
-  detectBot({
-    mode: 'LIVE',
-    // Block all bots except the following
-    allow: [
-      // See https://docs.arcjet.com/bot-protection/identifying-bots
-      'CATEGORY:SEARCH_ENGINE', // Allow search engines
-      'CATEGORY:PREVIEW', // Allow preview links to show OG images
-      'CATEGORY:MONITOR', // Allow uptime monitoring services
-    ],
-  }),
-);
-
 export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
-  // Verify the request with Arcjet
-  // Use `process.env` instead of Env to reduce bundle size in middleware
-  if (process.env.ARCJET_KEY) {
-    const decision = await aj.protect(request);
-
-    if (decision.isDenied()) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-  }
 
   // Check if the route is protected
   if (isProtectedRoute(pathname)) {
@@ -68,10 +43,18 @@ export default async function middleware(request: NextRequest) {
       return NextResponse.redirect(signInUrl);
     }
 
-    // Session cookie is set by /api/auth/session endpoint
-    // The cookie contains the Firebase ID token
-    // In production with more traffic, verify the token with Firebase Admin SDK
-    // to prevent unauthorized access with expired or invalid tokens
+    // HIPAA COMPLIANCE: Verify token is valid, not expired, and not revoked
+    try {
+      await verifyIdToken(sessionToken);
+      // Token is valid, allow access
+    } catch (error) {
+      // Token is expired, invalid, or revoked - force re-authentication
+      console.error('Invalid session token:', error);
+      const response = NextResponse.redirect(new URL('/sign-in', request.url));
+      // Delete the invalid session cookie
+      response.cookies.delete('session');
+      return response;
+    }
   }
 
   // If user is authenticated and trying to access auth pages, redirect to dashboard
@@ -83,7 +66,53 @@ export default async function middleware(request: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  // Add HIPAA-compliant security headers to all responses
+  const response = NextResponse.next();
+
+  // Prevent clickjacking attacks
+  response.headers.set('X-Frame-Options', 'DENY');
+
+  // Prevent MIME type sniffing
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+
+  // Force HTTPS connections (HSTS)
+  response.headers.set(
+    'Strict-Transport-Security',
+    'max-age=31536000; includeSubDomains; preload',
+  );
+
+  // Content Security Policy - Prevent XSS attacks
+  response.headers.set(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://*.firebaseapp.com https://*.googleapis.com",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https: blob:",
+      "font-src 'self' data:",
+      "connect-src 'self' https://*.firebaseapp.com https://*.googleapis.com https://*.deepgram.com https://api.openai.com https://storage.googleapis.com",
+      "media-src 'self' https://storage.googleapis.com blob:",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+      'upgrade-insecure-requests',
+    ].join('; '),
+  );
+
+  // Permissions Policy - Restrict browser features
+  response.headers.set(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+  );
+
+  // Referrer Policy - Control referrer information
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+  // Remove server information
+  response.headers.delete('X-Powered-By');
+
+  return response;
 }
 
 export const config = {
