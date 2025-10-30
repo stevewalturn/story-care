@@ -89,9 +89,8 @@ For each file in `src/app/[locale]/(auth)/**/*.tsx`:
 
 **Remove these imports:**
 ```typescript
-import { setRequestLocale } from 'next-intl/server';
-import { getTranslations } from 'next-intl/server';
 import { useTranslations } from 'next-intl';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 ```
 
 **Remove locale parameter:**
@@ -159,7 +158,7 @@ export async function POST(request: Request) {
   }
 
   const token = authHeader.substring(7);
-  
+
   try {
     const user = await verifyIdToken(token);
     // Your logic here
@@ -180,7 +179,7 @@ Make sure it uses Firebase instead of Clerk:
 
 ### Step 8: Update Sign In/Sign Up Pages
 
-**Files:** 
+**Files:**
 - `src/app/sign-in/page.tsx`
 - `src/app/sign-up/page.tsx`
 

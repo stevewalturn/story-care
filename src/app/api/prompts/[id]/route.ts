@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { therapeuticPrompts } from '@/models/Schema';
-import { eq } from 'drizzle-orm';
 
 // PUT /api/prompts/[id]
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -30,7 +31,7 @@ export async function PUT(
     if (!updatedPrompt) {
       return NextResponse.json(
         { error: 'Prompt not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -39,7 +40,7 @@ export async function PUT(
     console.error('Error updating prompt:', error);
     return NextResponse.json(
       { error: 'Failed to update prompt' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -47,7 +48,7 @@ export async function PUT(
 // DELETE /api/prompts/[id]
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -59,7 +60,7 @@ export async function DELETE(
     if (!deletedPrompt) {
       return NextResponse.json(
         { error: 'Prompt not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -68,7 +69,7 @@ export async function DELETE(
     console.error('Error deleting prompt:', error);
     return NextResponse.json(
       { error: 'Failed to delete prompt' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,21 +1,21 @@
 'use client';
 
+import { Check, Film, Loader2, X } from 'lucide-react';
 import { useState } from 'react';
-import { X, Film, Loader2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
-interface Patient {
+type Patient = {
   id: string;
   name: string;
   avatarUrl?: string;
-}
+};
 
-interface GenerateVideoModalProps {
+type GenerateVideoModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onGenerate: (videoUrl: string, prompt: string) => void;
   patients?: Patient[];
-}
+};
 
 const VIDEO_DURATIONS = [
   { id: '5', label: '5 seconds', desc: 'Quick animation' },
@@ -78,7 +78,7 @@ export function GenerateVideoModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt,
-          duration: parseInt(duration),
+          duration: Number.parseInt(duration),
           style,
           motion,
         }),
@@ -116,16 +116,18 @@ export function GenerateVideoModal({
     onClose();
   };
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+    <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black p-4">
+      <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between border-b border-gray-200 p-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-              <Film className="w-5 h-5 text-white" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-600">
+              <Film className="h-5 w-5 text-white" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900">Generate Video</h2>
@@ -134,13 +136,13 @@ export function GenerateVideoModal({
           </div>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 transition-colors hover:text-gray-600"
           >
-            <X className="w-6 h-6" />
+            <X className="h-6 w-6" />
           </button>
         </div>
 
-        <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-2">
           {/* Left Column - Configuration */}
           <div className="space-y-6">
             {/* Prompt */}
@@ -150,14 +152,18 @@ export function GenerateVideoModal({
               </label>
               <textarea
                 value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
+                onChange={e => setPrompt(e.target.value)}
                 placeholder="A person walking through a peaceful forest path, sunlight filtering through trees..."
-                className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                className="h-32 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 maxLength={2000}
               />
               <div className="flex items-center justify-between text-xs text-gray-500">
                 <span>Describe movement, transitions, and atmosphere</span>
-                <span>{prompt.length} / 2000</span>
+                <span>
+                  {prompt.length}
+                  {' '}
+                  / 2000
+                </span>
               </div>
             </div>
 
@@ -167,19 +173,19 @@ export function GenerateVideoModal({
                 Duration
               </label>
               <div className="grid grid-cols-3 gap-2">
-                {VIDEO_DURATIONS.map((dur) => (
+                {VIDEO_DURATIONS.map(dur => (
                   <button
                     key={dur.id}
                     type="button"
                     onClick={() => setDuration(dur.id)}
-                    className={`p-3 rounded-lg border-2 text-center transition-all ${
+                    className={`rounded-lg border-2 p-3 text-center transition-all ${
                       duration === dur.id
                         ? 'border-indigo-500 bg-indigo-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
                     <div className="text-sm font-medium text-gray-900">{dur.label}</div>
-                    <div className="text-xs text-gray-600 mt-1">{dur.desc}</div>
+                    <div className="mt-1 text-xs text-gray-600">{dur.desc}</div>
                   </button>
                 ))}
               </div>
@@ -191,12 +197,12 @@ export function GenerateVideoModal({
                 Visual Style
               </label>
               <div className="space-y-2">
-                {VIDEO_STYLES.map((s) => (
+                {VIDEO_STYLES.map(s => (
                   <button
                     key={s.id}
                     type="button"
                     onClick={() => setStyle(s.id)}
-                    className={`w-full p-3 rounded-lg border-2 text-left transition-all ${
+                    className={`w-full rounded-lg border-2 p-3 text-left transition-all ${
                       style === s.id
                         ? 'border-indigo-500 bg-indigo-50'
                         : 'border-gray-200 hover:border-gray-300'
@@ -215,34 +221,36 @@ export function GenerateVideoModal({
                 Motion Speed
               </label>
               <div className="grid grid-cols-3 gap-2">
-                {MOTION_TYPES.map((m) => (
+                {MOTION_TYPES.map(m => (
                   <button
                     key={m.id}
                     type="button"
                     onClick={() => setMotion(m.id)}
-                    className={`p-3 rounded-lg border-2 text-center transition-all ${
+                    className={`rounded-lg border-2 p-3 text-center transition-all ${
                       motion === m.id
                         ? 'border-indigo-500 bg-indigo-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
                     <div className="text-sm font-medium text-gray-900">{m.label}</div>
-                    <div className="text-xs text-gray-600 mt-1">{m.description}</div>
+                    <div className="mt-1 text-xs text-gray-600">{m.description}</div>
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Info Box */}
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
               <p className="text-sm text-blue-800">
-                <strong>Note:</strong> Video generation typically takes 2-5 minutes depending on duration and complexity. You'll be notified when it's ready.
+                <strong>Note:</strong>
+                {' '}
+                Video generation typically takes 2-5 minutes depending on duration and complexity. You'll be notified when it's ready.
               </p>
             </div>
 
             {/* Error */}
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3">
                 <p className="text-sm text-red-800">{error}</p>
               </div>
             )}
@@ -254,29 +262,34 @@ export function GenerateVideoModal({
               variant="primary"
               className="w-full"
             >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Generating... {progress}%
-                </>
-              ) : (
-                <>
-                  <Film className="w-4 h-4 mr-2" />
-                  Generate Video
-                </>
-              )}
+              {isGenerating
+                ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                      {' '}
+                      {progress}
+                      %
+                    </>
+                  )
+                : (
+                    <>
+                      <Film className="mr-2 h-4 w-4" />
+                      Generate Video
+                    </>
+                  )}
             </Button>
 
             {/* Progress Bar */}
             {isGenerating && (
               <div className="space-y-2">
-                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
                   <div
-                    className="bg-indigo-600 h-2 transition-all duration-500"
+                    className="h-2 bg-indigo-600 transition-all duration-500"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
-                <p className="text-xs text-gray-600 text-center">
+                <p className="text-center text-xs text-gray-600">
                   This may take a few minutes...
                 </p>
               </div>
@@ -288,42 +301,49 @@ export function GenerateVideoModal({
             <label className="block text-sm font-medium text-gray-700">
               Preview
             </label>
-            <div className="aspect-video rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 overflow-hidden">
-              {isGenerating ? (
-                <div className="text-center p-8">
-                  <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mx-auto mb-4" />
-                  <p className="text-sm text-gray-600 mb-2">Generating your video...</p>
-                  <div className="w-48 bg-gray-200 rounded-full h-2 mx-auto overflow-hidden">
-                    <div
-                      className="bg-indigo-600 h-2 transition-all duration-500"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">{progress}% complete</p>
-                </div>
-              ) : generatedVideo ? (
-                <video
-                  src={generatedVideo}
-                  controls
-                  className="w-full h-full object-contain"
-                >
-                  Your browser does not support video playback.
-                </video>
-              ) : (
-                <div className="text-center p-8">
-                  <Film className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-sm text-gray-600 mb-2">No video generated yet</p>
-                  <p className="text-xs text-gray-500">
-                    Configure your settings and click Generate
-                  </p>
-                </div>
-              )}
+            <div className="flex aspect-video items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-gray-50">
+              {isGenerating
+                ? (
+                    <div className="p-8 text-center">
+                      <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-indigo-600" />
+                      <p className="mb-2 text-sm text-gray-600">Generating your video...</p>
+                      <div className="mx-auto h-2 w-48 overflow-hidden rounded-full bg-gray-200">
+                        <div
+                          className="h-2 bg-indigo-600 transition-all duration-500"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                      <p className="mt-2 text-xs text-gray-500">
+                        {progress}
+                        % complete
+                      </p>
+                    </div>
+                  )
+                : generatedVideo
+                  ? (
+                      <video
+                        src={generatedVideo}
+                        controls
+                        className="h-full w-full object-contain"
+                      >
+                        Your browser does not support video playback.
+                      </video>
+                    )
+                  : (
+                      <div className="p-8 text-center">
+                        <Film className="mx-auto mb-4 h-16 w-16 text-gray-400" />
+                        <p className="mb-2 text-sm text-gray-600">No video generated yet</p>
+                        <p className="text-xs text-gray-500">
+                          Configure your settings and click Generate
+                        </p>
+                      </div>
+                    )}
             </div>
 
             {generatedVideo && (
               <div className="space-y-3">
                 <Button onClick={handleSave} variant="primary" className="w-full">
-                  <Check className="w-4 h-4 mr-2" />
+                  <Check className="mr-2 h-4 w-4" />
                   Save to Library
                 </Button>
                 <Button

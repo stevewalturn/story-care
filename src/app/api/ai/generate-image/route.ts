@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { generateImage, generateImagePrompt } from '@/libs/OpenAI';
-import { uploadFile } from '@/libs/GCS';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
+import { uploadFile } from '@/libs/GCS';
+import { generateImage, generateImagePrompt } from '@/libs/OpenAI';
 import { mediaLibrary } from '@/models/Schema';
 
 // POST /api/ai/generate-image - Generate image with DALL-E

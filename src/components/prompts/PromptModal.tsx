@@ -1,11 +1,11 @@
 'use client';
 
+import { Plus, Star, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
-import { X, Plus, Trash2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
-interface Prompt {
+type Prompt = {
   id?: string;
   title: string;
   description: string;
@@ -13,14 +13,14 @@ interface Prompt {
   category: string;
   tags: string[];
   isFavorite?: boolean;
-}
+};
 
-interface PromptModalProps {
+type PromptModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onSave: (prompt: Prompt) => void;
   prompt?: Prompt;
-}
+};
 
 const CATEGORIES = [
   { id: 'visualization', label: 'Visualization' },
@@ -40,7 +40,7 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
       category: 'visualization',
       tags: [],
       isFavorite: false,
-    }
+    },
   );
   const [tagInput, setTagInput] = useState('');
 
@@ -57,7 +57,7 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
   const handleRemoveTag = (tagToRemove: string) => {
     setFormData({
       ...formData,
-      tags: formData.tags.filter((tag) => tag !== tagToRemove),
+      tags: formData.tags.filter(tag => tag !== tagToRemove),
     });
   };
 
@@ -67,31 +67,33 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
     onClose();
   };
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+    <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black p-4">
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between border-b border-gray-200 p-6">
           <h2 className="text-2xl font-bold text-gray-900">
             {prompt ? 'Edit Prompt' : 'Create New Prompt'}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 transition-colors hover:text-gray-600"
           >
-            <X className="w-6 h-6" />
+            <X className="h-6 w-6" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 p-6">
           {/* Title */}
           <Input
             label="Prompt Title *"
             value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            onChange={e => setFormData({ ...formData, title: e.target.value })}
             placeholder="e.g., Peaceful Mountain Sanctuary"
             required
           />
@@ -103,9 +105,9 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
             </label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={e => setFormData({ ...formData, description: e.target.value })}
               placeholder="A brief description of what this prompt creates..."
-              className="w-full h-20 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+              className="h-20 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               required
             />
           </div>
@@ -117,9 +119,9 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
             </label>
             <textarea
               value={formData.promptText}
-              onChange={(e) => setFormData({ ...formData, promptText: e.target.value })}
+              onChange={e => setFormData({ ...formData, promptText: e.target.value })}
               placeholder="The detailed AI prompt that will be used to generate images..."
-              className="w-full h-40 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+              className="h-40 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               required
             />
             <p className="text-xs text-gray-500">
@@ -134,11 +136,11 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
             </label>
             <select
               value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              onChange={e => setFormData({ ...formData, category: e.target.value })}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               required
             >
-              {CATEGORIES.map((category) => (
+              {CATEGORIES.map(category => (
                 <option key={category.id} value={category.id}>
                   {category.label}
                 </option>
@@ -152,7 +154,7 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
             <div className="flex gap-2">
               <Input
                 value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
+                onChange={e => setTagInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
@@ -162,23 +164,24 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
                 placeholder="Add tags (press Enter)"
               />
               <Button type="button" variant="secondary" onClick={handleAddTag}>
-                <Plus className="w-4 h-4" />
+                <Plus className="h-4 w-4" />
               </Button>
             </div>
             {formData.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
-                {formData.tags.map((tag) => (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {formData.tags.map(tag => (
                   <span
                     key={tag}
-                    className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm"
+                    className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1 text-sm text-indigo-700"
                   >
-                    #{tag}
+                    #
+                    {tag}
                     <button
                       type="button"
                       onClick={() => handleRemoveTag(tag)}
                       className="hover:text-indigo-900"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="h-3 w-3" />
                     </button>
                   </span>
                 ))}
@@ -192,17 +195,17 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
               type="checkbox"
               id="favorite"
               checked={formData.isFavorite}
-              onChange={(e) => setFormData({ ...formData, isFavorite: e.target.checked })}
-              className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+              onChange={e => setFormData({ ...formData, isFavorite: e.target.checked })}
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
             />
-            <label htmlFor="favorite" className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
-              <Star className="w-4 h-4" />
+            <label htmlFor="favorite" className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
+              <Star className="h-4 w-4" />
               Mark as favorite
             </label>
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancel
             </Button>

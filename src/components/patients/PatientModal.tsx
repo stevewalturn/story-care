@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -9,9 +9,8 @@ interface Patient {
   id?: string;
   name: string;
   email: string;
-  phone: string;
   referenceImageUrl?: string;
-  notes?: string;
+  avatarUrl?: string;
 }
 
 interface PatientModalProps {
@@ -22,16 +21,31 @@ interface PatientModalProps {
 }
 
 export function PatientModal({ isOpen, onClose, onSave, patient }: PatientModalProps) {
-  const [formData, setFormData] = useState<Patient>(
-    patient || {
-      name: '',
-      email: '',
-      phone: '',
-      referenceImageUrl: '',
-      notes: '',
+  const [formData, setFormData] = useState<Patient>({
+    name: '',
+    email: '',
+    referenceImageUrl: '',
+  });
+  const [imagePreview, setImagePreview] = useState('');
+
+  // Update form data when patient prop changes
+  useEffect(() => {
+    if (patient) {
+      setFormData({
+        name: patient.name || '',
+        email: patient.email || '',
+        referenceImageUrl: patient.referenceImageUrl || patient.avatarUrl || '',
+      });
+      setImagePreview(patient.referenceImageUrl || patient.avatarUrl || '');
+    } else {
+      setFormData({
+        name: '',
+        email: '',
+        referenceImageUrl: '',
+      });
+      setImagePreview('');
     }
-  );
-  const [imagePreview, setImagePreview] = useState(patient?.referenceImageUrl || '');
+  }, [patient, isOpen]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -83,23 +97,13 @@ export function PatientModal({ isOpen, onClose, onSave, patient }: PatientModalP
               required
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="Email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="john@example.com"
-              />
-
-              <Input
-                label="Phone"
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="(555) 123-4567"
-              />
-            </div>
+            <Input
+              label="Email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="john@example.com"
+            />
           </div>
 
           {/* Reference Image */}
@@ -150,19 +154,6 @@ export function PatientModal({ isOpen, onClose, onSave, patient }: PatientModalP
                 </div>
               )}
             </div>
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Notes (Optional)
-            </label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Additional notes about the patient..."
-              className="w-full h-24 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-            />
           </div>
 
           {/* Actions */}

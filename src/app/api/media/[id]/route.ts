@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { mediaLibrary } from '@/models/Schema';
-import { eq } from 'drizzle-orm';
 
 // GET /api/media/[id]
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -19,7 +20,7 @@ export async function GET(
     if (!media) {
       return NextResponse.json(
         { error: 'Media not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -28,7 +29,7 @@ export async function GET(
     console.error('Error fetching media:', error);
     return NextResponse.json(
       { error: 'Failed to fetch media' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -36,7 +37,7 @@ export async function GET(
 // PUT /api/media/[id]
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -57,7 +58,7 @@ export async function PUT(
     if (!updatedMedia) {
       return NextResponse.json(
         { error: 'Media not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -66,7 +67,7 @@ export async function PUT(
     console.error('Error updating media:', error);
     return NextResponse.json(
       { error: 'Failed to update media' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -74,7 +75,7 @@ export async function PUT(
 // DELETE /api/media/[id]
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -86,7 +87,7 @@ export async function DELETE(
     if (!deletedMedia || (Array.isArray(deletedMedia) && deletedMedia.length === 0)) {
       return NextResponse.json(
         { error: 'Media not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -98,7 +99,7 @@ export async function DELETE(
     console.error('Error deleting media:', error);
     return NextResponse.json(
       { error: 'Failed to delete media' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

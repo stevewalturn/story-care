@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadFile } from '@/libs/GCS';
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 // POST /api/sessions/upload - Upload audio file to GCS
+// Note: Body parser is automatically disabled for FormData in App Router
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();

@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/libs/DB';
-import { groups, groupMembers, users } from '@/models/Schema';
+import type { NextRequest } from 'next/server';
 import { eq, like } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { db } from '@/libs/DB';
+import { groupMembers, groups, users } from '@/models/Schema';
 
 // GET /api/groups - List groups
 export async function GET(request: NextRequest) {
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
           ...group,
           members,
         };
-      })
+      }),
     );
 
     return NextResponse.json({ groups: groupsWithMembers });
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching groups:', error);
     return NextResponse.json(
       { error: 'Failed to fetch groups' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -61,7 +62,7 @@ export async function POST(request: NextRequest) {
     if (!name || !memberIds || memberIds.length === 0) {
       return NextResponse.json(
         { error: 'Name and at least one member are required' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
     if (!group) {
       return NextResponse.json(
         { error: 'Failed to create group' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
       memberIds.map((patientId: string) => ({
         groupId: group.id,
         patientId,
-      }))
+      })),
     );
 
     // Fetch complete group with members
@@ -103,13 +104,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { group: { ...group, members } },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error('Error creating group:', error);
     return NextResponse.json(
       { error: 'Failed to create group' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

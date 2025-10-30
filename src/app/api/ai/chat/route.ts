@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { chat, type ChatMessage } from '@/libs/OpenAI';
+import type { NextRequest } from 'next/server';
+import type { ChatMessage } from '@/libs/OpenAI';
+import { NextResponse } from 'next/server';
+import { chat } from '@/libs/OpenAI';
 
 // POST /api/ai/chat - Chat with AI assistant
 export async function POST(request: NextRequest) {

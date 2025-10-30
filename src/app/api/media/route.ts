@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { mediaLibrary, users, sessions } from '@/models/Schema';
-import { eq, and, or, ilike, desc, sql } from 'drizzle-orm';
+import { mediaLibrary, sessions, users } from '@/models/Schema';
 
 // GET /api/media - List media files
 export async function GET(request: NextRequest) {
@@ -36,8 +37,12 @@ export async function GET(request: NextRequest) {
 
     // Build filters
     const filters = [];
-    if (patientId) filters.push(eq(mediaLibrary.patientId, patientId));
-    if (sourceSessionId) filters.push(eq(mediaLibrary.sourceSessionId, sourceSessionId));
+    if (patientId) {
+      filters.push(eq(mediaLibrary.patientId, patientId));
+    }
+    if (sourceSessionId) {
+      filters.push(eq(mediaLibrary.sourceSessionId, sourceSessionId));
+    }
     if (mediaType && mediaType !== 'all') {
       filters.push(eq(mediaLibrary.mediaType, mediaType as any));
     }
@@ -46,8 +51,8 @@ export async function GET(request: NextRequest) {
         or(
           ilike(mediaLibrary.title, `%${search}%`),
           ilike(users.name, `%${search}%`),
-          sql`${mediaLibrary.tags}::text ilike ${`%${search}%`}`
-        )
+          sql`${mediaLibrary.tags}::text ilike ${`%${search}%`}`,
+        ),
       );
     }
 
@@ -119,7 +124,7 @@ export async function POST(request: NextRequest) {
     if (!media) {
       return NextResponse.json(
         { error: 'Failed to create media record' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 

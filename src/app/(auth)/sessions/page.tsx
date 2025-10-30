@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { SessionCard } from '@/components/sessions/SessionCard';
 import { UploadModal, type SessionUploadData } from '@/components/sessions/UploadModal';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Session {
   id: string;
@@ -18,23 +19,25 @@ interface Session {
 }
 
 export default function SessionsPage() {
+  const { user } = useAuth();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch sessions from API
+  // Fetch sessions from API when user is available
   useEffect(() => {
-    fetchSessions();
-  }, []);
+    if (user?.uid) {
+      fetchSessions();
+    }
+  }, [user]);
 
   const fetchSessions = async () => {
+    if (!user?.uid) return;
+
     try {
       setIsLoading(true);
-      // TODO: Get actual therapistId from auth context
-      const therapistId = 'current-therapist-id';
-
-      const response = await fetch(`/api/sessions?therapistId=${therapistId}`);
+      const response = await fetch(`/api/sessions?therapistId=${user.uid}`);
       const data = await response.json();
 
       if (response.ok) {
@@ -66,10 +69,12 @@ export default function SessionsPage() {
   });
 
   const handleUpload = async (data: SessionUploadData) => {
-    try {
-      // TODO: Get actual therapistId from auth context
-      const therapistId = 'current-therapist-id';
+    if (!user?.uid) {
+      alert('You must be logged in to upload sessions');
+      return;
+    }
 
+    try {
       // 1. Upload audio file to GCS (if audioFile exists)
       let audioUrl = '';
       if (data.audioFile) {
@@ -82,15 +87,18 @@ export default function SessionsPage() {
           body: formData,
         });
 
-        if (uploadResponse.ok) {
-          const uploadData = await uploadResponse.json();
-          audioUrl = uploadData.url;
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json();
+          throw new Error(errorData.error || 'Failed to upload audio file');
         }
+
+        const uploadData = await uploadResponse.json();
+        audioUrl = uploadData.url;
       }
 
       // 2. Create session record in database
       const sessionData = {
-        therapistId,
+        therapistId: user.uid,
         title: data.title,
         sessionDate: data.sessionDate,
         sessionType: data.sessionType,
@@ -105,23 +113,27 @@ export default function SessionsPage() {
         body: JSON.stringify(sessionData),
       });
 
-      if (response.ok) {
-        const { session } = await response.json();
-
-        // 3. Trigger transcription with Deepgram
-        await fetch(`/api/sessions/${session.id}/transcribe`, {
-          method: 'POST',
-        });
-
-        // 4. Refresh sessions list
-        fetchSessions();
-
-        // 5. Navigate to speaker labeling page
-        window.location.href = `/sessions/${session.id}/speakers`;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create session');
       }
+
+      const { session } = await response.json();
+
+      // 3. Trigger transcription with Deepgram
+      await fetch(`/api/sessions/${session.id}/transcribe`, {
+        method: 'POST',
+      });
+
+      // 4. Close modal and refresh sessions list
+      setIsUploadModalOpen(false);
+      await fetchSessions();
+
+      // 5. Navigate to speaker labeling page
+      window.location.href = `/sessions/${session.id}/speakers`;
     } catch (error) {
       console.error('Error uploading session:', error);
-      alert('Failed to upload session. Please try again.');
+      alert(error instanceof Error ? error.message : 'Failed to upload session. Please try again.');
     }
   };
 

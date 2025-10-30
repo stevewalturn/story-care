@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { asc, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { transcripts, utterances, speakers } from '@/models/Schema';
-import { eq, asc } from 'drizzle-orm';
+import { speakers, transcripts, utterances } from '@/models/Schema';
 
 // GET /api/sessions/[id]/transcript - Get transcript and utterances
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -20,7 +21,7 @@ export async function GET(
     if (!transcript) {
       return NextResponse.json(
         { error: 'Transcript not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -52,7 +53,7 @@ export async function GET(
     console.error('Error fetching transcript:', error);
     return NextResponse.json(
       { error: 'Failed to fetch transcript' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -60,7 +61,7 @@ export async function GET(
 // POST /api/sessions/[id]/transcript - Create/update transcript
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -103,7 +104,7 @@ export async function POST(
     if (!transcript) {
       return NextResponse.json(
         { error: 'Failed to create or update transcript' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -118,7 +119,7 @@ export async function POST(
           endTimeSeconds: utterance.endTime?.toString() || '0',
           confidenceScore: utterance.confidence?.toString() || null,
           sequenceNumber: utterance.sequenceNumber !== undefined ? utterance.sequenceNumber : index,
-        }))
+        })),
       );
     }
 
@@ -127,7 +128,7 @@ export async function POST(
     console.error('Error saving transcript:', error);
     return NextResponse.json(
       { error: 'Failed to save transcript' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

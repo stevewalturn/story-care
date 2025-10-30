@@ -1,11 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/libs/DB';
-import { storyPages, pageBlocks } from '@/models/Schema';
+import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { db } from '@/libs/DB';
+import { pageBlocks, storyPages } from '@/models/Schema';
 
-interface RouteContext {
+type RouteContext = {
   params: Promise<{ id: string }>;
-}
+};
 
 // GET /api/pages/[id] - Get page with blocks
 export async function GET(_request: NextRequest, context: RouteContext) {
@@ -46,10 +47,14 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     // Update page
     const updateData: any = { updatedAt: new Date() };
-    if (title !== undefined) updateData.title = title;
+    if (title !== undefined) {
+      updateData.title = title;
+    }
     if (status !== undefined) {
       updateData.status = status;
-      if (status === 'published') updateData.publishedAt = new Date();
+      if (status === 'published') {
+        updateData.publishedAt = new Date();
+      }
     }
 
     const [page] = await db

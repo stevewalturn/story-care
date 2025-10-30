@@ -1,26 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Upload, X } from 'lucide-react';
-import { Modal } from '@/components/ui/Modal';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { Dropdown } from '@/components/ui/Dropdown';
+import { Input } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
 
-interface UploadModalProps {
+type UploadModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onUpload: (data: SessionUploadData) => void;
-}
+};
 
-export interface SessionUploadData {
+export type SessionUploadData = {
   title: string;
   sessionDate: string;
   sessionType: 'individual' | 'group';
   patientId?: string;
   groupId?: string;
   audioFile: File | null;
-}
+};
 
 export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   const [formData, setFormData] = useState<SessionUploadData>({
@@ -41,7 +41,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
     if (isOpen) {
       // Fetch patients
       fetch('/api/patients')
-        .then((res) => res.json())
+        .then(res => res.json())
         .then((data) => {
           const patientOptions = data.patients?.map((p: any) => ({
             value: p.id,
@@ -56,7 +56,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
 
       // Fetch groups
       fetch('/api/groups')
-        .then((res) => res.json())
+        .then(res => res.json())
         .then((data) => {
           const groupOptions = data.groups?.map((g: any) => ({
             value: g.id,
@@ -108,11 +108,11 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
     onClose();
   };
 
-  const canSubmit =
-    formData.title &&
-    formData.audioFile &&
-    ((formData.sessionType === 'individual' && formData.patientId) ||
-      (formData.sessionType === 'group' && formData.groupId));
+  const canSubmit
+    = formData.title
+      && formData.audioFile
+      && ((formData.sessionType === 'individual' && formData.patientId)
+        || (formData.sessionType === 'group' && formData.groupId));
 
   return (
     <Modal
@@ -121,7 +121,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       title="New Session"
       description="Upload an audio file to begin the transcription and analysis process."
       size="lg"
-      footer={
+      footer={(
         <>
           <Button variant="secondary" onClick={onClose}>
             Cancel
@@ -134,7 +134,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
             Continue to Speaker Labeling
           </Button>
         </>
-      }
+      )}
     >
       <div className="space-y-6">
         {/* Session Title */}
@@ -142,7 +142,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
           label="Session Title"
           placeholder="e.g., Weekly Check-in"
           value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          onChange={e => setFormData({ ...formData, title: e.target.value })}
         />
 
         {/* Session Date and Type */}
@@ -151,19 +151,17 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
             label="Session Date"
             type="date"
             value={formData.sessionDate}
-            onChange={(e) =>
-              setFormData({ ...formData, sessionDate: e.target.value })
-            }
+            onChange={e =>
+              setFormData({ ...formData, sessionDate: e.target.value })}
           />
           <Dropdown
             label="Session Type"
             value={formData.sessionType}
-            onChange={(value) =>
+            onChange={value =>
               setFormData({
                 ...formData,
                 sessionType: value as 'individual' | 'group',
-              })
-            }
+              })}
             options={[
               { value: 'individual', label: 'Individual' },
               { value: 'group', label: 'Group' },
@@ -172,27 +170,29 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
         </div>
 
         {/* Patient or Group Selection */}
-        {formData.sessionType === 'individual' ? (
-          <Dropdown
-            label="Patient"
-            value={formData.patientId || ''}
-            onChange={(value) => setFormData({ ...formData, patientId: value })}
-            options={patients}
-            placeholder="Select a patient..."
-          />
-        ) : (
-          <Dropdown
-            label="Group"
-            value={formData.groupId || ''}
-            onChange={(value) => setFormData({ ...formData, groupId: value })}
-            options={groups}
-            placeholder="Select a group..."
-          />
-        )}
+        {formData.sessionType === 'individual'
+          ? (
+              <Dropdown
+                label="Patient"
+                value={formData.patientId || ''}
+                onChange={value => setFormData({ ...formData, patientId: value })}
+                options={patients}
+                placeholder="Select a patient..."
+              />
+            )
+          : (
+              <Dropdown
+                label="Group"
+                value={formData.groupId || ''}
+                onChange={value => setFormData({ ...formData, groupId: value })}
+                options={groups}
+                placeholder="Select a group..."
+              />
+            )}
 
         {/* File Upload Area */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="mb-2 block text-sm font-medium text-gray-700">
             Audio File
           </label>
           <div
@@ -201,57 +201,61 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
             onDragOver={handleDrag}
             onDrop={handleDrop}
             className={`
-              relative border-2 border-dashed rounded-xl p-12 text-center transition-colors
+              relative rounded-xl border-2 border-dashed p-12 text-center transition-colors
               ${dragActive ? 'border-indigo-600 bg-indigo-50' : 'border-gray-300 bg-gray-50'}
-              ${formData.audioFile ? 'bg-green-50 border-green-300' : ''}
+              ${formData.audioFile ? 'border-green-300 bg-green-50' : ''}
             `}
           >
             <input
               type="file"
               accept="audio/*"
               onChange={handleFileChange}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             />
 
-            {formData.audioFile ? (
-              <div className="space-y-2">
-                <div className="w-12 h-12 mx-auto bg-green-100 rounded-full flex items-center justify-center">
-                  <Upload className="w-6 h-6 text-green-600" />
-                </div>
-                <div className="flex items-center justify-center gap-2">
-                  <p className="text-sm font-medium text-gray-900">
-                    {formData.audioFile.name}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setFormData({ ...formData, audioFile: null });
-                    }}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500">
-                  {(formData.audioFile.size / (1024 * 1024)).toFixed(2)} MB
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="w-12 h-12 mx-auto bg-gray-200 rounded-full flex items-center justify-center">
-                  <Upload className="w-6 h-6 text-gray-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">
-                    Drag & drop an audio file here
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    or click to select a file
-                  </p>
-                </div>
-              </div>
-            )}
+            {formData.audioFile
+              ? (
+                  <div className="space-y-2">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+                      <Upload className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div className="flex items-center justify-center gap-2">
+                      <p className="text-sm font-medium text-gray-900">
+                        {formData.audioFile.name}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFormData({ ...formData, audioFile: null });
+                        }}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {(formData.audioFile.size / (1024 * 1024)).toFixed(2)}
+                      {' '}
+                      MB
+                    </p>
+                  </div>
+                )
+              : (
+                  <div className="space-y-2">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-200">
+                      <Upload className="h-6 w-6 text-gray-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">
+                        Drag & drop an audio file here
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        or click to select a file
+                      </p>
+                    </div>
+                  </div>
+                )}
           </div>
         </div>
       </div>

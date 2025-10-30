@@ -1,23 +1,23 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, Loader2, X, Copy, Check } from 'lucide-react';
+import { Check, Copy, Loader2, Send, Sparkles, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
-interface Message {
+type Message = {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
-}
+};
 
-interface AIAssistantProps {
+type AIAssistantProps = {
   sessionId: string;
   contextText?: string;
   initialPrompt?: string;
   onClose: () => void;
-}
+};
 
 export function AIAssistant({
   sessionId,
@@ -57,7 +57,9 @@ export function AIAssistant({
 
   const handleSend = async (text?: string) => {
     const messageText = text || input;
-    if (!messageText.trim() || isLoading) return;
+    if (!messageText.trim() || isLoading) {
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -66,7 +68,7 @@ export function AIAssistant({
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
 
@@ -82,7 +84,9 @@ export function AIAssistant({
         }),
       });
 
-      if (!response.ok) throw new Error('AI request failed');
+      if (!response.ok) {
+        throw new Error('AI request failed');
+      }
 
       const data = await response.json();
 
@@ -93,7 +97,7 @@ export function AIAssistant({
         timestamp: new Date(),
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
       console.error('AI request failed:', error);
       const errorMessage: Message = {
@@ -102,7 +106,7 @@ export function AIAssistant({
         content: 'Sorry, I encountered an error. Please try again.',
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, errorMessage]);
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -115,29 +119,29 @@ export function AIAssistant({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex h-full flex-col bg-white">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
+      <div className="flex items-center justify-between border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50 p-4">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-indigo-600" />
+          <Sparkles className="h-5 w-5 text-indigo-600" />
           <h3 className="font-semibold text-gray-900">AI Assistant</h3>
         </div>
         <Button variant="icon" onClick={onClose}>
-          <X className="w-4 h-4" />
+          <X className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.map((message) => {
           if (message.role === 'system') {
             return (
               <div
                 key={message.id}
-                className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm"
+                className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm"
               >
-                <p className="text-blue-900 font-medium mb-1">Context:</p>
-                <p className="text-blue-800 italic whitespace-pre-wrap">
+                <p className="mb-1 font-medium text-blue-900">Context:</p>
+                <p className="whitespace-pre-wrap text-blue-800 italic">
                   {message.content}
                 </p>
               </div>
@@ -160,24 +164,26 @@ export function AIAssistant({
               >
                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                 {message.role === 'assistant' && (
-                  <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-200">
+                  <div className="mt-2 flex items-center gap-2 border-t border-gray-200 pt-2">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleCopy(message.content, message.id)}
                       className="text-xs"
                     >
-                      {copiedId === message.id ? (
-                        <>
-                          <Check className="w-3 h-3 mr-1" />
-                          Copied
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3 mr-1" />
-                          Copy
-                        </>
-                      )}
+                      {copiedId === message.id
+                        ? (
+                            <>
+                              <Check className="mr-1 h-3 w-3" />
+                              Copied
+                            </>
+                          )
+                        : (
+                            <>
+                              <Copy className="mr-1 h-3 w-3" />
+                              Copy
+                            </>
+                          )}
                     </Button>
                   </div>
                 )}
@@ -188,8 +194,8 @@ export function AIAssistant({
 
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 rounded-lg p-3">
-              <Loader2 className="w-5 h-5 text-gray-600 animate-spin" />
+            <div className="rounded-lg bg-gray-100 p-3">
+              <Loader2 className="h-5 w-5 animate-spin text-gray-600" />
             </div>
           </div>
         )}
@@ -198,12 +204,12 @@ export function AIAssistant({
       </div>
 
       {/* Input */}
-      <div className="p-4 border-t border-gray-200">
+      <div className="border-t border-gray-200 p-4">
         <div className="flex items-end gap-2">
           <div className="flex-1">
             <Input
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={e => setInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -219,35 +225,35 @@ export function AIAssistant({
             onClick={() => handleSend()}
             disabled={!input.trim() || isLoading}
           >
-            <Send className="w-4 h-4" />
+            <Send className="h-4 w-4" />
           </Button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="mt-2 text-xs text-gray-500">
           Press Enter to send, Shift+Enter for new line
         </p>
       </div>
 
       {/* Quick Actions */}
-      <div className="p-4 border-t border-gray-200 bg-gray-50">
-        <p className="text-xs font-medium text-gray-700 mb-2">Quick Actions:</p>
+      <div className="border-t border-gray-200 bg-gray-50 p-4">
+        <p className="mb-2 text-xs font-medium text-gray-700">Quick Actions:</p>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => handleSend('Analyze the key themes in this passage')}
-            className="text-xs px-3 py-1 bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition-colors"
+            className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs transition-colors hover:bg-gray-50"
             disabled={isLoading}
           >
             Analyze themes
           </button>
           <button
             onClick={() => handleSend('Extract a meaningful quote')}
-            className="text-xs px-3 py-1 bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition-colors"
+            className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs transition-colors hover:bg-gray-50"
             disabled={isLoading}
           >
             Extract quote
           </button>
           <button
             onClick={() => handleSend('Suggest an image generation prompt')}
-            className="text-xs px-3 py-1 bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition-colors"
+            className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs transition-colors hover:bg-gray-50"
             disabled={isLoading}
           >
             Generate image idea

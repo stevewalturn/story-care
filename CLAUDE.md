@@ -249,8 +249,13 @@ tests/
 - `patient_page_interactions` - Engagement tracking
 
 ```typescript
+import { eq } from 'drizzle-orm';
+
 // Define schema in src/models/Schema.ts
-import { pgTable, uuid, text, timestamp, varchar, serial } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+// Use in components/routes
+import { db } from '@/libs/DB';
+import { users } from '@/models/Schema';
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -263,11 +268,6 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
-
-// Use in components/routes
-import { db } from '@/libs/DB';
-import { users } from '@/models/Schema';
-import { eq } from 'drizzle-orm';
 
 // Fetch therapist's patients
 const patients = await db
@@ -591,7 +591,7 @@ export const auth = getAuth(app);
 ### Server-Side Authentication (API Routes)
 ```typescript
 // src/libs/FirebaseAdmin.ts
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 
 if (!getApps().length) {
@@ -621,8 +621,8 @@ export async function verifyIdToken(token: string) {
 ```typescript
 // src/app/api/sessions/route.ts
 import { NextResponse } from 'next/server';
-import { verifyIdToken } from '@/libs/FirebaseAdmin';
 import { db } from '@/libs/DB';
+import { verifyIdToken } from '@/libs/FirebaseAdmin';
 import { sessions } from '@/models/Schema';
 
 export async function POST(request: Request) {
@@ -739,9 +739,9 @@ When implementing AI features (Deepgram, OpenAI):
 
 ### API Route Pattern
 ```typescript
+import { createClient } from '@deepgram/sdk';
 // src/app/api/ai/transcribe/route.ts
 import { NextResponse } from 'next/server';
-import { createClient } from '@deepgram/sdk';
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
 
 export async function POST(request: Request) {

@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/libs/DB';
-import { groups, groupMembers, users } from '@/models/Schema';
+import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { db } from '@/libs/DB';
+import { groupMembers, groups, users } from '@/models/Schema';
 
 // GET /api/groups/[id] - Get single group
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -19,7 +20,7 @@ export async function GET(
     if (!group) {
       return NextResponse.json(
         { error: 'Group not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -39,7 +40,7 @@ export async function GET(
     console.error('Error fetching group:', error);
     return NextResponse.json(
       { error: 'Failed to fetch group' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -47,7 +48,7 @@ export async function GET(
 // PUT /api/groups/[id] - Update group
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -68,7 +69,7 @@ export async function PUT(
     if (!updatedGroup) {
       return NextResponse.json(
         { error: 'Group not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -83,7 +84,7 @@ export async function PUT(
           memberIds.map((patientId: string) => ({
             groupId: id,
             patientId,
-          }))
+          })),
         );
       }
     }
@@ -104,7 +105,7 @@ export async function PUT(
     console.error('Error updating group:', error);
     return NextResponse.json(
       { error: 'Failed to update group' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -112,7 +113,7 @@ export async function PUT(
 // DELETE /api/groups/[id] - Delete group
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -128,7 +129,7 @@ export async function DELETE(
     if (!deletedGroup) {
       return NextResponse.json(
         { error: 'Group not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -137,7 +138,7 @@ export async function DELETE(
     console.error('Error deleting group:', error);
     return NextResponse.json(
       { error: 'Failed to delete group' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

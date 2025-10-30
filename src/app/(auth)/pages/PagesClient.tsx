@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, FileText, Eye, Edit2, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { Edit2, Eye, FileText, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { PageEditor } from '@/components/pages/PageEditor';
+import { Button } from '@/components/ui/Button';
 import { } from '@/components/ui/Modal';
 
-interface StoryPage {
+type StoryPage = {
   id: string;
   title: string;
   patientName: string;
@@ -14,7 +14,7 @@ interface StoryPage {
   createdAt: Date;
   updatedAt: Date;
   blockCount: number;
-}
+};
 
 export function PagesClient() {
   const [pages, setPages] = useState<StoryPage[]>([]);
@@ -30,7 +30,9 @@ export function PagesClient() {
     try {
       setLoading(true);
       const response = await fetch('/api/pages');
-      if (!response.ok) throw new Error('Failed to fetch pages');
+      if (!response.ok) {
+        throw new Error('Failed to fetch pages');
+      }
 
       const data = await response.json();
       setPages(data.pages.map((p: any) => ({
@@ -67,7 +69,9 @@ export function PagesClient() {
         body: JSON.stringify({ title, blocks }),
       });
 
-      if (!response.ok) throw new Error('Failed to save page');
+      if (!response.ok) {
+        throw new Error('Failed to save page');
+      }
 
       await fetchPages();
       setShowEditor(false);
@@ -78,14 +82,18 @@ export function PagesClient() {
   };
 
   const handleDeletePage = async (pageId: string) => {
-    if (!confirm('Are you sure you want to delete this page?')) return;
+    if (!confirm('Are you sure you want to delete this page?')) {
+      return;
+    }
 
     try {
       const response = await fetch(`/api/pages/${pageId}`, {
         method: 'DELETE',
       });
 
-      if (!response.ok) throw new Error('Failed to delete page');
+      if (!response.ok) {
+        throw new Error('Failed to delete page');
+      }
 
       await fetchPages();
     } catch (error) {
@@ -99,16 +107,22 @@ export function PagesClient() {
     const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays === 0) {
+      return 'Today';
+    }
+    if (diffDays === 1) {
+      return 'Yesterday';
+    }
+    if (diffDays < 7) {
+      return `${diffDays} days ago`;
+    }
     return date.toLocaleDateString();
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-indigo-600" />
       </div>
     );
   }
@@ -117,10 +131,10 @@ export function PagesClient() {
     <div className="p-8">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
+        <div className="mb-2 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">Story Pages</h1>
           <Button variant="primary" onClick={handleCreatePage}>
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="mr-2 h-4 w-4" />
             Create Page
           </Button>
         </div>
@@ -130,26 +144,27 @@ export function PagesClient() {
       </div>
 
       {/* Pages Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {pages.map((page) => (
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {pages.map(page => (
           <div
             key={page.id}
-            className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-all bg-white group"
+            className="group overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:shadow-lg"
           >
             {/* Header */}
-            <div className="p-4 border-b border-gray-200 bg-gradient-to-br from-indigo-50 to-purple-50">
+            <div className="border-b border-gray-200 bg-gradient-to-br from-indigo-50 to-purple-50 p-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">
+                  <h3 className="mb-1 line-clamp-2 font-semibold text-gray-900">
                     {page.title}
                   </h3>
                   <p className="text-sm text-gray-600">{page.patientName}</p>
                 </div>
-                <div className={`px-2 py-1 rounded text-xs font-medium ${
+                <div className={`rounded px-2 py-1 text-xs font-medium ${
                   page.isPublished
                     ? 'bg-green-100 text-green-700'
                     : 'bg-gray-100 text-gray-700'
-                }`}>
+                }`}
+                >
                   {page.isPublished ? 'Published' : 'Draft'}
                 </div>
               </div>
@@ -157,25 +172,31 @@ export function PagesClient() {
 
             {/* Stats */}
             <div className="p-4">
-              <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
+              <div className="mb-4 flex items-center gap-4 text-sm text-gray-600">
                 <div className="flex items-center gap-1">
-                  <FileText className="w-4 h-4" />
-                  <span>{page.blockCount} blocks</span>
+                  <FileText className="h-4 w-4" />
+                  <span>
+                    {page.blockCount}
+                    {' '}
+                    blocks
+                  </span>
                 </div>
                 <div>
-                  Updated {formatDate(page.updatedAt)}
+                  Updated
+                  {' '}
+                  {formatDate(page.updatedAt)}
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                 <Button
                   variant="secondary"
                   size="sm"
                   onClick={() => handleEditPage(page.id)}
                   className="flex-1"
                 >
-                  <Edit2 className="w-4 h-4 mr-2" />
+                  <Edit2 className="mr-2 h-4 w-4" />
                   Edit
                 </Button>
                 <Button
@@ -186,14 +207,14 @@ export function PagesClient() {
                     window.open(`/story/${page.id}`, '_blank');
                   }}
                 >
-                  <Eye className="w-4 h-4" />
+                  <Eye className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => handleDeletePage(page.id)}
                 >
-                  <Trash2 className="w-4 h-4 text-red-600" />
+                  <Trash2 className="h-4 w-4 text-red-600" />
                 </Button>
               </div>
             </div>
@@ -202,11 +223,11 @@ export function PagesClient() {
 
         {/* Empty state */}
         {pages.length === 0 && (
-          <div className="col-span-full text-center py-16 border-2 border-dashed border-gray-300 rounded-lg">
-            <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 mb-4">No story pages yet</p>
+          <div className="col-span-full rounded-lg border-2 border-dashed border-gray-300 py-16 text-center">
+            <FileText className="mx-auto mb-4 h-16 w-16 text-gray-400" />
+            <p className="mb-4 text-gray-600">No story pages yet</p>
             <Button variant="primary" onClick={handleCreatePage}>
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               Create Your First Page
             </Button>
           </div>
@@ -215,13 +236,13 @@ export function PagesClient() {
 
       {/* Page Editor Modal */}
       {showEditor && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-6xl h-[90vh] bg-white rounded-lg shadow-xl overflow-hidden">
+        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-gray-900 p-4">
+          <div className="h-[90vh] w-full max-w-6xl overflow-hidden rounded-lg bg-white shadow-xl">
             <PageEditor
               pageId={editingPageId || undefined}
               onSave={handleSavePage}
             />
-            <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end">
+            <div className="flex justify-end border-t border-gray-200 bg-gray-50 p-4">
               <Button variant="ghost" onClick={() => setShowEditor(false)}>
                 Close
               </Button>

@@ -126,10 +126,11 @@
 ### Updated: Export Aliases
 Added convenience exports for ALL tables:
 ```typescript
-export const therapeuticPrompts = therapeuticPromptsSchema;
 // Now both work:
-import { sessions } from '@/models/Schema';        // ✅
-import { sessionsSchema } from '@/models/Schema';  // ✅
+import { sessions } from '@/models/Schema'; // ✅
+import { sessionsSchema } from '@/models/Schema';
+
+export const therapeuticPrompts = therapeuticPromptsSchema; // ✅
 ```
 
 ---

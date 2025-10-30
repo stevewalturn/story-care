@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { desc, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { sessions, users } from '@/models/Schema';
-import { eq, desc } from 'drizzle-orm';
 
 // GET /api/sessions - List all sessions
 export async function GET(request: NextRequest) {
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
     if (!newSession) {
       return NextResponse.json(
         { error: 'Failed to create session' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 

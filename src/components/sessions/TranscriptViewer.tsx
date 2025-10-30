@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Search, Play, Pause, Sparkles } from 'lucide-react';
-import { Input } from '@/components/ui/Input';
+import { Pause, Play, Search, Sparkles } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 
-interface Utterance {
+type Utterance = {
   id: string;
   speakerId: string;
   speakerName: string;
@@ -14,14 +14,14 @@ interface Utterance {
   startTime: number; // in seconds
   endTime: number;
   confidence: number; // 0-1
-}
+};
 
-interface TranscriptViewerProps {
+type TranscriptViewerProps = {
   sessionId: string;
   utterances: Utterance[];
   audioUrl?: string;
   onTextSelect: (text: string, utteranceIds: string[]) => void;
-}
+};
 
 export function TranscriptViewer({
   sessionId,
@@ -40,9 +40,9 @@ export function TranscriptViewer({
 
   // Filter utterances by search query
   const filteredUtterances = searchQuery
-    ? utterances.filter((u) =>
-        u.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.speakerName.toLowerCase().includes(searchQuery.toLowerCase())
+    ? utterances.filter(u =>
+        u.text.toLowerCase().includes(searchQuery.toLowerCase())
+        || u.speakerName.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     : utterances;
 
@@ -72,7 +72,9 @@ export function TranscriptViewer({
 
   // Handle audio playback
   const togglePlayPause = () => {
-    if (!audioRef.current) return;
+    if (!audioRef.current) {
+      return;
+    }
 
     if (isPlaying) {
       audioRef.current.pause();
@@ -83,7 +85,9 @@ export function TranscriptViewer({
   };
 
   const jumpToTime = (time: number) => {
-    if (!audioRef.current) return;
+    if (!audioRef.current) {
+      return;
+    }
     audioRef.current.currentTime = time;
     setCurrentTime(time);
     if (!isPlaying) {
@@ -93,7 +97,9 @@ export function TranscriptViewer({
   };
 
   const handleTimeUpdate = () => {
-    if (!audioRef.current) return;
+    if (!audioRef.current) {
+      return;
+    }
     setCurrentTime(audioRef.current.currentTime);
   };
 
@@ -130,26 +136,28 @@ export function TranscriptViewer({
   }, []);
 
   return (
-    <div className="flex gap-4 h-[calc(100vh-180px)]">
+    <div className="flex h-[calc(100vh-180px)] gap-4">
       {/* Main Transcript Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex flex-1 flex-col">
         {/* Search & Controls */}
-        <div className="flex items-center gap-3 mb-4">
+        <div className="mb-4 flex items-center gap-3">
           <div className="flex-1">
             <Input
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search transcript..."
-              leftIcon={<Search className="w-4 h-4" />}
+              leftIcon={<Search className="h-4 w-4" />}
             />
           </div>
           {audioUrl && (
             <Button variant="icon" onClick={togglePlayPause}>
-              {isPlaying ? (
-                <Pause className="w-4 h-4" />
-              ) : (
-                <Play className="w-4 h-4" />
-              )}
+              {isPlaying
+                ? (
+                    <Pause className="h-4 w-4" />
+                  )
+                : (
+                    <Play className="h-4 w-4" />
+                  )}
             </Button>
           )}
         </div>
@@ -157,7 +165,7 @@ export function TranscriptViewer({
         {/* Transcript */}
         <div
           ref={transcriptRef}
-          className="flex-1 overflow-y-auto border border-gray-200 rounded-lg p-6 space-y-4 bg-white"
+          className="flex-1 space-y-4 overflow-y-auto rounded-lg border border-gray-200 bg-white p-6"
         >
           {filteredUtterances.map((utterance) => {
             const isCurrent = isCurrentUtterance(utterance);
@@ -167,16 +175,16 @@ export function TranscriptViewer({
               <div
                 key={utterance.id}
                 className={`transition-all ${
-                  isCurrent ? 'bg-yellow-50 -mx-2 px-2 py-1 rounded' : ''
-                } ${isSelected ? 'bg-indigo-50 -mx-2 px-2 py-1 rounded' : ''}`}
+                  isCurrent ? '-mx-2 rounded bg-yellow-50 px-2 py-1' : ''
+                } ${isSelected ? '-mx-2 rounded bg-indigo-50 px-2 py-1' : ''}`}
               >
                 <div className="flex items-start gap-3">
                   {/* Speaker Badge */}
                   <button
                     onClick={() => jumpToTime(utterance.startTime)}
-                    className={`flex-shrink-0 px-2 py-1 rounded text-xs font-medium ${getSpeakerColor(
-                      utterance.speakerType
-                    )} hover:opacity-80 transition-opacity`}
+                    className={`flex-shrink-0 rounded px-2 py-1 text-xs font-medium ${getSpeakerColor(
+                      utterance.speakerType,
+                    )} transition-opacity hover:opacity-80`}
                   >
                     {utterance.speakerName}
                   </button>
@@ -184,13 +192,13 @@ export function TranscriptViewer({
                   {/* Timestamp */}
                   <button
                     onClick={() => jumpToTime(utterance.startTime)}
-                    className="text-xs text-gray-500 hover:text-gray-700 flex-shrink-0 font-mono"
+                    className="flex-shrink-0 font-mono text-xs text-gray-500 hover:text-gray-700"
                   >
                     {formatTime(utterance.startTime)}
                   </button>
 
                   {/* Text */}
-                  <p className="flex-1 text-gray-900 leading-relaxed select-text">
+                  <p className="flex-1 leading-relaxed text-gray-900 select-text">
                     {utterance.text}
                   </p>
                 </div>
@@ -199,9 +207,13 @@ export function TranscriptViewer({
           })}
 
           {filteredUtterances.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              <Search className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-              <p>No results found for "{searchQuery}"</p>
+            <div className="py-12 text-center text-gray-500">
+              <Search className="mx-auto mb-3 h-12 w-12 text-gray-400" />
+              <p>
+                No results found for "
+                {searchQuery}
+                "
+              </p>
             </div>
           )}
         </div>
@@ -219,27 +231,34 @@ export function TranscriptViewer({
 
       {/* AI Assistant Panel */}
       {showAIPanel && selectedText && (
-        <div className="w-96 flex flex-col border border-gray-200 rounded-lg bg-white overflow-hidden">
+        <div className="flex w-96 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white">
           {/* Header */}
-          <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-5 h-5 text-indigo-600" />
+          <div className="border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50 p-4">
+            <div className="mb-2 flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-indigo-600" />
               <h3 className="font-semibold text-gray-900">AI Assistant</h3>
             </div>
             <p className="text-xs text-gray-600">
-              {selectedText.length} characters selected from {selectedUtteranceIds.length} utterance(s)
+              {selectedText.length}
+              {' '}
+              characters selected from
+              {selectedUtteranceIds.length}
+              {' '}
+              utterance(s)
             </p>
           </div>
 
           {/* Selected Text Preview */}
-          <div className="p-4 border-b border-gray-200 bg-gray-50">
-            <p className="text-sm text-gray-700 italic line-clamp-3">
-              "{selectedText}"
+          <div className="border-b border-gray-200 bg-gray-50 p-4">
+            <p className="line-clamp-3 text-sm text-gray-700 italic">
+              "
+              {selectedText}
+              "
             </p>
           </div>
 
           {/* Actions */}
-          <div className="flex-1 p-4 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto p-4">
             <div className="space-y-2">
               <Button
                 variant="secondary"
@@ -273,7 +292,7 @@ export function TranscriptViewer({
           </div>
 
           {/* Close Button */}
-          <div className="p-4 border-t border-gray-200">
+          <div className="border-t border-gray-200 p-4">
             <Button
               variant="ghost"
               className="w-full"

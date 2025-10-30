@@ -1,13 +1,13 @@
 'use client';
 
+import { Download, Eye, Save } from 'lucide-react';
 import { useState } from 'react';
-import { Save, Download, Eye } from 'lucide-react';
+import { ClipLibrary } from '@/components/scenes/ClipLibrary';
+import { SceneTimeline } from '@/components/scenes/SceneTimeline';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { SceneTimeline } from '@/components/scenes/SceneTimeline';
-import { ClipLibrary } from '@/components/scenes/ClipLibrary';
 
-interface Clip {
+type Clip = {
   id: string;
   type: 'video' | 'image';
   mediaId: string;
@@ -16,15 +16,15 @@ interface Clip {
   startTime: number;
   duration: number;
   audioTrack?: string;
-}
+};
 
-interface MediaItem {
+type MediaItem = {
   id: string;
   type: 'video' | 'image' | 'audio';
   title: string;
   thumbnailUrl: string;
   duration?: number;
-}
+};
 
 export function ScenesClient() {
   const [sceneName, setSceneName] = useState('Untitled Scene');
@@ -84,25 +84,25 @@ export function ScenesClient() {
   };
 
   return (
-    <div className="p-8 h-[calc(100vh-80px)] flex flex-col">
+    <div className="flex h-[calc(100vh-80px)] flex-col p-8">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex-1 max-w-md">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="max-w-md flex-1">
             <Input
               value={sceneName}
-              onChange={(e) => setSceneName(e.target.value)}
+              onChange={e => setSceneName(e.target.value)}
               className="text-2xl font-bold"
               placeholder="Scene name..."
             />
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" onClick={handlePreview}>
-              <Eye className="w-4 h-4 mr-2" />
+              <Eye className="mr-2 h-4 w-4" />
               Preview
             </Button>
             <Button variant="secondary" onClick={handleExport}>
-              <Download className="w-4 h-4 mr-2" />
+              <Download className="mr-2 h-4 w-4" />
               Export
             </Button>
             <Button
@@ -110,7 +110,7 @@ export function ScenesClient() {
               onClick={handleSaveScene}
               disabled={isSaving || clips.length === 0}
             >
-              <Save className="w-4 h-4 mr-2" />
+              <Save className="mr-2 h-4 w-4" />
               {isSaving ? 'Saving...' : 'Save Scene'}
             </Button>
           </div>
@@ -121,27 +121,27 @@ export function ScenesClient() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 grid grid-cols-3 gap-6 min-h-0">
+      <div className="grid min-h-0 flex-1 grid-cols-3 gap-6">
         {/* Clip Library (Left) */}
         <div className="col-span-1 h-full overflow-hidden">
           <ClipLibrary onAddToTimeline={handleAddClip} />
         </div>
 
         {/* Timeline & Preview (Right) */}
-        <div className="col-span-2 flex flex-col gap-6 h-full">
+        <div className="col-span-2 flex h-full flex-col gap-6">
           {/* Preview Area */}
-          <div className="aspect-video bg-gray-900 rounded-lg flex items-center justify-center overflow-hidden">
+          <div className="flex aspect-video items-center justify-center overflow-hidden rounded-lg bg-gray-900">
             {clips.length > 0 && clips[0] ? (
-              <div className="relative w-full h-full">
+              <div className="relative h-full w-full">
                 {/* Show first clip as preview */}
                 <img
                   src={clips[0].thumbnailUrl}
                   alt="Scene preview"
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover"
                 />
-                <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+                <div className="bg-opacity-40 absolute inset-0 flex items-center justify-center bg-black">
                   <div className="text-center text-white">
-                    <Eye className="w-12 h-12 mx-auto mb-3 opacity-75" />
+                    <Eye className="mx-auto mb-3 h-12 w-12 opacity-75" />
                     <p className="text-sm">Click Preview to watch assembled scene</p>
                   </div>
                 </div>
@@ -155,7 +155,7 @@ export function ScenesClient() {
           </div>
 
           {/* Timeline */}
-          <div className="flex-1 min-h-0">
+          <div className="min-h-0 flex-1">
             <SceneTimeline
               clips={clips}
               totalDuration={totalDuration}

@@ -10,10 +10,10 @@ const openai = new OpenAI({
   apiKey: openaiApiKey,
 });
 
-export interface ChatMessage {
+export type ChatMessage = {
   role: 'system' | 'user' | 'assistant';
   content: string;
-}
+};
 
 /**
  * Chat completion with GPT-4
@@ -175,8 +175,8 @@ Return ${count} questions as a numbered list.`;
   // Parse numbered list
   return response
     .split('\n')
-    .filter((line) => /^\d+\./.test(line))
-    .map((line) => line.replace(/^\d+\.\s*/, '').trim())
+    .filter(line => /^\d+\./.test(line))
+    .map(line => line.replace(/^\d+\.\s*/, '').trim())
     .slice(0, count);
 }
 

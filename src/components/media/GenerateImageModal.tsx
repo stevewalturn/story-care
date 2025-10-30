@@ -1,21 +1,21 @@
 'use client';
 
+import { Check, Image as ImageIcon, Loader2, Sparkles, User, X } from 'lucide-react';
 import { useState } from 'react';
-import { X, Sparkles, Image as ImageIcon, Loader2, User, Check } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
-interface Patient {
+type Patient = {
   id: string;
   name: string;
   avatarUrl?: string;
-}
+};
 
-interface GenerateImageModalProps {
+type GenerateImageModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onGenerate: (imageUrl: string, prompt: string) => void;
   patients?: Patient[];
-}
+};
 
 const IMAGE_MODELS = [
   {
@@ -59,18 +59,20 @@ export function GenerateImageModal({
   const [error, setError] = useState<string | null>(null);
 
   const handlePatientToggle = (patientId: string) => {
-    setSelectedPatients((prev) =>
+    setSelectedPatients(prev =>
       prev.includes(patientId)
-        ? prev.filter((id) => id !== patientId)
-        : [...prev, patientId]
+        ? prev.filter(id => id !== patientId)
+        : [...prev, patientId],
     );
   };
 
   const enhancePromptWithPatients = (basePrompt: string) => {
-    if (selectedPatients.length === 0) return basePrompt;
+    if (selectedPatients.length === 0) {
+      return basePrompt;
+    }
 
     const patientNames = selectedPatients
-      .map((id) => patients.find((p) => p.id === id)?.name)
+      .map(id => patients.find(p => p.id === id)?.name)
       .filter(Boolean)
       .join(', ');
 
@@ -130,18 +132,20 @@ export function GenerateImageModal({
     onClose();
   };
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
-  const currentModel = IMAGE_MODELS.find((m) => m.id === selectedModel);
+  const currentModel = IMAGE_MODELS.find(m => m.id === selectedModel);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+    <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black p-4">
+      <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between border-b border-gray-200 p-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-white" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+              <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900">Generate Image</h2>
@@ -150,13 +154,13 @@ export function GenerateImageModal({
           </div>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 transition-colors hover:text-gray-600"
           >
-            <X className="w-6 h-6" />
+            <X className="h-6 w-6" />
           </button>
         </div>
 
-        <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-2">
           {/* Left Column - Configuration */}
           <div className="space-y-6">
             {/* Prompt */}
@@ -166,15 +170,18 @@ export function GenerateImageModal({
               </label>
               <textarea
                 value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
+                onChange={e => setPrompt(e.target.value)}
                 placeholder="A serene beach at sunset with gentle waves..."
-                className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                className="h-32 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 maxLength={currentModel?.maxLength}
               />
               <div className="flex items-center justify-between text-xs text-gray-500">
                 <span>Be specific and detailed for best results</span>
                 <span>
-                  {prompt.length} / {currentModel?.maxLength}
+                  {prompt.length}
+                  {' '}
+                  /
+                  {currentModel?.maxLength}
                 </span>
               </div>
             </div>
@@ -188,34 +195,36 @@ export function GenerateImageModal({
                 <p className="text-xs text-gray-600">
                   Select patients to include their likeness in the generated image
                 </p>
-                <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
-                  {patients.map((patient) => (
+                <div className="grid max-h-32 grid-cols-2 gap-2 overflow-y-auto">
+                  {patients.map(patient => (
                     <button
                       key={patient.id}
                       type="button"
                       onClick={() => handlePatientToggle(patient.id)}
-                      className={`flex items-center gap-2 p-2 rounded-lg border-2 transition-all ${
+                      className={`flex items-center gap-2 rounded-lg border-2 p-2 transition-all ${
                         selectedPatients.includes(patient.id)
                           ? 'border-indigo-500 bg-indigo-50'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
-                      {patient.avatarUrl ? (
-                        <img
-                          src={patient.avatarUrl}
-                          alt={patient.name}
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-                          <User className="w-4 h-4 text-gray-600" />
-                        </div>
-                      )}
-                      <span className="text-sm font-medium text-gray-900 flex-1 text-left truncate">
+                      {patient.avatarUrl
+                        ? (
+                            <img
+                              src={patient.avatarUrl}
+                              alt={patient.name}
+                              className="h-8 w-8 rounded-full object-cover"
+                            />
+                          )
+                        : (
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200">
+                              <User className="h-4 w-4 text-gray-600" />
+                            </div>
+                          )}
+                      <span className="flex-1 truncate text-left text-sm font-medium text-gray-900">
                         {patient.name}
                       </span>
                       {selectedPatients.includes(patient.id) && (
-                        <Check className="w-4 h-4 text-indigo-600" />
+                        <Check className="h-4 w-4 text-indigo-600" />
                       )}
                     </button>
                   ))}
@@ -229,12 +238,12 @@ export function GenerateImageModal({
                 AI Model
               </label>
               <div className="space-y-2">
-                {IMAGE_MODELS.map((model) => (
+                {IMAGE_MODELS.map(model => (
                   <button
                     key={model.id}
                     type="button"
                     onClick={() => setSelectedModel(model.id)}
-                    className={`w-full p-3 rounded-lg border-2 text-left transition-all ${
+                    className={`w-full rounded-lg border-2 p-3 text-left transition-all ${
                       selectedModel === model.id
                         ? 'border-indigo-500 bg-indigo-50'
                         : 'border-gray-200 hover:border-gray-300'
@@ -253,19 +262,19 @@ export function GenerateImageModal({
                 Image Size
               </label>
               <div className="grid grid-cols-3 gap-2">
-                {IMAGE_SIZES.map((size) => (
+                {IMAGE_SIZES.map(size => (
                   <button
                     key={size.id}
                     type="button"
                     onClick={() => setSelectedSize(size.id)}
-                    className={`p-3 rounded-lg border-2 text-center transition-all ${
+                    className={`rounded-lg border-2 p-3 text-center transition-all ${
                       selectedSize === size.id
                         ? 'border-indigo-500 bg-indigo-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
                     <div className="text-sm font-medium text-gray-900">{size.ratio}</div>
-                    <div className="text-xs text-gray-600 mt-1">{size.label.split(' ')[0]}</div>
+                    <div className="mt-1 text-xs text-gray-600">{size.label.split(' ')[0]}</div>
                   </button>
                 ))}
               </div>
@@ -278,12 +287,12 @@ export function GenerateImageModal({
                   Image Style
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  {IMAGE_STYLES.map((style) => (
+                  {IMAGE_STYLES.map(style => (
                     <button
                       key={style.id}
                       type="button"
                       onClick={() => setSelectedStyle(style.id)}
-                      className={`p-3 rounded-lg border-2 text-left transition-all ${
+                      className={`rounded-lg border-2 p-3 text-left transition-all ${
                         selectedStyle === style.id
                           ? 'border-indigo-500 bg-indigo-50'
                           : 'border-gray-200 hover:border-gray-300'
@@ -299,7 +308,7 @@ export function GenerateImageModal({
 
             {/* Error */}
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3">
                 <p className="text-sm text-red-800">{error}</p>
               </div>
             )}
@@ -311,17 +320,19 @@ export function GenerateImageModal({
               variant="primary"
               className="w-full"
             >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Generate Image
-                </>
-              )}
+              {isGenerating
+                ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  )
+                : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Generate Image
+                    </>
+                  )}
             </Button>
           </div>
 
@@ -330,34 +341,38 @@ export function GenerateImageModal({
             <label className="block text-sm font-medium text-gray-700">
               Preview
             </label>
-            <div className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 overflow-hidden">
-              {isGenerating ? (
-                <div className="text-center">
-                  <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mx-auto mb-4" />
-                  <p className="text-sm text-gray-600">Generating your image...</p>
-                  <p className="text-xs text-gray-500 mt-2">This may take 10-30 seconds</p>
-                </div>
-              ) : generatedImage ? (
-                <img
-                  src={generatedImage}
-                  alt="Generated"
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <div className="text-center p-8">
-                  <ImageIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-sm text-gray-600 mb-2">No image generated yet</p>
-                  <p className="text-xs text-gray-500">
-                    Configure your settings and click Generate
-                  </p>
-                </div>
-              )}
+            <div className="flex aspect-square items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-gray-50">
+              {isGenerating
+                ? (
+                    <div className="text-center">
+                      <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-indigo-600" />
+                      <p className="text-sm text-gray-600">Generating your image...</p>
+                      <p className="mt-2 text-xs text-gray-500">This may take 10-30 seconds</p>
+                    </div>
+                  )
+                : generatedImage
+                  ? (
+                      <img
+                        src={generatedImage}
+                        alt="Generated"
+                        className="h-full w-full object-contain"
+                      />
+                    )
+                  : (
+                      <div className="p-8 text-center">
+                        <ImageIcon className="mx-auto mb-4 h-16 w-16 text-gray-400" />
+                        <p className="mb-2 text-sm text-gray-600">No image generated yet</p>
+                        <p className="text-xs text-gray-500">
+                          Configure your settings and click Generate
+                        </p>
+                      </div>
+                    )}
             </div>
 
             {generatedImage && (
               <div className="space-y-3">
                 <Button onClick={handleSave} variant="primary" className="w-full">
-                  <Check className="w-4 h-4 mr-2" />
+                  <Check className="mr-2 h-4 w-4" />
                   Save to Library
                 </Button>
                 <Button

@@ -1,13 +1,13 @@
 'use client';
 
+import { Eye, FileText, GripVertical, Image as ImageIcon, ListChecks, MessageCircle, Trash2, Type, Video } from 'lucide-react';
 import { useState } from 'react';
-import { GripVertical, Trash2, Eye, Type, Image as ImageIcon, Video, FileText, MessageCircle, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
 type BlockType = 'text' | 'image' | 'video' | 'quote' | 'reflection' | 'survey';
 
-interface ContentBlock {
+type ContentBlock = {
   id: string;
   type: BlockType;
   order: number;
@@ -17,14 +17,14 @@ interface ContentBlock {
     question?: string;
     options?: string[];
   };
-}
+};
 
-interface PageEditorProps {
+type PageEditorProps = {
   pageId?: string;
   initialTitle?: string;
   initialBlocks?: ContentBlock[];
   onSave: (title: string, blocks: ContentBlock[]) => void;
-}
+};
 
 export function PageEditor({
   pageId: _pageId,
@@ -59,7 +59,7 @@ export function PageEditor({
 
   const deleteBlock = (blockId: string) => {
     const updatedBlocks = blocks
-      .filter((b) => b.id !== blockId)
+      .filter(b => b.id !== blockId)
       .map((b, index) => ({ ...b, order: index }));
     setBlocks(updatedBlocks);
     if (selectedBlockId === blockId) {
@@ -69,17 +69,17 @@ export function PageEditor({
 
   const updateBlockContent = (blockId: string, content: Partial<ContentBlock['content']>) => {
     setBlocks(
-      blocks.map((b) =>
-        b.id === blockId ? { ...b, content: { ...b.content, ...content } } : b
-      )
+      blocks.map(b =>
+        b.id === blockId ? { ...b, content: { ...b.content, ...content } } : b,
+      ),
     );
   };
 
   const moveBlock = (blockId: string, direction: 'up' | 'down') => {
-    const index = blocks.findIndex((b) => b.id === blockId);
+    const index = blocks.findIndex(b => b.id === blockId);
     if (
-      (direction === 'up' && index === 0) ||
-      (direction === 'down' && index === blocks.length - 1)
+      (direction === 'up' && index === 0)
+      || (direction === 'down' && index === blocks.length - 1)
     ) {
       return;
     }
@@ -99,9 +99,9 @@ export function PageEditor({
   };
 
   const getBlockIcon = (type: BlockType) => {
-    const blockType = blockTypes.find((bt) => bt.value === type);
+    const blockType = blockTypes.find(bt => bt.value === type);
     const Icon = blockType?.icon;
-    return Icon ? <Icon className="w-4 h-4" /> : null;
+    return Icon ? <Icon className="h-4 w-4" /> : null;
   };
 
   const renderBlockEditor = (block: ContentBlock) => {
@@ -110,9 +110,9 @@ export function PageEditor({
         return (
           <textarea
             value={block.content.text || ''}
-            onChange={(e) => updateBlockContent(block.id, { text: e.target.value })}
+            onChange={e => updateBlockContent(block.id, { text: e.target.value })}
             placeholder="Enter your text here..."
-            className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            className="h-32 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
           />
         );
       case 'image':
@@ -120,14 +120,14 @@ export function PageEditor({
           <div className="space-y-2">
             <Input
               value={block.content.mediaUrl || ''}
-              onChange={(e) => updateBlockContent(block.id, { mediaUrl: e.target.value })}
+              onChange={e => updateBlockContent(block.id, { mediaUrl: e.target.value })}
               placeholder="Image URL or select from library..."
             />
             {block.content.mediaUrl && (
               <img
                 src={block.content.mediaUrl}
                 alt="Preview"
-                className="w-full max-h-64 object-cover rounded"
+                className="max-h-64 w-full rounded object-cover"
               />
             )}
           </div>
@@ -137,12 +137,12 @@ export function PageEditor({
           <div className="space-y-2">
             <Input
               value={block.content.mediaUrl || ''}
-              onChange={(e) => updateBlockContent(block.id, { mediaUrl: e.target.value })}
+              onChange={e => updateBlockContent(block.id, { mediaUrl: e.target.value })}
               placeholder="Video URL or select from library..."
             />
             {block.content.mediaUrl && (
-              <div className="aspect-video bg-gray-100 rounded flex items-center justify-center">
-                <Video className="w-12 h-12 text-gray-400" />
+              <div className="flex aspect-video items-center justify-center rounded bg-gray-100">
+                <Video className="h-12 w-12 text-gray-400" />
               </div>
             )}
           </div>
@@ -151,16 +151,16 @@ export function PageEditor({
         return (
           <textarea
             value={block.content.text || ''}
-            onChange={(e) => updateBlockContent(block.id, { text: e.target.value })}
+            onChange={e => updateBlockContent(block.id, { text: e.target.value })}
             placeholder="Enter quote text..."
-            className="w-full h-24 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none italic"
+            className="h-24 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 italic focus:ring-2 focus:ring-indigo-500 focus:outline-none"
           />
         );
       case 'reflection':
         return (
           <Input
             value={block.content.question || ''}
-            onChange={(e) => updateBlockContent(block.id, { question: e.target.value })}
+            onChange={e => updateBlockContent(block.id, { question: e.target.value })}
             placeholder="What question would you like to ask the patient?"
           />
         );
@@ -169,7 +169,7 @@ export function PageEditor({
           <div className="space-y-2">
             <Input
               value={block.content.question || ''}
-              onChange={(e) => updateBlockContent(block.id, { question: e.target.value })}
+              onChange={e => updateBlockContent(block.id, { question: e.target.value })}
               placeholder="Survey question..."
             />
             <p className="text-xs text-gray-600">
@@ -182,17 +182,17 @@ export function PageEditor({
     }
   };
 
-  const _selectedBlock = blocks.find((b) => b.id === selectedBlockId);
+  const _selectedBlock = blocks.find(b => b.id === selectedBlockId);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="p-6 border-b border-gray-200 bg-white">
-        <div className="flex items-center justify-between mb-4">
+      <div className="border-b border-gray-200 bg-white p-6">
+        <div className="mb-4 flex items-center justify-between">
           <Input
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="text-2xl font-bold flex-1 max-w-2xl"
+            onChange={e => setTitle(e.target.value)}
+            className="max-w-2xl flex-1 text-2xl font-bold"
             placeholder="Page title..."
           />
           <div className="flex items-center gap-2">
@@ -200,7 +200,7 @@ export function PageEditor({
               variant="ghost"
               onClick={() => setShowPreview(!showPreview)}
             >
-              <Eye className="w-4 h-4 mr-2" />
+              <Eye className="mr-2 h-4 w-4" />
               {showPreview ? 'Edit' : 'Preview'}
             </Button>
             <Button
@@ -220,30 +220,30 @@ export function PageEditor({
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
         {!showPreview ? (
-          <div className="max-w-4xl mx-auto space-y-4">
+          <div className="mx-auto max-w-4xl space-y-4">
             {/* Blocks */}
             {blocks.map((block, index) => (
               <div
                 key={block.id}
                 onClick={() => setSelectedBlockId(block.id)}
-                className={`group border-2 rounded-lg p-4 transition-all cursor-pointer ${
+                className={`group cursor-pointer rounded-lg border-2 p-4 transition-all ${
                   selectedBlockId === block.id
                     ? 'border-indigo-500 bg-indigo-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
                 {/* Block Header */}
-                <div className="flex items-center gap-2 mb-3">
-                  <button className="text-gray-400 hover:text-gray-600 cursor-move">
-                    <GripVertical className="w-4 h-4" />
+                <div className="mb-3 flex items-center gap-2">
+                  <button className="cursor-move text-gray-400 hover:text-gray-600">
+                    <GripVertical className="h-4 w-4" />
                   </button>
-                  <div className="flex items-center gap-2 flex-1">
+                  <div className="flex flex-1 items-center gap-2">
                     {getBlockIcon(block.type)}
                     <span className="text-sm font-medium text-gray-700 capitalize">
                       {block.type}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -274,7 +274,7 @@ export function PageEditor({
                         deleteBlock(block.id);
                       }}
                     >
-                      <Trash2 className="w-4 h-4 text-red-600" />
+                      <Trash2 className="h-4 w-4 text-red-600" />
                     </Button>
                   </div>
                 </div>
@@ -292,7 +292,10 @@ export function PageEditor({
                       <p className="line-clamp-1">{block.content.question}</p>
                     )}
                     {block.content.mediaUrl && (
-                      <p className="text-xs">Media: {block.content.mediaUrl}</p>
+                      <p className="text-xs">
+                        Media:
+                        {block.content.mediaUrl}
+                      </p>
                     )}
                     {!block.content.text && !block.content.question && !block.content.mediaUrl && (
                       <p className="text-gray-400 italic">Empty block - click to edit</p>
@@ -303,8 +306,8 @@ export function PageEditor({
             ))}
 
             {/* Add Block Buttons */}
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-              <p className="text-sm font-medium text-gray-700 mb-3 text-center">
+            <div className="rounded-lg border-2 border-dashed border-gray-300 p-6">
+              <p className="mb-3 text-center text-sm font-medium text-gray-700">
                 Add Block
               </p>
               <div className="grid grid-cols-3 gap-2">
@@ -312,9 +315,9 @@ export function PageEditor({
                   <button
                     key={value}
                     onClick={() => addBlock(value)}
-                    className="flex items-center gap-2 px-4 py-3 bg-white border border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all text-sm"
+                    className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm transition-all hover:border-indigo-500 hover:bg-indigo-50"
                   >
-                    <Icon className="w-4 h-4 text-gray-600" />
+                    <Icon className="h-4 w-4 text-gray-600" />
                     <span className="text-gray-700">{label}</span>
                   </button>
                 ))}
@@ -322,8 +325,8 @@ export function PageEditor({
             </div>
 
             {blocks.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-gray-500 mb-4">No content blocks yet</p>
+              <div className="py-12 text-center">
+                <p className="mb-4 text-gray-500">No content blocks yet</p>
                 <p className="text-sm text-gray-400">
                   Click one of the block types above to start building your page
                 </p>
@@ -332,13 +335,13 @@ export function PageEditor({
           </div>
         ) : (
           /* Preview Mode */
-          <div className="max-w-2xl mx-auto">
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">{title}</h1>
+          <div className="mx-auto max-w-2xl">
+            <h1 className="mb-8 text-3xl font-bold text-gray-900">{title}</h1>
             <div className="space-y-6">
-              {blocks.map((block) => (
+              {blocks.map(block => (
                 <div key={block.id}>
                   {block.type === 'text' && block.content.text && (
-                    <p className="text-gray-700 leading-relaxed">{block.content.text}</p>
+                    <p className="leading-relaxed text-gray-700">{block.content.text}</p>
                   )}
                   {block.type === 'image' && block.content.mediaUrl && (
                     <img
@@ -348,35 +351,40 @@ export function PageEditor({
                     />
                   )}
                   {block.type === 'video' && block.content.mediaUrl && (
-                    <div className="aspect-video bg-gray-900 rounded-lg flex items-center justify-center">
-                      <Video className="w-16 h-16 text-white opacity-50" />
+                    <div className="flex aspect-video items-center justify-center rounded-lg bg-gray-900">
+                      <Video className="h-16 w-16 text-white opacity-50" />
                     </div>
                   )}
                   {block.type === 'quote' && block.content.text && (
-                    <blockquote className="border-l-4 border-indigo-500 pl-4 py-2 italic text-gray-700">
-                      "{block.content.text}"
+                    <blockquote className="border-l-4 border-indigo-500 py-2 pl-4 text-gray-700 italic">
+                      "
+                      {block.content.text}
+                      "
                     </blockquote>
                   )}
                   {block.type === 'reflection' && block.content.question && (
-                    <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-                      <p className="font-medium text-indigo-900 mb-2">Reflection</p>
-                      <p className="text-gray-700 mb-3">{block.content.question}</p>
+                    <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+                      <p className="mb-2 font-medium text-indigo-900">Reflection</p>
+                      <p className="mb-3 text-gray-700">{block.content.question}</p>
                       <textarea
                         placeholder="Your response..."
-                        className="w-full h-24 px-3 py-2 border border-gray-300 rounded resize-none"
+                        className="h-24 w-full resize-none rounded border border-gray-300 px-3 py-2"
                         disabled
                       />
                     </div>
                   )}
                   {block.type === 'survey' && block.content.question && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <p className="font-medium text-green-900 mb-2">Survey</p>
-                      <p className="text-gray-700 mb-3">{block.content.question}</p>
+                    <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                      <p className="mb-2 font-medium text-green-900">Survey</p>
+                      <p className="mb-3 text-gray-700">{block.content.question}</p>
                       <div className="space-y-2">
-                        {[1, 2, 3, 4, 5].map((i) => (
+                        {[1, 2, 3, 4, 5].map(i => (
                           <label key={i} className="flex items-center gap-2">
                             <input type="radio" name="survey" disabled />
-                            <span className="text-sm text-gray-600">Option {i}</span>
+                            <span className="text-sm text-gray-600">
+                              Option
+                              {i}
+                            </span>
                           </label>
                         ))}
                       </div>

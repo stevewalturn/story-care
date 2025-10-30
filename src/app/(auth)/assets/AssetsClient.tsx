@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Search, Plus, Image, Video, Music, FileText, Sparkles } from 'lucide-react';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
+import { FileText, Image, Music, Plus, Search, Sparkles, Video } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { MediaGrid } from '@/components/assets/MediaGrid';
 import { MediaViewer } from '@/components/assets/MediaViewer';
 import { GenerateImageModal } from '@/components/media/GenerateImageModal';
 import { GenerateVideoModal } from '@/components/media/GenerateVideoModal';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface MediaItem {
+type MediaItem = {
   id: string;
   type: 'image' | 'video' | 'audio' | 'quote';
   title: string;
@@ -23,13 +23,13 @@ interface MediaItem {
   text?: string;
   tags?: string[];
   prompt?: string;
-}
+};
 
-interface Patient {
+type Patient = {
   id: string;
   name: string;
   avatarUrl?: string;
-}
+};
 
 export function AssetsClient() {
   const { user } = useAuth();
@@ -61,7 +61,9 @@ export function AssetsClient() {
       }
 
       const response = await fetch(`/api/media?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch media');
+      if (!response.ok) {
+        throw new Error('Failed to fetch media');
+      }
 
       const data = await response.json();
 
@@ -94,7 +96,9 @@ export function AssetsClient() {
   const fetchPatients = async () => {
     try {
       const response = await fetch('/api/patients');
-      if (!response.ok) throw new Error('Failed to fetch patients');
+      if (!response.ok) {
+        throw new Error('Failed to fetch patients');
+      }
 
       const data = await response.json();
       setPatients(data.patients || []);
@@ -120,7 +124,9 @@ export function AssetsClient() {
         method: 'DELETE',
       });
 
-      if (!response.ok) throw new Error('Failed to delete media');
+      if (!response.ok) {
+        throw new Error('Failed to delete media');
+      }
 
       // Refresh media list
       fetchMedia();
@@ -149,7 +155,9 @@ export function AssetsClient() {
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to save generated image');
+      if (!response.ok) {
+        throw new Error('Failed to save generated image');
+      }
 
       // Refresh media list
       fetchMedia();
@@ -179,7 +187,9 @@ export function AssetsClient() {
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to save generated video');
+      if (!response.ok) {
+        throw new Error('Failed to save generated video');
+      }
 
       // Refresh media list
       fetchMedia();
@@ -193,17 +203,17 @@ export function AssetsClient() {
   // Count by type
   const counts = {
     all: media.length,
-    image: media.filter((m) => m.type === 'image').length,
-    video: media.filter((m) => m.type === 'video').length,
-    audio: media.filter((m) => m.type === 'audio').length,
-    quote: media.filter((m) => m.type === 'quote').length,
+    image: media.filter(m => m.type === 'image').length,
+    video: media.filter(m => m.type === 'video').length,
+    audio: media.filter(m => m.type === 'audio').length,
+    quote: media.filter(m => m.type === 'quote').length,
   };
 
   return (
     <div className="p-8">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+        <h1 className="mb-2 text-2xl font-bold text-gray-900">
           Patient Content Library
         </h1>
         <p className="text-sm text-gray-600">
@@ -212,10 +222,10 @@ export function AssetsClient() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-5">
         <button
           onClick={() => setFilterType('all')}
-          className={`p-4 rounded-lg border-2 transition-all ${
+          className={`rounded-lg border-2 p-4 transition-all ${
             filterType === 'all'
               ? 'border-indigo-500 bg-indigo-50'
               : 'border-gray-200 hover:border-gray-300'
@@ -226,111 +236,115 @@ export function AssetsClient() {
         </button>
         <button
           onClick={() => setFilterType('image')}
-          className={`p-4 rounded-lg border-2 transition-all ${
+          className={`rounded-lg border-2 p-4 transition-all ${
             filterType === 'image'
               ? 'border-blue-500 bg-blue-50'
               : 'border-gray-200 hover:border-gray-300'
           }`}
         >
-          <Image className="w-6 h-6 text-blue-600 mb-1" />
+          <Image className="mb-1 h-6 w-6 text-blue-600" />
           <p className="text-2xl font-bold text-gray-900">{counts.image}</p>
           <p className="text-sm text-gray-600">Images</p>
         </button>
         <button
           onClick={() => setFilterType('video')}
-          className={`p-4 rounded-lg border-2 transition-all ${
+          className={`rounded-lg border-2 p-4 transition-all ${
             filterType === 'video'
               ? 'border-purple-500 bg-purple-50'
               : 'border-gray-200 hover:border-gray-300'
           }`}
         >
-          <Video className="w-6 h-6 text-purple-600 mb-1" />
+          <Video className="mb-1 h-6 w-6 text-purple-600" />
           <p className="text-2xl font-bold text-gray-900">{counts.video}</p>
           <p className="text-sm text-gray-600">Videos</p>
         </button>
         <button
           onClick={() => setFilterType('audio')}
-          className={`p-4 rounded-lg border-2 transition-all ${
+          className={`rounded-lg border-2 p-4 transition-all ${
             filterType === 'audio'
               ? 'border-green-500 bg-green-50'
               : 'border-gray-200 hover:border-gray-300'
           }`}
         >
-          <Music className="w-6 h-6 text-green-600 mb-1" />
+          <Music className="mb-1 h-6 w-6 text-green-600" />
           <p className="text-2xl font-bold text-gray-900">{counts.audio}</p>
           <p className="text-sm text-gray-600">Audio</p>
         </button>
         <button
           onClick={() => setFilterType('quote')}
-          className={`p-4 rounded-lg border-2 transition-all ${
+          className={`rounded-lg border-2 p-4 transition-all ${
             filterType === 'quote'
               ? 'border-orange-500 bg-orange-50'
               : 'border-gray-200 hover:border-gray-300'
           }`}
         >
-          <FileText className="w-6 h-6 text-orange-600 mb-1" />
+          <FileText className="mb-1 h-6 w-6 text-orange-600" />
           <p className="text-2xl font-bold text-gray-900">{counts.quote}</p>
           <p className="text-sm text-gray-600">Quotes</p>
         </button>
       </div>
 
       {/* Search & Actions */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="mb-6 flex items-center gap-3">
         <div className="flex-1">
           <Input
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search by title, patient, or tags..."
-            leftIcon={<Search className="w-4 h-4" />}
+            leftIcon={<Search className="h-4 w-4" />}
           />
         </div>
         <Button variant="primary" onClick={() => setShowGenerateModal(true)}>
-          <Sparkles className="w-4 h-4 mr-2" />
+          <Sparkles className="mr-2 h-4 w-4" />
           Generate Image
         </Button>
         <Button variant="primary" onClick={() => setShowGenerateVideoModal(true)}>
-          <Video className="w-4 h-4 mr-2" />
+          <Video className="mr-2 h-4 w-4" />
           Generate Video
         </Button>
         <Button variant="secondary">
-          <Plus className="w-4 h-4 mr-2" />
+          <Plus className="mr-2 h-4 w-4" />
           Upload
         </Button>
       </div>
 
       {/* Error Message */}
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
           {error}
         </div>
       )}
 
       {/* Loading State */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
-        </div>
-      ) : media.length === 0 ? (
-        <div className="text-center py-12">
-          <Image className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No media found</h3>
-          <p className="text-sm text-gray-600 mb-6">
-            {searchQuery
-              ? 'Try adjusting your search or filters'
-              : 'Start by generating or uploading media assets'}
-          </p>
-          <Button variant="primary" onClick={() => setShowGenerateModal(true)}>
-            <Sparkles className="w-4 h-4 mr-2" />
-            Generate Your First Image
-          </Button>
-        </div>
-      ) : (
-        <MediaGrid
-          items={media}
-          onItemClick={setSelectedItem}
-          onDelete={handleDelete}
-        />
-      )}
+      {loading
+        ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-indigo-600" />
+            </div>
+          )
+        : media.length === 0
+          ? (
+              <div className="py-12 text-center">
+                <Image className="mx-auto mb-4 h-16 w-16 text-gray-400" />
+                <h3 className="mb-2 text-lg font-medium text-gray-900">No media found</h3>
+                <p className="mb-6 text-sm text-gray-600">
+                  {searchQuery
+                    ? 'Try adjusting your search or filters'
+                    : 'Start by generating or uploading media assets'}
+                </p>
+                <Button variant="primary" onClick={() => setShowGenerateModal(true)}>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Generate Your First Image
+                </Button>
+              </div>
+            )
+          : (
+              <MediaGrid
+                items={media}
+                onItemClick={setSelectedItem}
+                onDelete={handleDelete}
+              />
+            )}
 
       {/* Media Viewer Modal */}
       {selectedItem && (

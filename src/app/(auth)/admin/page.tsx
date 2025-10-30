@@ -1,31 +1,31 @@
-import { Shield, Users, Settings, Database } from 'lucide-react';
+import { Database, Settings, Shield, Users } from 'lucide-react';
 
 export default async function AdminPage() {
   return (
     <div className="p-8">
-      <div className="max-w-4xl mx-auto text-center py-16">
-        <div className="w-20 h-20 mx-auto bg-red-50 rounded-2xl flex items-center justify-center mb-6">
-          <Shield className="w-10 h-10 text-red-600" />
+      <div className="mx-auto max-w-4xl py-16 text-center">
+        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-red-50">
+          <Shield className="h-10 w-10 text-red-600" />
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Admin Panel</h1>
-        <p className="text-lg text-gray-600 mb-8">
+        <h1 className="mb-4 text-3xl font-bold text-gray-900">Admin Panel</h1>
+        <p className="mb-8 text-lg text-gray-600">
           Manage users, permissions, and system settings.
         </p>
-        <div className="grid grid-cols-3 gap-4 max-w-xl mx-auto">
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <Users className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+        <div className="mx-auto grid max-w-xl grid-cols-3 gap-4">
+          <div className="rounded-lg bg-gray-50 p-4">
+            <Users className="mx-auto mb-2 h-8 w-8 text-gray-600" />
             <p className="text-sm font-medium text-gray-700">Users</p>
           </div>
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <Settings className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+          <div className="rounded-lg bg-gray-50 p-4">
+            <Settings className="mx-auto mb-2 h-8 w-8 text-gray-600" />
             <p className="text-sm font-medium text-gray-700">Settings</p>
           </div>
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <Database className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+          <div className="rounded-lg bg-gray-50 p-4">
+            <Database className="mx-auto mb-2 h-8 w-8 text-gray-600" />
             <p className="text-sm font-medium text-gray-700">Database</p>
           </div>
         </div>
-        <p className="text-sm text-gray-500 mt-8">Coming soon...</p>
+        <p className="mt-8 text-sm text-gray-500">Coming soon...</p>
       </div>
     </div>
   );

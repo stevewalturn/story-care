@@ -1,6 +1,8 @@
 import {
+  bigint,
   boolean,
   date,
+  decimal,
   integer,
   jsonb,
   pgEnum,
@@ -9,8 +11,6 @@ import {
   timestamp,
   uuid,
   varchar,
-  decimal,
-  bigint,
 } from 'drizzle-orm/pg-core';
 
 // StoryCare Database Schema

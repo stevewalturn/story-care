@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     console.error('Session cookie error:', error);
     return NextResponse.json(
       { error: 'Failed to set session' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -40,7 +40,7 @@ export async function DELETE() {
     console.error('Session delete error:', error);
     return NextResponse.json(
       { error: 'Failed to delete session' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

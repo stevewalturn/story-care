@@ -1,23 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { GroupList } from '@/components/groups/GroupList';
 import { GroupModal } from '@/components/groups/GroupModal';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface GroupMember {
+type GroupMember = {
   id: string;
   name: string;
   avatarUrl?: string;
-}
+};
 
-interface Group {
+type Group = {
   id: string;
   name: string;
   description?: string;
   members: GroupMember[];
   createdAt: Date;
-}
+};
 
 export default function GroupsPage() {
   const { user } = useAuth();
@@ -36,7 +36,9 @@ export default function GroupsPage() {
     try {
       setLoading(true);
       const response = await fetch(`/api/groups?therapistId=${user?.uid}`);
-      if (!response.ok) throw new Error('Failed to fetch groups');
+      if (!response.ok) {
+        throw new Error('Failed to fetch groups');
+      }
 
       const data = await response.json();
       setGroups(data.groups.map((g: any) => ({
@@ -53,7 +55,9 @@ export default function GroupsPage() {
   const fetchPatients = async () => {
     try {
       const response = await fetch('/api/patients');
-      if (!response.ok) throw new Error('Failed to fetch patients');
+      if (!response.ok) {
+        throw new Error('Failed to fetch patients');
+      }
 
       const data = await response.json();
       setAvailablePatients(data.patients || []);
@@ -82,11 +86,13 @@ export default function GroupsPage() {
           body: JSON.stringify({
             name: groupData.name,
             description: groupData.description,
-            memberIds: groupData.members?.map((m) => m.id),
+            memberIds: groupData.members?.map(m => m.id),
           }),
         });
 
-        if (!response.ok) throw new Error('Failed to update group');
+        if (!response.ok) {
+          throw new Error('Failed to update group');
+        }
       } else {
         // Create new group
         const response = await fetch('/api/groups', {
@@ -95,12 +101,14 @@ export default function GroupsPage() {
           body: JSON.stringify({
             name: groupData.name,
             description: groupData.description,
-            memberIds: groupData.members?.map((m) => m.id),
+            memberIds: groupData.members?.map(m => m.id),
             therapistId: user?.uid,
           }),
         });
 
-        if (!response.ok) throw new Error('Failed to create group');
+        if (!response.ok) {
+          throw new Error('Failed to create group');
+        }
       }
 
       // Refresh groups list
@@ -113,14 +121,18 @@ export default function GroupsPage() {
   };
 
   const handleDelete = async (groupId: string) => {
-    if (!confirm('Are you sure you want to delete this group?')) return;
+    if (!confirm('Are you sure you want to delete this group?')) {
+      return;
+    }
 
     try {
       const response = await fetch(`/api/groups/${groupId}`, {
         method: 'DELETE',
       });
 
-      if (!response.ok) throw new Error('Failed to delete group');
+      if (!response.ok) {
+        throw new Error('Failed to delete group');
+      }
 
       // Refresh groups list
       await fetchGroups();
@@ -132,8 +144,8 @@ export default function GroupsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-indigo-600" />
       </div>
     );
   }

@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/libs/DB';
-import { sessions, users, groups, groupMembers } from '@/models/Schema';
+import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { db } from '@/libs/DB';
+import { groupMembers, groups, sessions, users } from '@/models/Schema';
 
 // GET /api/sessions/[id] - Get single session
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -32,7 +33,7 @@ export async function GET(
     if (!session) {
       return NextResponse.json(
         { error: 'Session not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -95,7 +96,7 @@ export async function GET(
     console.error('Error fetching session:', error);
     return NextResponse.json(
       { error: 'Failed to fetch session' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -103,7 +104,7 @@ export async function GET(
 // PUT /api/sessions/[id] - Update session
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -126,7 +127,7 @@ export async function PUT(
     if (!updatedSession) {
       return NextResponse.json(
         { error: 'Session not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -135,7 +136,7 @@ export async function PUT(
     console.error('Error updating session:', error);
     return NextResponse.json(
       { error: 'Failed to update session' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -143,7 +144,7 @@ export async function PUT(
 // DELETE /api/sessions/[id] - Delete session
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -155,7 +156,7 @@ export async function DELETE(
     if (!deletedSession) {
       return NextResponse.json(
         { error: 'Session not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -164,7 +165,7 @@ export async function DELETE(
     console.error('Error deleting session:', error);
     return NextResponse.json(
       { error: 'Failed to delete session' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

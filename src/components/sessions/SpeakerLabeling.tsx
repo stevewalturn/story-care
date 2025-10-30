@@ -24,7 +24,7 @@ interface SpeakerLabelingProps {
 }
 
 export function SpeakerLabeling({
-  sessionId,
+  sessionId: _sessionId,
   speakers: initialSpeakers,
   onSave,
   onCancel,

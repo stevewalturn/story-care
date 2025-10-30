@@ -100,7 +100,7 @@ const mockUtterances: Utterance[] = [
     speakerId: 'spk1',
     speakerName: 'Dr. Sarah',
     speakerType: 'therapist',
-    text: "Good morning. How have you been feeling...",
+    text: 'Good morning. How have you been feeling...',
     startTime: 0,
     endTime: 5,
     confidence: 0.95,

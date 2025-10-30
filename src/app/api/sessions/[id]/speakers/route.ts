@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { speakers, transcripts } from '@/models/Schema';
-import { eq } from 'drizzle-orm';
 
 // GET /api/sessions/[id]/speakers - Get speakers for a session
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -33,7 +34,7 @@ export async function GET(
     console.error('Error fetching speakers:', error);
     return NextResponse.json(
       { error: 'Failed to fetch speakers' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -41,7 +42,7 @@ export async function GET(
 // PUT /api/sessions/[id]/speakers - Update/save speaker assignments
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -51,7 +52,7 @@ export async function PUT(
     if (!Array.isArray(speakersData)) {
       return NextResponse.json(
         { error: 'speakers must be an array' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -65,7 +66,7 @@ export async function PUT(
     if (!transcript) {
       return NextResponse.json(
         { error: 'No transcript found for this session' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -75,14 +76,14 @@ export async function PUT(
     // Insert new speaker assignments
     if (speakersData.length > 0) {
       await db.insert(speakers).values(
-        speakersData.map((speaker) => ({
+        speakersData.map(speaker => ({
           transcriptId: transcript.id,
           speakerLabel: speaker.speakerLabel,
           speakerType: speaker.speakerType,
           speakerName: speaker.speakerName,
           totalUtterances: speaker.totalUtterances || 0,
           totalDurationSeconds: speaker.totalDurationSeconds || 0,
-        }))
+        })),
       );
     }
 
@@ -98,7 +99,7 @@ export async function PUT(
     console.error('Error saving speakers:', error);
     return NextResponse.json(
       { error: 'Failed to save speakers' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

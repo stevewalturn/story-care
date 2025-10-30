@@ -1,7 +1,7 @@
-import { Folder, Users, User, Calendar } from 'lucide-react';
+import { Calendar, Folder, User, Users } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 
-interface SessionCardProps {
+type SessionCardProps = {
   id: string;
   title: string;
   date: string;
@@ -10,7 +10,7 @@ interface SessionCardProps {
   groupName?: string;
   sessionCount?: number;
   onClick?: () => void;
-}
+};
 
 export function SessionCard({
   title: _title,
@@ -26,31 +26,35 @@ export function SessionCard({
       <div className="p-6">
         <div className="flex items-start gap-4">
           {/* Avatar/Icon */}
-          <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center flex-shrink-0">
-            {type === 'individual' ? (
-              <User className="w-6 h-6 text-indigo-600" />
-            ) : (
-              <Users className="w-6 h-6 text-indigo-600" />
-            )}
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-indigo-50">
+            {type === 'individual'
+              ? (
+                  <User className="h-6 w-6 text-indigo-600" />
+                )
+              : (
+                  <Users className="h-6 w-6 text-indigo-600" />
+                )}
           </div>
 
           {/* Content */}
-          <div className="flex-1 min-w-0">
-            <h3 className="text-base font-semibold text-gray-900 truncate">
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-base font-semibold text-gray-900">
               {patientName || groupName}
             </h3>
-            <p className="text-sm text-gray-500 mt-1">
-              {sessionCount} {sessionCount === 1 ? 'session' : 'sessions'}
+            <p className="mt-1 text-sm text-gray-500">
+              {sessionCount}
+              {' '}
+              {sessionCount === 1 ? 'session' : 'sessions'}
             </p>
 
             {/* Latest session info */}
-            <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+            <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
               <div className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5" />
+                <Calendar className="h-3.5 w-3.5" />
                 <span>{date}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <Folder className="w-3.5 h-3.5" />
+                <Folder className="h-3.5 w-3.5" />
                 <span className="capitalize">{type}</span>
               </div>
             </div>

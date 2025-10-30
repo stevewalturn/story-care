@@ -1,21 +1,21 @@
 'use client';
 
-import { Search, Image as ImageIcon, Video, Music, Plus } from 'lucide-react';
-import { Input } from '@/components/ui/Input';
+import { Image as ImageIcon, Music, Plus, Search, Video } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { useState, useEffect } from 'react';
+import { Input } from '@/components/ui/Input';
 
-interface MediaItem {
+type MediaItem = {
   id: string;
   type: 'video' | 'image' | 'audio';
   title: string;
   thumbnailUrl: string;
   duration?: number;
-}
+};
 
-interface ClipLibraryProps {
+type ClipLibraryProps = {
   onAddToTimeline: (media: MediaItem, duration: number) => void;
-}
+};
 
 export function ClipLibrary({ onAddToTimeline }: ClipLibraryProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,7 +48,9 @@ export function ClipLibrary({ onAddToTimeline }: ClipLibraryProps) {
       }
 
       const response = await fetch(`/api/media?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch media');
+      if (!response.ok) {
+        throw new Error('Failed to fetch media');
+      }
 
       const data = await response.json();
 
@@ -71,9 +73,9 @@ export function ClipLibrary({ onAddToTimeline }: ClipLibraryProps) {
   };
 
   const filteredMedia = media.filter((item) => {
-    const matchesSearch =
-      searchQuery === '' ||
-      item.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch
+      = searchQuery === ''
+        || item.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = filterType === 'all' || item.type === filterType;
     return matchesSearch && matchesType;
   });
@@ -81,33 +83,35 @@ export function ClipLibrary({ onAddToTimeline }: ClipLibraryProps) {
   const getIcon = (type: string) => {
     switch (type) {
       case 'image':
-        return <ImageIcon className="w-4 h-4" />;
+        return <ImageIcon className="h-4 w-4" />;
       case 'video':
-        return <Video className="w-4 h-4" />;
+        return <Video className="h-4 w-4" />;
       case 'audio':
-        return <Music className="w-4 h-4" />;
+        return <Music className="h-4 w-4" />;
       default:
         return null;
     }
   };
 
   const formatDuration = (seconds?: number) => {
-    if (!seconds) return '';
+    if (!seconds) {
+      return '';
+    }
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden h-full flex flex-col">
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-gray-200 bg-white">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 bg-gray-50">
-        <h3 className="font-semibold text-gray-900 mb-3">Media Library</h3>
+      <div className="border-b border-gray-200 bg-gray-50 p-4">
+        <h3 className="mb-3 font-semibold text-gray-900">Media Library</h3>
         <Input
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={e => setSearchQuery(e.target.value)}
           placeholder="Search media..."
-          leftIcon={<Search className="w-4 h-4" />}
+          leftIcon={<Search className="h-4 w-4" />}
         />
       </div>
 
@@ -117,8 +121,8 @@ export function ClipLibrary({ onAddToTimeline }: ClipLibraryProps) {
           onClick={() => setFilterType('all')}
           className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
             filterType === 'all'
-              ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50'
-              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              ? 'border-b-2 border-indigo-600 bg-indigo-50 text-indigo-600'
+              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
           }`}
         >
           All
@@ -127,8 +131,8 @@ export function ClipLibrary({ onAddToTimeline }: ClipLibraryProps) {
           onClick={() => setFilterType('image')}
           className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
             filterType === 'image'
-              ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50'
-              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              ? 'border-b-2 border-indigo-600 bg-indigo-50 text-indigo-600'
+              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
           }`}
         >
           Images
@@ -137,8 +141,8 @@ export function ClipLibrary({ onAddToTimeline }: ClipLibraryProps) {
           onClick={() => setFilterType('video')}
           className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
             filterType === 'video'
-              ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50'
-              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              ? 'border-b-2 border-indigo-600 bg-indigo-50 text-indigo-600'
+              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
           }`}
         >
           Videos
@@ -147,8 +151,8 @@ export function ClipLibrary({ onAddToTimeline }: ClipLibraryProps) {
           onClick={() => setFilterType('audio')}
           className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
             filterType === 'audio'
-              ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50'
-              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              ? 'border-b-2 border-indigo-600 bg-indigo-50 text-indigo-600'
+              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
           }`}
         >
           Audio
@@ -159,37 +163,39 @@ export function ClipLibrary({ onAddToTimeline }: ClipLibraryProps) {
       <div className="flex-1 overflow-y-auto p-4">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-indigo-600" />
           </div>
         ) : (
           <div className="space-y-2">
-            {filteredMedia.map((item) => (
+            {filteredMedia.map(item => (
               <div
                 key={item.id}
-                className="group relative border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-all bg-white"
+                className="group relative overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:shadow-md"
               >
                 <div className="flex items-center gap-3 p-3">
                   {/* Thumbnail */}
-                  <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
-                    {item.type === 'audio' || !item.thumbnailUrl ? (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Music className="w-6 h-6 text-gray-400" />
-                      </div>
-                    ) : (
-                      <img
-                        src={item.thumbnailUrl}
-                        alt={item.title}
-                        className="w-full h-full object-cover"
-                      />
-                    )}
+                  <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-gray-100">
+                    {item.type === 'audio' || !item.thumbnailUrl
+                      ? (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <Music className="h-6 w-6 text-gray-400" />
+                          </div>
+                        )
+                      : (
+                          <img
+                            src={item.thumbnailUrl}
+                            alt={item.title}
+                            className="h-full w-full object-cover"
+                          />
+                        )}
                   </div>
 
                   {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-sm text-gray-900 truncate">
+                  <div className="min-w-0 flex-1">
+                    <h4 className="truncate text-sm font-medium text-gray-900">
                       {item.title}
                     </h4>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="mt-1 flex items-center gap-2">
                       <span className="inline-flex items-center gap-1 text-xs text-gray-600">
                         {getIcon(item.type)}
                         <span className="capitalize">{item.type}</span>
@@ -207,16 +213,16 @@ export function ClipLibrary({ onAddToTimeline }: ClipLibraryProps) {
                     variant="ghost"
                     size="sm"
                     onClick={() => onAddToTimeline(item, item.duration || 5)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="opacity-0 transition-opacity group-hover:opacity-100"
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             ))}
 
             {filteredMedia.length === 0 && !loading && (
-              <div className="text-center py-12">
+              <div className="py-12 text-center">
                 <p className="text-sm text-gray-500">
                   {searchQuery ? 'No media found matching your search' : 'No media available'}
                 </p>

@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { and, eq, like } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { users } from '@/models/Schema';
-import { eq, like, and } from 'drizzle-orm';
 
 // GET /api/patients - List patients
 export async function GET(request: NextRequest) {
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching patients:', error);
     return NextResponse.json(
       { error: 'Failed to fetch patients' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
     if (!name) {
       return NextResponse.json(
         { error: 'Name is required' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
     if (!patient) {
       return NextResponse.json(
         { error: 'Failed to create patient' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
     console.error('Error creating patient:', error);
     return NextResponse.json(
       { error: 'Failed to create patient' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

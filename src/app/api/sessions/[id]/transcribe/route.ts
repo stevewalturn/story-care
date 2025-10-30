@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/libs/DB';
-import { sessions, transcripts, speakers, utterances } from '@/models/Schema';
+import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { db } from '@/libs/DB';
 import { transcribeAudio } from '@/libs/Deepgram';
+import { sessions, speakers, transcripts, utterances } from '@/models/Schema';
 
-interface RouteContext {
+type RouteContext = {
   params: Promise<{ id: string }>;
-}
+};
 
 // POST /api/sessions/[id]/transcribe - Transcribe audio
 export async function POST(_request: NextRequest, context: RouteContext) {
@@ -65,7 +66,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     const speakerRecords = await Promise.all(
       Array.from(speakerMap.entries()).map(async ([speakerNum, label]) => {
         const speakerUtterances = result.utterances.filter(
-          (u) => u.speaker === speakerNum,
+          u => u.speaker === speakerNum,
         );
         const totalDuration = speakerUtterances.reduce(
           (sum, u) => sum + (u.end - u.start),
@@ -97,7 +98,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     await Promise.all(
       result.utterances.map(async (utterance, index) => {
         const speakerRecord = speakerRecords.find(
-          (s) => s.speakerNum === utterance.speaker,
+          s => s.speakerNum === utterance.speaker,
         );
         if (speakerRecord && speakerRecord.speaker) {
           await db.insert(utterances).values({
@@ -121,7 +122,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({
       transcript,
-      speakers: speakerRecords.map((s) => s.speaker),
+      speakers: speakerRecords.map(s => s.speaker),
       utteranceCount: result.utterances.length,
     });
   } catch (error) {

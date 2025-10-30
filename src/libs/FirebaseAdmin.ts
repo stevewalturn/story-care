@@ -1,5 +1,7 @@
-import { initializeApp, getApps, cert, type App } from 'firebase-admin/app';
-import { getAuth, type Auth } from 'firebase-admin/auth';
+import type { App } from 'firebase-admin/app';
+import type { Auth } from 'firebase-admin/auth';
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 
 let adminApp: App;
 let adminAuth: Auth;
@@ -74,4 +76,4 @@ export async function setCustomClaims(uid: string, claims: Record<string, any>) 
   }
 }
 
-export { adminAuth, adminApp };
+export { adminApp, adminAuth };

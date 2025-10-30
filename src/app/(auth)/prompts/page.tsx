@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { PromptLibrary } from '@/components/prompts/PromptLibrary';
 import { PromptModal } from '@/components/prompts/PromptModal';
 
-interface Prompt {
+type Prompt = {
   id: string;
   title: string;
   description: string;
@@ -14,7 +14,7 @@ interface Prompt {
   useCount: number;
   createdAt: Date;
   isFavorite?: boolean;
-}
+};
 
 export default function PromptsPage() {
   const [showModal, setShowModal] = useState(false);

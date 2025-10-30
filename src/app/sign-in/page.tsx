@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { signIn } from '@/libs/Firebase';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { signIn } from '@/libs/Firebase';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
@@ -47,12 +47,12 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-4">
       <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="mb-8 text-center">
           <Link href="/" className="inline-block">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
+            <h1 className="mb-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-4xl font-bold text-transparent">
               StoryCare
             </h1>
           </Link>
@@ -60,13 +60,13 @@ export default function SignInPage() {
         </div>
 
         {/* Sign In Form */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">
+        <div className="rounded-2xl bg-white p-8 shadow-xl">
+          <h2 className="mb-6 text-2xl font-bold text-gray-900">
             Welcome back
           </h2>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               {error}
             </div>
           )}
@@ -76,7 +76,7 @@ export default function SignInPage() {
               type="email"
               label="Email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value)}
               placeholder="your@email.com"
               required
             />
@@ -85,7 +85,7 @@ export default function SignInPage() {
               type="password"
               label="Password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={e => setPassword(e.target.value)}
               placeholder="Enter your password"
               required
             />
@@ -97,7 +97,7 @@ export default function SignInPage() {
               </label>
               <a
                 href="#"
-                className="text-indigo-600 hover:text-indigo-700 font-medium"
+                className="font-medium text-indigo-600 hover:text-indigo-700"
               >
                 Forgot password?
               </a>
@@ -114,10 +114,11 @@ export default function SignInPage() {
           </form>
 
           <div className="mt-6 text-center text-sm text-gray-600">
-            Don't have an account?{' '}
+            Don't have an account?
+            {' '}
             <Link
               href="/sign-up"
-              className="text-indigo-600 hover:text-indigo-700 font-medium"
+              className="font-medium text-indigo-600 hover:text-indigo-700"
             >
               Sign up
             </Link>
@@ -126,8 +127,8 @@ export default function SignInPage() {
 
         {/* Demo Credentials */}
         <div className="mt-6 text-center">
-          <div className="inline-block bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-900">
-            <p className="font-medium mb-1">Demo Credentials:</p>
+          <div className="inline-block rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+            <p className="mb-1 font-medium">Demo Credentials:</p>
             <p>Email: demo@storycare.com</p>
             <p>Password: demo123</p>
           </div>

@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { desc, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { storyPages, pageBlocks } from '@/models/Schema';
-import { eq, desc } from 'drizzle-orm';
+import { pageBlocks, storyPages } from '@/models/Schema';
 
 // GET /api/pages - List story pages
 export async function GET(request: NextRequest) {
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
     if (!page) {
       return NextResponse.json(
         { error: 'Failed to create page' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
