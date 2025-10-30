@@ -16,7 +16,7 @@ const baseConfig: NextConfig = {
   experimental: {
     turbopackFileSystemCacheForDev: true,
     // Increase body size limit for audio file uploads (500MB)
-    middlewareClientMaxBodySize: 500 * 1024 * 1024, // 500MB in bytes
+    proxyClientMaxBodySize: 500 * 1024 * 1024, // 500MB in bytes
   },
 };
 
