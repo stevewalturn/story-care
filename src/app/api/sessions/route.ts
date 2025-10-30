@@ -1,10 +1,10 @@
 import type { NextRequest } from 'next/server';
 import { desc, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+import { logPHIAccess } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { sessions, users } from '@/models/Schema';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
-import { logPHIAccess } from '@/libs/AuditLogger';
 
 // GET /api/sessions - List all sessions for authenticated therapist
 // HIPAA COMPLIANCE: Requires authentication and logs access

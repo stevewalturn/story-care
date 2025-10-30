@@ -9,10 +9,10 @@
  * 4. Cross-user data access is prevented
  */
 
-import { eq } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
-
 import type { AuthenticatedUser } from '@/utils/AuthHelpers';
+import { eq } from 'drizzle-orm';
+
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { users } from '@/models/Schema';
 import { requireAuth } from '@/utils/AuthHelpers';

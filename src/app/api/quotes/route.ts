@@ -3,7 +3,7 @@ import { and, desc, eq, ilike, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { quotes, sessions, speakers } from '@/models/Schema';
-import { requireTherapist, handleAuthError } from '@/utils/AuthHelpers';
+import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 
 // GET /api/quotes - List quotes
 export async function GET(request: NextRequest) {

@@ -18,13 +18,13 @@ import { verifyIdToken } from '@/libs/FirebaseAdmin';
 /**
  * User information from verified ID token
  */
-export interface AuthenticatedUser {
+export type AuthenticatedUser = {
   uid: string; // Firebase UID
   dbUserId: string; // Database UUID
   email: string | null;
   emailVerified: boolean;
   role: 'therapist' | 'patient' | 'admin';
-}
+};
 
 /**
  * Requires valid authentication token from request

@@ -1,11 +1,11 @@
 import type { NextRequest } from 'next/server';
+import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { uploadFile } from '@/libs/GCS';
 import { generateImage, generateImagePrompt } from '@/libs/OpenAI';
 import { mediaLibrary, sessions } from '@/models/Schema';
-import { requireTherapist, handleAuthError } from '@/utils/AuthHelpers';
-import { eq } from 'drizzle-orm';
+import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 
 // POST /api/ai/generate-image - Generate image with DALL-E
 export async function POST(request: NextRequest) {

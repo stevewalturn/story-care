@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnalyzeSelectionModal } from '@/components/sessions/AnalyzeSelectionModal';
 import { GenerateImageModal } from '@/components/sessions/GenerateImageModal';
 import { GenerateVideoModal } from '@/components/sessions/GenerateVideoModal';
@@ -73,9 +73,9 @@ export function TranscriptViewerClient({
           speakerName: u.speaker?.speakerName || u.speaker?.speakerLabel || 'Unknown',
           speakerType: u.speaker?.speakerType || 'patient',
           text: u.text,
-          startTime: parseFloat(u.startTimeSeconds || '0'),
-          endTime: parseFloat(u.endTimeSeconds || '0'),
-          confidence: parseFloat(u.confidenceScore || '1'),
+          startTime: Number.parseFloat(u.startTimeSeconds || '0'),
+          endTime: Number.parseFloat(u.endTimeSeconds || '0'),
+          confidence: Number.parseFloat(u.confidenceScore || '1'),
         }));
 
         setUtterances(transformedUtterances);
@@ -301,7 +301,7 @@ Transcript text:
     <>
       <div className="flex h-screen bg-gray-50">
         {/* Left Panel - Transcript */}
-        <div className="w-[400px] border-r border-gray-200 bg-white flex flex-col">
+        <div className="flex w-[400px] flex-col border-r border-gray-200 bg-white">
           <TranscriptPanel
             sessionId={sessionId}
             sessionTitle={sessionTitle}
@@ -312,7 +312,7 @@ Transcript text:
         </div>
 
         {/* Center Panel - AI Assistant */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex flex-1 flex-col">
           <AIAssistantPanel
             sessionId={sessionId}
             patientName={patientName}
@@ -324,7 +324,7 @@ Transcript text:
         </div>
 
         {/* Right Panel - Library */}
-        <div className="w-[400px] border-l border-gray-200 bg-white flex flex-col">
+        <div className="flex w-[400px] flex-col border-l border-gray-200 bg-white">
           <LibraryPanel
             sessionId={sessionId}
             patientName={patientName}
@@ -383,8 +383,8 @@ function TranscriptPanel({
 
   const filteredUtterances = searchQuery
     ? utterances.filter(u =>
-        u.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.speakerName.toLowerCase().includes(searchQuery.toLowerCase())
+        u.text.toLowerCase().includes(searchQuery.toLowerCase())
+        || u.speakerName.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     : utterances;
 
@@ -398,7 +398,7 @@ function TranscriptPanel({
     <>
       {/* Header */}
       <div className="border-b border-gray-200 p-4">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex items-center justify-between">
           <button
             onClick={() => window.location.href = '/sessions'}
             className="text-gray-500 hover:text-gray-700"
@@ -425,7 +425,7 @@ function TranscriptPanel({
 
         {/* Search */}
         <div className="relative">
-          <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
@@ -433,14 +433,14 @@ function TranscriptPanel({
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search transcript..."
-            className="w-full rounded-lg border border-gray-200 py-2 pl-10 pr-4 text-sm focus:border-indigo-500 focus:outline-none"
+            className="w-full rounded-lg border border-gray-200 py-2 pr-4 pl-10 text-sm focus:border-indigo-500 focus:outline-none"
           />
         </div>
       </div>
 
       {/* Prompt */}
       <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
-        <p className="text-xs text-gray-500 flex items-center gap-2">
+        <p className="flex items-center gap-2 text-xs text-gray-500">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
@@ -450,31 +450,40 @@ function TranscriptPanel({
 
       {/* Transcript Messages */}
       <div
-        className="flex-1 overflow-y-auto p-4 space-y-4"
+        className="flex-1 space-y-4 overflow-y-auto p-4"
         onMouseUp={onTextSelection}
       >
-        {filteredUtterances.map((utterance) => (
+        {filteredUtterances.map(utterance => (
           <div key={utterance.id} className="flex gap-3">
             {/* Avatar */}
             <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
               utterance.speakerType === 'therapist' ? 'bg-blue-100' : 'bg-green-100'
-            }`}>
-              <svg className={`h-4 w-4 ${
-                utterance.speakerType === 'therapist' ? 'text-blue-600' : 'text-green-600'
-              }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            }`}
+            >
+              <svg
+                className={`h-4 w-4 ${
+                  utterance.speakerType === 'therapist' ? 'text-blue-600' : 'text-green-600'
+                }`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
 
             {/* Message Content */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-baseline gap-2 mb-1">
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex items-baseline gap-2">
                 <span className="text-sm font-semibold text-gray-900">{utterance.speakerName}</span>
                 <span className="text-xs text-gray-500">
-                  {formatTime(utterance.startTime)} - {formatTime(utterance.endTime)}
+                  {formatTime(utterance.startTime)}
+                  {' '}
+                  -
+                  {formatTime(utterance.endTime)}
                 </span>
               </div>
-              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-gray-700">
                 {utterance.text}
               </p>
             </div>
@@ -486,7 +495,7 @@ function TranscriptPanel({
       <div className="border-t border-gray-200 p-4">
         <button
           onClick={() => window.location.href = `/sessions/${sessionId}/speakers`}
-          className="w-full flex items-center justify-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -561,7 +570,9 @@ function AIAssistantPanel({
 
   const handleSendMessage = async (messageText?: string) => {
     const textToSend = messageText || prompt;
-    if (!textToSend.trim() || isLoading) return;
+    if (!textToSend.trim() || isLoading) {
+      return;
+    }
 
     const userMessage = { role: 'user' as const, content: textToSend };
     setMessages(prev => [...prev, userMessage]);
@@ -612,9 +623,14 @@ function AIAssistantPanel({
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">
-              AI Assistant ({patientName}'s Narrative)
+              AI Assistant (
+              {patientName}
+              's Narrative)
             </h2>
-            <p className="text-sm text-gray-500 mt-1">Session: {sessionTitle}</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Session:
+              {sessionTitle}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <span className="flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
@@ -638,7 +654,7 @@ function AIAssistantPanel({
       <div className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center">
-            <div className="text-center max-w-md">
+            <div className="max-w-md text-center">
               {/* Chat Icon */}
               <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-blue-50">
                 <svg className="h-12 w-12 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -646,40 +662,40 @@ function AIAssistantPanel({
                 </svg>
               </div>
 
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Therapeutic Chat Assistant</h3>
-              <p className="text-sm text-gray-500 mb-6">
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">Therapeutic Chat Assistant</h3>
+              <p className="mb-6 text-sm text-gray-500">
                 Ask questions about this session, request insights, or describe what you'd like to visualize.
               </p>
 
               {/* Example Prompts */}
-              <div className="text-left mb-6 space-y-3">
-                <div className="text-xs font-medium text-gray-700 mb-2">For Analysis:</div>
+              <div className="mb-6 space-y-3 text-left">
+                <div className="mb-2 text-xs font-medium text-gray-700">For Analysis:</div>
                 <div className="space-y-2">
                   <button
                     onClick={() => handleExamplePrompt('What are the key themes in this session?')}
-                    className="w-full text-left text-xs text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded transition-colors"
+                    className="w-full rounded p-2 text-left text-xs text-gray-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
                   >
                     "What are the key themes in this session?"
                   </button>
                   <button
                     onClick={() => handleExamplePrompt('How is the patient progressing?')}
-                    className="w-full text-left text-xs text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded transition-colors"
+                    className="w-full rounded p-2 text-left text-xs text-gray-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
                   >
                     "How is the patient progressing?"
                   </button>
                 </div>
 
-                <div className="text-xs font-medium text-gray-700 mb-2 mt-4">For Media:</div>
+                <div className="mt-4 mb-2 text-xs font-medium text-gray-700">For Media:</div>
                 <div className="space-y-2">
                   <button
                     onClick={() => handleExamplePrompt('Create an image showing the patient\'s main metaphor')}
-                    className="w-full text-left text-xs text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded transition-colors"
+                    className="w-full rounded p-2 text-left text-xs text-gray-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
                   >
                     "Create an image showing the patient's main metaphor"
                   </button>
                   <button
                     onClick={() => handleExamplePrompt('Visualize the patient\'s journey from problem to solution')}
-                    className="w-full text-left text-xs text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded transition-colors"
+                    className="w-full rounded p-2 text-left text-xs text-gray-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
                   >
                     "Visualize the patient's journey from problem to solution"
                   </button>
@@ -688,12 +704,12 @@ function AIAssistantPanel({
 
               {/* Prompt Selector */}
               <div className="mb-4">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="mb-2 flex items-center gap-2">
                   <svg className="h-4 w-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
                   <span className="text-xs font-medium text-gray-700">Choose a favorite prompt...</span>
-                  <svg className="h-4 w-4 text-gray-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="ml-auto h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
@@ -721,7 +737,7 @@ function AIAssistantPanel({
                       : 'bg-gray-100 text-gray-900'
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                 </div>
                 {message.role === 'user' && (
                   <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-200">
@@ -739,11 +755,11 @@ function AIAssistantPanel({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <div className="bg-gray-100 rounded-lg px-4 py-3">
+                <div className="rounded-lg bg-gray-100 px-4 py-3">
                   <div className="flex gap-1">
-                    <div className="h-2 w-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="h-2 w-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="h-2 w-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <div className="h-2 w-2 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: '0ms' }} />
+                    <div className="h-2 w-2 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: '150ms' }} />
+                    <div className="h-2 w-2 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: '300ms' }} />
                   </div>
                 </div>
               </div>
@@ -755,7 +771,7 @@ function AIAssistantPanel({
       </div>
 
       {/* Chat Input */}
-      <div className="border-t border-gray-200 p-4 bg-white">
+      <div className="border-t border-gray-200 bg-white p-4">
         <div className="relative">
           <input
             type="text"
@@ -763,13 +779,13 @@ function AIAssistantPanel({
             onChange={e => setPrompt(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Chat about this transcript, or select text to begin..."
-            className="w-full rounded-lg border border-gray-200 py-3 pl-4 pr-12 text-sm focus:border-indigo-500 focus:outline-none"
+            className="w-full rounded-lg border border-gray-200 py-3 pr-12 pl-4 text-sm focus:border-indigo-500 focus:outline-none"
             disabled={isLoading}
           />
           <button
             onClick={() => handleSendMessage()}
             disabled={isLoading || !prompt.trim()}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-600 hover:text-indigo-700 disabled:text-gray-400 disabled:cursor-not-allowed"
+            className="absolute top-1/2 right-3 -translate-y-1/2 text-indigo-600 hover:text-indigo-700 disabled:cursor-not-allowed disabled:text-gray-400"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -872,10 +888,18 @@ function LibraryPanel({
     const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) return 'today';
-    if (diffDays === 1) return '1 day ago';
-    if (diffDays < 30) return `${diffDays} days ago`;
-    if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+    if (diffDays === 0) {
+      return 'today';
+    }
+    if (diffDays === 1) {
+      return '1 day ago';
+    }
+    if (diffDays < 30) {
+      return `${diffDays} days ago`;
+    }
+    if (diffDays < 365) {
+      return `${Math.floor(diffDays / 30)} months ago`;
+    }
     return `${Math.floor(diffDays / 365)} years ago`;
   };
 
@@ -888,7 +912,7 @@ function LibraryPanel({
     <>
       {/* Header */}
       <div className="border-b border-gray-200 p-4">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Library</h2>
           <div className="flex gap-2">
             <button className="text-gray-500 hover:text-gray-700">
@@ -906,18 +930,18 @@ function LibraryPanel({
 
         {/* Patient Selector */}
         <div className="mb-4">
-          <select className="w-full rounded-lg border border-gray-200 py-2 px-3 text-sm focus:border-indigo-500 focus:outline-none">
+          <select className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none">
             <option>{patientName}</option>
           </select>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-gray-200 -mb-px">
-          {['Media', 'Quotes', 'Notes', 'Profile'].map((tab) => (
+        <div className="-mb-px flex gap-1 border-b border-gray-200">
+          {['Media', 'Quotes', 'Notes', 'Profile'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab.toLowerCase() as any)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
                 activeTab === tab.toLowerCase()
                   ? 'border-indigo-600 text-indigo-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -933,9 +957,13 @@ function LibraryPanel({
       {activeTab === 'media' && (
         <>
           {/* Controls */}
-          <div className="border-b border-gray-200 p-4 space-y-3">
+          <div className="space-y-3 border-b border-gray-200 p-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900">Media ({media.length})</h3>
+              <h3 className="text-sm font-semibold text-gray-900">
+                Media (
+                {media.length}
+                )
+              </h3>
               <div className="flex gap-2">
                 <button className="text-gray-500 hover:text-gray-700">
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -963,16 +991,16 @@ function LibraryPanel({
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Search"
-                  className="w-full rounded-lg border border-gray-200 py-1.5 pl-8 pr-3 text-xs focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-gray-200 py-1.5 pr-3 pl-8 text-xs focus:border-indigo-500 focus:outline-none"
                 />
-                <svg className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
               <select
-                className="rounded-lg border border-gray-200 py-1.5 px-3 text-xs focus:border-indigo-500 focus:outline-none"
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs focus:border-indigo-500 focus:outline-none"
               >
                 <option>All Sources</option>
                 <option>Generated</option>
@@ -980,8 +1008,8 @@ function LibraryPanel({
               </select>
               <select
                 value={filterType}
-                onChange={(e) => setFilterType(e.target.value as any)}
-                className="rounded-lg border border-gray-200 py-1.5 px-3 text-xs focus:border-indigo-500 focus:outline-none"
+                onChange={e => setFilterType(e.target.value as any)}
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs focus:border-indigo-500 focus:outline-none"
               >
                 <option value="all">All Types</option>
                 <option value="image">Images</option>
@@ -994,27 +1022,35 @@ function LibraryPanel({
             <div className="flex gap-4 text-xs">
               <button
                 onClick={() => setFilterType('all')}
-                className={filterType === 'all' ? 'text-indigo-600 font-medium' : 'text-gray-500 hover:text-gray-700'}
+                className={filterType === 'all' ? 'font-medium text-indigo-600' : 'text-gray-500 hover:text-gray-700'}
               >
-                All ({media.length})
+                All (
+                {media.length}
+                )
               </button>
               <button
                 onClick={() => setFilterType('video')}
-                className={filterType === 'video' ? 'text-indigo-600 font-medium' : 'text-gray-500 hover:text-gray-700'}
+                className={filterType === 'video' ? 'font-medium text-indigo-600' : 'text-gray-500 hover:text-gray-700'}
               >
-                Videos ({videosCount})
+                Videos (
+                {videosCount}
+                )
               </button>
               <button
                 onClick={() => setFilterType('image')}
-                className={filterType === 'image' ? 'text-indigo-600 font-medium' : 'text-gray-500 hover:text-gray-700'}
+                className={filterType === 'image' ? 'font-medium text-indigo-600' : 'text-gray-500 hover:text-gray-700'}
               >
-                Images ({imagesCount})
+                Images (
+                {imagesCount}
+                )
               </button>
               <button
                 onClick={() => setFilterType('audio')}
-                className={filterType === 'audio' ? 'text-indigo-600 font-medium' : 'text-gray-500 hover:text-gray-700'}
+                className={filterType === 'audio' ? 'font-medium text-indigo-600' : 'text-gray-500 hover:text-gray-700'}
               >
-                Music ({audioCount})
+                Music (
+                {audioCount}
+                )
               </button>
             </div>
           </div>
@@ -1022,71 +1058,75 @@ function LibraryPanel({
           {/* Media Grid */}
           <div className="flex-1 overflow-y-auto p-4">
             {isLoadingMedia ? (
-              <div className="text-center py-12">
+              <div className="py-12 text-center">
                 <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
                 <p className="text-sm text-gray-500">Loading media...</p>
               </div>
             ) : media.length === 0 ? (
-              <div className="text-center py-12">
+              <div className="py-12 text-center">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
                   <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </div>
                 <p className="text-sm text-gray-500">No media yet for this session</p>
-                <p className="text-xs text-gray-400 mt-1">Generated content will appear here</p>
+                <p className="mt-1 text-xs text-gray-400">Generated content will appear here</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {media.map((item) => (
+                {media.map(item => (
                   <div
                     key={item.id}
-                    className="group rounded-lg border border-gray-200 overflow-hidden hover:border-indigo-300 hover:shadow-sm transition-all cursor-pointer"
+                    className="group cursor-pointer overflow-hidden rounded-lg border border-gray-200 transition-all hover:border-indigo-300 hover:shadow-sm"
                   >
                     {/* Thumbnail */}
                     <div className="relative aspect-video bg-gray-100">
-                      {item.mediaType === 'video' ? (
-                        <>
-                          <img
-                            src={item.thumbnailUrl || item.mediaUrl}
-                            alt={item.title}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 group-hover:bg-indigo-600 transition-colors">
-                              <svg className="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                              </svg>
-                            </div>
-                          </div>
-                        </>
-                      ) : item.mediaType === 'image' ? (
-                        <img
-                          src={item.thumbnailUrl || item.mediaUrl}
-                          alt={item.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center">
-                          <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                          </svg>
-                        </div>
-                      )}
+                      {item.mediaType === 'video'
+                        ? (
+                            <>
+                              <img
+                                src={item.thumbnailUrl || item.mediaUrl}
+                                alt={item.title}
+                                className="h-full w-full object-cover"
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 transition-colors group-hover:bg-indigo-600">
+                                  <svg className="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                                  </svg>
+                                </div>
+                              </div>
+                            </>
+                          )
+                        : item.mediaType === 'image'
+                          ? (
+                              <img
+                                src={item.thumbnailUrl || item.mediaUrl}
+                                alt={item.title}
+                                className="h-full w-full object-cover"
+                              />
+                            )
+                          : (
+                              <div className="flex h-full items-center justify-center">
+                                <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                                </svg>
+                              </div>
+                            )}
                     </div>
 
                     {/* Info */}
                     <div className="p-3">
-                      <h4 className="text-sm font-medium text-gray-900 mb-1 line-clamp-1">
+                      <h4 className="mb-1 line-clamp-1 text-sm font-medium text-gray-900">
                         {item.title}
                       </h4>
-                      <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
+                      <div className="mb-2 flex items-center gap-1.5 text-xs text-gray-500">
                         <span className="capitalize">{item.mediaType}</span>
                         <span>•</span>
                         <span>{formatDate(item.createdAt)}</span>
                       </div>
                       {item.description && (
-                        <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                        <p className="mb-2 line-clamp-2 text-xs text-gray-600">
                           {item.description}
                         </p>
                       )}
@@ -1118,43 +1158,53 @@ function LibraryPanel({
       {activeTab === 'quotes' && (
         <div className="flex-1 overflow-y-auto p-4">
           {isLoadingQuotes ? (
-            <div className="text-center py-12">
+            <div className="py-12 text-center">
               <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
               <p className="text-sm text-gray-500">Loading quotes...</p>
             </div>
           ) : quotes.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="py-12 text-center">
               <p className="text-sm text-gray-500">No quotes extracted yet</p>
-              <p className="text-xs text-gray-400 mt-1">Select text from the transcript to create quotes</p>
+              <p className="mt-1 text-xs text-gray-400">Select text from the transcript to create quotes</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {quotes.map((quote) => (
+              {quotes.map(quote => (
                 <div
                   key={quote.id}
-                  className="rounded-lg border border-gray-200 p-4 hover:border-indigo-300 hover:shadow-sm transition-all"
+                  className="rounded-lg border border-gray-200 p-4 transition-all hover:border-indigo-300 hover:shadow-sm"
                 >
                   {/* Header */}
-                  <div className="flex items-start justify-between mb-2">
+                  <div className="mb-2 flex items-start justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium text-gray-700">
                         {quote.speakerName || quote.speakerType || 'Unknown'}
                       </span>
                       {quote.startTimeSeconds && (
                         <span className="text-xs text-gray-500">
-                          {Math.floor(Number(quote.startTimeSeconds) / 60)}:{(Number(quote.startTimeSeconds) % 60).toFixed(0).padStart(2, '0')} -
-                          {Math.floor(Number(quote.endTimeSeconds) / 60)}:{(Number(quote.endTimeSeconds) % 60).toFixed(0).padStart(2, '0')}
+                          {Math.floor(Number(quote.startTimeSeconds) / 60)}
+                          :
+                          {(Number(quote.startTimeSeconds) % 60).toFixed(0).padStart(2, '0')}
+                          {' '}
+                          -
+                          {Math.floor(Number(quote.endTimeSeconds) / 60)}
+                          :
+                          {(Number(quote.endTimeSeconds) % 60).toFixed(0).padStart(2, '0')}
                         </span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       {quote.priority && (
                         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          quote.priority === 'high' ? 'bg-red-100 text-red-700' :
-                          quote.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-gray-100 text-gray-700'
-                        }`}>
-                          {quote.priority}-Priority
+                          quote.priority === 'high'
+                            ? 'bg-red-100 text-red-700'
+                            : quote.priority === 'medium'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-gray-100 text-gray-700'
+                        }`}
+                        >
+                          {quote.priority}
+                          -Priority
                         </span>
                       )}
                       <button className="text-gray-400 hover:text-gray-600">
@@ -1166,13 +1216,13 @@ function LibraryPanel({
                   </div>
 
                   {/* Quote Text */}
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap text-gray-700">
                     {quote.quoteText}
                   </p>
 
                   {/* Tags */}
                   {quote.tags && quote.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-3">
+                    <div className="mt-3 flex flex-wrap gap-1">
                       {quote.tags.map((tag: string, idx: number) => (
                         <span
                           key={idx}
@@ -1186,8 +1236,10 @@ function LibraryPanel({
 
                   {/* Notes */}
                   {quote.notes && (
-                    <p className="text-xs text-gray-500 mt-2 italic">
-                      Note: {quote.notes}
+                    <p className="mt-2 text-xs text-gray-500 italic">
+                      Note:
+                      {' '}
+                      {quote.notes}
                     </p>
                   )}
                 </div>
@@ -1200,7 +1252,7 @@ function LibraryPanel({
       {/* Notes Tab */}
       {activeTab === 'notes' && (
         <div className="flex-1 overflow-y-auto p-4">
-          <div className="text-center py-12">
+          <div className="py-12 text-center">
             <p className="text-sm text-gray-500">Notes coming soon</p>
           </div>
         </div>
@@ -1209,7 +1261,7 @@ function LibraryPanel({
       {/* Profile Tab */}
       {activeTab === 'profile' && (
         <div className="flex-1 overflow-y-auto p-4">
-          <div className="text-center py-12">
+          <div className="py-12 text-center">
             <p className="text-sm text-gray-500">Patient profile coming soon</p>
           </div>
         </div>

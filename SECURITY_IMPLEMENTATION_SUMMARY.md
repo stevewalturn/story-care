@@ -32,14 +32,14 @@ This document summarizes the security enhancements that have been implemented in
 **Implementation:**
 ```typescript
 // Core authentication functions
-- requireAuth(request) // Verify JWT token
+-requireAuth(request) // Verify JWT token
 - requireRole(request, allowedRoles) // Role-based access
 - requireTherapist(request) // Therapist/Admin only
 - requireAdmin(request) // Admin only
 - handleAuthError(error) // Error handling
 - getClientInfo(request) // Extract IP/User-Agent
 - canAccessPatient(user, patientId, therapistId) // Access control
-- getPaginationParams(request) // Helper utilities
+- getPaginationParams(request); // Helper utilities
 ```
 
 **Features:**
@@ -129,13 +129,13 @@ CREATE INDEX audit_logs_resource_idx ON audit_logs(resource_type, resource_id);
 **Implementation:**
 ```typescript
 // Access control functions
-- requirePatientAccess(request, patientId) // Patient data access
+-requirePatientAccess(request, patientId) // Patient data access
 - requireSessionAccess(request, sessionId) // Session access
 - requireMediaAccess(request, mediaId) // Media access
 - requireStoryPageAccess(request, pageId) // Story page access
 - requireGroupAccess(request, groupId) // Group therapy access
 - canCreateForPatient(user, patientId) // Resource creation permission
-- handleRBACError(error) // Error handling
+- handleRBACError(error); // Error handling
 ```
 
 **Access Control Rules:**
@@ -229,7 +229,9 @@ CREATE INDEX audit_logs_resource_idx ON audit_logs(resource_type, resource_id);
 ```typescript
 // Fixed on 2025-10-30
 const loadPatients = async () => {
-  if (!user) return;
+  if (!user) {
+    return;
+  }
 
   // Pass therapist's Firebase UID to filter patients
   const params = new URLSearchParams({
@@ -257,12 +259,12 @@ const loadPatients = async () => {
 **Required Headers:**
 ```typescript
 // src/middleware.ts
-- Content-Security-Policy (CSP) // Prevent XSS
-- Strict-Transport-Security (HSTS) // Force HTTPS
-- X-Frame-Options // Prevent clickjacking
-- X-Content-Type-Options // Prevent MIME sniffing
-- Permissions-Policy // Disable unused features
-- Referrer-Policy // Control referrer information
+-Content - Security - Policy (CSP) // Prevent XSS
+- Strict - Transport - Security (HSTS) // Force HTTPS
+- X - Frame - Options // Prevent clickjacking
+- X - Content - Type - Options // Prevent MIME sniffing
+- Permissions - Policy // Disable unused features
+- Referrer - Policy; // Control referrer information
 ```
 
 #### 2. ❌ Rate Limiting

@@ -1,11 +1,11 @@
 import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+import { logPHIAccess, logPHIDelete, logPHIUpdate } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
+import { handleRBACError, requireSessionAccess } from '@/middleware/RBACMiddleware';
 import { groupMembers, groups, sessions, users } from '@/models/Schema';
 import { handleAuthError } from '@/utils/AuthHelpers';
-import { logPHIAccess, logPHIDelete, logPHIUpdate } from '@/libs/AuditLogger';
-import { handleRBACError, requireSessionAccess } from '@/middleware/RBACMiddleware';
 
 // GET /api/sessions/[id] - Get single session
 // HIPAA COMPLIANCE: Requires authentication, RBAC, and logs access

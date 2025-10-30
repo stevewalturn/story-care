@@ -81,7 +81,9 @@ export function AnalyzeSelectionModal({
 }: AnalyzeSelectionModalProps) {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   const handleAnalyze = (optionId: string) => {
     onAnalyze(optionId, selectedText);
@@ -97,18 +99,18 @@ export function AnalyzeSelectionModal({
       />
 
       {/* Modal */}
-      <div className="relative z-10 w-full max-w-2xl bg-white rounded-lg shadow-xl mx-4">
+      <div className="relative z-10 mx-4 w-full max-w-2xl rounded-lg bg-white shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Analyze Selection</h2>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="mt-1 text-sm text-gray-500">
               Choose a prompt to run on the selected text. The AI will use the full transcript for context.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-500 transition-colors"
+            className="text-gray-400 transition-colors hover:text-gray-500"
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -117,14 +119,14 @@ export function AnalyzeSelectionModal({
         </div>
 
         {/* Options */}
-        <div className="max-h-[60vh] overflow-y-auto p-6 space-y-3">
-          {ANALYZE_OPTIONS.map((option) => (
+        <div className="max-h-[60vh] space-y-3 overflow-y-auto p-6">
+          {ANALYZE_OPTIONS.map(option => (
             <button
               key={option.id}
               onClick={() => handleAnalyze(option.id)}
               onMouseEnter={() => setSelectedOption(option.id)}
               onMouseLeave={() => setSelectedOption(null)}
-              className={`w-full text-left rounded-lg border-2 transition-all ${
+              className={`w-full rounded-lg border-2 text-left transition-all ${
                 selectedOption === option.id
                   ? 'border-indigo-500 bg-indigo-50'
                   : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50'
@@ -133,28 +135,34 @@ export function AnalyzeSelectionModal({
               <div className="p-4">
                 <div className="flex items-start gap-3">
                   {/* Icon */}
-                  <div className={`flex-shrink-0 mt-0.5 ${
-                    option.icon === 'sparkles' ? 'text-purple-500' :
-                    option.icon === 'bookmark' ? 'text-green-500' : 'text-blue-500'
-                  }`}>
-                    {option.icon === 'sparkles' ? (
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                      </svg>
-                    ) : option.icon === 'bookmark' ? (
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                      </svg>
-                    ) : (
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    )}
+                  <div className={`mt-0.5 flex-shrink-0 ${
+                    option.icon === 'sparkles'
+                      ? 'text-purple-500'
+                      : option.icon === 'bookmark' ? 'text-green-500' : 'text-blue-500'
+                  }`}
+                  >
+                    {option.icon === 'sparkles'
+                      ? (
+                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                          </svg>
+                        )
+                      : option.icon === 'bookmark'
+                        ? (
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                            </svg>
+                          )
+                        : (
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          )}
                   </div>
 
                   {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-center gap-2">
                       <h3 className="text-sm font-semibold text-gray-900">{option.title}</h3>
                       {option.badge && (
                         <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
@@ -165,7 +173,7 @@ export function AnalyzeSelectionModal({
                         {option.category}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-600 leading-relaxed">
+                    <p className="text-xs leading-relaxed text-gray-600">
                       {option.description}
                     </p>
                   </div>
@@ -183,14 +191,18 @@ export function AnalyzeSelectionModal({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 rounded-b-lg">
+        <div className="rounded-b-lg border-t border-gray-200 bg-gray-50 px-6 py-4">
           <div className="flex items-center justify-between">
             <p className="text-xs text-gray-500">
-              Selected: {selectedText.length} characters
+              Selected:
+              {' '}
+              {selectedText.length}
+              {' '}
+              characters
             </p>
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
             >
               Cancel
             </button>
