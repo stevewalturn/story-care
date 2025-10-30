@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { SpeakerLabeling } from '@/components/sessions/SpeakerLabeling';
+import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type Speaker = {
   id: string;
@@ -22,6 +24,7 @@ export function SpeakerLabelingClient({
   sessionId,
 }: SpeakerLabelingClientProps) {
   const router = useRouter();
+  const { user } = useAuth();
   const [speakers, setSpeakers] = useState<Speaker[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +34,7 @@ export function SpeakerLabelingClient({
     const fetchSpeakers = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`/api/sessions/${sessionId}/speakers`);
+        const response = await authenticatedFetch(`/api/sessions/${sessionId}/speakers`, user);
 
         if (!response.ok) {
           throw new Error('Failed to fetch speakers');
@@ -66,6 +69,7 @@ export function SpeakerLabelingClient({
     try {
       // Transform speakers back to API format
       const speakersData = updatedSpeakers.map(speaker => ({
+        id: speaker.id, // Include speaker ID to update existing record
         speakerLabel: speaker.label,
         speakerType: speaker.type,
         speakerName: speaker.name,
@@ -73,11 +77,7 @@ export function SpeakerLabelingClient({
         totalDurationSeconds: speaker.totalDuration,
       }));
 
-      const response = await fetch(`/api/sessions/${sessionId}/speakers`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ speakers: speakersData }),
-      });
+      const response = await authenticatedPut(`/api/sessions/${sessionId}/speakers`, user, { speakers: speakersData });
 
       if (!response.ok) {
         throw new Error('Failed to save speakers');
