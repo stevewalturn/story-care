@@ -40,7 +40,12 @@ export default function SessionsPage() {
 
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/sessions?therapistId=${user.uid}`);
+      const idToken = await user.getIdToken();
+      const response = await fetch(`/api/sessions?therapistId=${user.uid}`, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
       const data = await response.json();
 
       if (response.ok) {
@@ -83,6 +88,8 @@ export default function SessionsPage() {
     }
 
     try {
+      const idToken = await user.getIdToken();
+
       // File is already uploaded to GCS, use the provided audioUrl
       const sessionData = {
         therapistId: user.uid,
@@ -96,7 +103,10 @@ export default function SessionsPage() {
 
       const response = await fetch('/api/sessions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
         body: JSON.stringify(sessionData),
       });
 
@@ -110,6 +120,9 @@ export default function SessionsPage() {
       // Trigger transcription with Deepgram
       await fetch(`/api/sessions/${session.id}/transcribe`, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
       });
 
       // Close modal and refresh sessions list
@@ -129,9 +142,17 @@ export default function SessionsPage() {
       return;
     }
 
+    if (!user?.uid) {
+      return;
+    }
+
     try {
+      const idToken = await user.getIdToken();
       const response = await fetch(`/api/sessions/${sessionId}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
       });
 
       if (!response.ok) {

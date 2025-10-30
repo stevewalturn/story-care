@@ -107,12 +107,18 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
     setUploadProgress(0);
 
     try {
+      // Get Firebase ID token for authentication
+      const idToken = await user.getIdToken();
+
       const uploadFormData = new FormData();
       uploadFormData.append('file', file);
       uploadFormData.append('sessionId', `temp-${Date.now()}`);
 
       const uploadResponse = await fetch('/api/sessions/upload', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
         body: uploadFormData,
       });
 
