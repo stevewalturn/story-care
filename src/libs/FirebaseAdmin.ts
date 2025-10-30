@@ -2,6 +2,9 @@ import type { App } from 'firebase-admin/app';
 import type { Auth } from 'firebase-admin/auth';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { eq } from 'drizzle-orm';
+import { db } from '@/libs/DB';
+import { users } from '@/models/Schema';
 
 let adminApp: App;
 let adminAuth: Auth;
@@ -33,16 +36,33 @@ if (getApps().length === 0) {
 }
 
 /**
- * Verify Firebase ID token and return decoded user information
+ * Verify Firebase ID token and return decoded user information with role from database
  */
 export async function verifyIdToken(token: string) {
   try {
+    // 1. Verify the Firebase ID token
     const decodedToken = await adminAuth.verifyIdToken(token);
+
+    // 2. Fetch user's role from database (NOT from Firebase custom claims)
+    const dbUser = await db.query.users.findFirst({
+      where: eq(users.firebaseUid, decodedToken.uid),
+      columns: {
+        id: true,
+        role: true,
+        firebaseUid: true,
+      },
+    });
+
+    // 3. If user doesn't exist in database, they haven't completed onboarding
+    if (!dbUser) {
+      throw new Error('User not found in database. Please complete registration.');
+    }
+
     return {
       uid: decodedToken.uid,
       email: decodedToken.email || null,
       emailVerified: decodedToken.email_verified || false,
-      role: decodedToken.role,
+      role: dbUser.role as 'therapist' | 'patient' | 'admin',
     };
   } catch (error) {
     console.error('Token verification failed:', error);
