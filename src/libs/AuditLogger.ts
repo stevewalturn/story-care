@@ -14,7 +14,7 @@
 
 import { db } from './DB';
 import { auditLogs, type NewAuditLog } from '@/models/Schema';
-import { getLogger } from '@logtape/logtape';
+import { getLogger } from './Logger';
 
 const logger = getLogger(['audit']);
 

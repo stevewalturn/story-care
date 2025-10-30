@@ -1,6 +1,5 @@
 'use client';
 
-import * as Sentry from '@sentry/nextjs';
 import NextError from 'next/error';
 import { useEffect } from 'react';
 
@@ -8,7 +7,13 @@ export default function GlobalError(props: {
   error: Error & { digest?: string };
 }) {
   useEffect(() => {
-    Sentry.captureException(props.error);
+    // Log error to console (Sentry removed for HIPAA compliance)
+    console.error('[Global Error]', {
+      message: props.error.message,
+      stack: props.error.stack,
+      digest: props.error.digest,
+      timestamp: new Date().toISOString(),
+    });
   }, [props.error]);
 
   return (
