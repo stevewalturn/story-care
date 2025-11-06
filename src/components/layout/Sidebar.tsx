@@ -1,41 +1,34 @@
 'use client';
 
-import {
-  BookOpen,
-  FileText,
-  Film,
-  Folder,
-  Image,
-  LayoutDashboard,
-  LogOut,
-  Shield,
-  Users,
-} from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { logOut } from '@/libs/Firebase';
-
-const navItems = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Patients', href: '/patients', icon: Users },
-  { name: 'Groups', href: '/groups', icon: Users },
-  { name: 'Sessions', href: '/sessions', icon: Folder },
-  { name: 'Assets', href: '/assets', icon: Image },
-  { name: 'Prompts', href: '/prompts', icon: BookOpen },
-  { name: 'Scenes', href: '/scenes', icon: Film },
-  { name: 'Pages', href: '/pages', icon: FileText },
-  { name: 'Admin', href: '/admin', icon: Shield },
-];
+import { getNavigationForRole } from '@/config/navigation';
 
 export function Sidebar() {
-  const { user } = useAuth();
+  const { user, dbUser } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 
   const handleLogout = async () => {
     await logOut();
     router.push('/sign-in');
+  };
+
+  // Get navigation items based on user role
+  const navItems = dbUser?.role ? getNavigationForRole(dbUser.role) : [];
+
+  // Get role display name
+  const getRoleDisplay = (role: string) => {
+    const roleMap = {
+      super_admin: 'Super Admin',
+      org_admin: 'Organization Admin',
+      therapist: 'Therapist',
+      patient: 'Patient',
+    };
+    return roleMap[role as keyof typeof roleMap] || role;
   };
 
   return (
@@ -47,6 +40,15 @@ export function Sidebar() {
         </div>
         <span className="ml-3 text-lg font-semibold text-gray-900">StoryCare</span>
       </div>
+
+      {/* Role Badge */}
+      {dbUser?.role && (
+        <div className="border-b border-gray-200 px-4 py-3">
+          <div className="inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
+            {getRoleDisplay(dbUser.role)}
+          </div>
+        </div>
+      )}
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-3 py-4">
@@ -62,9 +64,15 @@ export function Sidebar() {
                   ? 'bg-indigo-50 text-indigo-600'
                   : 'text-gray-700 hover:bg-gray-50'
               }`}
+              title={item.description}
             >
               <Icon className="mr-3 h-5 w-5" />
               {item.name}
+              {item.badge && (
+                <span className="ml-auto rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600">
+                  {item.badge}
+                </span>
+              )}
             </Link>
           );
         })}

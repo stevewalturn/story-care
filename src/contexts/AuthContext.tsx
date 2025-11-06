@@ -14,13 +14,28 @@ import {
 } from 'react';
 import { auth, onAuthChange } from '@/libs/Firebase';
 
+/**
+ * Database user data from StoryCare
+ */
+export type DbUser = {
+  id: string; // Database UUID
+  uid: string; // Firebase UID
+  email: string | null;
+  emailVerified: boolean;
+  role: 'super_admin' | 'org_admin' | 'therapist' | 'patient';
+  organizationId: string | null;
+  status?: 'pending_approval' | 'active' | 'inactive';
+};
+
 type AuthContextType = {
-  user: User | null;
+  user: User | null; // Firebase user
+  dbUser: DbUser | null; // Database user with role
   loading: boolean;
 };
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  dbUser: null,
   loading: true,
 });
 
@@ -38,6 +53,7 @@ type AuthProviderProps = {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
+  const [dbUser, setDbUser] = useState<DbUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -99,22 +115,51 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const unsubscribe = onAuthChange(async (authUser) => {
       setUser(authUser);
-      setLoading(false);
 
       // Set or clear session cookie based on auth state
       if (authUser) {
         try {
           const idToken = await authUser.getIdToken();
+
           // Set session cookie via API route
           await fetch('/api/auth/session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ idToken }),
           });
+
+          // Fetch database user data (with role, organization, status)
+          const response = await fetch('/api/auth/me', {
+            headers: {
+              Authorization: `Bearer ${idToken}`,
+            },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setDbUser(data.user);
+
+            // Handle pending approval users
+            if (data.user.status === 'pending_approval') {
+              router.push('/pending-approval');
+            }
+            // Handle inactive users
+            else if (data.user.status === 'inactive') {
+              await auth.signOut();
+              router.push('/sign-in?error=account_inactive');
+            }
+          } else {
+            console.error('Failed to fetch user profile');
+            setDbUser(null);
+          }
         } catch (error) {
-          console.error('Failed to set session cookie:', error);
+          console.error('Failed to set session cookie or fetch profile:', error);
+          setDbUser(null);
         }
       } else {
+        // Clear database user data
+        setDbUser(null);
+
         // Clear session cookie when user signs out
         try {
           await fetch('/api/auth/session', { method: 'DELETE' });
@@ -124,20 +169,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         // Redirect to sign-in if not on a public path
         if (typeof window !== 'undefined') {
-          const publicPaths = ['/sign-in', '/sign-up', '/'];
+          const publicPaths = ['/sign-in', '/sign-up', '/', '/pending-approval'];
           const currentPath = window.location.pathname;
           if (!publicPaths.some(path => currentPath.includes(path))) {
             router.push('/sign-in');
           }
         }
       }
+
+      setLoading(false);
     });
 
     return () => unsubscribe();
   }, [router]);
 
   return (
-    <AuthContext value={{ user, loading }}>
+    <AuthContext value={{ user, dbUser, loading }}>
       {children}
     </AuthContext>
   );
