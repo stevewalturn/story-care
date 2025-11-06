@@ -27,8 +27,7 @@ export const userRoleEnum = pgEnum('user_role', [
   'patient',
 ]);
 export const userStatusEnum = pgEnum('user_status', [
-  'invited', // Pre-created by org admin, waiting for first sign-in
-  'pending_approval', // Self-signup, waiting for org admin approval
+  'invited', // Pre-created by org admin/super admin, waiting for first sign-in
   'active',
   'inactive',
 ]);
@@ -126,10 +125,6 @@ export const organizationsSchema = pgTable('organizations', {
   contactEmail: varchar('contact_email', { length: 255 }).notNull(),
   logoUrl: text('logo_url'),
   primaryColor: varchar('primary_color', { length: 7 }), // Hex color code
-
-  // Self-signup join code
-  joinCode: varchar('join_code', { length: 50 }).unique().notNull(),
-  joinCodeEnabled: boolean('join_code_enabled').default(true).notNull(),
 
   // Settings (JSONB for flexibility)
   settings: jsonb('settings')

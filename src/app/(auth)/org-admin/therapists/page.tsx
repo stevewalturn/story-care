@@ -10,12 +10,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { User, Search, UserPlus } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { InviteTherapistModal } from '@/components/org-admin/InviteTherapistModal';
 
 interface Therapist {
   id: string;
   name: string;
   email: string;
-  status: 'active' | 'inactive';
+  status: 'active' | 'inactive' | 'invited';
   patientCount?: number;
   createdAt: string;
 }
@@ -25,6 +26,8 @@ export default function TherapistsPage() {
   const [therapists, setTherapists] = useState<Therapist[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [idToken, setIdToken] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -34,10 +37,13 @@ export default function TherapistsPage() {
 
   const fetchTherapists = async () => {
     try {
-      const idToken = await user?.getIdToken();
+      const token = await user?.getIdToken();
+      if (token) {
+        setIdToken(token);
+      }
       const response = await fetch('/api/therapists', {
         headers: {
-          Authorization: `Bearer ${idToken}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -50,6 +56,11 @@ export default function TherapistsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleInviteSuccess = () => {
+    // Refresh therapist list after successful invitation
+    fetchTherapists();
   };
 
   const filteredTherapists = therapists.filter(
@@ -76,7 +87,7 @@ export default function TherapistsPage() {
             Manage therapist accounts in your organization
           </p>
         </div>
-        <Button variant="primary">
+        <Button variant="primary" onClick={() => setShowInviteModal(true)}>
           <UserPlus className="mr-2 h-4 w-4" />
           Invite Therapist
         </Button>
@@ -132,7 +143,9 @@ export default function TherapistsPage() {
                   className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                     therapist.status === 'active'
                       ? 'bg-green-100 text-green-700'
-                      : 'bg-gray-100 text-gray-700'
+                      : therapist.status === 'invited'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-gray-100 text-gray-700'
                   }`}
                 >
                   {therapist.status}
@@ -151,6 +164,14 @@ export default function TherapistsPage() {
           ))}
         </div>
       )}
+
+      {/* Invite Therapist Modal */}
+      <InviteTherapistModal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        onSuccess={handleInviteSuccess}
+        idToken={idToken}
+      />
     </div>
   );
 }

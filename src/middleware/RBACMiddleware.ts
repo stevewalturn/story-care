@@ -614,40 +614,6 @@ export async function requireSuperAdmin(
 }
 
 /**
- * Verifies user can access pending users in their organization
- *
- * @param request - Next.js request
- * @param pendingUserId - Pending user ID to check
- * @returns Authenticated user if authorized
- * @throws Error if not authorized
- */
-export async function requirePendingUserAccess(
-  request: Request,
-  pendingUserId: string,
-): Promise<AuthenticatedUser> {
-  const user = await requireOrgAdmin(request);
-
-  // Get pending user to check organization
-  const pendingUser = await db.query.users.findFirst({
-    where: eq(users.id, pendingUserId),
-  });
-
-  if (!pendingUser) {
-    throw new Error('Pending user not found');
-  }
-
-  // Check org boundary
-  await requireSameOrg(
-    user,
-    pendingUser.organizationId,
-    'pending_user',
-    pendingUserId,
-  );
-
-  return user;
-}
-
-/**
  * Verifies user can change another user's role
  * Only super admin can change roles
  *
@@ -675,45 +641,6 @@ export async function canChangeUserRole(
   if (targetUser.role === 'super_admin') {
     throw new Error('Forbidden: Cannot change super admin role');
   }
-
-  return user;
-}
-
-/**
- * Verifies user can approve a pending user
- *
- * @param request - Next.js request
- * @param pendingUserId - Pending user ID
- * @returns Authenticated user if authorized
- * @throws Error if not authorized
- */
-export async function canApproveUser(
-  request: Request,
-  pendingUserId: string,
-): Promise<AuthenticatedUser> {
-  const user = await requireOrgAdmin(request);
-
-  // Get pending user
-  const pendingUser = await db.query.users.findFirst({
-    where: eq(users.id, pendingUserId),
-  });
-
-  if (!pendingUser) {
-    throw new Error('Pending user not found');
-  }
-
-  // Check status
-  if (pendingUser.status !== 'pending_approval') {
-    throw new Error('User is not pending approval');
-  }
-
-  // Check org boundary
-  await requireSameOrg(
-    user,
-    pendingUser.organizationId,
-    'pending_user',
-    pendingUserId,
-  );
 
   return user;
 }

@@ -23,7 +23,6 @@ interface OrgMetrics {
   activeTherapists: number;
   activePatients: number;
   sessionsLast30Days: number;
-  pendingUsers: number;
   pendingTemplateApprovals: number;
 }
 
@@ -103,14 +102,6 @@ export default function OrgAdminDashboard() {
       color: 'bg-purple-500',
       link: null,
     },
-    {
-      title: 'Pending Approvals',
-      value: metrics.pendingUsers,
-      icon: Clock,
-      color: 'bg-orange-500',
-      link: '/org-admin/pending-users',
-      alert: metrics.pendingUsers > 0,
-    },
   ];
 
   return (
@@ -166,20 +157,6 @@ export default function OrgAdminDashboard() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Button
             variant="secondary"
-            onClick={() => router.push('/org-admin/pending-users')}
-            className="justify-start"
-          >
-            <Clock className="mr-2 h-4 w-4" />
-            Review Pending Users
-            {metrics.pendingUsers > 0 && (
-              <span className="ml-auto rounded-full bg-orange-100 px-2 py-1 text-xs font-medium text-orange-700">
-                {metrics.pendingUsers}
-              </span>
-            )}
-          </Button>
-
-          <Button
-            variant="secondary"
             onClick={() => router.push('/org-admin/therapists')}
             className="justify-start"
           >
@@ -206,30 +183,6 @@ export default function OrgAdminDashboard() {
           </Button>
         </div>
       </div>
-
-      {/* Alerts */}
-      {metrics.pendingUsers > 0 && (
-        <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
-          <div className="flex items-start">
-            <AlertCircle className="mr-3 h-5 w-5 text-orange-600" />
-            <div className="flex-1">
-              <p className="font-medium text-orange-900">
-                Action Required
-              </p>
-              <p className="mt-1 text-sm text-orange-700">
-                You have {metrics.pendingUsers} user{metrics.pendingUsers > 1 ? 's' : ''} waiting for approval.
-                {' '}
-                <button
-                  onClick={() => router.push('/org-admin/pending-users')}
-                  className="font-medium underline hover:no-underline"
-                >
-                  Review now
-                </button>
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Activity Summary */}
       <div className="rounded-lg border border-gray-200 bg-white p-6">

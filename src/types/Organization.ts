@@ -13,7 +13,7 @@ export type AuthenticatedUser = {
   email: string | null;
   emailVerified: boolean;
   role: 'super_admin' | 'org_admin' | 'therapist' | 'patient';
-  status: 'invited' | 'pending_approval' | 'active' | 'inactive';
+  status: 'invited' | 'active' | 'inactive';
 };
 
 // ============================================================================
@@ -58,17 +58,6 @@ export type OrganizationSettings = {
 
 export type UserWithOrganization = User & {
   organization: Organization | null;
-};
-
-export type PendingUser = User & {
-  signupDate: Date;
-};
-
-export type UserApprovalRequest = {
-  userId: string;
-  role: 'therapist' | 'patient';
-  licenseNumber?: string; // Required if role is therapist
-  specialty?: string; // Required if role is therapist
 };
 
 export type UserRoleChangeRequest = {

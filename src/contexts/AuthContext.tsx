@@ -24,7 +24,7 @@ export type DbUser = {
   emailVerified: boolean;
   role: 'super_admin' | 'org_admin' | 'therapist' | 'patient';
   organizationId: string | null;
-  status?: 'invited' | 'pending_approval' | 'active' | 'inactive';
+  status?: 'invited' | 'active' | 'inactive';
 };
 
 type AuthContextType = {
@@ -145,10 +145,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
               // The /api/auth/me endpoint should handle this automatically
               // No redirect needed - they proceed to dashboard
             }
-            // Handle pending approval users (self-signup)
-            else if (data.user.status === 'pending_approval') {
-              router.push('/pending-approval');
-            }
             // Handle inactive users
             else if (data.user.status === 'inactive') {
               await auth.signOut();
@@ -175,7 +171,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         // Redirect to sign-in if not on a public path
         if (typeof window !== 'undefined') {
-          const publicPaths = ['/sign-in', '/sign-up', '/', '/pending-approval'];
+          const publicPaths = ['/sign-in', '/sign-up', '/'];
           const currentPath = window.location.pathname;
           if (!publicPaths.some(path => currentPath.includes(path))) {
             router.push('/sign-in');

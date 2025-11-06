@@ -13,41 +13,6 @@ import {
 } from '@/models/Schema';
 
 /**
- * Generate a unique organization join code
- * Format: WORD-WORD-YEAR (e.g., HEAL-WATERS-2025)
- */
-export function generateJoinCode(): string {
-  const words = [
-    'CARE',
-    'HEAL',
-    'HOPE',
-    'LIFE',
-    'MIND',
-    'PEACE',
-    'TRUST',
-    'UNITY',
-    'WELLNESS',
-    'HEALTH',
-    'BRIGHT',
-    'CLEAR',
-    'SAFE',
-    'STRONG',
-    'VITAL',
-    'WISE',
-    'HEART',
-    'SOUL',
-    'SPIRIT',
-    'BALANCE',
-  ];
-
-  const word1 = words[Math.floor(Math.random() * words.length)];
-  const word2 = words[Math.floor(Math.random() * words.length)];
-  const year = new Date().getFullYear();
-
-  return `${word1}-${word2}-${year}`;
-}
-
-/**
  * Create a new organization with an org_admin user
  */
 export async function createOrganization(data: {
@@ -84,26 +49,6 @@ export async function createOrganization(data: {
     if (creatorUser.role !== 'super_admin') {
       throw new Error(`Only super_admin can create organizations. User role: ${creatorUser.role}`);
     }
-
-    // Generate unique join code
-    console.log('OrganizationService.createOrganization - Generating unique join code');
-    let joinCode = generateJoinCode();
-    let isUnique = false;
-
-    // Ensure join code is unique
-    while (!isUnique) {
-      const existing = await db.query.organizations.findFirst({
-        where: eq(organizationsSchema.joinCode, joinCode),
-      });
-
-      if (!existing) {
-        isUnique = true;
-      } else {
-        joinCode = generateJoinCode();
-      }
-    }
-
-    console.log('OrganizationService.createOrganization - Generated join code:', joinCode);
 
     // Default settings
     const defaultSettings: OrganizationSettings = {
@@ -143,8 +88,6 @@ export async function createOrganization(data: {
       contactEmail: data.contactEmail,
       logoUrl: data.logoUrl || null,
       primaryColor: data.primaryColor || null,
-      joinCode,
-      joinCodeEnabled: true,
       settings,
       status: 'active' as const,
       createdBy: data.createdBy,
@@ -443,80 +386,6 @@ export async function deleteOrganization(organizationId: string) {
     .returning();
 
   return deleted;
-}
-
-/**
- * Verify organization join code
- */
-export async function verifyJoinCode(code: string) {
-  const organization = await db.query.organizations.findFirst({
-    where: and(
-      eq(organizationsSchema.joinCode, code),
-      eq(organizationsSchema.joinCodeEnabled, true),
-      eq(organizationsSchema.status, 'active'),
-    ),
-    columns: {
-      id: true,
-      name: true,
-      logoUrl: true,
-    },
-  });
-
-  if (!organization) {
-    return {
-      valid: false,
-      message: 'Invalid or disabled organization code',
-    };
-  }
-
-  return {
-    valid: true,
-    organization,
-  };
-}
-
-/**
- * Regenerate organization join code
- */
-export async function regenerateJoinCode(organizationId: string) {
-  let joinCode = generateJoinCode();
-  let isUnique = false;
-
-  while (!isUnique) {
-    const existing = await db.query.organizations.findFirst({
-      where: eq(organizationsSchema.joinCode, joinCode),
-    });
-
-    if (!existing) {
-      isUnique = true;
-    } else {
-      joinCode = generateJoinCode();
-    }
-  }
-
-  const [updated] = await db
-    .update(organizationsSchema)
-    .set({ joinCode, updatedAt: new Date() })
-    .where(eq(organizationsSchema.id, organizationId))
-    .returning();
-
-  return updated;
-}
-
-/**
- * Toggle organization join code enabled status
- */
-export async function toggleJoinCode(
-  organizationId: string,
-  enabled: boolean,
-) {
-  const [updated] = await db
-    .update(organizationsSchema)
-    .set({ joinCodeEnabled: enabled, updatedAt: new Date() })
-    .where(eq(organizationsSchema.id, organizationId))
-    .returning();
-
-  return updated;
 }
 
 /**

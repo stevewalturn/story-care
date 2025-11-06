@@ -37,18 +37,6 @@ export async function getOrgMetrics(organizationId: string) {
     );
   const activePatients = Number(patientResult[0]?.count || 0);
 
-  // Count pending users
-  const pendingResult = await db
-    .select({ count: count() })
-    .from(users)
-    .where(
-      and(
-        eq(users.organizationId, organizationId),
-        eq(users.status, 'pending_approval'),
-      ),
-    );
-  const pendingUsers = Number(pendingResult[0]?.count || 0);
-
   // Count sessions in last 30 days
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const therapists = await db
@@ -89,7 +77,6 @@ export async function getOrgMetrics(organizationId: string) {
     activeTherapists,
     activePatients,
     sessionsLast30Days,
-    pendingUsers,
     pendingTemplateApprovals,
   };
 }

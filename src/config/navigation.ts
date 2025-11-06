@@ -88,12 +88,6 @@ export const navigationConfig: NavigationConfig = {
       description: 'Organization overview',
     },
     {
-      name: 'Pending Users',
-      href: '/org-admin/pending-users',
-      icon: UserCheck,
-      description: 'Approve new user registrations',
-    },
-    {
       name: 'Therapists',
       href: '/org-admin/therapists',
       icon: Users,

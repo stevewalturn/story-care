@@ -18,8 +18,6 @@ interface Organization {
   slug: string;
   logoUrl: string | null;
   primaryColor: string | null;
-  joinCode: string;
-  joinCodeEnabled: boolean;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -233,21 +231,6 @@ export default function OrgSettingsPage() {
                 />
                 <p className="mt-1 text-sm text-gray-500">
                   This is your organization's unique identifier and cannot be changed
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Join Code
-                </label>
-                <Input
-                  type="text"
-                  value={organization?.joinCode || ''}
-                  disabled
-                  className="mt-1 bg-gray-50 font-mono"
-                />
-                <p className="mt-1 text-sm text-gray-500">
-                  Users can join your organization using this code
                 </p>
               </div>
             </div>
