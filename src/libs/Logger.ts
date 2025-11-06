@@ -7,9 +7,9 @@
 
 type LogLevel = 'debug' | 'info' | 'warning' | 'error' | 'fatal';
 
-interface LogContext {
+type LogContext = {
   [key: string]: unknown;
-}
+};
 
 class Logger {
   private category: string[];
@@ -26,7 +26,7 @@ class Logger {
   }
 
   debug(message: string, context?: LogContext): void {
-    console.debug(this.formatMessage('debug', message, context));
+    console.error(this.formatMessage('debug', message, context));
   }
 
   info(message: string, context?: LogContext): void {

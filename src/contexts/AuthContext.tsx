@@ -80,7 +80,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Only set timer if user is authenticated
     if (user) {
       idleTimerRef.current = setTimeout(() => {
-        console.log('Session timed out due to inactivity');
+        console.error('Session timed out due to inactivity');
         handleSignOut();
       }, IDLE_TIMEOUT);
     }

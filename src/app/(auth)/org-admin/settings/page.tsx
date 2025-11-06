@@ -39,7 +39,7 @@ export default function OrgSettingsPage() {
   useEffect(() => {
     async function fetchOrganization() {
       if (!user) {
-        console.log('No authenticated user yet');
+        console.error('No authenticated user yet');
         return;
       }
 
@@ -61,7 +61,7 @@ export default function OrgSettingsPage() {
         }
 
         const data = await response.json();
-        console.log('Organization data fetched:', data);
+        console.error('Organization data fetched:', data);
 
         setOrganization(data);
         setName(data.name);
@@ -111,7 +111,7 @@ export default function OrgSettingsPage() {
       }
 
       const updatedOrg = await response.json();
-      console.log('Organization updated:', updatedOrg);
+      console.error('Organization updated:', updatedOrg);
 
       setOrganization(updatedOrg);
       setSuccessMessage('Organization settings saved successfully!');

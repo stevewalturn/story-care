@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Users, Plus } from 'lucide-react';
+import { Plus, Users } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -223,19 +223,19 @@ export function AssetsClient() {
             </h3>
             <ul className="space-y-2 text-sm text-gray-600">
               <li className="flex items-start">
-                <span className="mr-2 mt-0.5 text-indigo-600">•</span>
+                <span className="mt-0.5 mr-2 text-indigo-600">•</span>
                 <span>Store and organize patient media (images, videos, audio)</span>
               </li>
               <li className="flex items-start">
-                <span className="mr-2 mt-0.5 text-indigo-600">•</span>
+                <span className="mt-0.5 mr-2 text-indigo-600">•</span>
                 <span>Save meaningful quotes from therapy sessions</span>
               </li>
               <li className="flex items-start">
-                <span className="mr-2 mt-0.5 text-indigo-600">•</span>
+                <span className="mt-0.5 mr-2 text-indigo-600">•</span>
                 <span>Keep session notes and observations</span>
               </li>
               <li className="flex items-start">
-                <span className="mr-2 mt-0.5 text-indigo-600">•</span>
+                <span className="mt-0.5 mr-2 text-indigo-600">•</span>
                 <span>Build personalized story pages for patients</span>
               </li>
             </ul>

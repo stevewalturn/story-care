@@ -141,7 +141,10 @@ Your schema is organized into logical sections:
 export const userRoleEnum = pgEnum('user_role', ['therapist', 'patient', 'admin']);
 export const sessionTypeEnum = pgEnum('session_type', ['individual', 'group']);
 export const transcriptionStatusEnum = pgEnum('transcription_status', [
-  'pending', 'processing', 'completed', 'failed'
+  'pending',
+  'processing',
+  'completed',
+  'failed'
 ]);
 // ... and 8 more enums
 ```
@@ -330,7 +333,7 @@ const user = await db
 
 **With Filters**:
 ```typescript
-import { eq, and, or } from 'drizzle-orm';
+import { and, eq, or } from 'drizzle-orm';
 
 // Get therapists only
 const therapists = await db
@@ -355,7 +358,7 @@ const activeSessions = await db
 **Insert Single Record**:
 ```typescript
 import { db } from '@/libs/DB';
-import { usersSchema, NewUser } from '@/models/Schema';
+import { NewUser, usersSchema } from '@/models/Schema';
 
 const newUser: NewUser = {
   email: 'therapist@example.com',
@@ -386,9 +389,9 @@ await db.insert(sessionsSchema).values(newSessions);
 
 **Update Single Record**:
 ```typescript
+import { eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { sessionsSchema } from '@/models/Schema';
-import { eq } from 'drizzle-orm';
 
 await db
   .update(sessionsSchema)
@@ -403,9 +406,9 @@ await db
 
 **Delete with Condition**:
 ```typescript
+import { eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { sessionsSchema } from '@/models/Schema';
-import { eq } from 'drizzle-orm';
 
 await db
   .delete(sessionsSchema)
@@ -417,7 +420,7 @@ await db
 // This schema definition:
 groupId: uuid('group_id').references(() => groupsSchema.id, {
   onDelete: 'cascade',
-})
+});
 
 // Means: deleting a group automatically deletes all group_members
 await db.delete(groupsSchema).where(eq(groupsSchema.id, groupId));
@@ -428,9 +431,9 @@ await db.delete(groupsSchema).where(eq(groupsSchema.id, groupId));
 
 **Inner Join**:
 ```typescript
+import { eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { sessionsSchema, usersSchema } from '@/models/Schema';
-import { eq } from 'drizzle-orm';
 
 const sessionsWithTherapists = await db
   .select({
@@ -740,7 +743,7 @@ const user: { id: string; email: string; ... } = ...;
 // Add indexes for frequently queried fields
 export const sessionsSchema = pgTable('sessions', {
   // ... fields
-}, (table) => ({
+}, table => ({
   therapistIdIdx: index('sessions_therapist_id_idx').on(table.therapistId),
   sessionDateIdx: index('sessions_date_idx').on(table.sessionDate),
 }));

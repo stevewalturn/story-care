@@ -8,14 +8,14 @@ export type OpenAISize = '256x256' | '512x512' | '1024x1024' | '1792x1024' | '10
 export type OpenAIQuality = 'standard' | 'hd';
 export type OpenAIStyle = 'natural' | 'vivid';
 
-export interface OpenAIGenerateOptions {
+export type OpenAIGenerateOptions = {
   prompt: string;
   model?: OpenAIModel;
   size?: OpenAISize;
   quality?: OpenAIQuality;
   style?: OpenAIStyle;
   n?: number;
-}
+};
 
 export async function generateImageWithOpenAI(
   options: OpenAIGenerateOptions,

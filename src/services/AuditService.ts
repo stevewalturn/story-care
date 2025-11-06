@@ -9,26 +9,26 @@
  * - Ensure logs are tamper-proof (write-only for most users)
  */
 
+import type { AuthenticatedUser } from '@/types/Organization';
 import { db } from '@/libs/DB';
 import { auditLogs } from '@/models/Schema';
-import type { AuthenticatedUser } from '@/types/Organization';
 
 export type AuditAction = 'create' | 'read' | 'update' | 'delete' | 'auth_success' | 'auth_failed' | 'logout' | 'export';
 
-export type AuditResourceType =
-  | 'user'
-  | 'patient'
-  | 'session'
-  | 'transcript'
-  | 'media'
-  | 'story_page'
-  | 'reflection_question'
-  | 'survey_question'
-  | 'reflection_response'
-  | 'survey_response'
-  | 'template';
+export type AuditResourceType
+  = | 'user'
+    | 'patient'
+    | 'session'
+    | 'transcript'
+    | 'media'
+    | 'story_page'
+    | 'reflection_question'
+    | 'survey_question'
+    | 'reflection_response'
+    | 'survey_response'
+    | 'template';
 
-export interface AuditLogEntry {
+export type AuditLogEntry = {
   userId: string; // Database UUID
   organizationId?: string | null;
   action: AuditAction;
@@ -39,7 +39,7 @@ export interface AuditLogEntry {
   requestMethod?: string;
   requestPath?: string;
   metadata?: Record<string, any>;
-}
+};
 
 /**
  * Create an audit log entry

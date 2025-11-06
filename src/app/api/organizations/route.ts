@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = await requireSuperAdmin(request);
 
-    console.log('POST /api/organizations - Super Admin authenticated:', {
+    console.error('POST /api/organizations - Super Admin authenticated:', {
       userId: user.id,
       dbUserId: user.dbUserId,
       email: user.email,
@@ -59,20 +59,20 @@ export async function POST(request: NextRequest) {
     });
 
     const body = await request.json();
-    console.log('POST /api/organizations - Request body:', body);
+    console.error('POST /api/organizations - Request body:', body);
 
     const validated = createOrganizationSchema.parse(body);
-    console.log('POST /api/organizations - Validation passed:', validated);
+    console.error('POST /api/organizations - Validation passed:', validated);
 
     const organizationData = {
       ...validated,
       createdBy: user.dbUserId,
     };
-    console.log('POST /api/organizations - Creating organization with data:', organizationData);
+    console.error('POST /api/organizations - Creating organization with data:', organizationData);
 
     const result = await createOrganization(organizationData);
 
-    console.log('POST /api/organizations - Organization created successfully:', {
+    console.error('POST /api/organizations - Organization created successfully:', {
       organizationId: result.organization.id,
       adminUserId: result.adminUser?.id,
     });

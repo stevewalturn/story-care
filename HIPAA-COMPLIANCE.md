@@ -96,8 +96,7 @@ const reflectionResponseSchema = z.object({
         .min(1, 'Response text cannot be empty')
         .max(10000, 'Response text too long'),
     }),
-  ).min(1, 'At least one response is required')
-   .max(100, 'Too many responses in one request'),
+  ).min(1, 'At least one response is required').max(100, 'Too many responses in one request'),
 });
 ```
 
@@ -174,17 +173,17 @@ All PHI access is logged via `/src/services/AuditService.ts`:
 
 ```typescript
 {
-  userId: string;              // Who accessed
-  organizationId: string;      // Which organization
+  userId: string; // Who accessed
+  organizationId: string; // Which organization
   action: 'create' | 'read' | 'update' | 'delete';
-  resourceType: string;        // What type of data
-  resourceId: string;          // Specific resource ID
-  ipAddress: string;           // From where
-  userAgent: string;           // Which client
-  requestMethod: string;       // HTTP method
-  requestPath: string;         // API endpoint
-  metadata: object;            // Additional context
-  timestamp: Date;             // When
+  resourceType: string; // What type of data
+  resourceId: string; // Specific resource ID
+  ipAddress: string; // From where
+  userAgent: string; // Which client
+  requestMethod: string; // HTTP method
+  requestPath: string; // API endpoint
+  metadata: object; // Additional context
+  timestamp: Date; // When
 }
 ```
 

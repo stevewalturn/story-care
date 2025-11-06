@@ -220,7 +220,9 @@ export function GenerateImageModal({
   const getCurrentModel = () => {
     for (const provider of Object.values(IMAGE_MODELS)) {
       const model = provider.find(m => m.id === selectedModel);
-      if (model) return model;
+      if (model) {
+        return model;
+      }
     }
     return null;
   };
@@ -329,7 +331,7 @@ export function GenerateImageModal({
               <div className="max-h-96 space-y-4 overflow-y-auto rounded-lg border border-gray-200 p-3">
                 {Object.entries(IMAGE_MODELS).map(([provider, models]) => (
                   <div key={provider} className="space-y-2">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <div className="text-xs font-semibold tracking-wide text-gray-500 uppercase">
                       {provider}
                     </div>
                     <div className="space-y-2">

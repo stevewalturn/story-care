@@ -26,20 +26,10 @@ export async function createOrganization(data: {
   settings?: Partial<OrganizationSettings>;
   createdBy: string;
 }) {
-  console.log('OrganizationService.createOrganization - Starting with data:', data);
-
   try {
     // Verify the creator (super_admin) exists
-    console.log('OrganizationService.createOrganization - Verifying creator user:', data.createdBy);
     const creatorUser = await db.query.users.findFirst({
       where: eq(users.id, data.createdBy),
-    });
-
-    console.log('OrganizationService.createOrganization - Creator user found:', {
-      id: creatorUser?.id,
-      email: creatorUser?.email,
-      role: creatorUser?.role,
-      organizationId: creatorUser?.organizationId,
     });
 
     if (!creatorUser) {
@@ -79,8 +69,6 @@ export async function createOrganization(data: {
       branding: { ...defaultSettings.branding, ...data.settings?.branding },
     };
 
-    console.log('OrganizationService.createOrganization - Prepared settings:', settings);
-
     // Create organization
     const organizationValues = {
       name: data.name,
@@ -95,18 +83,10 @@ export async function createOrganization(data: {
       updatedAt: new Date(),
     };
 
-    console.log('OrganizationService.createOrganization - Inserting organization with values:', organizationValues);
-
     const [organization] = await db
       .insert(organizationsSchema)
       .values(organizationValues)
       .returning();
-
-    console.log('OrganizationService.createOrganization - Organization created successfully:', {
-      id: organization?.id,
-      name: organization?.name,
-      slug: organization?.slug,
-    });
 
     // Create org_admin user for the new organization
     if (!organization) {
@@ -124,20 +104,10 @@ export async function createOrganization(data: {
       updatedAt: new Date(),
     };
 
-    console.log('OrganizationService.createOrganization - Inserting admin user with values:', adminUserValues);
-
     const [adminUser] = await db
       .insert(users)
       .values(adminUserValues)
       .returning();
-
-    console.log('OrganizationService.createOrganization - Admin user created successfully:', {
-      id: adminUser?.id,
-      email: adminUser?.email,
-      role: adminUser?.role,
-    });
-
-    console.log('OrganizationService.createOrganization - Completed successfully');
 
     return {
       organization,
@@ -146,7 +116,6 @@ export async function createOrganization(data: {
   } catch (error) {
     console.error('OrganizationService.createOrganization - Error occurred:', {
       error,
-      message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
       data,
     });

@@ -12,8 +12,9 @@
  * Retention: Audit logs must be retained for 7 years per HIPAA requirements.
  */
 
+import type { NewAuditLog } from '@/models/Schema';
+import { auditLogs } from '@/models/Schema';
 import { db } from './DB';
-import { auditLogs, type NewAuditLog } from '@/models/Schema';
 import { getLogger } from './Logger';
 
 const logger = getLogger(['audit']);
@@ -21,39 +22,39 @@ const logger = getLogger(['audit']);
 /**
  * Audit log action types
  */
-export type AuditAction =
-  | 'create'
-  | 'read'
-  | 'update'
-  | 'delete'
-  | 'export'
-  | 'auth_success'
-  | 'auth_failed'
-  | 'logout';
+export type AuditAction
+  = | 'create'
+    | 'read'
+    | 'update'
+    | 'delete'
+    | 'export'
+    | 'auth_success'
+    | 'auth_failed'
+    | 'logout';
 
 /**
  * Resource types that can be audited
  */
-export type ResourceType =
-  | 'user'
-  | 'session'
-  | 'transcript'
-  | 'speaker'
-  | 'utterance'
-  | 'media'
-  | 'quote'
-  | 'note'
-  | 'scene'
-  | 'story_page'
-  | 'reflection_response'
-  | 'survey_response'
-  | 'group'
-  | 'auth';
+export type ResourceType
+  = | 'user'
+    | 'session'
+    | 'transcript'
+    | 'speaker'
+    | 'utterance'
+    | 'media'
+    | 'quote'
+    | 'note'
+    | 'scene'
+    | 'story_page'
+    | 'reflection_response'
+    | 'survey_response'
+    | 'group'
+    | 'auth';
 
 /**
  * Data structure for audit log entries
  */
-export interface AuditLogData {
+export type AuditLogData = {
   userId: string;
   action: AuditAction;
   resourceType: ResourceType;
@@ -63,7 +64,7 @@ export interface AuditLogData {
   requestMethod?: string;
   requestPath?: string;
   metadata?: Record<string, any>;
-}
+};
 
 /**
  * Logs an audit event to the database

@@ -1,9 +1,9 @@
 'use client';
 
-import { Share, Eye } from 'lucide-react';
+import { Eye, Share } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
-interface TopBarProps {
+type TopBarProps = {
   title?: string;
   showShare?: boolean;
   showPreview?: boolean;
@@ -11,7 +11,7 @@ interface TopBarProps {
   onShare?: () => void;
   onPreview?: () => void;
   onPublish?: () => void;
-}
+};
 
 export function TopBar({
   title,
@@ -23,7 +23,7 @@ export function TopBar({
   onPublish,
 }: TopBarProps) {
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8">
+    <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-8">
       <div>
         {title && <h1 className="text-xl font-semibold text-gray-900">{title}</h1>}
       </div>
@@ -31,13 +31,13 @@ export function TopBar({
       <div className="flex items-center gap-3">
         {showShare && (
           <Button variant="secondary" size="md" onClick={onShare}>
-            <Share className="w-4 h-4 mr-2" />
+            <Share className="mr-2 h-4 w-4" />
             Share
           </Button>
         )}
         {showPreview && (
           <Button variant="secondary" size="md" onClick={onPreview}>
-            <Eye className="w-4 h-4 mr-2" />
+            <Eye className="mr-2 h-4 w-4" />
             Preview
           </Button>
         )}

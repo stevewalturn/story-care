@@ -6,8 +6,8 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import {
-  requireSuperAdmin,
   handleRBACError,
+  requireSuperAdmin,
 } from '@/middleware/RBACMiddleware';
 import { getPlatformMetrics } from '@/services/OrganizationService';
 

@@ -7,6 +7,7 @@ import { db } from '@/libs/DB';
 import { users } from '@/models/Schema';
 
 let adminApp: App;
+
 let adminAuth: Auth;
 
 // Initialize Firebase Admin SDK
@@ -60,7 +61,7 @@ export async function verifyIdToken(token: string) {
       const invitedUser = await db.query.users.findFirst({
         where: (users, { and, eq, isNull }) => and(
           eq(users.email, decodedToken.email!),
-          isNull(users.firebaseUid)
+          isNull(users.firebaseUid),
         ),
         columns: {
           id: true,

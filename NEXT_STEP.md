@@ -452,37 +452,37 @@ src/
 
 ```css
 /* Colors */
---primary: #4F46E5;          /* Indigo-600 */
---primary-hover: #4338CA;    /* Indigo-700 */
---primary-light: #EEF2FF;    /* Indigo-50 */
+--primary: #4f46e5; /* Indigo-600 */
+--primary-hover: #4338ca; /* Indigo-700 */
+--primary-light: #eef2ff; /* Indigo-50 */
 
---gray-50: #F9FAFB;
---gray-100: #F3F4F6;
---gray-200: #E5E7EB;
---gray-300: #D1D5DB;
---gray-500: #6B7280;
+--gray-50: #f9fafb;
+--gray-100: #f3f4f6;
+--gray-200: #e5e7eb;
+--gray-300: #d1d5db;
+--gray-500: #6b7280;
 --gray-700: #374151;
 --gray-900: #111827;
 
 /* Typography */
 font-family: 'Inter', sans-serif;
---text-xs: 0.75rem;    /* 12px */
---text-sm: 0.875rem;   /* 14px */
---text-base: 1rem;     /* 16px */
---text-lg: 1.125rem;   /* 18px */
---text-xl: 1.25rem;    /* 20px */
+--text-xs: 0.75rem; /* 12px */
+--text-sm: 0.875rem; /* 14px */
+--text-base: 1rem; /* 16px */
+--text-lg: 1.125rem; /* 18px */
+--text-xl: 1.25rem; /* 20px */
 
 /* Spacing */
---space-1: 0.25rem;    /* 4px */
---space-2: 0.5rem;     /* 8px */
---space-3: 0.75rem;    /* 12px */
---space-4: 1rem;       /* 16px */
---space-6: 1.5rem;     /* 24px */
---space-8: 2rem;       /* 32px */
+--space-1: 0.25rem; /* 4px */
+--space-2: 0.5rem; /* 8px */
+--space-3: 0.75rem; /* 12px */
+--space-4: 1rem; /* 16px */
+--space-6: 1.5rem; /* 24px */
+--space-8: 2rem; /* 32px */
 
 /* Border Radius */
---radius-lg: 0.75rem;  /* 12px */
---radius-xl: 1rem;     /* 16px */
+--radius-lg: 0.75rem; /* 12px */
+--radius-xl: 1rem; /* 16px */
 ```
 
 ---

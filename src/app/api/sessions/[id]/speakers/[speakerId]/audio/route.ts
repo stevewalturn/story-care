@@ -68,8 +68,8 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     }
 
     // Calculate the time range for the sample
-    const startTime = parseFloat(sampleUtterances[0]?.startTimeSeconds || '0');
-    const endTime = parseFloat(
+    const startTime = Number.parseFloat(sampleUtterances[0]?.startTimeSeconds || '0');
+    const endTime = Number.parseFloat(
       sampleUtterances[sampleUtterances.length - 1]?.endTimeSeconds || '0',
     );
 
@@ -90,8 +90,8 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       duration: endTime - startTime,
       utterances: sampleUtterances.map(u => ({
         text: u.text,
-        startTime: parseFloat(u.startTimeSeconds || '0'),
-        endTime: parseFloat(u.endTimeSeconds || '0'),
+        startTime: Number.parseFloat(u.startTimeSeconds || '0'),
+        endTime: Number.parseFloat(u.endTimeSeconds || '0'),
       })),
     });
   } catch (error) {

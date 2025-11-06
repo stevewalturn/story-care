@@ -5,10 +5,10 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { CheckCircle, Clock, MessageSquare, User } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type PatientResponse = {

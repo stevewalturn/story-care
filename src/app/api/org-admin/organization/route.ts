@@ -4,14 +4,14 @@
  */
 
 import type { NextRequest } from 'next/server';
+import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { db } from '@/libs/DB';
 import {
   handleRBACError,
   requireOrgAdmin,
 } from '@/middleware/RBACMiddleware';
-import { db } from '@/libs/DB';
-import { eq } from 'drizzle-orm';
 import { organizations as organizationsSchema } from '@/models/Schema';
 
 /**
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = await requireOrgAdmin(request);
 
-    console.log('GET /api/org-admin/organization - Fetching organization for org_admin:', {
+    console.error('GET /api/org-admin/organization - Fetching organization for org_admin:', {
       userId: user.id,
       organizationId: user.organizationId,
     });
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     if (!user.organizationId) {
       return NextResponse.json(
         { error: 'Organization not found for user' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -40,11 +40,11 @@ export async function GET(request: NextRequest) {
     if (!organization) {
       return NextResponse.json(
         { error: 'Organization not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    console.log('GET /api/org-admin/organization - Organization found:', {
+    console.error('GET /api/org-admin/organization - Organization found:', {
       id: organization.id,
       name: organization.name,
       slug: organization.slug,
@@ -70,7 +70,7 @@ export async function PATCH(request: NextRequest) {
   try {
     const user = await requireOrgAdmin(request);
 
-    console.log('PATCH /api/org-admin/organization - Update request from org_admin:', {
+    console.error('PATCH /api/org-admin/organization - Update request from org_admin:', {
       userId: user.id,
       organizationId: user.organizationId,
     });
@@ -78,14 +78,14 @@ export async function PATCH(request: NextRequest) {
     if (!user.organizationId) {
       return NextResponse.json(
         { error: 'Organization not found for user' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     const body = await request.json();
     const validated = updateOrganizationSchema.parse(body);
 
-    console.log('PATCH /api/org-admin/organization - Validated update data:', validated);
+    console.error('PATCH /api/org-admin/organization - Validated update data:', validated);
 
     // Check if organization exists
     const existingOrg = await db.query.organizations.findFirst({
@@ -95,7 +95,7 @@ export async function PATCH(request: NextRequest) {
     if (!existingOrg) {
       return NextResponse.json(
         { error: 'Organization not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -109,7 +109,7 @@ export async function PATCH(request: NextRequest) {
       .where(eq(organizationsSchema.id, user.organizationId))
       .returning();
 
-    console.log('PATCH /api/org-admin/organization - Organization updated successfully:', {
+    console.error('PATCH /api/org-admin/organization - Organization updated successfully:', {
       id: updatedOrganization.id,
       name: updatedOrganization.name,
     });
@@ -121,7 +121,7 @@ export async function PATCH(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.errors },
-        { status: 400 }
+        { status: 400 },
       );
     }
 

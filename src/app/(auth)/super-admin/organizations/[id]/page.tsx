@@ -118,7 +118,6 @@ export default function OrganizationDetailPage() {
   };
 
   const handleDelete = async () => {
-    // eslint-disable-next-line no-alert
     if (!window.confirm('Are you sure you want to delete this organization? This action cannot be undone.')) {
       return;
     }

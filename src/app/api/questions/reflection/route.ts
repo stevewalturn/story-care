@@ -1,10 +1,10 @@
 import type { NextRequest } from 'next/server';
-import { and, eq, inArray } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { reflectionQuestions, pageBlocks, storyPages, users } from '@/models/Schema';
-import { requireAuth, handleAuthError, canAccessPatient } from '@/utils/AuthHelpers';
+import { pageBlocks, reflectionQuestions, storyPages, users } from '@/models/Schema';
 import { logAuditFromRequest } from '@/services/AuditService';
+import { canAccessPatient, handleAuthError, requireAuth } from '@/utils/AuthHelpers';
 
 /**
  * GET /api/questions/reflection?blockIds=id1,id2,id3

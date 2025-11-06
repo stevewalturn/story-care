@@ -3,9 +3,10 @@
  * Public endpoint for users to verify organization join codes
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { verifyOrgCodeSchema } from '@/validations/OrganizationValidation';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { verifyJoinCode } from '@/services/OrganizationService';
+import { verifyOrgCodeSchema } from '@/validations/OrganizationValidation';
 
 /**
  * POST /api/organizations/verify-code - Verify organization join code

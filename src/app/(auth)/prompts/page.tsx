@@ -33,24 +33,24 @@ export default function PromptsPage() {
   const handleSave = async (promptData: Partial<Prompt>) => {
     if (editingPrompt) {
       // Update existing prompt
-      console.log('Updating prompt:', editingPrompt.id, promptData);
+      console.error('Updating prompt:', editingPrompt.id, promptData);
       // In real implementation: await fetch(`/api/prompts/${editingPrompt.id}`, { method: 'PUT', body: JSON.stringify(promptData) });
     } else {
       // Create new prompt
-      console.log('Creating prompt:', promptData);
+      console.error('Creating prompt:', promptData);
       // In real implementation: await fetch('/api/prompts', { method: 'POST', body: JSON.stringify(promptData) });
     }
   };
 
   const handleDelete = async (promptId: string) => {
-    console.log('Deleting prompt:', promptId);
+    console.error('Deleting prompt:', promptId);
     // In real implementation: await fetch(`/api/prompts/${promptId}`, { method: 'DELETE' });
   };
 
   const handleSelectPrompt = (prompt: Prompt) => {
     // Copy to clipboard and show notification
     navigator.clipboard.writeText(prompt.promptText);
-    console.log('Selected prompt:', prompt.id);
+    console.error('Selected prompt:', prompt.id);
     // In real implementation, could also open the generate image modal with this prompt pre-filled
   };
 

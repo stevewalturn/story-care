@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { desc, eq, like, or } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { therapeuticPrompts, users } from '@/models/Schema';
-import { eq, like, desc, or } from 'drizzle-orm';
 
 // GET /api/prompts - List prompts
 export async function GET(request: NextRequest) {
@@ -21,8 +22,8 @@ export async function GET(request: NextRequest) {
         or(
           like(therapeuticPrompts.title, `%${search}%`),
           like(therapeuticPrompts.description, `%${search}%`),
-          like(therapeuticPrompts.tags, `%${search}%`)
-        )
+          like(therapeuticPrompts.tags, `%${search}%`),
+        ),
       );
     }
 
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching prompts:', error);
     return NextResponse.json(
       { error: 'Failed to fetch prompts' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
     if (!title || !promptText || !category) {
       return NextResponse.json(
         { error: 'title, promptText, and category are required' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
     const [prompt] = await db
       .insert(therapeuticPrompts)
       .values({
-        createdBy: therapistDbId || '',  // Use createdBy instead of therapistId
+        createdBy: therapistDbId || '', // Use createdBy instead of therapistId
         title,
         description: description || null,
         promptText,
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
     console.error('Error creating prompt:', error);
     return NextResponse.json(
       { error: 'Failed to create prompt' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

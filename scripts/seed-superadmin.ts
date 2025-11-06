@@ -6,15 +6,15 @@
  *   npm run db:seed-superadmin
  */
 
+import path from 'node:path';
 // Load environment variables from .env.local
 import dotenv from 'dotenv';
-import path from 'node:path';
-
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 import { eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { users } from '@/models/Schema';
+
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 async function seedSuperAdmin() {
   const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'admin@storycare.com';

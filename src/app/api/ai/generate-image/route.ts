@@ -1,9 +1,10 @@
 import type { NextRequest } from 'next/server';
+import type { ImageGenModel } from '@/libs/ImageGeneration';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { uploadFile } from '@/libs/GCS';
-import { generateImage, type ImageGenModel } from '@/libs/ImageGeneration';
+import { generateImage } from '@/libs/ImageGeneration';
 import { mediaLibrary, sessions } from '@/models/Schema';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 

@@ -52,10 +52,14 @@ export function GenerateImageModal({
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [aiModel, setAiModel] = useState('flux-pro');
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   const handleGenerate = async () => {
-    if (!prompt.trim() || isGenerating) return;
+    if (!prompt.trim() || isGenerating) {
+      return;
+    }
 
     setIsGenerating(true);
     try {
@@ -71,7 +75,7 @@ export function GenerateImageModal({
 
   const handleOptimizePrompt = () => {
     // TODO: Implement AI prompt optimization
-    console.log('Optimize prompt');
+    console.error('Optimize prompt');
   };
 
   return (
@@ -80,9 +84,9 @@ export function GenerateImageModal({
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative z-10 w-full max-w-5xl bg-white rounded-lg shadow-xl mx-4 max-h-[90vh] flex">
+      <div className="relative z-10 mx-4 flex max-h-[90vh] w-full max-w-5xl rounded-lg bg-white shadow-xl">
         {/* Left Panel - Form */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex flex-1 flex-col">
           {/* Header */}
           <div className="flex items-center gap-3 border-b border-gray-200 px-6 py-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50">
@@ -96,7 +100,7 @@ export function GenerateImageModal({
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-500 transition-colors"
+              className="text-gray-400 transition-colors hover:text-gray-500"
             >
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -105,12 +109,12 @@ export function GenerateImageModal({
           </div>
 
           {/* Form Content */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="flex-1 space-y-6 overflow-y-auto p-6">
             {/* Context & Metadata */}
-            <div className="border border-gray-200 rounded-lg">
+            <div className="rounded-lg border border-gray-200">
               <button
                 onClick={() => setShowContextMetadata(!showContextMetadata)}
-                className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
+                className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
               >
                 <div className="flex items-center gap-2">
                   <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -123,7 +127,7 @@ export function GenerateImageModal({
                 </svg>
               </button>
               {showContextMetadata && (
-                <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
+                <div className="border-t border-gray-200 bg-gray-50 px-4 py-3">
                   <p className="text-xs text-gray-600">Patient context and session metadata will be included automatically.</p>
                 </div>
               )}
@@ -131,10 +135,10 @@ export function GenerateImageModal({
 
             {/* AI Model */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">AI Model</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">AI Model</label>
               <select
                 value={aiModel}
-                onChange={(e) => setAiModel(e.target.value)}
+                onChange={e => setAiModel(e.target.value)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
               >
                 {Object.entries(IMAGE_MODELS).map(([provider, models]) => (
@@ -151,7 +155,7 @@ export function GenerateImageModal({
 
             {/* Prompt */}
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="mb-2 flex items-center justify-between">
                 <label className="block text-sm font-medium text-gray-700">Prompt</label>
                 <button
                   onClick={handleOptimizePrompt}
@@ -166,12 +170,12 @@ export function GenerateImageModal({
               <div className="relative">
                 <textarea
                   value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
+                  onChange={e => setPrompt(e.target.value)}
                   placeholder="Describe the image you want to generate..."
                   rows={6}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none resize-none"
+                  className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
                 />
-                <div className="absolute bottom-2 right-2">
+                <div className="absolute right-2 bottom-2">
                   <svg className="h-5 w-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   </svg>
@@ -181,13 +185,13 @@ export function GenerateImageModal({
 
             {/* Reference Image */}
             <div>
-              <div className="flex items-center justify-between mb-3">
+              <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   <label className="text-sm font-medium text-gray-700">Reference Image</label>
-                  <svg className="h-4 w-4 text-gray-400 cursor-help" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-4 w-4 cursor-help text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
@@ -219,7 +223,7 @@ export function GenerateImageModal({
                     <div className="flex-1">
                       <p className="text-sm font-medium text-blue-900">Active Patient Reference</p>
                       <p className="text-xs text-blue-700">{patientName || 'Patient'}</p>
-                      <p className="text-xs text-blue-600 mt-1">This patient reference image will be used for visual consistency.</p>
+                      <p className="mt-1 text-xs text-blue-600">This patient reference image will be used for visual consistency.</p>
                     </div>
                   </div>
                 </div>
@@ -227,22 +231,22 @@ export function GenerateImageModal({
 
               {/* Override with Different Image */}
               <div className="mt-3">
-                <p className="text-xs font-medium text-gray-700 mb-2">Override with Different Image (Optional)</p>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer">
-                  <svg className="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <p className="mb-2 text-xs font-medium text-gray-700">Override with Different Image (Optional)</p>
+                <div className="cursor-pointer rounded-lg border-2 border-dashed border-gray-300 p-6 text-center transition-colors hover:border-gray-400">
+                  <svg className="mx-auto mb-2 h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
-                  <p className="text-sm text-gray-600 mb-1">Upload Image</p>
+                  <p className="mb-1 text-sm text-gray-600">Upload Image</p>
                   <p className="text-xs text-gray-500">or drag & drop</p>
                 </div>
               </div>
             </div>
 
             {/* Advanced Prompt Settings */}
-            <div className="border border-gray-200 rounded-lg">
+            <div className="rounded-lg border border-gray-200">
               <button
                 onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-                className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
+                className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
               >
                 <div className="flex items-center gap-2">
                   <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -255,7 +259,7 @@ export function GenerateImageModal({
                 </svg>
               </button>
               {showAdvancedSettings && (
-                <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
+                <div className="border-t border-gray-200 bg-gray-50 px-4 py-3">
                   <p className="text-xs text-gray-600">Advanced generation parameters coming soon...</p>
                 </div>
               )}
@@ -263,47 +267,49 @@ export function GenerateImageModal({
           </div>
 
           {/* Footer */}
-          <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex items-center justify-end gap-3">
+          <div className="flex items-center justify-end gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
             >
               Cancel
             </button>
             <button
               onClick={handleGenerate}
               disabled={!prompt.trim() || isGenerating}
-              className="px-6 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
+              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-300"
             >
-              {isGenerating ? (
-                <>
-                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                  </svg>
-                  Generate
-                </>
-              )}
+              {isGenerating
+                ? (
+                    <>
+                      <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Generating...
+                    </>
+                  )
+                : (
+                    <>
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                      </svg>
+                      Generate
+                    </>
+                  )}
             </button>
           </div>
         </div>
 
         {/* Right Panel - Preview */}
-        <div className="w-[400px] border-l border-gray-200 bg-gray-50 flex flex-col items-center justify-center p-6">
+        <div className="flex w-[400px] flex-col items-center justify-center border-l border-gray-200 bg-gray-50 p-6">
           <div className="text-center">
             <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-lg bg-gray-100">
               <svg className="h-10 w-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">Generation Result</h3>
+            <h3 className="mb-2 text-sm font-semibold text-gray-900">Generation Result</h3>
             <p className="text-xs text-gray-500">Your generated media will appear here.</p>
           </div>
         </div>

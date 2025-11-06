@@ -9,12 +9,10 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     // Node.js runtime - setup console logging
-    console.log('[Instrumentation] Server-side logging initialized');
   }
 
   if (process.env.NEXT_RUNTIME === 'edge') {
     // Edge runtime - setup console logging
-    console.log('[Instrumentation] Edge runtime logging initialized');
   }
 }
 

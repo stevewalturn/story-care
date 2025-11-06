@@ -3,8 +3,8 @@
  * Consolidates all chat/text generation providers into a single interface
  */
 
-import type { OpenAIChatModel } from './providers/OpenAIChat';
 import type { GeminiChatModel } from './providers/GeminiChat';
+import type { OpenAIChatModel } from './providers/OpenAIChat';
 
 export type ChatMessage = {
   role: 'system' | 'user' | 'assistant';
@@ -13,17 +13,17 @@ export type ChatMessage = {
 
 export type TextGenModel = OpenAIChatModel | GeminiChatModel;
 
-export interface TextGenerationOptions {
+export type TextGenerationOptions = {
   messages: ChatMessage[];
   model: TextGenModel;
   temperature?: number;
   maxTokens?: number;
-}
+};
 
-export interface TextGenerationResult {
+export type TextGenerationResult = {
   message: string;
   model: string;
-}
+};
 
 /**
  * Generate text/chat completion using the specified model

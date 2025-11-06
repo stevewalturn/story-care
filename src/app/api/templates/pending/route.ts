@@ -3,11 +3,12 @@
  * Org Admin can list pending templates for approval
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { requireOrgAdmin, handleRBACError } from '@/middleware/RBACMiddleware';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import { handleRBACError, requireOrgAdmin } from '@/middleware/RBACMiddleware';
 import {
-  getPendingSurveyTemplates,
   getPendingReflectionTemplates,
+  getPendingSurveyTemplates,
 } from '@/services/TemplateService';
 
 /**
@@ -27,13 +28,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type'); // 'survey' | 'reflection' | null (both)
 
-    const surveys =
-      type === 'reflection'
+    const surveys
+      = type === 'reflection'
         ? []
         : await getPendingSurveyTemplates(user.organizationId);
 
-    const reflections =
-      type === 'survey'
+    const reflections
+      = type === 'survey'
         ? []
         : await getPendingReflectionTemplates(user.organizationId);
 

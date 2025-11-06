@@ -28,12 +28,12 @@ StoryCare platform now has **complete HIPAA-compliant security implementation** 
 
 ```typescript
 // Authentication helpers
-- requireAuth(request)           // Verify JWT token
-- requireRole(request, roles)    // Role-based access
-- requireTherapist(request)      // Therapist/Admin only
-- requireAdmin(request)          // Admin only
-- handleAuthError(error)         // Consistent error handling
-- getClientInfo(request)         // Extract IP/User-Agent
+-requireAuth(request) // Verify JWT token
+- requireRole(request, roles) // Role-based access
+- requireTherapist(request) // Therapist/Admin only
+- requireAdmin(request) // Admin only
+- handleAuthError(error) // Consistent error handling
+- getClientInfo(request); // Extract IP/User-Agent
 ```
 
 **Features:**
@@ -69,11 +69,11 @@ StoryCare platform now has **complete HIPAA-compliant security implementation** 
 
 ```typescript
 // Resource-level access control
-- requirePatientAccess(request, patientId)      // Patient data
-- requireSessionAccess(request, sessionId)      // Sessions
-- requireMediaAccess(request, mediaId)          // Media files
-- requireStoryPageAccess(request, pageId)       // Story pages
-- requireGroupAccess(request, groupId)          // Group therapy
+-requirePatientAccess(request, patientId) // Patient data
+- requireSessionAccess(request, sessionId) // Sessions
+- requireMediaAccess(request, mediaId) // Media files
+- requireStoryPageAccess(request, pageId) // Story pages
+- requireGroupAccess(request, groupId); // Group therapy
 ```
 
 **Access Control Matrix:**
@@ -240,9 +240,9 @@ All critical API routes are now secured with authentication, RBAC, and audit log
 **Pattern used across all API routes:**
 
 ```typescript
-import { requireAuth, handleAuthError } from '@/utils/AuthHelpers';
-import { logAudit, getClientInfo } from '@/libs/AuditLogger';
 import { eq } from 'drizzle-orm';
+import { getClientInfo, logAudit } from '@/libs/AuditLogger';
+import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
 
 export async function GET(request: NextRequest) {
   try {

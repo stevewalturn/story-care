@@ -92,12 +92,12 @@ You'll see a configuration object like this:
 
 ```javascript
 const firebaseConfig = {
-  apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-  authDomain: "storycare-dev.firebaseapp.com",
-  projectId: "storycare-dev",
-  storageBucket: "storycare-dev.appspot.com",
-  messagingSenderId: "123456789012",
-  appId: "1:123456789012:web:abcdef1234567890"
+  apiKey: 'AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+  authDomain: 'storycare-dev.firebaseapp.com',
+  projectId: 'storycare-dev',
+  storageBucket: 'storycare-dev.appspot.com',
+  messagingSenderId: '123456789012',
+  appId: '1:123456789012:web:abcdef1234567890'
 };
 ```
 
@@ -264,8 +264,8 @@ export const Env = createEnv({
 Create/update `src/libs/Firebase.ts`:
 
 ```typescript
-import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
+import { FirebaseApp, getApps, initializeApp } from 'firebase/app';
+import { Auth, getAuth } from 'firebase/auth';
 import { Env } from './Env';
 
 const firebaseConfig = {
@@ -294,8 +294,8 @@ export { app, auth };
 Create `src/libs/FirebaseAdmin.ts`:
 
 ```typescript
-import { initializeApp, cert, getApps, App } from 'firebase-admin/app';
-import { getAuth, Auth } from 'firebase-admin/auth';
+import { App, cert, getApps, initializeApp } from 'firebase-admin/app';
+import { Auth, getAuth } from 'firebase-admin/auth';
 import { Env } from './Env';
 
 let adminApp: App;
@@ -437,17 +437,16 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 Update `src/middleware.ts`:
 
 ```typescript
-import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 export async function middleware(request: NextRequest) {
   const session = request.cookies.get('session');
 
   // Protect authenticated routes
-  if (request.nextUrl.pathname.startsWith('/dashboard') ||
-      request.nextUrl.pathname.startsWith('/sessions') ||
-      request.nextUrl.pathname.startsWith('/assets')) {
-
+  if (request.nextUrl.pathname.startsWith('/dashboard')
+    || request.nextUrl.pathname.startsWith('/sessions')
+    || request.nextUrl.pathname.startsWith('/assets')) {
     if (!session) {
       return NextResponse.redirect(new URL('/sign-in', request.url));
     }

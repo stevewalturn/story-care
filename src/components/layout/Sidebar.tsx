@@ -3,9 +3,9 @@
 import { LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { getNavigationForRole } from '@/config/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { logOut } from '@/libs/Firebase';
-import { getNavigationForRole } from '@/config/navigation';
 
 export function Sidebar() {
   const { user, dbUser } = useAuth();

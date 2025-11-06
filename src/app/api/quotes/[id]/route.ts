@@ -59,10 +59,18 @@ export async function PUT(
       updatedAt: new Date(),
     };
 
-    if (quoteText !== undefined) updateData.quoteText = quoteText;
-    if (priority !== undefined) updateData.priority = priority;
-    if (tags !== undefined) updateData.tags = tags;
-    if (notes !== undefined) updateData.notes = notes;
+    if (quoteText !== undefined) {
+      updateData.quoteText = quoteText;
+    }
+    if (priority !== undefined) {
+      updateData.priority = priority;
+    }
+    if (tags !== undefined) {
+      updateData.tags = tags;
+    }
+    if (notes !== undefined) {
+      updateData.notes = notes;
+    }
 
     const [updatedQuote] = await db
       .update(quotes)

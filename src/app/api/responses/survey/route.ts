@@ -4,13 +4,12 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/libs/DB';
 import {
-  surveyResponses,
-  surveyQuestions,
   storyPages,
-  users,
+  surveyQuestions,
+  surveyResponses,
 } from '@/models/Schema';
-import { requireRole, handleAuthError } from '@/utils/AuthHelpers';
 import { logPHIAccess } from '@/services/AuditService';
+import { handleAuthError, requireRole } from '@/utils/AuthHelpers';
 
 /**
  * Validation schema for survey response submission

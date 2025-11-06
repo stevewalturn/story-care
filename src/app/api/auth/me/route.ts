@@ -3,8 +3,9 @@
  * Get authenticated user's complete profile from database
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, handleAuthError } from '@/utils/AuthHelpers';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
 
 /**
  * GET /api/auth/me - Get current user's profile

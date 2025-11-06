@@ -1,12 +1,12 @@
 'use client';
 
+import { Building2, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { signIn, sendVerificationEmail } from '@/libs/Firebase';
-import { UserPlus, Building2 } from 'lucide-react';
+import { signIn } from '@/libs/Firebase';
 import { humanizeFirebaseError } from '@/utils/FirebaseErrorMessages';
 
 export default function SignInPage() {
@@ -21,7 +21,10 @@ export default function SignInPage() {
   // Check for success message from setup-account
   useEffect(() => {
     if (searchParams.get('setup') === 'complete') {
-      setSuccessMessage('Account created successfully! Please check your email to verify your account (check your spam folder if you don\'t see it). After that, you can sign in.');
+      // Defer setState to avoid cascading renders
+      queueMicrotask(() => {
+        setSuccessMessage('Account created successfully! Please check your email to verify your account (check your spam folder if you don\'t see it). After that, you can sign in.');
+      });
     }
   }, [searchParams]);
 
@@ -155,7 +158,7 @@ export default function SignInPage() {
               <div className="w-full border-t border-gray-300" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-4 text-gray-600 font-medium">
+              <span className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-4 font-medium text-gray-600">
                 Don't have an account yet?
               </span>
             </div>
@@ -167,10 +170,10 @@ export default function SignInPage() {
               href="/setup-account"
               className="group rounded-xl border-2 border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-indigo-400 hover:shadow-md"
             >
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600 transition-colors group-hover:bg-indigo-600 group-hover:text-white">
                 <UserPlus className="h-6 w-6" />
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+              <h3 className="mb-2 text-lg font-semibold text-gray-900 transition-colors group-hover:text-indigo-600">
                 Set Up Your Account
               </h3>
               <p className="text-sm text-gray-600">
@@ -183,10 +186,10 @@ export default function SignInPage() {
               href="/sign-up"
               className="group rounded-xl border-2 border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-purple-400 hover:shadow-md"
             >
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100 text-purple-600 transition-colors group-hover:bg-purple-600 group-hover:text-white">
                 <Building2 className="h-6 w-6" />
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
+              <h3 className="mb-2 text-lg font-semibold text-gray-900 transition-colors group-hover:text-purple-600">
                 Create New Organization
               </h3>
               <p className="text-sm text-gray-600">

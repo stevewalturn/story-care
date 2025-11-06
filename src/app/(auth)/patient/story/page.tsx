@@ -5,18 +5,18 @@
 
 'use client';
 
+import { BookOpen, Image as ImageIcon, MessageSquare, PlayCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { BookOpen, PlayCircle, Image as ImageIcon, MessageSquare } from 'lucide-react';
 
-interface StoryPage {
+type StoryPage = {
   id: string;
   title: string;
   description: string;
   thumbnailUrl: string | null;
   publishedAt: string;
   blockCount: number;
-}
+};
 
 export default function PatientStoryPage() {
   const { user } = useAuth();
@@ -68,63 +68,71 @@ export default function PatientStoryPage() {
       </div>
 
       {/* Story Pages Grid */}
-      {storyPages.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
-          <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
-          <p className="mt-2 text-sm text-gray-500">
-            No story pages available yet
-          </p>
-          <p className="mt-1 text-xs text-gray-400">
-            Your therapist will create personalized story pages for you
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {storyPages.map((page) => (
-            <a
-              key={page.id}
-              href={`/story/${page.id}`}
-              className="group overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-lg"
-            >
-              {page.thumbnailUrl ? (
-                <img
-                  src={page.thumbnailUrl}
-                  alt={page.title}
-                  className="h-48 w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-48 items-center justify-center bg-gradient-to-br from-indigo-100 to-purple-100">
-                  <BookOpen className="h-12 w-12 text-indigo-600" />
-                </div>
-              )}
+      {storyPages.length === 0
+        ? (
+            <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
+              <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
+              <p className="mt-2 text-sm text-gray-500">
+                No story pages available yet
+              </p>
+              <p className="mt-1 text-xs text-gray-400">
+                Your therapist will create personalized story pages for you
+              </p>
+            </div>
+          )
+        : (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {storyPages.map(page => (
+                <a
+                  key={page.id}
+                  href={`/pages/${page.id}`}
+                  className="group overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-lg"
+                >
+                  {page.thumbnailUrl
+                    ? (
+                        <img
+                          src={page.thumbnailUrl}
+                          alt={page.title}
+                          className="h-48 w-full object-cover"
+                        />
+                      )
+                    : (
+                        <div className="flex h-48 items-center justify-center bg-gradient-to-br from-indigo-100 to-purple-100">
+                          <BookOpen className="h-12 w-12 text-indigo-600" />
+                        </div>
+                      )}
 
-              <div className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 group-hover:text-indigo-600">
-                  {page.title}
-                </h3>
-                {page.description && (
-                  <p className="mt-2 line-clamp-2 text-sm text-gray-600">
-                    {page.description}
-                  </p>
-                )}
+                  <div className="p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 group-hover:text-indigo-600">
+                      {page.title}
+                    </h3>
+                    {page.description && (
+                      <p className="mt-2 line-clamp-2 text-sm text-gray-600">
+                        {page.description}
+                      </p>
+                    )}
 
-                <div className="mt-4 flex items-center justify-between text-xs text-gray-500">
-                  <span>{page.blockCount} sections</span>
-                  <span>
-                    {new Date(page.publishedAt).toLocaleDateString()}
-                  </span>
-                </div>
+                    <div className="mt-4 flex items-center justify-between text-xs text-gray-500">
+                      <span>
+                        {page.blockCount}
+                        {' '}
+                        sections
+                      </span>
+                      <span>
+                        {new Date(page.publishedAt).toLocaleDateString()}
+                      </span>
+                    </div>
 
-                <div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
-                  <PlayCircle className="h-4 w-4" />
-                  <ImageIcon className="h-4 w-4" />
-                  <MessageSquare className="h-4 w-4" />
-                </div>
-              </div>
-            </a>
-          ))}
-        </div>
-      )}
+                    <div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
+                      <PlayCircle className="h-4 w-4" />
+                      <ImageIcon className="h-4 w-4" />
+                      <MessageSquare className="h-4 w-4" />
+                    </div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
 
       {/* Welcome Message */}
       <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-6">

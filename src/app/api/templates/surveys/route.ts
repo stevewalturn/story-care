@@ -3,13 +3,14 @@
  * CRUD operations for survey templates
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, handleAuthError } from '@/utils/AuthHelpers';
-import { createSurveyTemplateSchema } from '@/validations/TemplateValidation';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import {
   createSurveyTemplate,
   listSurveyTemplates,
 } from '@/services/TemplateService';
+import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
+import { createSurveyTemplateSchema } from '@/validations/TemplateValidation';
 
 /**
  * GET /api/templates/surveys - List survey templates

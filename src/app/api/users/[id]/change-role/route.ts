@@ -3,12 +3,13 @@
  * Super Admin can change user roles
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
-import { canChangeUserRole, handleRBACError } from '@/middleware/RBACMiddleware';
-import { changeUserRoleSchema } from '@/validations/OrganizationValidation';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { users, auditLogsSchema } from '@/models/Schema';
+import { canChangeUserRole, handleRBACError } from '@/middleware/RBACMiddleware';
+import { auditLogsSchema, users } from '@/models/Schema';
+import { changeUserRoleSchema } from '@/validations/OrganizationValidation';
 
 /**
  * POST /api/users/[id]/change-role - Change user role (Super Admin only)

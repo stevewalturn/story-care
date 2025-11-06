@@ -3,8 +3,9 @@
  * Get organization dashboard metrics
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { requireOrgAdmin, handleRBACError } from '@/middleware/RBACMiddleware';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import { handleRBACError, requireOrgAdmin } from '@/middleware/RBACMiddleware';
 import { getOrgMetrics } from '@/services/OrgAdminService';
 
 /**

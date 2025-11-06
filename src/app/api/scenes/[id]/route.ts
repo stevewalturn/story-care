@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { scenes, sceneClips } from '@/models/Schema';
+import { sceneClips, scenes } from '@/models/Schema';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -68,11 +68,21 @@ export async function PUT(
       updatedAt: new Date(),
     };
 
-    if (title !== undefined) updateData.title = title;
-    if (description !== undefined) updateData.description = description;
-    if (assembledVideoUrl !== undefined) updateData.assembledVideoUrl = assembledVideoUrl;
-    if (durationSeconds !== undefined) updateData.durationSeconds = durationSeconds;
-    if (status !== undefined) updateData.status = status;
+    if (title !== undefined) {
+      updateData.title = title;
+    }
+    if (description !== undefined) {
+      updateData.description = description;
+    }
+    if (assembledVideoUrl !== undefined) {
+      updateData.assembledVideoUrl = assembledVideoUrl;
+    }
+    if (durationSeconds !== undefined) {
+      updateData.durationSeconds = durationSeconds;
+    }
+    if (status !== undefined) {
+      updateData.status = status;
+    }
 
     const [updatedScene] = await db
       .update(scenes)

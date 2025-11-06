@@ -55,9 +55,15 @@ export async function PUT(
     // Build update object
     const updateData: any = {};
 
-    if (sequenceNumber !== undefined) updateData.sequenceNumber = sequenceNumber;
-    if (startTimeSeconds !== undefined) updateData.startTimeSeconds = startTimeSeconds;
-    if (endTimeSeconds !== undefined) updateData.endTimeSeconds = endTimeSeconds;
+    if (sequenceNumber !== undefined) {
+      updateData.sequenceNumber = sequenceNumber;
+    }
+    if (startTimeSeconds !== undefined) {
+      updateData.startTimeSeconds = startTimeSeconds;
+    }
+    if (endTimeSeconds !== undefined) {
+      updateData.endTimeSeconds = endTimeSeconds;
+    }
 
     const [updatedClip] = await db
       .update(sceneClips)

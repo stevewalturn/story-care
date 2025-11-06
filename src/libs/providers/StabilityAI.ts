@@ -5,14 +5,14 @@
 
 export type StabilityModel = 'sd3.5-large' | 'sd3.5-medium' | 'sd3-large' | 'sdxl-1.0';
 
-export interface StabilityGenerateOptions {
+export type StabilityGenerateOptions = {
   prompt: string;
   model?: StabilityModel;
   negativePrompt?: string;
   aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
   seed?: number;
   outputFormat?: 'png' | 'jpeg' | 'webp';
-}
+};
 
 export async function generateImageWithStability(
   options: StabilityGenerateOptions,

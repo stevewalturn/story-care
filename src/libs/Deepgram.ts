@@ -8,38 +8,38 @@ if (!deepgramApiKey) {
 
 const deepgram = createClient(deepgramApiKey);
 
-export interface TranscriptionOptions {
+export type TranscriptionOptions = {
   language?: string;
   diarize?: boolean;
   punctuate?: boolean;
   utterances?: boolean;
   model?: string;
-}
+};
 
-export interface DeepgramUtterance {
+export type DeepgramUtterance = {
   channel: number;
   speaker: number;
   start: number;
   end: number;
   transcript: string;
   confidence: number;
-}
+};
 
-export interface DeepgramWord {
+export type DeepgramWord = {
   word: string;
   start: number;
   end: number;
   confidence: number;
   speaker?: number;
-}
+};
 
-export interface TranscriptionResult {
+export type TranscriptionResult = {
   text: string;
   utterances: DeepgramUtterance[];
   words: DeepgramWord[];
   duration: number;
   channels: number;
-}
+};
 
 /**
  * Transcribe audio file from URL using Deepgram

@@ -486,7 +486,7 @@ export async function getFileMetadata(filePath: string) {
   return metadata;
 }
 
-export { storage, bucket };
+export { bucket, storage };
 ```
 
 ✅ **Checkpoint**: Dependencies installed and GCS client configured
@@ -501,7 +501,7 @@ Create `src/app/api/test-gcs/route.ts`:
 
 ```typescript
 import { NextResponse } from 'next/server';
-import { uploadFile, generateSignedUrl, deleteFile } from '@/libs/GCS';
+import { deleteFile, generateSignedUrl, uploadFile } from '@/libs/GCS';
 
 export async function POST() {
   try {
@@ -526,7 +526,7 @@ export async function POST() {
       success: true,
       message: 'GCS is configured correctly!',
       uploadedUrl: url,
-      signedUrl: signedUrl.substring(0, 100) + '...', // Truncate for display
+      signedUrl: `${signedUrl.substring(0, 100)}...`, // Truncate for display
     });
   } catch (error: any) {
     return NextResponse.json(
@@ -790,8 +790,8 @@ export async function POST(request: Request) {
 ### Generate and Store DALL-E Image
 
 ```typescript
-import { uploadFile } from '@/libs/GCS';
 import OpenAI from 'openai';
+import { uploadFile } from '@/libs/GCS';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 

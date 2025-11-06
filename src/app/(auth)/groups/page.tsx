@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { GroupList } from '@/components/groups/GroupList';
 import { GroupModal } from '@/components/groups/GroupModal';
 import { useAuth } from '@/contexts/AuthContext';
-import { authenticatedFetch, authenticatedPost, authenticatedPut, authenticatedDelete } from '@/utils/AuthenticatedFetch';
+import { authenticatedDelete, authenticatedFetch, authenticatedPost, authenticatedPut } from '@/utils/AuthenticatedFetch';
 
 type GroupMember = {
   id: string;

@@ -5,28 +5,28 @@
 
 import type { ChatMessage } from '../TextGeneration';
 
-export type GeminiChatModel =
-  | 'gemini-2.5-pro' // Latest, 1M context
-  | 'gemini-2.5-flash' // Speed optimized
-  | 'gemini-2.5-flash-lite' // Most cost-effective
-  | 'gemini-2.0-flash' // Next-gen
-  | 'gemini-2.0-flash-lite' // Better quality than 1.5
-  | 'gemini-1.5-pro' // Legacy
-  | 'gemini-1.5-flash'; // Legacy
+export type GeminiChatModel
+  = | 'gemini-2.5-pro' // Latest, 1M context
+    | 'gemini-2.5-flash' // Speed optimized
+    | 'gemini-2.5-flash-lite' // Most cost-effective
+    | 'gemini-2.0-flash' // Next-gen
+    | 'gemini-2.0-flash-lite' // Better quality than 1.5
+    | 'gemini-1.5-pro' // Legacy
+    | 'gemini-1.5-flash'; // Legacy
 
-export interface GeminiChatOptions {
+export type GeminiChatOptions = {
   messages: ChatMessage[];
   model: GeminiChatModel;
   temperature?: number;
   maxTokens?: number;
-}
+};
 
-interface GeminiMessage {
+type GeminiMessage = {
   role: string;
   parts: Array<{ text: string }>;
-}
+};
 
-interface GeminiChatRequestBody {
+type GeminiChatRequestBody = {
   contents: GeminiMessage[];
   generationConfig: {
     temperature: number;
@@ -35,7 +35,7 @@ interface GeminiChatRequestBody {
   systemInstruction?: {
     parts: Array<{ text: string }>;
   };
-}
+};
 
 export async function chatWithGemini(
   options: GeminiChatOptions,

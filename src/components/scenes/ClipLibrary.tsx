@@ -43,7 +43,9 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
   }, [searchQuery, patientId]);
 
   const fetchMedia = async () => {
-    if (!patientId) return;
+    if (!patientId) {
+      return;
+    }
 
     try {
       setLoading(true);

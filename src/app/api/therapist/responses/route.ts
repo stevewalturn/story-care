@@ -1,10 +1,10 @@
 import type { NextRequest } from 'next/server';
-import { eq, and, count, max } from 'drizzle-orm';
+import { and, count, eq, max } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { users, storyPages, reflectionResponses, surveyResponses } from '@/models/Schema';
-import { requireRole, handleAuthError } from '@/utils/AuthHelpers';
+import { reflectionResponses, storyPages, surveyResponses, users } from '@/models/Schema';
 import { logBulkPHIAccess } from '@/services/AuditService';
+import { handleAuthError, requireRole } from '@/utils/AuthHelpers';
 
 /**
  * GET /api/therapist/responses - Get patient responses summary for therapist

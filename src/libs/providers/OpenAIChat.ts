@@ -5,30 +5,30 @@
 
 import type { ChatMessage } from '../TextGeneration';
 
-export type OpenAIChatModel =
-  | 'gpt-4o' // Latest multimodal
-  | 'gpt-4o-mini' // Cost-efficient
-  | 'gpt-4-turbo' // Legacy but good
-  | 'o3-mini' // Reasoning (latest)
-  | 'o3' // Advanced reasoning
-  | 'o3-pro' // Pro reasoning
-  | 'o1-pro' // Reasoning
-  | 'o1' // Reasoning
-  | 'o1-mini'; // Reasoning
+export type OpenAIChatModel
+  = | 'gpt-4o' // Latest multimodal
+    | 'gpt-4o-mini' // Cost-efficient
+    | 'gpt-4-turbo' // Legacy but good
+    | 'o3-mini' // Reasoning (latest)
+    | 'o3' // Advanced reasoning
+    | 'o3-pro' // Pro reasoning
+    | 'o1-pro' // Reasoning
+    | 'o1' // Reasoning
+    | 'o1-mini'; // Reasoning
 
-export interface OpenAIChatOptions {
+export type OpenAIChatOptions = {
   messages: ChatMessage[];
   model: OpenAIChatModel;
   temperature?: number;
   maxTokens?: number;
-}
+};
 
-interface OpenAIChatRequestBody {
+type OpenAIChatRequestBody = {
   model: string;
   messages: ChatMessage[];
   temperature?: number;
   max_tokens?: number;
-}
+};
 
 export async function chatWithOpenAI(
   options: OpenAIChatOptions,

@@ -5,13 +5,13 @@
 
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { ArrowRight, Check } from 'lucide-react';
 import Link from 'next/link';
-import { Check, ArrowRight, Mail, Lock, Building2 } from 'lucide-react';
-import { signUp } from '@/libs/Firebase';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { signUp } from '@/libs/Firebase';
 import { humanizeFirebaseError } from '@/utils/FirebaseErrorMessages';
 
 type Step = 1 | 2 | 3;
@@ -172,7 +172,8 @@ export default function SetupAccountPage() {
               </form>
 
               <div className="mt-6 text-center text-sm text-gray-600">
-                Already have an account?{' '}
+                Already have an account?
+                {' '}
                 <Link
                   href="/sign-in"
                   className="font-medium text-indigo-600 hover:text-indigo-700"
@@ -189,11 +190,16 @@ export default function SetupAccountPage() {
               <div className="mb-6">
                 <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4">
                   <div className="flex items-start">
-                    <Check className="mr-3 h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <Check className="mt-0.5 mr-3 h-5 w-5 flex-shrink-0 text-green-600" />
                     <div className="text-sm">
                       <p className="font-medium text-green-900">Found your invitation!</p>
                       <p className="mt-1 text-green-700">
-                        You're joining as a <strong>{getRoleDisplay(invitation.role)}</strong> at{' '}
+                        You're joining as a
+                        {' '}
+                        <strong>{getRoleDisplay(invitation.role)}</strong>
+                        {' '}
+                        at
+                        {' '}
                         <strong>{invitation.organizationName}</strong>
                       </p>
                     </div>

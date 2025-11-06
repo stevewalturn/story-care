@@ -69,8 +69,8 @@
 #### 1. `/api/media/[id]/route.ts` - NEEDS SECURITY
 **Required Changes:**
 ```typescript
+import { logPHIAccess, logPHIDelete, logPHIUpdate } from '@/libs/AuditLogger';
 import { requireMediaAccess } from '@/middleware/RBACMiddleware';
-import { logPHIAccess, logPHIUpdate, logPHIDelete } from '@/libs/AuditLogger';
 import { handleAuthError } from '@/utils/AuthHelpers';
 
 // GET - Add authentication
@@ -89,8 +89,8 @@ await logPHIDelete(user.uid, 'media', id, request);
 #### 2. `/api/notes/route.ts` - NEEDS SECURITY
 **Required Changes:**
 ```typescript
-import { requireTherapist } from '@/utils/AuthHelpers';
 import { logPHIAccess, logPHICreate } from '@/libs/AuditLogger';
+import { requireTherapist } from '@/utils/AuthHelpers';
 
 // GET - Add authentication
 const user = await requireTherapist(request);
@@ -105,8 +105,8 @@ await logPHICreate(user.uid, 'note', note.id, request);
 #### 3. `/api/sessions/[id]/transcribe/route.ts` - NEEDS SECURITY
 **Required Changes:**
 ```typescript
-import { requireSessionAccess } from '@/middleware/RBACMiddleware';
 import { logPHICreate } from '@/libs/AuditLogger';
+import { requireSessionAccess } from '@/middleware/RBACMiddleware';
 
 // POST - Add authentication
 const user = await requireSessionAccess(request, id);
@@ -116,8 +116,8 @@ await logPHICreate(user.uid, 'transcript', transcript.id, request);
 #### 4. `/api/dashboard/stats/route.ts` - NEEDS SECURITY
 **Required Changes:**
 ```typescript
-import { requireAuth } from '@/utils/AuthHelpers';
 import { logAudit } from '@/libs/AuditLogger';
+import { requireAuth } from '@/utils/AuthHelpers';
 
 // GET - Add authentication
 const user = await requireAuth(request);

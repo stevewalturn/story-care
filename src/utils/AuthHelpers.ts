@@ -11,10 +11,10 @@
  * - Log all authentication failures for audit purposes
  */
 
-import { NextResponse } from 'next/server';
-
-import { verifyIdToken } from '@/libs/FirebaseAdmin';
 import type { AuthenticatedUser } from '@/types/Organization';
+
+import { NextResponse } from 'next/server';
+import { verifyIdToken } from '@/libs/FirebaseAdmin';
 
 // Export the type for backward compatibility
 export type { AuthenticatedUser } from '@/types/Organization';

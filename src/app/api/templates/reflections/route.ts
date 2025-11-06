@@ -3,13 +3,14 @@
  * CRUD operations for reflection templates
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, handleAuthError } from '@/utils/AuthHelpers';
-import { createReflectionTemplateSchema } from '@/validations/TemplateValidation';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import {
   createReflectionTemplate,
   listReflectionTemplates,
 } from '@/services/TemplateService';
+import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
+import { createReflectionTemplateSchema } from '@/validations/TemplateValidation';
 
 /**
  * GET /api/templates/reflections - List reflection templates

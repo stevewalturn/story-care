@@ -5,10 +5,10 @@
 
 'use client';
 
+import { ArrowLeft, FileText, ListChecks, MessageSquare } from 'lucide-react';
 import { use, useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, FileText, MessageSquare, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type PageResponse = {
@@ -224,7 +224,7 @@ export default function PatientResponseDetailPage({
 
                 {/* No responses yet for this page */}
                 {pageResponse.reflectionResponses.length === 0
-                && pageResponse.surveyResponses.length === 0 && (
+                  && pageResponse.surveyResponses.length === 0 && (
                   <p className="text-center text-sm text-gray-500">
                     No responses yet for this page
                   </p>

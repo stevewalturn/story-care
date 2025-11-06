@@ -3,7 +3,8 @@
  * Creates a new organization with the first org admin
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/libs/DB';
 import { organizationsSchema, users } from '@/models/Schema';

@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
+import path from 'node:path';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-import path from 'path';
 import { db } from '@/libs/DB';
 import { mediaLibrary, sceneClips, scenes } from '@/models/Schema';
 import { VideoService } from '@/services/VideoService';
@@ -70,9 +70,9 @@ export async function POST(
 
       return {
         mediaUrl: c.media.url || c.media.thumbnailUrl || '',
-        startTime: parseFloat(c.clip.startTimeSeconds || '0'),
+        startTime: Number.parseFloat(c.clip.startTimeSeconds || '0'),
         duration:
-          parseFloat(c.clip.endTimeSeconds || '0') - parseFloat(c.clip.startTimeSeconds || '0'),
+          Number.parseFloat(c.clip.endTimeSeconds || '0') - Number.parseFloat(c.clip.startTimeSeconds || '0'),
         type: (c.media.mediaType === 'video' ? 'video' : 'image') as 'video' | 'image',
       };
     });
@@ -82,7 +82,7 @@ export async function POST(
     const outputPath = path.join(process.cwd(), 'public', 'assembled-scenes', outputFilename);
 
     // Ensure output directory exists
-    const fs = require('fs');
+    const fs = require('node:fs');
     const outputDir = path.dirname(outputPath);
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
@@ -93,7 +93,7 @@ export async function POST(
     const { audioTrack } = body;
 
     // Assemble the scene
-    console.log(`Starting assembly for scene ${sceneId} with ${videoClips.length} clips`);
+    console.error(`Starting assembly for scene ${sceneId} with ${videoClips.length} clips`);
 
     await VideoService.assembleScene({
       clips: videoClips,

@@ -3,11 +3,12 @@
  * Org Admin can approve pending templates
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { requireOrgAdmin, handleRBACError } from '@/middleware/RBACMiddleware';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import { handleRBACError, requireOrgAdmin } from '@/middleware/RBACMiddleware';
 import {
-  approveSurveyTemplate,
   approveReflectionTemplate,
+  approveSurveyTemplate,
 } from '@/services/TemplateService';
 
 /**
@@ -28,8 +29,8 @@ export async function POST(
       );
     }
 
-    const template =
-      type === 'surveys'
+    const template
+      = type === 'surveys'
         ? await approveSurveyTemplate(id, user.dbUserId)
         : await approveReflectionTemplate(id, user.dbUserId);
 

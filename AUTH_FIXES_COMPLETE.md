@@ -150,8 +150,8 @@
 
 **1. Add import:**
 ```typescript
-import { authenticatedFetch, authenticatedPost, authenticatedPut, authenticatedDelete } from '@/utils/AuthenticatedFetch';
 import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedDelete, authenticatedFetch, authenticatedPost, authenticatedPut } from '@/utils/AuthenticatedFetch';
 ```
 
 **2. Get user:**

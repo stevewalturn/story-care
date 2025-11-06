@@ -3,13 +3,14 @@
  * Org Admin can reject pending templates
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { requireOrgAdmin, handleRBACError } from '@/middleware/RBACMiddleware';
-import { rejectTemplateSchema } from '@/validations/TemplateValidation';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import { handleRBACError, requireOrgAdmin } from '@/middleware/RBACMiddleware';
 import {
-  rejectSurveyTemplate,
   rejectReflectionTemplate,
+  rejectSurveyTemplate,
 } from '@/services/TemplateService';
+import { rejectTemplateSchema } from '@/validations/TemplateValidation';
 
 /**
  * POST /api/templates/[type]/[id]/reject - Reject template
@@ -32,8 +33,8 @@ export async function POST(
     const body = await request.json();
     const { reason } = rejectTemplateSchema.parse(body);
 
-    const template =
-      type === 'surveys'
+    const template
+      = type === 'surveys'
         ? await rejectSurveyTemplate(id, reason)
         : await rejectReflectionTemplate(id, reason);
 

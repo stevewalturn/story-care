@@ -99,8 +99,8 @@ export function ScenesClient() {
           mediaId: clip.mediaId,
           title: `Clip ${clip.sequenceNumber}`,
           thumbnailUrl: '', // Will be loaded from media
-          startTime: parseFloat(clip.startTimeSeconds),
-          duration: parseFloat(clip.endTimeSeconds) - parseFloat(clip.startTimeSeconds),
+          startTime: Number.parseFloat(clip.startTimeSeconds),
+          duration: Number.parseFloat(clip.endTimeSeconds) - Number.parseFloat(clip.startTimeSeconds),
         }));
 
         setClips(transformedClips);
@@ -229,7 +229,9 @@ export function ScenesClient() {
       `This will assemble ${clips.length} clips into a video. This may take several minutes depending on the scene length. Continue?`,
     );
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      return;
+    }
 
     try {
       setIsSaving(true);
@@ -305,8 +307,8 @@ export function ScenesClient() {
       <div className="mb-6">
         {/* Patient & Scene Selector */}
         <div className="mb-4 flex items-center gap-4">
-          <div className="flex-1 max-w-xs">
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+          <div className="max-w-xs flex-1">
+            <label className="mb-1 block text-xs font-medium text-gray-700">
               Patient
             </label>
             <select
@@ -315,10 +317,10 @@ export function ScenesClient() {
                 setSelectedPatient(e.target.value);
                 createNewScene();
               }}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
             >
               <option value="">Select patient...</option>
-              {patients.map((patient) => (
+              {patients.map(patient => (
                 <option key={patient.id} value={patient.id}>
                   {patient.name}
                 </option>
@@ -328,8 +330,8 @@ export function ScenesClient() {
 
           {selectedPatient && (
             <>
-              <div className="flex-1 max-w-xs">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+              <div className="max-w-xs flex-1">
+                <label className="mb-1 block text-xs font-medium text-gray-700">
                   Scene
                 </label>
                 <select
@@ -341,11 +343,11 @@ export function ScenesClient() {
                       loadScene(e.target.value);
                     }
                   }}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                   disabled={isLoadingScenes}
                 >
                   <option value="">New scene</option>
-                  {scenes.map((scene) => (
+                  {scenes.map(scene => (
                     <option key={scene.id} value={scene.id}>
                       {scene.title}
                     </option>
@@ -404,13 +406,15 @@ export function ScenesClient() {
       <div className="grid min-h-0 flex-1 grid-cols-3 gap-6">
         {/* Clip Library (Left) */}
         <div className="col-span-1 h-full overflow-hidden">
-          {selectedPatient ? (
-            <ClipLibrary onAddToTimeline={handleAddClip} patientId={selectedPatient} />
-          ) : (
-            <div className="flex h-full items-center justify-center rounded-lg border border-gray-200 bg-white">
-              <p className="text-sm text-gray-500">Select a patient to view media</p>
-            </div>
-          )}
+          {selectedPatient
+            ? (
+                <ClipLibrary onAddToTimeline={handleAddClip} patientId={selectedPatient} />
+              )
+            : (
+                <div className="flex h-full items-center justify-center rounded-lg border border-gray-200 bg-white">
+                  <p className="text-sm text-gray-500">Select a patient to view media</p>
+                </div>
+              )}
         </div>
 
         {/* Timeline & Preview (Right) */}

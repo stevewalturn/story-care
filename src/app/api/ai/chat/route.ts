@@ -1,8 +1,9 @@
 import type { NextRequest } from 'next/server';
+import type { ChatMessage, TextGenModel } from '@/libs/TextGeneration';
 import { NextResponse } from 'next/server';
 import { logPHIAccess } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
-import { generateText, type ChatMessage, type TextGenModel } from '@/libs/TextGeneration';
+import { generateText } from '@/libs/TextGeneration';
 import { requireSessionAccess } from '@/middleware/RBACMiddleware';
 import { aiChatMessages } from '@/models/Schema';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';

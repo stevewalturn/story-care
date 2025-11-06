@@ -5,15 +5,17 @@
 
 'use client';
 
-import { useState } from 'react';
 import { MessageSquare, Send } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 
 export default function PatientMessagesPage() {
   const [message, setMessage] = useState('');
 
   const handleSendMessage = () => {
-    if (!message.trim()) return;
+    if (!message.trim()) {
+      return;
+    }
     // TODO: Implement message sending
     setMessage('');
   };
@@ -32,7 +34,7 @@ export default function PatientMessagesPage() {
       <div className="flex flex-1 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white">
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="flex flex-col items-center justify-center h-full">
+          <div className="flex h-full flex-col items-center justify-center">
             <MessageSquare className="h-12 w-12 text-gray-400" />
             <p className="mt-2 text-sm text-gray-500">
               Messaging system coming soon
@@ -49,10 +51,10 @@ export default function PatientMessagesPage() {
             <input
               type="text"
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+              onChange={e => setMessage(e.target.value)}
+              onKeyPress={e => e.key === 'Enter' && handleSendMessage()}
               placeholder="Type your message..."
-              className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             />
             <Button
               variant="primary"

@@ -1,19 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { count, desc, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import {
-  users,
-  storyPagesSchema,
   patientPageInteractionsSchema,
   reflectionResponsesSchema,
-  surveyResponsesSchema,
   sessionsSchema,
+  storyPagesSchema,
+  surveyResponsesSchema,
+  users,
 } from '@/models/Schema';
-import { eq, desc, count } from 'drizzle-orm';
 
 // GET /api/dashboard/patient-engagement - Get patient engagement data
 export async function GET(_request: NextRequest) {
   try {
-
     // Get all patients with their engagement metrics
     const patientsQuery = db
       .select({
@@ -72,7 +72,7 @@ export async function GET(_request: NextRequest) {
         let status = 'inactive';
         if (lastInteraction) {
           const daysSinceLastInteraction = Math.floor(
-            (Date.now() - new Date(lastInteraction).getTime()) / (1000 * 60 * 60 * 24)
+            (Date.now() - new Date(lastInteraction).getTime()) / (1000 * 60 * 60 * 24),
           );
           if (daysSinceLastInteraction <= 7) {
             status = 'active';
@@ -92,13 +92,17 @@ export async function GET(_request: NextRequest) {
           lastInteraction,
           status,
         };
-      })
+      }),
     );
 
     // Sort by most recent interaction
     patientEngagement.sort((a, b) => {
-      if (!a.lastInteraction) return 1;
-      if (!b.lastInteraction) return -1;
+      if (!a.lastInteraction) {
+        return 1;
+      }
+      if (!b.lastInteraction) {
+        return -1;
+      }
       return new Date(b.lastInteraction).getTime() - new Date(a.lastInteraction).getTime();
     });
 
@@ -107,7 +111,7 @@ export async function GET(_request: NextRequest) {
     console.error('Error fetching patient engagement:', error);
     return NextResponse.json(
       { error: 'Failed to fetch patient engagement' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

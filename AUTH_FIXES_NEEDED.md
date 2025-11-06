@@ -137,7 +137,7 @@ For each file:
 
 1. **Add import:**
    ```typescript
-   import { authenticatedFetch, authenticatedPost, authenticatedPut, authenticatedDelete } from '@/utils/AuthenticatedFetch';
+   import { authenticatedDelete, authenticatedFetch, authenticatedPost, authenticatedPut } from '@/utils/AuthenticatedFetch';
    ```
 
 2. **Replace fetch calls:**

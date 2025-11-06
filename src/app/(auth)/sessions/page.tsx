@@ -43,7 +43,7 @@ export default function SessionsPage() {
       const idToken = await user.getIdToken();
       const response = await fetch(`/api/sessions?therapistId=${user.uid}`, {
         headers: {
-          'Authorization': `Bearer ${idToken}`,
+          Authorization: `Bearer ${idToken}`,
         },
       });
       const data = await response.json();
@@ -121,7 +121,7 @@ export default function SessionsPage() {
       await fetch(`/api/sessions/${session.id}/transcribe`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${idToken}`,
+          Authorization: `Bearer ${idToken}`,
         },
       });
 
@@ -151,7 +151,7 @@ export default function SessionsPage() {
       const response = await fetch(`/api/sessions/${sessionId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${idToken}`,
+          Authorization: `Bearer ${idToken}`,
         },
       });
 

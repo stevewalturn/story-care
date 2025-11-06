@@ -103,7 +103,7 @@ export function TranscriptViewerClient({
 
   // Handler for analyze option
   const handleAnalyze = async (optionId: string, text: string) => {
-    console.log('Analyzing:', optionId, text);
+    console.error('Analyzing:', optionId, text);
 
     // Route to appropriate modal/action based on option
     if (optionId === 'save-quote') {
@@ -184,7 +184,7 @@ Transcript text:
       }
 
       const data = await response.json();
-      console.log('Image generated:', data);
+      console.error('Image generated:', data);
       // Trigger library refresh
     } catch (error) {
       console.error('Error generating image:', error);
@@ -205,7 +205,7 @@ Transcript text:
       }
 
       const data = await response.json();
-      console.log('Video generated:', data);
+      console.error('Video generated:', data);
       // Trigger library refresh
     } catch (error) {
       console.error('Error generating video:', error);
@@ -243,7 +243,7 @@ Transcript text:
       }
 
       const data = await response.json();
-      console.log('Quote saved:', data);
+      console.error('Quote saved:', data);
       // TODO: Trigger quotes list refresh in library panel
     } catch (error) {
       console.error('Error saving quote:', error);
@@ -328,7 +328,7 @@ Transcript text:
         <div className="flex w-[400px] flex-col border-l border-gray-200 bg-white">
           <LibraryPanel
             sessionId={sessionId}
-            patientName={patientName}
+            _patientName={patientName}
             user={user}
           />
         </div>
@@ -662,7 +662,7 @@ function AIAssistantPanel({
             <select
               id="ai-model"
               value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
+              onChange={e => setSelectedModel(e.target.value)}
               className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
             >
               {Object.entries(getAvailableTextModels()).map(([provider, models]) => (
@@ -829,11 +829,9 @@ function AIAssistantPanel({
 // Library Panel Component
 function LibraryPanel({
   sessionId,
-  patientName,
   user,
 }: {
   sessionId: string;
-  patientName: string;
   user: any;
 }) {
   const [activeTab, setActiveTab] = useState<'media' | 'quotes' | 'notes' | 'profile'>('media');

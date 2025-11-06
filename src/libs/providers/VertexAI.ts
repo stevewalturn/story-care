@@ -7,14 +7,14 @@
 
 export type ImagenModel = 'imagen-3.0-generate-001' | 'imagegeneration@006';
 
-export interface VertexGenerateOptions {
+export type VertexGenerateOptions = {
   prompt: string;
   model?: ImagenModel;
   negativePrompt?: string;
   aspectRatio?: '1:1' | '9:16' | '16:9' | '4:3' | '3:4';
   numberOfImages?: number;
   seed?: number;
-}
+};
 
 export async function generateImageWithVertex(
   options: VertexGenerateOptions,

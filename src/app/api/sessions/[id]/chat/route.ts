@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { aiChatMessages } from '@/models/Schema';
-import { eq } from 'drizzle-orm';
 
 type RouteContext = {
   params: Promise<{ id: string }>;

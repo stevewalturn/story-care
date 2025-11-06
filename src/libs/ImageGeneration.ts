@@ -3,21 +3,21 @@
  * Consolidates all image generation providers into a single interface
  */
 
-import type { FalGenerateOptions, FalModel } from './providers/FalAI';
-import type { ImagenModel, VertexGenerateOptions } from './providers/VertexAI';
-import type { StabilityGenerateOptions, StabilityModel } from './providers/StabilityAI';
+import type { FalModel } from './providers/FalAI';
+import type { StabilityModel } from './providers/StabilityAI';
+import type { ImagenModel } from './providers/VertexAI';
 
 // OpenAI Models
 export type OpenAIModel = 'dall-e-2' | 'dall-e-3';
 
 // All available models
-export type ImageGenModel =
-  | OpenAIModel
-  | StabilityModel
-  | FalModel
-  | ImagenModel;
+export type ImageGenModel
+  = | OpenAIModel
+    | StabilityModel
+    | FalModel
+    | ImagenModel;
 
-export interface ImageGenerationOptions {
+export type ImageGenerationOptions = {
   prompt: string;
   model: ImageGenModel;
   negativePrompt?: string;
@@ -27,12 +27,12 @@ export interface ImageGenerationOptions {
   seed?: number;
   quality?: 'standard' | 'hd';
   style?: 'natural' | 'vivid';
-}
+};
 
-export interface ImageGenerationResult {
+export type ImageGenerationResult = {
   imageUrl: string;
   model: string;
-}
+};
 
 /**
  * Generate an image using the specified model

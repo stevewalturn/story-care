@@ -5,20 +5,20 @@
 
 'use client';
 
-import { useEffect, useState, use } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { BookOpen, CheckCircle } from 'lucide-react';
+import { use, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface StoryPage {
+type StoryPage = {
   id: string;
   title: string;
   description: string | null;
   status: string;
   publishedAt: string | null;
-}
+};
 
-interface Block {
+type Block = {
   id: string;
   blockType: string;
   sequenceNumber: number;
@@ -26,14 +26,14 @@ interface Block {
   mediaId: string | null;
   sceneId: string | null;
   settings: any;
-}
+};
 
-interface Question {
+type Question = {
   id: string;
   questionText: string;
   questionType: string;
   options: string[] | null;
-}
+};
 
 export default function StoryViewerPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -113,7 +113,9 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
   };
 
   const handleSubmitReflections = async () => {
-    if (!user) return;
+    if (!user) {
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -129,7 +131,7 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
+          'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({ responses }),
       });
@@ -149,7 +151,9 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
   };
 
   const handleSubmitSurvey = async () => {
-    if (!user) return;
+    if (!user) {
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -166,7 +170,7 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
+          'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({ responses }),
       });
@@ -270,30 +274,34 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
                     <label className="block text-sm font-medium text-gray-700">
                       {question.questionText}
                     </label>
-                    {question.questionType === 'open_text' || question.questionType === 'multiline' ? (
-                      <textarea
-                        rows={4}
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        value={reflectionAnswers[question.id] || ''}
-                        onChange={(e) => setReflectionAnswers({ ...reflectionAnswers, [question.id]: e.target.value })}
-                      />
-                    ) : question.questionType === 'multiple_choice' && question.options ? (
-                      <div className="mt-2 space-y-2">
-                        {question.options.map((option, idx) => (
-                          <label key={idx} className="flex items-center">
-                            <input
-                              type="radio"
-                              name={question.id}
-                              value={option}
-                              checked={reflectionAnswers[question.id] === option}
-                              onChange={(e) => setReflectionAnswers({ ...reflectionAnswers, [question.id]: e.target.value })}
-                              className="mr-2"
-                            />
-                            <span className="text-sm text-gray-700">{option}</span>
-                          </label>
-                        ))}
-                      </div>
-                    ) : null}
+                    {question.questionType === 'open_text' || question.questionType === 'multiline'
+                      ? (
+                          <textarea
+                            rows={4}
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            value={reflectionAnswers[question.id] || ''}
+                            onChange={e => setReflectionAnswers({ ...reflectionAnswers, [question.id]: e.target.value })}
+                          />
+                        )
+                      : question.questionType === 'multiple_choice' && question.options
+                        ? (
+                            <div className="mt-2 space-y-2">
+                              {question.options.map((option, idx) => (
+                                <label key={idx} className="flex items-center">
+                                  <input
+                                    type="radio"
+                                    name={question.id}
+                                    value={option}
+                                    checked={reflectionAnswers[question.id] === option}
+                                    onChange={e => setReflectionAnswers({ ...reflectionAnswers, [question.id]: e.target.value })}
+                                    className="mr-2"
+                                  />
+                                  <span className="text-sm text-gray-700">{option}</span>
+                                </label>
+                              ))}
+                            </div>
+                          )
+                        : null}
                   </div>
                 ))}
               </div>
@@ -303,16 +311,20 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
                 disabled={submitting || submitted}
                 className="mt-6"
               >
-                {submitted ? (
-                  <>
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Submitted
-                  </>
-                ) : submitting ? (
-                  'Submitting...'
-                ) : (
-                  'Submit Reflections'
-                )}
+                {submitted
+                  ? (
+                      <>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Submitted
+                      </>
+                    )
+                  : submitting
+                    ? (
+                        'Submitting...'
+                      )
+                    : (
+                        'Submit Reflections'
+                      )}
               </Button>
             </div>
           )}
@@ -329,23 +341,25 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
                     <label className="block text-sm font-medium text-gray-700">
                       {question.questionText}
                     </label>
-                    {question.questionType === 'scale' ? (
-                      <input
-                        type="range"
-                        min="1"
-                        max="10"
-                        value={surveyAnswers[question.id] || '5'}
-                        onChange={(e) => setSurveyAnswers({ ...surveyAnswers, [question.id]: e.target.value })}
-                        className="mt-2 w-full"
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        value={surveyAnswers[question.id] || ''}
-                        onChange={(e) => setSurveyAnswers({ ...surveyAnswers, [question.id]: e.target.value })}
-                      />
-                    )}
+                    {question.questionType === 'scale'
+                      ? (
+                          <input
+                            type="range"
+                            min="1"
+                            max="10"
+                            value={surveyAnswers[question.id] || '5'}
+                            onChange={e => setSurveyAnswers({ ...surveyAnswers, [question.id]: e.target.value })}
+                            className="mt-2 w-full"
+                          />
+                        )
+                      : (
+                          <input
+                            type="text"
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            value={surveyAnswers[question.id] || ''}
+                            onChange={e => setSurveyAnswers({ ...surveyAnswers, [question.id]: e.target.value })}
+                          />
+                        )}
                   </div>
                 ))}
               </div>
@@ -355,16 +369,20 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
                 disabled={submitting || submitted}
                 className="mt-6"
               >
-                {submitted ? (
-                  <>
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Submitted
-                  </>
-                ) : submitting ? (
-                  'Submitting...'
-                ) : (
-                  'Submit Survey'
-                )}
+                {submitted
+                  ? (
+                      <>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Submitted
+                      </>
+                    )
+                  : submitting
+                    ? (
+                        'Submitting...'
+                      )
+                    : (
+                        'Submit Survey'
+                      )}
               </Button>
             </div>
           )}

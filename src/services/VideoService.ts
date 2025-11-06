@@ -1,25 +1,25 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import fs from 'fs';
-import path from 'path';
+import { exec } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { promisify } from 'node:util';
 
 const execAsync = promisify(exec);
 
-export interface VideoClip {
+export type VideoClip = {
   mediaUrl: string;
   startTime: number;
   duration: number;
   type: 'image' | 'video';
-}
+};
 
-export interface AssembleOptions {
+export type AssembleOptions = {
   clips: VideoClip[];
   outputPath: string;
   width?: number;
   height?: number;
   fps?: number;
   audioTrack?: string;
-}
+};
 
 /**
  * Video assembly service using FFmpeg
@@ -35,7 +35,7 @@ export class VideoService {
     try {
       await execAsync('ffmpeg -version');
       return true;
-    } catch (error) {
+    } catch {
       console.error('FFmpeg not found. Please install FFmpeg.');
       return false;
     }
@@ -153,11 +153,11 @@ export class VideoService {
       // Process each clip
       for (let i = 0; i < clips.length; i++) {
         const clip = clips[i];
-        if (!clip) continue;
+        if (!clip) {
+          continue;
+        }
 
         const clipId = `clip-${i}`;
-
-        console.log(`Processing clip ${i + 1}/${clips.length}: ${clip.type}`);
 
         // Download media
         const ext = clip.type === 'image' ? 'jpg' : 'mp4';
@@ -204,7 +204,6 @@ export class VideoService {
         fs.copyFileSync(tempOutputPath, outputPath);
       }
 
-      console.log(`Scene assembled successfully: ${outputPath}`);
       return outputPath;
     } catch (error) {
       console.error('Error assembling scene:', error);

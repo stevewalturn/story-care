@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useEffect, useState } from 'react';
 import { PatientList } from '@/components/patients/PatientList';
 import { PatientModal } from '@/components/patients/PatientModal';
-import { authenticatedFetch, authenticatedPost, authenticatedPut, authenticatedDelete } from '@/utils/AuthenticatedFetch';
+import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedDelete, authenticatedFetch, authenticatedPost, authenticatedPut } from '@/utils/AuthenticatedFetch';
 
-interface Patient {
+type Patient = {
   id: string;
   name: string;
   email: string;
@@ -16,13 +16,13 @@ interface Patient {
   lastSession?: string;
   createdAt: string | Date;
   therapistId?: string;
-}
+};
 
-interface Therapist {
+type Therapist = {
   firebaseUid: string;
   name: string;
   patientCount: number;
-}
+};
 
 export default function PatientsPage() {
   const { user, dbUser } = useAuth();
@@ -45,7 +45,9 @@ export default function PatientsPage() {
   }, [user, isOrgAdmin]);
 
   const fetchPatients = async () => {
-    if (!user?.uid) return;
+    if (!user?.uid) {
+      return;
+    }
 
     try {
       setLoading(true);
@@ -64,7 +66,9 @@ export default function PatientsPage() {
   };
 
   const fetchTherapists = async () => {
-    if (!user?.uid) return;
+    if (!user?.uid) {
+      return;
+    }
 
     try {
       const response = await authenticatedFetch('/api/therapists', user);
@@ -143,19 +147,21 @@ export default function PatientsPage() {
 
   return (
     <div className="p-8">
-      {loading ? (
-        <div className="text-center py-16">
-          <div className="w-16 h-16 mx-auto border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-gray-500">Loading patients...</p>
-        </div>
-      ) : (
-        <PatientList
-          patients={patients}
-          onAddClick={handleAddClick}
-          onEditClick={handleEditClick}
-          onDeleteClick={handleDelete}
-        />
-      )}
+      {loading
+        ? (
+            <div className="py-16 text-center">
+              <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+              <p className="text-gray-500">Loading patients...</p>
+            </div>
+          )
+        : (
+            <PatientList
+              patients={patients}
+              onAddClick={handleAddClick}
+              onEditClick={handleEditClick}
+              onDeleteClick={handleDelete}
+            />
+          )}
 
       <PatientModal
         isOpen={showModal}

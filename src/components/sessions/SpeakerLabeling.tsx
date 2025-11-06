@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Play, Pause, User, Users } from 'lucide-react';
+import { Pause, Play, User, Users } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { Dropdown } from '@/components/ui/Dropdown';
+import { Input } from '@/components/ui/Input';
 
-interface Speaker {
+type Speaker = {
   id: string;
   label: string; // e.g., "Speaker 1", "Speaker 2"
   type: 'therapist' | 'patient' | 'group_member' | null;
@@ -14,14 +14,14 @@ interface Speaker {
   sampleAudioUrl?: string;
   utteranceCount: number;
   totalDuration: number; // in seconds
-}
+};
 
-interface SpeakerLabelingProps {
+type SpeakerLabelingProps = {
   sessionId: string;
   speakers: Speaker[];
   onSave: (speakers: Speaker[]) => void;
   onCancel: () => void;
-}
+};
 
 export function SpeakerLabeling({
   sessionId,
@@ -43,18 +43,18 @@ export function SpeakerLabeling({
   ];
 
   const handleTypeChange = (speakerId: string, type: string) => {
-    setSpeakers((prev) =>
-      prev.map((s) =>
+    setSpeakers(prev =>
+      prev.map(s =>
         s.id === speakerId
           ? { ...s, type: type as Speaker['type'] }
-          : s
-      )
+          : s,
+      ),
     );
   };
 
   const handleNameChange = (speakerId: string, name: string) => {
-    setSpeakers((prev) =>
-      prev.map((s) => (s.id === speakerId ? { ...s, name } : s))
+    setSpeakers(prev =>
+      prev.map(s => (s.id === speakerId ? { ...s, name } : s)),
     );
   };
 
@@ -93,11 +93,11 @@ export function SpeakerLabeling({
 
         // Update speaker with audio URL for future plays
         setSpeakers(prev =>
-          prev.map(s => s.id === speakerId ? { ...s, sampleAudioUrl: audioUrl } : s)
+          prev.map(s => s.id === speakerId ? { ...s, sampleAudioUrl: audioUrl } : s),
         );
       } catch (error) {
         console.error('Error fetching audio sample:', error);
-        alert('Failed to load audio sample. Please try again.');
+        console.error('Failed to load audio sample. Please try again.');
         setLoadingAudio(null);
         return;
       } finally {
@@ -120,7 +120,7 @@ export function SpeakerLabeling({
 
     audio.addEventListener('error', () => {
       console.error('Error playing audio');
-      alert('Failed to play audio sample. The file may be corrupted or unavailable.');
+      console.error('Failed to play audio sample. The file may be corrupted or unavailable.');
       setPlayingId(null);
     });
 
@@ -129,45 +129,49 @@ export function SpeakerLabeling({
       setPlayingId(speakerId);
     } catch (error) {
       console.error('Error playing audio:', error);
-      alert('Failed to play audio. Please try again.');
+      console.error('Failed to play audio. Please try again.');
       setPlayingId(null);
     }
   };
 
   const toggleMergeSelection = (speakerId: string) => {
-    setSelectedForMerge((prev) =>
+    setSelectedForMerge(prev =>
       prev.includes(speakerId)
-        ? prev.filter((id) => id !== speakerId)
-        : [...prev, speakerId]
+        ? prev.filter(id => id !== speakerId)
+        : [...prev, speakerId],
     );
   };
 
   const handleMerge = () => {
-    if (selectedForMerge.length < 2) return;
+    if (selectedForMerge.length < 2) {
+      return;
+    }
 
     // Merge selected speakers into the first one
     const [primaryId, ...mergeIds] = selectedForMerge;
-    const primary = speakers.find((s) => s.id === primaryId);
-    const toMerge = speakers.filter((s) => mergeIds.includes(s.id));
+    const primary = speakers.find(s => s.id === primaryId);
+    const toMerge = speakers.filter(s => mergeIds.includes(s.id));
 
-    if (!primary) return;
+    if (!primary) {
+      return;
+    }
 
     const mergedSpeaker = {
       ...primary,
       utteranceCount: toMerge.reduce(
         (sum, s) => sum + s.utteranceCount,
-        primary.utteranceCount
+        primary.utteranceCount,
       ),
       totalDuration: toMerge.reduce(
         (sum, s) => sum + s.totalDuration,
-        primary.totalDuration
+        primary.totalDuration,
       ),
     };
 
-    setSpeakers((prev) =>
+    setSpeakers(prev =>
       prev
-        .filter((s) => !mergeIds.includes(s.id))
-        .map((s) => (s.id === primaryId ? mergedSpeaker : s))
+        .filter(s => !mergeIds.includes(s.id))
+        .map(s => (s.id === primaryId ? mergedSpeaker : s)),
     );
     setSelectedForMerge([]);
     setMergeMode(false);
@@ -179,7 +183,7 @@ export function SpeakerLabeling({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const isComplete = speakers.every((s) => s.type && s.name.trim());
+  const isComplete = speakers.every(s => s.type && s.name.trim());
 
   return (
     <div className="space-y-6">
@@ -187,7 +191,7 @@ export function SpeakerLabeling({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Label Speakers</h2>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="mt-1 text-sm text-gray-600">
             Identify each speaker from the session transcript
           </p>
         </div>
@@ -200,7 +204,11 @@ export function SpeakerLabeling({
           </Button>
           {mergeMode && selectedForMerge.length >= 2 && (
             <Button variant="secondary" onClick={handleMerge}>
-              Merge {selectedForMerge.length} Speakers
+              Merge
+              {' '}
+              {selectedForMerge.length}
+              {' '}
+              Speakers
             </Button>
           )}
         </div>
@@ -213,37 +221,44 @@ export function SpeakerLabeling({
           return (
             <div
               key={speaker.id}
-              className={`border rounded-lg p-4 transition-all ${
+              className={`rounded-lg border p-4 transition-all ${
                 mergeMode
                   ? isSelected
                     ? 'border-indigo-500 bg-indigo-50'
-                    : 'border-gray-200 hover:border-gray-300 cursor-pointer'
+                    : 'cursor-pointer border-gray-200 hover:border-gray-300'
                   : 'border-gray-200'
               }`}
               onClick={() => mergeMode && toggleMergeSelection(speaker.id)}
             >
               <div className="flex items-start gap-4">
                 {/* Avatar */}
-                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  {speaker.type === 'therapist' ? (
-                    <User className="w-6 h-6 text-gray-600" />
-                  ) : speaker.type === 'group_member' ? (
-                    <Users className="w-6 h-6 text-gray-600" />
-                  ) : (
-                    <span className="text-lg font-semibold text-gray-600">
-                      {speaker.label.replace('Speaker ', 'S')}
-                    </span>
-                  )}
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gray-100">
+                  {speaker.type === 'therapist'
+                    ? (
+                        <User className="h-6 w-6 text-gray-600" />
+                      )
+                    : speaker.type === 'group_member'
+                      ? (
+                          <Users className="h-6 w-6 text-gray-600" />
+                        )
+                      : (
+                          <span className="text-lg font-semibold text-gray-600">
+                            {speaker.label.replace('Speaker ', 'S')}
+                          </span>
+                        )}
                 </div>
 
                 {/* Speaker Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-3">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-3 flex items-center gap-3">
                     <span className="text-sm font-medium text-gray-700">
                       {speaker.label}
                     </span>
                     <span className="text-xs text-gray-500">
-                      {speaker.utteranceCount} utterances • {formatDuration(speaker.totalDuration)}
+                      {speaker.utteranceCount}
+                      {' '}
+                      utterances •
+                      {formatDuration(speaker.totalDuration)}
                     </span>
                   </div>
 
@@ -252,13 +267,13 @@ export function SpeakerLabeling({
                     <div className="grid grid-cols-2 gap-3">
                       <Dropdown
                         value={speaker.type || ''}
-                        onChange={(value) => handleTypeChange(speaker.id, value)}
+                        onChange={value => handleTypeChange(speaker.id, value)}
                         options={speakerTypeOptions}
                         placeholder="Select type..."
                       />
                       <Input
                         value={speaker.name}
-                        onChange={(e) => handleNameChange(speaker.id, e.target.value)}
+                        onChange={e => handleNameChange(speaker.id, e.target.value)}
                         placeholder="Enter name..."
                       />
                     </div>
@@ -275,13 +290,17 @@ export function SpeakerLabeling({
                     }}
                     disabled={loadingAudio === speaker.id}
                   >
-                    {loadingAudio === speaker.id ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" />
-                    ) : playingId === speaker.id ? (
-                      <Pause className="w-4 h-4" />
-                    ) : (
-                      <Play className="w-4 h-4" />
-                    )}
+                    {loadingAudio === speaker.id
+                      ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" />
+                        )
+                      : playingId === speaker.id
+                        ? (
+                            <Pause className="h-4 w-4" />
+                          )
+                        : (
+                            <Play className="h-4 w-4" />
+                          )}
                   </Button>
                 )}
               </div>
@@ -291,7 +310,7 @@ export function SpeakerLabeling({
       </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-between pt-4 border-t">
+      <div className="flex items-center justify-between border-t pt-4">
         <Button variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
@@ -306,7 +325,7 @@ export function SpeakerLabeling({
 
       {/* Progress */}
       {!isComplete && (
-        <p className="text-sm text-gray-500 text-center">
+        <p className="text-center text-sm text-gray-500">
           Please label all speakers before continuing
         </p>
       )}

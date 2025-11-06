@@ -1,10 +1,10 @@
 'use client';
 
+import { Download, Eye, FileText, Image as ImageIcon, MoreVertical, Music, Trash2, Video } from 'lucide-react';
 import { useState } from 'react';
-import { Image as ImageIcon, Video, Music, FileText, MoreVertical, Download, Trash2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
-interface MediaItem {
+type MediaItem = {
   id: string;
   type: 'image' | 'video' | 'audio' | 'quote';
   title: string;
@@ -15,13 +15,13 @@ interface MediaItem {
   createdAt: Date;
   duration?: number; // for video/audio in seconds
   text?: string; // for quotes
-}
+};
 
-interface MediaGridProps {
+type MediaGridProps = {
   items: MediaItem[];
   onItemClick: (item: MediaItem) => void;
   onDelete: (itemId: string) => void;
-}
+};
 
 export function MediaGrid({ items, onItemClick, onDelete }: MediaGridProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -29,15 +29,15 @@ export function MediaGrid({ items, onItemClick, onDelete }: MediaGridProps) {
   const getIcon = (type: string) => {
     switch (type) {
       case 'image':
-        return <ImageIcon className="w-5 h-5" />;
+        return <ImageIcon className="h-5 w-5" />;
       case 'video':
-        return <Video className="w-5 h-5" />;
+        return <Video className="h-5 w-5" />;
       case 'audio':
-        return <Music className="w-5 h-5" />;
+        return <Music className="h-5 w-5" />;
       case 'quote':
-        return <FileText className="w-5 h-5" />;
+        return <FileText className="h-5 w-5" />;
       default:
-        return <FileText className="w-5 h-5" />;
+        return <FileText className="h-5 w-5" />;
     }
   };
 
@@ -57,7 +57,9 @@ export function MediaGrid({ items, onItemClick, onDelete }: MediaGridProps) {
   };
 
   const formatDuration = (seconds?: number) => {
-    if (!seconds) return '';
+    if (!seconds) {
+      return '';
+    }
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -68,64 +70,78 @@ export function MediaGrid({ items, onItemClick, onDelete }: MediaGridProps) {
     const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays === 0) {
+      return 'Today';
+    }
+    if (diffDays === 1) {
+      return 'Yesterday';
+    }
+    if (diffDays < 7) {
+      return `${diffDays} days ago`;
+    }
     return date.toLocaleDateString();
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {items.map((item) => (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {items.map(item => (
         <div
           key={item.id}
-          className="group relative border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-all cursor-pointer bg-white"
+          className="group relative cursor-pointer overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:shadow-lg"
           onClick={() => onItemClick(item)}
         >
           {/* Thumbnail / Preview */}
-          <div className="aspect-square bg-gray-100 flex items-center justify-center relative overflow-hidden">
-            {item.type === 'image' && item.thumbnailUrl ? (
-              <img
-                src={item.thumbnailUrl}
-                alt={item.title}
-                className="w-full h-full object-cover"
-              />
-            ) : item.type === 'video' && item.thumbnailUrl ? (
-              <>
-                <img
-                  src={item.thumbnailUrl}
-                  alt={item.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
-                  <div className="w-12 h-12 bg-white bg-opacity-90 rounded-full flex items-center justify-center">
-                    <Video className="w-6 h-6 text-gray-700" />
-                  </div>
-                </div>
-              </>
-            ) : item.type === 'quote' && item.text ? (
-              <div className="p-4 flex items-center justify-center">
-                <p className="text-sm text-gray-700 italic line-clamp-6 text-center">
-                  "{item.text}"
-                </p>
-              </div>
-            ) : (
-              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${getTypeColor(item.type)}`}>
-                {getIcon(item.type)}
-              </div>
-            )}
+          <div className="relative flex aspect-square items-center justify-center overflow-hidden bg-gray-100">
+            {item.type === 'image' && item.thumbnailUrl
+              ? (
+                  <img
+                    src={item.thumbnailUrl}
+                    alt={item.title}
+                    className="h-full w-full object-cover"
+                  />
+                )
+              : item.type === 'video' && item.thumbnailUrl
+                ? (
+                    <>
+                      <img
+                        src={item.thumbnailUrl}
+                        alt={item.title}
+                        className="h-full w-full object-cover"
+                      />
+                      <div className="bg-opacity-20 absolute inset-0 flex items-center justify-center bg-black">
+                        <div className="bg-opacity-90 flex h-12 w-12 items-center justify-center rounded-full bg-white">
+                          <Video className="h-6 w-6 text-gray-700" />
+                        </div>
+                      </div>
+                    </>
+                  )
+                : item.type === 'quote' && item.text
+                  ? (
+                      <div className="flex items-center justify-center p-4">
+                        <p className="line-clamp-6 text-center text-sm text-gray-700 italic">
+                          "
+                          {item.text}
+                          "
+                        </p>
+                      </div>
+                    )
+                  : (
+                      <div className={`flex h-16 w-16 items-center justify-center rounded-2xl ${getTypeColor(item.type)}`}>
+                        {getIcon(item.type)}
+                      </div>
+                    )}
 
             {/* Duration badge */}
             {item.duration && (
-              <div className="absolute bottom-2 right-2 px-2 py-1 bg-black bg-opacity-75 text-white text-xs rounded">
+              <div className="bg-opacity-75 absolute right-2 bottom-2 rounded bg-black px-2 py-1 text-xs text-white">
                 {formatDuration(item.duration)}
               </div>
             )}
 
             {/* Hover overlay */}
-            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+            <div className="bg-opacity-0 group-hover:bg-opacity-40 absolute inset-0 flex items-center justify-center bg-black opacity-0 transition-all group-hover:opacity-100">
               <Button variant="primary" size="sm">
-                <Eye className="w-4 h-4 mr-2" />
+                <Eye className="mr-2 h-4 w-4" />
                 View
               </Button>
             </div>
@@ -133,8 +149,8 @@ export function MediaGrid({ items, onItemClick, onDelete }: MediaGridProps) {
 
           {/* Info */}
           <div className="p-3">
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <h3 className="font-medium text-gray-900 text-sm line-clamp-1 flex-1">
+            <div className="mb-2 flex items-start justify-between gap-2">
+              <h3 className="line-clamp-1 flex-1 text-sm font-medium text-gray-900">
                 {item.title}
               </h3>
               <button
@@ -142,9 +158,9 @@ export function MediaGrid({ items, onItemClick, onDelete }: MediaGridProps) {
                   e.stopPropagation();
                   setSelectedId(selectedId === item.id ? null : item.id);
                 }}
-                className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                className="flex-shrink-0 text-gray-400 hover:text-gray-600"
               >
-                <MoreVertical className="w-4 h-4" />
+                <MoreVertical className="h-4 w-4" />
               </button>
             </div>
 
@@ -152,12 +168,16 @@ export function MediaGrid({ items, onItemClick, onDelete }: MediaGridProps) {
             <div className="space-y-1">
               {item.patientName && (
                 <p className="text-xs text-gray-600">
-                  Patient: {item.patientName}
+                  Patient:
+                  {' '}
+                  {item.patientName}
                 </p>
               )}
               {item.sessionName && (
-                <p className="text-xs text-gray-600 line-clamp-1">
-                  From: {item.sessionName}
+                <p className="line-clamp-1 text-xs text-gray-600">
+                  From:
+                  {' '}
+                  {item.sessionName}
                 </p>
               )}
               <p className="text-xs text-gray-500">{formatDate(item.createdAt)}</p>
@@ -165,7 +185,7 @@ export function MediaGrid({ items, onItemClick, onDelete }: MediaGridProps) {
 
             {/* Type badge */}
             <div className="mt-2">
-              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${getTypeColor(item.type)}`}>
+              <span className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium ${getTypeColor(item.type)}`}>
                 {getIcon(item.type)}
                 {item.type.charAt(0).toUpperCase() + item.type.slice(1)}
               </span>
@@ -174,16 +194,16 @@ export function MediaGrid({ items, onItemClick, onDelete }: MediaGridProps) {
 
           {/* Action menu */}
           {selectedId === item.id && (
-            <div className="absolute top-12 right-3 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10 min-w-[150px]">
+            <div className="absolute top-12 right-3 z-10 min-w-[150px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   // Download functionality
                   setSelectedId(null);
                 }}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
               >
-                <Download className="w-4 h-4" />
+                <Download className="h-4 w-4" />
                 Download
               </button>
               <button
@@ -192,9 +212,9 @@ export function MediaGrid({ items, onItemClick, onDelete }: MediaGridProps) {
                   onDelete(item.id);
                   setSelectedId(null);
                 }}
-                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="h-4 w-4" />
                 Delete
               </button>
             </div>
@@ -203,11 +223,11 @@ export function MediaGrid({ items, onItemClick, onDelete }: MediaGridProps) {
       ))}
 
       {items.length === 0 && (
-        <div className="col-span-full text-center py-16">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <ImageIcon className="w-8 h-8 text-gray-400" />
+        <div className="col-span-full py-16 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+            <ImageIcon className="h-8 w-8 text-gray-400" />
           </div>
-          <p className="text-gray-600 mb-2">No media files yet</p>
+          <p className="mb-2 text-gray-600">No media files yet</p>
           <p className="text-sm text-gray-500">
             Generate or upload media to see it here
           </p>

@@ -76,7 +76,7 @@ getPaginationParams(request): { page, limit, offset }
 **Usage Example:**
 ```typescript
 // In any API route:
-import { requireAuth, handleAuthError } from '@/utils/AuthHelpers';
+import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
 
 export async function GET(request: Request) {
   try {
@@ -136,7 +136,7 @@ getFailedAuthAttempts(ipAddress, timeWindowMinutes): Promise<number>
 
 **Usage Example:**
 ```typescript
-import { logPHIAccess, getClientInfo } from '@/libs/AuditLogger';
+import { getClientInfo, logPHIAccess } from '@/libs/AuditLogger';
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const user = await requireAuth(request);
@@ -237,7 +237,7 @@ fixedWindow({
   mode: 'LIVE',
   window: '60s',
   max: 100,
-})
+});
 ```
 
 **B. Specialized Rate Limiters**
@@ -328,7 +328,7 @@ ENCRYPTION_KEY=your_64_character_hex_key_here
 
 **Usage Example:**
 ```typescript
-import { encrypt, decrypt } from '@/utils/Encryption';
+import { decrypt, encrypt } from '@/utils/Encryption';
 
 // Encrypt DOB before storing
 const encryptedDOB = encrypt('1980-05-15');
@@ -387,7 +387,7 @@ handleRBACError(error): NextResponse
 
 **Usage Example:**
 ```typescript
-import { requirePatientAccess, handleRBACError } from '@/middleware/RBACMiddleware';
+import { handleRBACError, requirePatientAccess } from '@/middleware/RBACMiddleware';
 
 export async function GET(
   request: Request,
@@ -475,9 +475,9 @@ All API routes need to be updated to use the authentication and audit logging fu
 ```typescript
 // Example: /api/sessions/[id]/route.ts
 
-import { requireAuth, handleAuthError, getClientInfo } from '@/utils/AuthHelpers';
 import { logPHIAccess } from '@/libs/AuditLogger';
-import { requireSessionAccess, handleRBACError } from '@/middleware/RBACMiddleware';
+import { handleRBACError, requireSessionAccess } from '@/middleware/RBACMiddleware';
+import { getClientInfo, handleAuthError, requireAuth } from '@/utils/AuthHelpers';
 
 export async function GET(
   request: Request,

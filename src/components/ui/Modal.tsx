@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
+import { useEffect } from 'react';
 import { Button } from './Button';
 
-interface ModalProps {
+type ModalProps = {
   isOpen: boolean;
   onClose: () => void;
   title: string;
@@ -12,7 +13,7 @@ interface ModalProps {
   children: ReactNode;
   footer?: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
-}
+};
 
 export function Modal({
   isOpen,
@@ -36,7 +37,9 @@ export function Modal({
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        onClose();
+      }
     };
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
@@ -44,13 +47,15 @@ export function Modal({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   const sizeClasses = {
-    sm: 'max-w-md',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl',
+    'sm': 'max-w-md',
+    'md': 'max-w-lg',
+    'lg': 'max-w-2xl',
+    'xl': 'max-w-4xl',
     '2xl': 'max-w-6xl',
   };
 
@@ -65,11 +70,11 @@ export function Modal({
 
       {/* Modal */}
       <div
-        className={`relative bg-white rounded-2xl shadow-2xl w-full ${sizeClasses[size]} max-h-[90vh] flex flex-col`}
-        onClick={(e) => e.stopPropagation()}
+        className={`relative w-full rounded-2xl bg-white shadow-2xl ${sizeClasses[size]} flex max-h-[90vh] flex-col`}
+        onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b border-gray-200">
+        <div className="flex items-start justify-between border-b border-gray-200 p-6">
           <div className="flex-1">
             <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
             {description && (
@@ -78,9 +83,9 @@ export function Modal({
           </div>
           <button
             onClick={onClose}
-            className="ml-4 text-gray-400 hover:text-gray-600 transition-colors"
+            className="ml-4 text-gray-400 transition-colors hover:text-gray-600"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -91,7 +96,7 @@ export function Modal({
 
         {/* Footer */}
         {footer && (
-          <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200">
+          <div className="flex items-center justify-end gap-3 border-t border-gray-200 p-4">
             {footer}
           </div>
         )}
@@ -101,7 +106,7 @@ export function Modal({
 }
 
 // Confirmation Dialog variant
-interface ConfirmDialogProps {
+type ConfirmDialogProps = {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -111,7 +116,7 @@ interface ConfirmDialogProps {
   cancelText?: string;
   variant?: 'danger' | 'warning' | 'info';
   isLoading?: boolean;
-}
+};
 
 export function ConfirmDialog({
   isOpen,
@@ -130,7 +135,7 @@ export function ConfirmDialog({
       onClose={onClose}
       title={title}
       size="sm"
-      footer={
+      footer={(
         <>
           <Button variant="secondary" onClick={onClose} disabled={isLoading}>
             {cancelText}
@@ -144,7 +149,7 @@ export function ConfirmDialog({
             {confirmText}
           </Button>
         </>
-      }
+      )}
     >
       <p className="text-sm text-gray-600">{description}</p>
     </Modal>

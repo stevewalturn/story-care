@@ -2,12 +2,15 @@
 
 import { Eye, FileText, GripVertical, Image as ImageIcon, ListChecks, MessageCircle, Trash2, Type, Video, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { AssetPickerModal } from '@/components/pages/AssetPickerModal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type BlockType = 'text' | 'image' | 'video' | 'quote' | 'reflection' | 'survey';
+
+type QuestionType = 'open_text' | 'scale' | 'multiple_choice' | 'yes_no';
 
 type ContentBlock = {
   id: string;
@@ -17,7 +20,13 @@ type ContentBlock = {
     text?: string;
     mediaUrl?: string;
     question?: string;
+    questionType?: QuestionType;
+    scaleMin?: number;
+    scaleMax?: number;
+    scaleMinLabel?: string;
+    scaleMaxLabel?: string;
     options?: string[];
+    templateId?: string;
   };
 };
 
@@ -41,6 +50,7 @@ type PageEditorProps = {
   initialPatientId?: string;
   patients?: Patient[];
   onSave: (title: string, blocks: ContentBlock[], patientId: string | null) => void;
+  onClose?: () => void;
 };
 
 export function PageEditor({
@@ -50,6 +60,7 @@ export function PageEditor({
   initialPatientId,
   patients = [],
   onSave,
+  onClose,
 }: PageEditorProps) {
   const { user } = useAuth();
   const [title, setTitle] = useState(initialTitle);
@@ -64,6 +75,11 @@ export function PageEditor({
   const [reflectionTemplates, setReflectionTemplates] = useState<Template[]>([]);
   const [surveyTemplates, setSurveyTemplates] = useState<Template[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
+
+  // Asset picker modal
+  const [showAssetPicker, setShowAssetPicker] = useState(false);
+  const [assetPickerBlockId, setAssetPickerBlockId] = useState<string | null>(null);
+  const [assetPickerFilterType, setAssetPickerFilterType] = useState<'image' | 'video' | 'text' | 'all'>('all');
 
   const blockTypes: Array<{ value: BlockType; label: string; icon: any }> = [
     { value: 'text', label: 'Text', icon: Type },
@@ -122,7 +138,9 @@ export function PageEditor({
   };
 
   const addBlockWithTemplate = (templateId: string | null) => {
-    if (!templateType) return;
+    if (!templateType) {
+      return;
+    }
 
     const template = templateType === 'reflection'
       ? reflectionTemplates.find(t => t.id === templateId)
@@ -162,6 +180,35 @@ export function PageEditor({
     );
   };
 
+  const openAssetPicker = (blockId: string, filterType: 'image' | 'video' | 'text' | 'all') => {
+    setAssetPickerBlockId(blockId);
+    setAssetPickerFilterType(filterType);
+    setShowAssetPicker(true);
+  };
+
+  const handleAssetSelect = (asset: { type: 'media' | 'quotes' | 'notes'; data: any }) => {
+    if (!assetPickerBlockId) return;
+
+    const block = blocks.find(b => b.id === assetPickerBlockId);
+    if (!block) return;
+
+    // Handle different asset types
+    if (asset.type === 'media') {
+      // Image or video asset
+      updateBlockContent(assetPickerBlockId, { mediaUrl: asset.data.url });
+    } else if (asset.type === 'quotes') {
+      // Quote asset
+      updateBlockContent(assetPickerBlockId, { text: asset.data.quoteText });
+    } else if (asset.type === 'notes') {
+      // Note asset
+      updateBlockContent(assetPickerBlockId, { text: asset.data.noteText });
+    }
+
+    // Close modal
+    setShowAssetPicker(false);
+    setAssetPickerBlockId(null);
+  };
+
   const moveBlock = (blockId: string, direction: 'up' | 'down') => {
     const index = blocks.findIndex(b => b.id === blockId);
     if (
@@ -195,12 +242,23 @@ export function PageEditor({
     switch (block.type) {
       case 'text':
         return (
-          <textarea
-            value={block.content.text || ''}
-            onChange={e => updateBlockContent(block.id, { text: e.target.value })}
-            placeholder="Enter your text here..."
-            className="h-32 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
+          <div className="space-y-2">
+            <textarea
+              value={block.content.text || ''}
+              onChange={e => updateBlockContent(block.id, { text: e.target.value })}
+              placeholder="Enter your text here..."
+              className="h-32 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openAssetPicker(block.id, 'text')}
+              className="w-full"
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Browse Library (Quotes & Notes)
+            </Button>
+          </div>
         );
       case 'image':
         return (
@@ -210,6 +268,15 @@ export function PageEditor({
               onChange={e => updateBlockContent(block.id, { mediaUrl: e.target.value })}
               placeholder="Image URL or select from library..."
             />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openAssetPicker(block.id, 'image')}
+              className="w-full"
+            >
+              <ImageIcon className="mr-2 h-4 w-4" />
+              Browse Library
+            </Button>
             {block.content.mediaUrl && (
               <img
                 src={block.content.mediaUrl}
@@ -227,6 +294,15 @@ export function PageEditor({
               onChange={e => updateBlockContent(block.id, { mediaUrl: e.target.value })}
               placeholder="Video URL or select from library..."
             />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openAssetPicker(block.id, 'video')}
+              className="w-full"
+            >
+              <Video className="mr-2 h-4 w-4" />
+              Browse Library
+            </Button>
             {block.content.mediaUrl && (
               <div className="flex aspect-video items-center justify-center rounded bg-gray-100">
                 <Video className="h-12 w-12 text-gray-400" />
@@ -236,12 +312,23 @@ export function PageEditor({
         );
       case 'quote':
         return (
-          <textarea
-            value={block.content.text || ''}
-            onChange={e => updateBlockContent(block.id, { text: e.target.value })}
-            placeholder="Enter quote text..."
-            className="h-24 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 italic focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
+          <div className="space-y-2">
+            <textarea
+              value={block.content.text || ''}
+              onChange={e => updateBlockContent(block.id, { text: e.target.value })}
+              placeholder="Enter quote text..."
+              className="h-24 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 italic focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openAssetPicker(block.id, 'text')}
+              className="w-full"
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Browse Library (Quotes)
+            </Button>
+          </div>
         );
       case 'reflection':
         return (
@@ -253,22 +340,126 @@ export function PageEditor({
         );
       case 'survey':
         return (
-          <div className="space-y-2">
+          <div className="space-y-4">
             <Input
               value={block.content.question || ''}
               onChange={e => updateBlockContent(block.id, { question: e.target.value })}
               placeholder="Survey question..."
             />
-            <p className="text-xs text-gray-600">
-              Survey options can be configured in settings
-            </p>
+
+            {/* Question Type Selector */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Question Type</label>
+              <select
+                value={block.content.questionType || 'open_text'}
+                onChange={e => updateBlockContent(block.id, {
+                  questionType: e.target.value as QuestionType,
+                  // Reset type-specific fields
+                  scaleMin: e.target.value === 'scale' ? 1 : undefined,
+                  scaleMax: e.target.value === 'scale' ? 5 : undefined,
+                  options: e.target.value === 'multiple_choice' ? [''] : undefined,
+                })}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              >
+                <option value="open_text">Open Text</option>
+                <option value="scale">Rating Scale</option>
+                <option value="multiple_choice">Multiple Choice</option>
+                <option value="yes_no">Yes/No</option>
+              </select>
+            </div>
+
+            {/* Scale Configuration */}
+            {block.content.questionType === 'scale' && (
+              <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-700">Min Value</label>
+                    <Input
+                      type="number"
+                      value={block.content.scaleMin || 1}
+                      onChange={e => updateBlockContent(block.id, { scaleMin: parseInt(e.target.value) })}
+                      min={0}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-700">Max Value</label>
+                    <Input
+                      type="number"
+                      value={block.content.scaleMax || 5}
+                      onChange={e => updateBlockContent(block.id, { scaleMax: parseInt(e.target.value) })}
+                      min={block.content.scaleMin || 1}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-700">Min Label (optional)</label>
+                    <Input
+                      value={block.content.scaleMinLabel || ''}
+                      onChange={e => updateBlockContent(block.id, { scaleMinLabel: e.target.value })}
+                      placeholder="e.g., Not at all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-700">Max Label (optional)</label>
+                    <Input
+                      value={block.content.scaleMaxLabel || ''}
+                      onChange={e => updateBlockContent(block.id, { scaleMaxLabel: e.target.value })}
+                      placeholder="e.g., Very much"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Multiple Choice Configuration */}
+            {block.content.questionType === 'multiple_choice' && (
+              <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <label className="text-xs font-medium text-gray-700">Answer Options</label>
+                {(block.content.options || ['']).map((option, index) => (
+                  <div key={index} className="flex gap-2">
+                    <Input
+                      value={option}
+                      onChange={(e) => {
+                        const newOptions = [...(block.content.options || [''])];
+                        newOptions[index] = e.target.value;
+                        updateBlockContent(block.id, { options: newOptions });
+                      }}
+                      placeholder={`Option ${index + 1}`}
+                    />
+                    {index > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const newOptions = (block.content.options || ['']).filter((_, i) => i !== index);
+                          updateBlockContent(block.id, { options: newOptions });
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const newOptions = [...(block.content.options || ['']), ''];
+                    updateBlockContent(block.id, { options: newOptions });
+                  }}
+                  className="w-full"
+                >
+                  + Add Option
+                </Button>
+              </div>
+            )}
           </div>
         );
       default:
         return null;
     }
   };
-
 
   return (
     <div className="flex h-full flex-col">
@@ -289,6 +480,14 @@ export function PageEditor({
               <Eye className="mr-2 h-4 w-4" />
               {showPreview ? 'Edit' : 'Preview'}
             </Button>
+            {onClose && (
+              <Button
+                variant="ghost"
+                onClick={onClose}
+              >
+                Cancel
+              </Button>
+            )}
             <Button
               variant="primary"
               onClick={() => onSave(title, blocks, selectedPatientId)}
@@ -307,7 +506,7 @@ export function PageEditor({
           <select
             value={selectedPatientId || ''}
             onChange={e => setSelectedPatientId(e.target.value || null)}
-            className="block w-full max-w-md rounded-lg border border-gray-300 px-4 py-2 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="block w-full max-w-md rounded-lg border border-gray-300 px-4 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
           >
             <option value="">Select a patient...</option>
             {patients.map(patient => (
@@ -505,7 +704,7 @@ export function PageEditor({
 
       {/* Template Picker Modal */}
       {showTemplateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black p-4">
           <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-gray-200 p-6">
@@ -598,6 +797,18 @@ export function PageEditor({
           </div>
         </div>
       )}
+
+      {/* Asset Picker Modal */}
+      <AssetPickerModal
+        isOpen={showAssetPicker}
+        onClose={() => {
+          setShowAssetPicker(false);
+          setAssetPickerBlockId(null);
+        }}
+        onSelect={handleAssetSelect}
+        patientId={selectedPatientId || undefined}
+        filterType={assetPickerFilterType}
+      />
     </div>
   );
 }

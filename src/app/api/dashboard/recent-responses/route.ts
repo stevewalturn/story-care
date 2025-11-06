@@ -1,20 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { desc, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import {
-  users,
-  reflectionResponsesSchema,
-  surveyResponsesSchema,
   reflectionQuestionsSchema,
-  surveyQuestionsSchema,
+  reflectionResponsesSchema,
   storyPagesSchema,
+  surveyQuestionsSchema,
+  surveyResponsesSchema,
+  users,
 } from '@/models/Schema';
-import { eq, desc } from 'drizzle-orm';
 
 // GET /api/dashboard/recent-responses - Get recent reflection and survey responses
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const limit = Number.parseInt(searchParams.get('limit') || '10', 10);
 
     // Fetch recent reflection responses
     const recentReflections = await db
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
       .leftJoin(users, eq(reflectionResponsesSchema.patientId, users.id))
       .leftJoin(
         reflectionQuestionsSchema,
-        eq(reflectionResponsesSchema.questionId, reflectionQuestionsSchema.id)
+        eq(reflectionResponsesSchema.questionId, reflectionQuestionsSchema.id),
       )
       .leftJoin(storyPagesSchema, eq(reflectionResponsesSchema.pageId, storyPagesSchema.id))
       .orderBy(desc(reflectionResponsesSchema.createdAt))
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching recent responses:', error);
     return NextResponse.json(
       { error: 'Failed to fetch recent responses' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

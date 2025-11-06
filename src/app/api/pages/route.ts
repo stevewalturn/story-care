@@ -2,8 +2,8 @@ import type { NextRequest } from 'next/server';
 import { and, desc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { pageBlocks, storyPages, users } from '@/models/Schema';
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
+import { pageBlocks, storyPages, users } from '@/models/Schema';
 
 // GET /api/pages - List story pages
 export async function GET(request: NextRequest) {
@@ -40,8 +40,8 @@ export async function GET(request: NextRequest) {
       query = query.where(
         and(
           eq(storyPages.patientId, currentUser.id),
-          eq(storyPages.status, 'published')
-        )
+          eq(storyPages.status, 'published'),
+        ),
       ) as any;
     } else if (patientId) {
       query = query.where(eq(storyPages.patientId, patientId)) as any;

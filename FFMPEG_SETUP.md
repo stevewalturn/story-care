@@ -168,7 +168,7 @@ import { Queue } from 'bull';
 export const videoQueue = new Queue('video-assembly', {
   redis: {
     host: process.env.REDIS_HOST,
-    port: parseInt(process.env.REDIS_PORT || '6379'),
+    port: Number.parseInt(process.env.REDIS_PORT || '6379'),
   },
 });
 

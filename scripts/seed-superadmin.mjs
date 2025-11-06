@@ -6,11 +6,11 @@
  *   npm run db:seed-superadmin
  */
 
-import 'dotenv/config';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import { eq } from 'drizzle-orm';
-import { pgTable, uuid, varchar, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { pgEnum, pgTable, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 import pg from 'pg';
+import 'dotenv/config';
 
 const { Pool } = pg;
 

@@ -762,10 +762,10 @@ console.error('Failed to create session for patient:', patient);
 
 5. Create `src/libs/AuditLogger.ts`
    ```typescript
-   import { db } from './DB';
    import { auditLogs } from '@/models/Schema';
+   import { db } from './DB';
 
-   interface AuditLogData {
+   type AuditLogData = {
      userId: string;
      action: 'read' | 'create' | 'update' | 'delete';
      resourceType: string;
@@ -773,7 +773,7 @@ console.error('Failed to create session for patient:', patient);
      ipAddress?: string;
      userAgent?: string;
      metadata?: Record<string, any>;
-   }
+   };
 
    export async function logAudit(data: AuditLogData) {
      try {
@@ -934,13 +934,13 @@ console.error('Failed to create session for patient:', patient);
    // Content Security Policy
    response.headers.set(
      'Content-Security-Policy',
-     "default-src 'self'; " +
-     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; " +
-     "style-src 'self' 'unsafe-inline'; " +
-     "img-src 'self' data: https:; " +
-     "font-src 'self' data:; " +
-     "connect-src 'self' https://*.firebaseapp.com https://*.googleapis.com; " +
-     "frame-ancestors 'none';"
+     'default-src \'self\'; '
+     + 'script-src \'self\' \'unsafe-inline\' \'unsafe-eval\' https://cdn.jsdelivr.net; '
+     + 'style-src \'self\' \'unsafe-inline\'; '
+     + 'img-src \'self\' data: https:; '
+     + 'font-src \'self\' data:; '
+     + 'connect-src \'self\' https://*.firebaseapp.com https://*.googleapis.com; '
+     + 'frame-ancestors \'none\';'
    );
 
    // Permissions Policy
@@ -986,7 +986,7 @@ console.error('Failed to create session for patient:', patient);
 **Morning: Rate Limiting**
 1. Update `src/libs/Arcjet.ts`:
    ```typescript
-   import arcjet, { shield, fixedWindow } from '@arcjet/next';
+   import arcjet, { fixedWindow, shield } from '@arcjet/next';
 
    export const aj = arcjet({
      key: env.ARCJET_KEY,
@@ -1035,11 +1035,11 @@ console.error('Failed to create session for patient:', patient);
 **Afternoon: Role-Based Access Control**
 3. Create `src/middleware/AuthorizationMiddleware.ts`:
    ```typescript
-   import { requireAuth } from '@/utils/AuthHelpers';
+   import { eq } from 'drizzle-orm';
    import { NextResponse } from 'next/server';
    import { db } from '@/libs/DB';
    import { users } from '@/models/Schema';
-   import { eq } from 'drizzle-orm';
+   import { requireAuth } from '@/utils/AuthHelpers';
 
    export async function requireTherapist(request: Request) {
      const user = await requireAuth(request);
@@ -1097,7 +1097,7 @@ console.error('Failed to create session for patient:', patient);
 **Evening: Encryption Setup**
 5. Create `src/utils/Encryption.ts`:
    ```typescript
-   import crypto from 'crypto';
+   import crypto from 'node:crypto';
 
    const ALGORITHM = 'aes-256-gcm';
    const KEY = Buffer.from(process.env.ENCRYPTION_KEY || '', 'hex'); // 32 bytes

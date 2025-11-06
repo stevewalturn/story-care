@@ -8,8 +8,6 @@
 
 // Initialize client-side error logging
 if (typeof window !== 'undefined') {
-  console.log('[Client] Error logging initialized');
-
   // Global error handler
   window.addEventListener('error', (event) => {
     console.error('[Global Error]', {
@@ -34,5 +32,4 @@ if (typeof window !== 'undefined') {
 
 export const onRouterTransitionStart = () => {
   // Router transition tracking (for analytics)
-  console.debug('[Router] Transition started');
 };

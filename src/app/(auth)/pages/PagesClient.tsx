@@ -6,7 +6,7 @@ import { PageEditor } from '@/components/pages/PageEditor';
 import { Button } from '@/components/ui/Button';
 import { } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
-import { authenticatedFetch, authenticatedPost, authenticatedPut, authenticatedDelete } from '@/utils/AuthenticatedFetch';
+import { authenticatedDelete, authenticatedFetch, authenticatedPost, authenticatedPut } from '@/utils/AuthenticatedFetch';
 
 type StoryPage = {
   id: string;
@@ -225,7 +225,7 @@ export function PagesClient() {
                   size="sm"
                   onClick={() => {
                     // Preview functionality
-                    window.open(`/story/${page.id}`, '_blank');
+                    window.open(`/pages/${page.id}`, '_blank');
                   }}
                 >
                   <Eye className="h-4 w-4" />
@@ -258,17 +258,13 @@ export function PagesClient() {
       {/* Page Editor Modal */}
       {showEditor && (
         <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-gray-900 p-4">
-          <div className="h-[90vh] w-full max-w-6xl overflow-hidden rounded-lg bg-white shadow-xl">
+          <div className="h-[90vh] w-full max-w-6xl overflow-auto rounded-lg bg-white shadow-xl">
             <PageEditor
               pageId={editingPageId || undefined}
               patients={patients}
               onSave={handleSavePage}
+              onClose={() => setShowEditor(false)}
             />
-            <div className="flex justify-end border-t border-gray-200 bg-gray-50 p-4">
-              <Button variant="ghost" onClick={() => setShowEditor(false)}>
-                Close
-              </Button>
-            </div>
           </div>
         </div>
       )}

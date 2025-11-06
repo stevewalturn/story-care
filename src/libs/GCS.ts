@@ -12,11 +12,11 @@ const storage = new Storage({
 const bucketName = process.env.GCS_BUCKET_NAME || 'storycare-media';
 const bucket = storage.bucket(bucketName);
 
-export interface UploadOptions {
+export type UploadOptions = {
   folder?: string;
   contentType?: string;
   makePublic?: boolean;
-}
+};
 
 /**
  * Upload a file to Google Cloud Storage
@@ -29,7 +29,7 @@ export async function uploadFile(
   const { folder = 'uploads', contentType = 'application/octet-stream', makePublic = false } = options;
 
   const timestamp = Date.now();
-  const sanitizedFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const sanitizedFilename = filename.replace(/[^a-z0-9.-]/gi, '_');
   const path = `${folder}/${timestamp}-${sanitizedFilename}`;
 
   const fileObject = bucket.file(path);
@@ -98,7 +98,7 @@ export async function fileExists(path: string): Promise<boolean> {
  */
 export async function listFiles(prefix: string): Promise<string[]> {
   const [files] = await bucket.getFiles({ prefix });
-  return files.map((file) => file.name);
+  return files.map(file => file.name);
 }
 
-export { storage, bucket };
+export { bucket, storage };

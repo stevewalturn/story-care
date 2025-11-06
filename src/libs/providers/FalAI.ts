@@ -4,15 +4,15 @@
  * Documentation: https://fal.ai/models
  */
 
-export type FalModel =
-  | 'flux-pro'
-  | 'flux-dev'
-  | 'flux-schnell'
-  | 'flux-realism'
-  | 'sdxl'
-  | 'sdxl-lightning';
+export type FalModel
+  = | 'flux-pro'
+    | 'flux-dev'
+    | 'flux-schnell'
+    | 'flux-realism'
+    | 'sdxl'
+    | 'sdxl-lightning';
 
-export interface FalGenerateOptions {
+export type FalGenerateOptions = {
   prompt: string;
   model?: FalModel;
   width?: number;
@@ -21,7 +21,7 @@ export interface FalGenerateOptions {
   guidanceScale?: number;
   seed?: number;
   negativePrompt?: string;
-}
+};
 
 export async function generateImageWithFal(
   options: FalGenerateOptions,

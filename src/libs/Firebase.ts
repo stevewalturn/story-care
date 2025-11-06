@@ -1,13 +1,15 @@
-import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
+import type { FirebaseApp } from 'firebase/app';
+import type { Auth, User } from 'firebase/auth';
+import { getApps, initializeApp } from 'firebase/app';
 import {
-  getAuth,
-  signInWithEmailAndPassword,
+
   createUserWithEmailAndPassword,
-  signOut,
+  getAuth,
   onAuthStateChanged,
   sendEmailVerification,
-  type Auth,
-  type User,
+  signInWithEmailAndPassword,
+  signOut,
+
 } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -20,7 +22,9 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
+
 let app: FirebaseApp;
+
 let auth: Auth;
 
 if (typeof window !== 'undefined') {

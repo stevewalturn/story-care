@@ -3,11 +3,11 @@
  * Verifies if an email has a pending invitation
  */
 
-import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { and, eq, isNull } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { users } from '@/models/Schema';
-import { and, eq, isNull } from 'drizzle-orm';
 
 /**
  * GET /api/auth/check-invitation?email=xxx

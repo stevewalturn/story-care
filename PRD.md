@@ -1795,34 +1795,34 @@ CREATE INDEX idx_patient_page_interactions_page_id ON patient_page_interactions(
 #### Color Palette
 ```css
 /* Primary Colors */
---primary-blue: #4F46E5; /* Primary CTA buttons */
---primary-blue-dark: #4338CA;
---primary-blue-light: #818CF8;
+--primary-blue: #4f46e5; /* Primary CTA buttons */
+--primary-blue-dark: #4338ca;
+--primary-blue-light: #818cf8;
 
 /* Accent Colors */
---purple-gradient-start: #6366F1;
---purple-gradient-end: #8B5CF6;
+--purple-gradient-start: #6366f1;
+--purple-gradient-end: #8b5cf6;
 
 /* Neutral Colors */
---gray-50: #F9FAFB;
---gray-100: #F3F4F6;
---gray-200: #E5E7EB;
---gray-300: #D1D5DB;
---gray-500: #6B7280;
+--gray-50: #f9fafb;
+--gray-100: #f3f4f6;
+--gray-200: #e5e7eb;
+--gray-300: #d1d5db;
+--gray-500: #6b7280;
 --gray-700: #374151;
 --gray-900: #111827;
 
 /* Semantic Colors */
---success-green: #10B981;
---warning-yellow: #F59E0B;
---error-red: #EF4444;
---info-blue: #3B82F6;
+--success-green: #10b981;
+--warning-yellow: #f59e0b;
+--error-red: #ef4444;
+--info-blue: #3b82f6;
 
 /* Status Colors */
---status-active: #10B981;
---status-processing: #F59E0B;
---status-completed: #3B82F6;
---status-draft: #6B7280;
+--status-active: #10b981;
+--status-processing: #f59e0b;
+--status-completed: #3b82f6;
+--status-draft: #6b7280;
 ```
 
 #### Typography
@@ -1831,14 +1831,14 @@ CREATE INDEX idx_patient_page_interactions_page_id ON patient_page_interactions(
 --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
 /* Font Sizes */
---text-xs: 0.75rem;    /* 12px */
---text-sm: 0.875rem;   /* 14px */
---text-base: 1rem;     /* 16px */
---text-lg: 1.125rem;   /* 18px */
---text-xl: 1.25rem;    /* 20px */
---text-2xl: 1.5rem;    /* 24px */
---text-3xl: 1.875rem;  /* 30px */
---text-4xl: 2.25rem;   /* 36px */
+--text-xs: 0.75rem; /* 12px */
+--text-sm: 0.875rem; /* 14px */
+--text-base: 1rem; /* 16px */
+--text-lg: 1.125rem; /* 18px */
+--text-xl: 1.25rem; /* 20px */
+--text-2xl: 1.5rem; /* 24px */
+--text-3xl: 1.875rem; /* 30px */
+--text-4xl: 2.25rem; /* 36px */
 
 /* Font Weights */
 --font-normal: 400;
@@ -1850,25 +1850,25 @@ CREATE INDEX idx_patient_page_interactions_page_id ON patient_page_interactions(
 #### Spacing
 ```css
 /* Spacing Scale (based on 4px) */
---space-1: 0.25rem;  /* 4px */
---space-2: 0.5rem;   /* 8px */
---space-3: 0.75rem;  /* 12px */
---space-4: 1rem;     /* 16px */
---space-5: 1.25rem;  /* 20px */
---space-6: 1.5rem;   /* 24px */
---space-8: 2rem;     /* 32px */
---space-10: 2.5rem;  /* 40px */
---space-12: 3rem;    /* 48px */
---space-16: 4rem;    /* 64px */
+--space-1: 0.25rem; /* 4px */
+--space-2: 0.5rem; /* 8px */
+--space-3: 0.75rem; /* 12px */
+--space-4: 1rem; /* 16px */
+--space-5: 1.25rem; /* 20px */
+--space-6: 1.5rem; /* 24px */
+--space-8: 2rem; /* 32px */
+--space-10: 2.5rem; /* 40px */
+--space-12: 3rem; /* 48px */
+--space-16: 4rem; /* 64px */
 ```
 
 #### Border Radius
 ```css
---radius-sm: 0.375rem;  /* 6px */
---radius-md: 0.5rem;    /* 8px */
---radius-lg: 0.75rem;   /* 12px */
---radius-xl: 1rem;      /* 16px */
---radius-full: 9999px;  /* Circular */
+--radius-sm: 0.375rem; /* 6px */
+--radius-md: 0.5rem; /* 8px */
+--radius-lg: 0.75rem; /* 12px */
+--radius-xl: 1rem; /* 16px */
+--radius-full: 9999px; /* Circular */
 ```
 
 ---
@@ -2037,7 +2037,7 @@ padding: 24px;
 **Dialog Footer:**
 ```css
 padding: 16px 24px;
-border-top: 1px solid #E5E7EB;
+border-top: 1px solid #e5e7eb;
 display: flex;
 justify-content: flex-end;
 gap: 12px;
@@ -2108,7 +2108,7 @@ hover:
 width: 100%;
 aspect-ratio: 16/9;
 object-fit: cover;
-background: #F3F4F6;
+background: #f3f4f6;
 ```
 
 **Card Body:**
@@ -2130,7 +2130,7 @@ white-space: nowrap;
 **Card Meta:**
 ```css
 font-size: 12px;
-color: #6B7280;
+color: #6b7280;
 display: flex;
 align-items: center;
 gap: 8px;
@@ -2146,8 +2146,8 @@ margin-top: 12px;
 
 **Tag Badge:**
 ```css
-background: #EEF2FF;
-color: #4F46E5;
+background: #eef2ff;
+color: #4f46e5;
 font-size: 11px;
 font-weight: 500;
 padding: 4px 8px;
@@ -2158,8 +2158,8 @@ border-radius: 4px;
 
 **Timeline Container:**
 ```css
-background: #F9FAFB;
-border: 1px solid #E5E7EB;
+background: #f9fafb;
+border: 1px solid #e5e7eb;
 border-radius: 12px;
 padding: 20px;
 min-height: 200px;
@@ -2178,7 +2178,7 @@ margin-bottom: 12px;
 ```css
 font-size: 12px;
 font-weight: 600;
-color: #6B7280;
+color: #6b7280;
 text-transform: uppercase;
 letter-spacing: 0.05em;
 margin-bottom: 8px;
@@ -2186,7 +2186,7 @@ margin-bottom: 8px;
 
 **Clip on Timeline:**
 ```css
-background: #4F46E5;
+background: #4f46e5;
 border-radius: 6px;
 height: 56px;
 display: inline-flex;
@@ -2216,7 +2216,7 @@ progress:
 **Metric Card:**
 ```css
 background: white;
-border: 1px solid #E5E7EB;
+border: 1px solid #e5e7eb;
 border-radius: 12px;
 padding: 24px;
 display: flex;
@@ -2229,8 +2229,8 @@ gap: 16px;
 width: 48px;
 height: 48px;
 border-radius: 10px;
-background: #EEF2FF;
-color: #4F46E5;
+background: #eef2ff;
+color: #4f46e5;
 display: flex;
 align-items: center;
 justify-content: center;
@@ -2255,18 +2255,18 @@ Label:
 **Table Container:**
 ```css
 background: white;
-border: 1px solid #E5E7EB;
+border: 1px solid #e5e7eb;
 border-radius: 12px;
 overflow: hidden;
 ```
 
 **Table Header:**
 ```css
-background: #F9FAFB;
-border-bottom: 1px solid #E5E7EB;
+background: #f9fafb;
+border-bottom: 1px solid #e5e7eb;
 font-size: 12px;
 font-weight: 600;
-color: #6B7280;
+color: #6b7280;
 text-transform: uppercase;
 letter-spacing: 0.05em;
 padding: 12px 16px;

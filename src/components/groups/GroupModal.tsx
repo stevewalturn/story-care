@@ -1,30 +1,30 @@
 'use client';
 
+import { Plus, Trash2, User, X } from 'lucide-react';
 import { useState } from 'react';
-import { X, Plus, Trash2, User } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
-interface GroupMember {
+type GroupMember = {
   id: string;
   name: string;
   avatarUrl?: string;
-}
+};
 
-interface Group {
+type Group = {
   id?: string;
   name: string;
   description?: string;
   members: GroupMember[];
-}
+};
 
-interface GroupModalProps {
+type GroupModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onSave: (group: Group) => void;
   group?: Group;
   availablePatients: GroupMember[];
-}
+};
 
 export function GroupModal({
   isOpen,
@@ -38,11 +38,11 @@ export function GroupModal({
       name: '',
       description: '',
       members: [],
-    }
+    },
   );
 
   const handleAddMember = (patient: GroupMember) => {
-    if (!formData.members.find((m) => m.id === patient.id)) {
+    if (!formData.members.find(m => m.id === patient.id)) {
       setFormData({
         ...formData,
         members: [...formData.members, patient],
@@ -53,7 +53,7 @@ export function GroupModal({
   const handleRemoveMember = (memberId: string) => {
     setFormData({
       ...formData,
-      members: formData.members.filter((m) => m.id !== memberId),
+      members: formData.members.filter(m => m.id !== memberId),
     });
   };
 
@@ -63,30 +63,32 @@ export function GroupModal({
     onClose();
   };
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   const availablePatientsFiltered = availablePatients.filter(
-    (p) => !formData.members.find((m) => m.id === p.id)
+    p => !formData.members.find(m => m.id === p.id),
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black p-4">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between border-b border-gray-200 p-6">
           <h2 className="text-2xl font-bold text-gray-900">
             {group ? 'Edit Group' : 'Create New Group'}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 transition-colors hover:text-gray-600"
           >
-            <X className="w-6 h-6" />
+            <X className="h-6 w-6" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 p-6">
           {/* Basic Info */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">Group Information</h3>
@@ -94,7 +96,7 @@ export function GroupModal({
             <Input
               label="Group Name *"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
               placeholder="Men's Support Group"
               required
             />
@@ -105,9 +107,9 @@ export function GroupModal({
               </label>
               <textarea
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={e => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Brief description of the group..."
-                className="w-full h-20 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                className="h-20 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               />
             </div>
           </div>
@@ -121,37 +123,39 @@ export function GroupModal({
 
             {/* Current Members */}
             <div className="space-y-2">
-              {formData.members.map((member) => (
+              {formData.members.map(member => (
                 <div
                   key={member.id}
-                  className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50"
+                  className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3"
                 >
                   <div className="flex items-center gap-3">
-                    {member.avatarUrl ? (
-                      <img
-                        src={member.avatarUrl}
-                        alt={member.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                        <User className="w-5 h-5 text-indigo-600" />
-                      </div>
-                    )}
+                    {member.avatarUrl
+                      ? (
+                          <img
+                            src={member.avatarUrl}
+                            alt={member.name}
+                            className="h-10 w-10 rounded-full object-cover"
+                          />
+                        )
+                      : (
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100">
+                            <User className="h-5 w-5 text-indigo-600" />
+                          </div>
+                        )}
                     <span className="font-medium text-gray-900">{member.name}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => handleRemoveMember(member.id)}
-                    className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                    className="rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               ))}
 
               {formData.members.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
+                <div className="py-8 text-center text-gray-500">
                   No members added yet
                 </div>
               )}
@@ -159,33 +163,35 @@ export function GroupModal({
 
             {/* Add Members */}
             {availablePatientsFiltered.length > 0 && (
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-                <p className="text-sm font-medium text-gray-700 mb-3">
+              <div className="rounded-lg border-2 border-dashed border-gray-300 p-4">
+                <p className="mb-3 text-sm font-medium text-gray-700">
                   Available Patients
                 </p>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {availablePatientsFiltered.map((patient) => (
+                <div className="max-h-48 space-y-2 overflow-y-auto">
+                  {availablePatientsFiltered.map(patient => (
                     <button
                       key={patient.id}
                       type="button"
                       onClick={() => handleAddMember(patient)}
-                      className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors text-left"
+                      className="flex w-full items-center justify-between rounded-lg p-2 text-left transition-colors hover:bg-gray-50"
                     >
                       <div className="flex items-center gap-3">
-                        {patient.avatarUrl ? (
-                          <img
-                            src={patient.avatarUrl}
-                            alt={patient.name}
-                            className="w-8 h-8 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-                            <User className="w-4 h-4 text-gray-600" />
-                          </div>
-                        )}
+                        {patient.avatarUrl
+                          ? (
+                              <img
+                                src={patient.avatarUrl}
+                                alt={patient.name}
+                                className="h-8 w-8 rounded-full object-cover"
+                              />
+                            )
+                          : (
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200">
+                                <User className="h-4 w-4 text-gray-600" />
+                              </div>
+                            )}
                         <span className="text-sm text-gray-900">{patient.name}</span>
                       </div>
-                      <Plus className="w-4 h-4 text-indigo-600" />
+                      <Plus className="h-4 w-4 text-indigo-600" />
                     </button>
                   ))}
                 </div>
@@ -194,7 +200,7 @@ export function GroupModal({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancel
             </Button>

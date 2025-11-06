@@ -47,45 +47,45 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
 
   // Fetch patients and groups when modal opens
   useEffect(() => {
-    if (isOpen && user?.uid) {
+    if (!isOpen || !user?.uid) return;
+
+    const fetchData = async () => {
       // Fetch patients (only for current therapist)
       setLoadingPatients(true);
-      authenticatedFetch(`/api/patients?therapistId=${user.uid}`, user)
-        .then(res => res.json())
-        .then((data) => {
-          const patientOptions = data.patients?.map((p: any) => ({
-            value: p.id,
-            label: p.name,
-          })) || [];
-          setPatients([{ value: '', label: 'Select a patient...' }, ...patientOptions]);
-        })
-        .catch((err) => {
-          console.error('Failed to fetch patients:', err);
-          setPatients([{ value: '', label: 'Select a patient...' }]);
-        })
-        .finally(() => {
-          setLoadingPatients(false);
-        });
+      try {
+        const res = await authenticatedFetch(`/api/patients?therapistId=${user.uid}`, user);
+        const data = await res.json();
+        const patientOptions = data.patients?.map((p: any) => ({
+          value: p.id,
+          label: p.name,
+        })) || [];
+        setPatients([{ value: '', label: 'Select a patient...' }, ...patientOptions]);
+      } catch (err) {
+        console.error('Failed to fetch patients:', err);
+        setPatients([{ value: '', label: 'Select a patient...' }]);
+      } finally {
+        setLoadingPatients(false);
+      }
 
       // Fetch groups (only for current therapist)
       setLoadingGroups(true);
-      authenticatedFetch(`/api/groups?therapistId=${user.uid}`, user)
-        .then(res => res.json())
-        .then((data) => {
-          const groupOptions = data.groups?.map((g: any) => ({
-            value: g.id,
-            label: g.name,
-          })) || [];
-          setGroups([{ value: '', label: 'Select a group...' }, ...groupOptions]);
-        })
-        .catch((err) => {
-          console.error('Failed to fetch groups:', err);
-          setGroups([{ value: '', label: 'Select a group...' }]);
-        })
-        .finally(() => {
-          setLoadingGroups(false);
-        });
-    }
+      try {
+        const res = await authenticatedFetch(`/api/groups?therapistId=${user.uid}`, user);
+        const data = await res.json();
+        const groupOptions = data.groups?.map((g: any) => ({
+          value: g.id,
+          label: g.name,
+        })) || [];
+        setGroups([{ value: '', label: 'Select a group...' }, ...groupOptions]);
+      } catch (err) {
+        console.error('Failed to fetch groups:', err);
+        setGroups([{ value: '', label: 'Select a group...' }]);
+      } finally {
+        setLoadingGroups(false);
+      }
+    };
+
+    fetchData();
   }, [isOpen, user?.uid]);
 
   const handleDrag = (e: React.DragEvent) => {
@@ -100,7 +100,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
 
   const uploadFile = async (file: File) => {
     if (!user?.uid) {
-      alert('You must be logged in to upload files');
+      console.error('You must be logged in to upload files');
       return;
     }
 
@@ -118,7 +118,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       const uploadResponse = await fetch('/api/sessions/upload', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${idToken}`,
+          Authorization: `Bearer ${idToken}`,
         },
         body: uploadFormData,
       });
@@ -135,7 +135,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       setFormData({ ...formData, audioFile: file, audioUrl: uploadData.url });
     } catch (error) {
       console.error('Error uploading file:', error);
-      alert(error instanceof Error ? error.message : 'Failed to upload file. Please try again.');
+      console.error(error instanceof Error ? error.message : 'Failed to upload file. Please try again.');
       setFormData({ ...formData, audioFile: null });
     } finally {
       setUploadingFile(false);
@@ -152,7 +152,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       if (file.type.startsWith('audio/')) {
         uploadFile(file);
       } else {
-        alert('Please upload an audio file');
+        console.error('Please upload an audio file');
       }
     }
   };
@@ -163,7 +163,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       if (file.type.startsWith('audio/')) {
         uploadFile(file);
       } else {
-        alert('Please upload an audio file');
+        console.error('Please upload an audio file');
       }
     }
   };

@@ -5,13 +5,13 @@
 
 'use client';
 
+import { Check, Clock, FileText, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { FileText, Check, X, Clock, Plus, Trash2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface Template {
+type Template = {
   id: string;
   title: string;
   type: 'survey' | 'reflection';
@@ -20,7 +20,7 @@ interface Template {
   createdAt: string;
   status: 'pending_approval' | 'active' | 'rejected';
   questionCount: number;
-}
+};
 
 export default function TemplatesPage() {
   const { user } = useAuth();
@@ -85,14 +85,16 @@ export default function TemplatesPage() {
 
   const handleReject = async (templateId: string, type: string) => {
     const reason = prompt('Please provide a reason for rejection:');
-    if (!reason) return;
+    if (!reason) {
+      return;
+    }
 
     try {
       const idToken = await user?.getIdToken();
       const response = await fetch(`/api/templates/${type}/${templateId}/reject`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${idToken}`,
+          'Authorization': `Bearer ${idToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ reason }),
@@ -135,7 +137,7 @@ export default function TemplatesPage() {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${idToken}`,
+          'Authorization': `Bearer ${idToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -218,7 +220,7 @@ export default function TemplatesPage() {
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab('pending')}
-            className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
+            className={`border-b-2 px-1 py-4 text-sm font-medium whitespace-nowrap ${
               activeTab === 'pending'
                 ? 'border-indigo-500 text-indigo-600'
                 : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
@@ -228,7 +230,7 @@ export default function TemplatesPage() {
           </button>
           <button
             onClick={() => setActiveTab('approved')}
-            className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
+            className={`border-b-2 px-1 py-4 text-sm font-medium whitespace-nowrap ${
               activeTab === 'approved'
                 ? 'border-indigo-500 text-indigo-600'
                 : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
@@ -238,7 +240,7 @@ export default function TemplatesPage() {
           </button>
           <button
             onClick={() => setActiveTab('rejected')}
-            className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
+            className={`border-b-2 px-1 py-4 text-sm font-medium whitespace-nowrap ${
               activeTab === 'rejected'
                 ? 'border-indigo-500 text-indigo-600'
                 : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
@@ -250,64 +252,74 @@ export default function TemplatesPage() {
       </div>
 
       {/* Templates List */}
-      {templates.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
-          <FileText className="mx-auto h-12 w-12 text-gray-400" />
-          <p className="mt-2 text-sm text-gray-500">
-            No {activeTab} templates
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {templates.map((template) => (
-            <div
-              key={template.id}
-              className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-6"
-            >
-              <div className="flex items-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100">
-                  <FileText className="h-6 w-6 text-indigo-600" />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {template.title}
-                  </h3>
-                  <div className="mt-1 flex items-center gap-3 text-sm text-gray-500">
-                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
-                      {template.type === 'survey' ? 'Survey' : 'Reflection'}
-                    </span>
-                    <span>{template.category}</span>
-                    <span>{template.questionCount} questions</span>
-                    <span className="flex items-center">
-                      <Clock className="mr-1 h-3 w-3" />
-                      {new Date(template.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {activeTab === 'pending' && (
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    onClick={() => handleReject(template.id, template.type)}
-                  >
-                    <X className="mr-2 h-4 w-4" />
-                    Reject
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={() => handleApprove(template.id, template.type)}
-                  >
-                    <Check className="mr-2 h-4 w-4" />
-                    Approve
-                  </Button>
-                </div>
-              )}
+      {templates.length === 0
+        ? (
+            <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
+              <FileText className="mx-auto h-12 w-12 text-gray-400" />
+              <p className="mt-2 text-sm text-gray-500">
+                No
+                {' '}
+                {activeTab}
+                {' '}
+                templates
+              </p>
             </div>
-          ))}
-        </div>
-      )}
+          )
+        : (
+            <div className="space-y-4">
+              {templates.map(template => (
+                <div
+                  key={template.id}
+                  className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-6"
+                >
+                  <div className="flex items-center">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100">
+                      <FileText className="h-6 w-6 text-indigo-600" />
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {template.title}
+                      </h3>
+                      <div className="mt-1 flex items-center gap-3 text-sm text-gray-500">
+                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+                          {template.type === 'survey' ? 'Survey' : 'Reflection'}
+                        </span>
+                        <span>{template.category}</span>
+                        <span>
+                          {template.questionCount}
+                          {' '}
+                          questions
+                        </span>
+                        <span className="flex items-center">
+                          <Clock className="mr-1 h-3 w-3" />
+                          {new Date(template.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {activeTab === 'pending' && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => handleReject(template.id, template.type)}
+                      >
+                        <X className="mr-2 h-4 w-4" />
+                        Reject
+                      </Button>
+                      <Button
+                        variant="primary"
+                        onClick={() => handleApprove(template.id, template.type)}
+                      >
+                        <Check className="mr-2 h-4 w-4" />
+                        Approve
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
       {/* Create Template Modal */}
       {showCreateModal && (
@@ -315,7 +327,11 @@ export default function TemplatesPage() {
           <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
             <h2 className="text-2xl font-bold text-gray-900">Create New Template</h2>
             <p className="mt-1 text-sm text-gray-600">
-              Create a {templateType} template for your organization
+              Create a
+              {' '}
+              {templateType}
+              {' '}
+              template for your organization
             </p>
 
             {createError && (
@@ -336,7 +352,7 @@ export default function TemplatesPage() {
                       type="radio"
                       value="reflection"
                       checked={templateType === 'reflection'}
-                      onChange={(e) => setTemplateType(e.target.value as 'reflection' | 'survey')}
+                      onChange={e => setTemplateType(e.target.value as 'reflection' | 'survey')}
                       className="mr-2"
                     />
                     <span className="text-sm">Reflection Questions</span>
@@ -346,7 +362,7 @@ export default function TemplatesPage() {
                       type="radio"
                       value="survey"
                       checked={templateType === 'survey'}
-                      onChange={(e) => setTemplateType(e.target.value as 'reflection' | 'survey')}
+                      onChange={e => setTemplateType(e.target.value as 'reflection' | 'survey')}
                       className="mr-2"
                     />
                     <span className="text-sm">Survey</span>
@@ -362,7 +378,7 @@ export default function TemplatesPage() {
                 <Input
                   type="text"
                   value={templateTitle}
-                  onChange={(e) => setTemplateTitle(e.target.value)}
+                  onChange={e => setTemplateTitle(e.target.value)}
                   placeholder="e.g., Post-Session Reflection"
                   className="mt-1"
                   required
@@ -377,7 +393,7 @@ export default function TemplatesPage() {
                 <Input
                   type="text"
                   value={templateCategory}
-                  onChange={(e) => setTemplateCategory(e.target.value)}
+                  onChange={e => setTemplateCategory(e.target.value)}
                   placeholder="e.g., General, Anxiety, Depression"
                   className="mt-1"
                   required
@@ -395,7 +411,7 @@ export default function TemplatesPage() {
                       <Input
                         type="text"
                         value={question}
-                        onChange={(e) => updateQuestion(index, e.target.value)}
+                        onChange={e => updateQuestion(index, e.target.value)}
                         placeholder={`Question ${index + 1}`}
                         className="flex-1"
                       />
@@ -440,14 +456,16 @@ export default function TemplatesPage() {
                 onClick={handleCreateTemplate}
                 disabled={creating}
               >
-                {creating ? (
-                  <>
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
-                    Creating...
-                  </>
-                ) : (
-                  <>Create Template</>
-                )}
+                {creating
+                  ? (
+                      <>
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
+                        Creating...
+                      </>
+                    )
+                  : (
+                      <>Create Template</>
+                    )}
               </Button>
             </div>
           </div>

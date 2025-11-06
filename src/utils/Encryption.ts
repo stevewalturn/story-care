@@ -17,7 +17,7 @@
  * - Secure key management (never commit keys to git)
  */
 
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16; // 128 bits
@@ -40,7 +40,7 @@ function getEncryptionKey(): Buffer {
 
   if (keyHex.length !== 64) {
     throw new Error(
-      'ENCRYPTION_KEY must be 64 hex characters (32 bytes). Current length: ' + keyHex.length,
+      `ENCRYPTION_KEY must be 64 hex characters (32 bytes). Current length: ${keyHex.length}`,
     );
   }
 

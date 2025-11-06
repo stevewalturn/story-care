@@ -18,7 +18,7 @@ export async function getAuthHeaders(user: User | null): Promise<HeadersInit> {
   const idToken = await user.getIdToken();
 
   return {
-    'Authorization': `Bearer ${idToken}`,
+    Authorization: `Bearer ${idToken}`,
   };
 }
 

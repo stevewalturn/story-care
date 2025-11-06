@@ -5,13 +5,13 @@
 
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { ArrowLeft, ArrowRight, Building2, Check, Mail, User } from 'lucide-react';
 import Link from 'next/link';
-import { Check, Building2, ArrowLeft, ArrowRight, User, Mail } from 'lucide-react';
-import { signUp } from '@/libs/Firebase';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { signUp } from '@/libs/Firebase';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -111,7 +111,7 @@ export default function SignUpPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
+          'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({
           firebaseUid: currentUser.uid,
@@ -215,7 +215,10 @@ export default function SignUpPage() {
                 <div className="text-sm text-green-700">
                   <p className="font-medium">Account Created!</p>
                   <p className="mt-1">
-                    Your account has been created with <strong>{email}</strong>.
+                    Your account has been created with
+                    {' '}
+                    <strong>{email}</strong>
+                    .
                     Please continue to set up your organization.
                   </p>
                 </div>
@@ -239,7 +242,7 @@ export default function SignUpPage() {
                 type="email"
                 label="Email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value)}
                 placeholder="admin@yourcompany.com"
                 required
               />
@@ -248,7 +251,7 @@ export default function SignUpPage() {
                 type="password"
                 label="Password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={e => setPassword(e.target.value)}
                 placeholder="At least 6 characters"
                 required
               />
@@ -257,7 +260,7 @@ export default function SignUpPage() {
                 type="password"
                 label="Confirm Password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={e => setConfirmPassword(e.target.value)}
                 placeholder="Confirm your password"
                 required
               />
@@ -300,7 +303,7 @@ export default function SignUpPage() {
                 type="text"
                 label="Organization Name"
                 value={organizationName}
-                onChange={(e) => setOrganizationName(e.target.value)}
+                onChange={e => setOrganizationName(e.target.value)}
                 placeholder="Your Organization"
                 required
               />
@@ -309,7 +312,7 @@ export default function SignUpPage() {
                 type="email"
                 label="Contact Email"
                 value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
+                onChange={e => setContactEmail(e.target.value)}
                 placeholder="contact@yourcompany.com"
                 required
               />
@@ -363,7 +366,7 @@ export default function SignUpPage() {
                 type="text"
                 label="Full Name"
                 value={adminName}
-                onChange={(e) => setAdminName(e.target.value)}
+                onChange={e => setAdminName(e.target.value)}
                 placeholder="John Doe"
                 required
               />
@@ -426,7 +429,8 @@ export default function SignUpPage() {
           {/* Sign In Link */}
           {currentStep < 4 && (
             <div className="mt-6 text-center text-sm text-gray-600">
-              Already have an account?{' '}
+              Already have an account?
+              {' '}
               <Link
                 href="/sign-in"
                 className="font-medium text-indigo-600 hover:text-indigo-700"

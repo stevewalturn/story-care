@@ -58,9 +58,15 @@ export async function PUT(
       updatedAt: new Date(),
     };
 
-    if (title !== undefined) updateData.title = title;
-    if (content !== undefined) updateData.content = content;
-    if (tags !== undefined) updateData.tags = tags;
+    if (title !== undefined) {
+      updateData.title = title;
+    }
+    if (content !== undefined) {
+      updateData.content = content;
+    }
+    if (tags !== undefined) {
+      updateData.tags = tags;
+    }
 
     const [updatedNote] = await db
       .update(notes)
