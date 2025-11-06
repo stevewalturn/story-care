@@ -139,37 +139,6 @@ export default function SettingsPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* General Settings */}
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="mb-4 text-xl font-semibold text-gray-900">General Settings</h2>
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="platformName" className="block text-sm font-medium text-gray-700">
-                Platform Name
-              </label>
-              <input
-                id="platformName"
-                type="text"
-                value={settings.platformName}
-                onChange={e => handleChange('platformName', e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label htmlFor="supportEmail" className="block text-sm font-medium text-gray-700">
-                Support Email
-              </label>
-              <input
-                id="supportEmail"
-                type="email"
-                value={settings.supportEmail}
-                onChange={e => handleChange('supportEmail', e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              />
-            </div>
-          </div>
-        </div>
-
         {/* AI Configuration */}
         <div className="rounded-lg border border-gray-200 bg-white p-6">
           <h2 className="mb-4 text-xl font-semibold text-gray-900">AI Configuration</h2>

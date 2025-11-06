@@ -8,8 +8,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Check, Building2, ArrowLeft, ArrowRight, User, Users } from 'lucide-react';
-import { signUp } from '@/libs/Firebase';
+import { Check, Building2, ArrowLeft, ArrowRight, User, Users, Mail } from 'lucide-react';
+import { signUp, sendVerificationEmail } from '@/libs/Firebase';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
@@ -33,6 +33,7 @@ export default function SignUpPage() {
   const [role, setRole] = useState<Role>('therapist');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
   const router = useRouter();
 
   // Step 1: Email & Password
@@ -52,16 +53,21 @@ export default function SignUpPage() {
 
     setLoading(true);
 
-    // Create Firebase account
+    // Create Firebase account with email verification
     const { user, error: signUpError } = await signUp(email, password);
 
     if (signUpError) {
       setError(signUpError);
       setLoading(false);
     } else if (user) {
-      // Move to next step
-      setCurrentStep(2);
+      // Email verification sent automatically by signUp function
+      setVerificationSent(true);
       setLoading(false);
+
+      // Show info message about email verification
+      setTimeout(() => {
+        setCurrentStep(2);
+      }, 3000); // Give user time to see the verification message
     }
   };
 
@@ -130,8 +136,14 @@ export default function SignUpPage() {
       const data = await response.json();
 
       if (response.ok) {
-        // Success! Move to final step
-        setCurrentStep(4);
+        // Check if user was auto-approved (org_admin)
+        if (data.autoApproved) {
+          // Redirect directly to dashboard
+          router.push('/dashboard');
+        } else {
+          // Regular flow: move to pending approval step
+          setCurrentStep(4);
+        }
       } else {
         setError(data.error || 'Failed to complete registration');
       }
@@ -210,6 +222,21 @@ export default function SignUpPage() {
           {error && (
             <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               {error}
+            </div>
+          )}
+
+          {verificationSent && currentStep === 1 && (
+            <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+              <div className="flex items-start">
+                <Mail className="mr-3 h-5 w-5 text-blue-600" />
+                <div className="text-sm text-blue-700">
+                  <p className="font-medium">Verification Email Sent!</p>
+                  <p className="mt-1">
+                    We've sent a verification link to <strong>{email}</strong>.
+                    Please check your inbox and verify your email before continuing.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 

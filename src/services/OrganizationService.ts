@@ -306,7 +306,7 @@ export async function listOrganizations(params?: {
   limit?: number;
 }) {
   const page = params?.page || 1;
-  const limit = params?.limit || 20;
+  const limit = params?.limit || 10;
   const offset = (page - 1) * limit;
 
   const conditions = [];

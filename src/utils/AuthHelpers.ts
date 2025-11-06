@@ -55,6 +55,11 @@ export async function requireAuth(
     // Verify token with Firebase Admin SDK
     const user = await verifyIdToken(token);
 
+    // SECURITY: Require email verification for all authenticated requests
+    if (!user.emailVerified) {
+      throw new Error('Email verification required. Please verify your email before accessing the platform.');
+    }
+
     return user;
   } catch (error) {
     // Token is invalid, expired, or revoked
@@ -286,7 +291,7 @@ export function getPaginationParams(request: Request): {
   const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10));
   const limit = Math.min(
     100,
-    Math.max(1, Number.parseInt(url.searchParams.get('limit') || '20', 10)),
+    Math.max(1, Number.parseInt(url.searchParams.get('limit') || '10', 10)),
   );
   const offset = (page - 1) * limit;
 

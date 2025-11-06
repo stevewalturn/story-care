@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { signIn } from '@/libs/Firebase';
+import { signIn, sendVerificationEmail } from '@/libs/Firebase';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
@@ -25,6 +25,15 @@ export default function SignInPage() {
       setError(signInError);
       setLoading(false);
     } else if (user) {
+      // Check if email is verified
+      if (!user.emailVerified) {
+        setError(
+          'Please verify your email before signing in. Check your inbox for the verification link.',
+        );
+        setLoading(false);
+        return;
+      }
+
       try {
         // Get the ID token and set session cookie
         const idToken = await user.getIdToken();

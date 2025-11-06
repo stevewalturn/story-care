@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       | 'suspended'
       | null;
     const page = Number.parseInt(searchParams.get('page') || '1', 10);
-    const limit = Number.parseInt(searchParams.get('limit') || '20', 10);
+    const limit = Number.parseInt(searchParams.get('limit') || '10', 10);
 
     const result = await listOrganizations({
       status: status || undefined,
