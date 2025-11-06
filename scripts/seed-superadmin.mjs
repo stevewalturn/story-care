@@ -6,20 +6,51 @@
  *   npm run db:seed-superadmin
  */
 
-// Load environment variables from .env.local
-import dotenv from 'dotenv';
-import path from 'node:path';
-
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
-
+import 'dotenv/config';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { eq } from 'drizzle-orm';
-import { db } from '@/libs/DB';
-import { users } from '@/models/Schema';
+import { pgTable, uuid, varchar, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+import pg from 'pg';
+
+const { Pool } = pg;
+
+// Define minimal schema needed for this script
+const userRoleEnum = pgEnum('user_role', [
+  'super_admin',
+  'org_admin',
+  'therapist',
+  'patient',
+]);
+
+const userStatusEnum = pgEnum('user_status', [
+  'pending_approval',
+  'active',
+  'inactive',
+]);
+
+const users = pgTable('users', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  firebaseUid: varchar('firebase_uid', { length: 255 }).unique(),
+  email: varchar('email', { length: 255 }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  role: userRoleEnum('role').notNull(),
+  status: userStatusEnum('status').notNull().default('pending_approval'),
+  organizationId: uuid('organization_id'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
 
 async function seedSuperAdmin() {
   const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'admin@storycare.com';
   const superAdminName = process.env.SUPER_ADMIN_NAME || 'Super Admin';
   const firebaseUid = process.env.SUPER_ADMIN_FIREBASE_UID || '';
+  const databaseUrl = process.env.DATABASE_URL;
+
+  if (!databaseUrl) {
+    console.error('\n❌ Error: DATABASE_URL environment variable is not set');
+    console.log('Make sure you have a .env.local file with DATABASE_URL\n');
+    process.exit(1);
+  }
 
   if (!firebaseUid) {
     console.error('\n❌ Error: SUPER_ADMIN_FIREBASE_UID is required');
@@ -27,17 +58,27 @@ async function seedSuperAdmin() {
     console.log('1. Create a Firebase user account (via Firebase Console or sign-up page)');
     console.log('2. Get the Firebase UID from Firebase Console > Authentication > Users');
     console.log('3. Run this script with the UID:');
-    console.log('   SUPER_ADMIN_FIREBASE_UID=your-firebase-uid tsx scripts/seed-superadmin.ts\n');
+    console.log('   SUPER_ADMIN_FIREBASE_UID=your-firebase-uid npm run db:seed-superadmin\n');
     process.exit(1);
   }
+
+  const pool = new Pool({
+    connectionString: databaseUrl,
+  });
+
+  const db = drizzle(pool);
 
   try {
     console.log('\n🌱 Seeding super admin user...\n');
 
     // Check if user already exists
-    const existingUser = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.firebaseUid, firebaseUid),
-    });
+    const existingUsers = await db
+      .select()
+      .from(users)
+      .where(eq(users.firebaseUid, firebaseUid))
+      .limit(1);
+
+    const existingUser = existingUsers[0];
 
     if (existingUser) {
       console.log('⚠️  User already exists in database');
@@ -47,6 +88,7 @@ async function seedSuperAdmin() {
 
       if (existingUser.role === 'super_admin') {
         console.log('✅ User is already a super admin\n');
+        await pool.end();
         process.exit(0);
       }
 
@@ -62,11 +104,7 @@ async function seedSuperAdmin() {
         .where(eq(users.firebaseUid, firebaseUid))
         .returning();
 
-      if (!Array.isArray(updatedUsers) || updatedUsers.length === 0) {
-        throw new Error('Failed to update user');
-      }
-
-      const updatedUser = updatedUsers[0]!;
+      const updatedUser = updatedUsers[0];
 
       console.log('✅ Updated existing user to super admin');
       console.log(`   Email: ${updatedUser.email}`);
@@ -89,10 +127,6 @@ async function seedSuperAdmin() {
         })
         .returning();
 
-      if (!Array.isArray(newUsers) || newUsers.length === 0) {
-        throw new Error('Failed to create super admin user');
-      }
-
       const newUser = newUsers[0];
 
       console.log('✅ Super admin user created successfully!');
@@ -104,8 +138,10 @@ async function seedSuperAdmin() {
     }
 
     console.log('🎉 Done! You can now sign in with this account.\n');
+    await pool.end();
   } catch (error) {
     console.error('\n❌ Error seeding super admin:', error);
+    await pool.end();
     process.exit(1);
   }
 }
