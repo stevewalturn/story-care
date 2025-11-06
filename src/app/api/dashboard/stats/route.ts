@@ -1,14 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { and, count, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { getClientInfo, logAudit } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import {
-  users,
-  storyPagesSchema,
   reflectionResponsesSchema,
-  surveyResponsesSchema
+  storyPagesSchema,
+  surveyResponsesSchema,
+  users,
 } from '@/models/Schema';
-import { eq, and, count } from 'drizzle-orm';
-import { requireAuth, handleAuthError } from '@/utils/AuthHelpers';
-import { logAudit, getClientInfo } from '@/libs/AuditLogger';
+import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
 
 // GET /api/dashboard/stats - Get dashboard statistics
 export async function GET(request: NextRequest) {
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
       // Patients cannot access dashboard stats
       return NextResponse.json(
         { error: 'Forbidden: Patients cannot access dashboard stats' },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
       .where(
         therapistDbId
           ? and(eq(users.role, 'patient'), eq(users.therapistId, therapistDbId))
-          : eq(users.role, 'patient')
+          : eq(users.role, 'patient'),
       );
 
     const activePatients = activePatientsResult[0]?.count || 0;
@@ -62,9 +63,9 @@ export async function GET(request: NextRequest) {
         therapistDbId
           ? and(
               eq(storyPagesSchema.status, 'published'),
-              eq(storyPagesSchema.createdByTherapistId, therapistDbId)
+              eq(storyPagesSchema.createdByTherapistId, therapistDbId),
             )
-          : eq(storyPagesSchema.status, 'published')
+          : eq(storyPagesSchema.status, 'published'),
       );
 
     const publishedPages = publishedPagesResult[0]?.count || 0;
@@ -125,7 +126,7 @@ export async function GET(request: NextRequest) {
 
     // Log dashboard access
     await logAudit({
-      userId: user.uid,
+      userId: user.dbUserId,
       action: 'read',
       resourceType: 'user',
       resourceId: 'stats',
@@ -146,7 +147,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching dashboard stats:', error);
     return NextResponse.json(
       { error: 'Failed to fetch dashboard stats' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

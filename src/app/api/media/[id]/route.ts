@@ -1,10 +1,10 @@
 import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-import { db } from '@/libs/DB';
-import { mediaLibrary } from '@/models/Schema';
-import { requireMediaAccess } from '@/middleware/RBACMiddleware';
 import { logPHIAccess } from '@/libs/AuditLogger';
+import { db } from '@/libs/DB';
+import { requireMediaAccess } from '@/middleware/RBACMiddleware';
+import { mediaLibrary } from '@/models/Schema';
 import { handleAuthError } from '@/utils/AuthHelpers';
 
 // GET /api/media/[id]
@@ -32,7 +32,7 @@ export async function GET(
     }
 
     // Log PHI access
-    await logPHIAccess(user.uid, 'media', id, request);
+    await logPHIAccess(user.dbUserId, 'media', id, request);
 
     return NextResponse.json({ media });
   } catch (error) {
@@ -81,7 +81,7 @@ export async function PUT(
 
     // Log PHI modification
     const { logPHIUpdate } = await import('@/libs/AuditLogger');
-    await logPHIUpdate(user.uid, 'media', id, request, {
+    await logPHIUpdate(user.dbUserId, 'media', id, request, {
       changedFields: ['title', 'tags', 'thumbnailUrl'],
     });
 
@@ -124,7 +124,7 @@ export async function DELETE(
     // Log PHI deletion
     const { logPHIDelete } = await import('@/libs/AuditLogger');
     const mediaArray = deletedMedia as any[];
-    await logPHIDelete(user.uid, 'media', id, request, {
+    await logPHIDelete(user.dbUserId, 'media', id, request, {
       mediaType: mediaArray[0]?.mediaType,
     });
 

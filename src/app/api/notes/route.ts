@@ -1,10 +1,10 @@
 import type { NextRequest } from 'next/server';
 import { and, desc, eq, ilike, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+import { getClientInfo, logAudit } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { notes, sessions, users } from '@/models/Schema';
-import { requireAuth, handleAuthError } from '@/utils/AuthHelpers';
-import { logAudit } from '@/libs/AuditLogger';
+import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
 
 // GET /api/notes - List notes
 export async function GET(request: NextRequest) {
@@ -70,11 +70,11 @@ export async function GET(request: NextRequest) {
 
     // Log PHI access
     await logAudit({
-      userId: user.uid,
+      userId: user.dbUserId,
       action: 'read',
       resourceType: 'note',
       resourceId: 'list',
-      ...require('@/libs/AuditLogger').getClientInfo(request),
+      ...getClientInfo(request),
       metadata: { count: notesList.length, patientId, sessionId },
     });
 
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
 
     // Log PHI creation
     const { logPHICreate } = await import('@/libs/AuditLogger');
-    await logPHICreate(user.uid, 'note', newNote.id, request, {
+    await logPHICreate(user.dbUserId, 'note', newNote.id, request, {
       patientId,
       sessionId,
     });

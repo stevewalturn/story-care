@@ -1,15 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/libs/DB';
-import { users } from '@/models/Schema';
+import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
-import { handleAuthError } from '@/utils/AuthHelpers';
+import { NextResponse } from 'next/server';
 import { logPHIAccess } from '@/libs/AuditLogger';
+import { db } from '@/libs/DB';
 import { requirePatientAccess } from '@/middleware/RBACMiddleware';
+import { users } from '@/models/Schema';
+import { handleAuthError } from '@/utils/AuthHelpers';
 
 // GET /api/patients/[id] - Get a single patient
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -28,7 +29,7 @@ export async function GET(
     }
 
     // Log PHI access
-    await logPHIAccess(user.uid, 'user', id, request);
+    await logPHIAccess(user.dbUserId, 'user', id, request);
 
     return NextResponse.json({ patient });
   } catch (error) {
@@ -38,7 +39,7 @@ export async function GET(
     console.error('Error fetching patient:', error);
     return NextResponse.json(
       { error: 'Failed to fetch patient' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -46,7 +47,7 @@ export async function GET(
 // PUT /api/patients/[id] - Update patient
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -60,10 +61,18 @@ export async function PUT(
     // Build update object with only provided fields that exist in schema
     // Note: phone and notes fields don't exist in the users table
     const updateData: any = {};
-    if (name !== undefined) updateData.name = name;
-    if (email !== undefined) updateData.email = email;
-    if (referenceImageUrl !== undefined) updateData.referenceImageUrl = referenceImageUrl;
-    if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl;
+    if (name !== undefined) {
+      updateData.name = name;
+    }
+    if (email !== undefined) {
+      updateData.email = email;
+    }
+    if (referenceImageUrl !== undefined) {
+      updateData.referenceImageUrl = referenceImageUrl;
+    }
+    if (avatarUrl !== undefined) {
+      updateData.avatarUrl = avatarUrl;
+    }
 
     updateData.updatedAt = new Date();
 
@@ -79,7 +88,7 @@ export async function PUT(
 
     // Log PHI modification
     const { logPHIUpdate } = await import('@/libs/AuditLogger');
-    await logPHIUpdate(user.uid, 'user', id, request, {
+    await logPHIUpdate(user.dbUserId, 'user', id, request, {
       changedFields: Object.keys(updateData),
     });
 
@@ -91,7 +100,7 @@ export async function PUT(
     console.error('Error updating patient:', error);
     return NextResponse.json(
       { error: 'Failed to update patient' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -99,7 +108,7 @@ export async function PUT(
 // DELETE /api/patients/[id] - Delete patient
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -111,7 +120,7 @@ export async function DELETE(
     if (user.role !== 'org_admin' && user.role !== 'super_admin') {
       return NextResponse.json(
         { error: 'Forbidden: Only organization admins can delete patients' },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -126,7 +135,7 @@ export async function DELETE(
 
     // Log PHI deletion
     const { logPHIDelete } = await import('@/libs/AuditLogger');
-    await logPHIDelete(user.uid, 'user', id, request, {
+    await logPHIDelete(user.dbUserId, 'user', id, request, {
       deletedBy: user.email,
     });
 
@@ -138,7 +147,7 @@ export async function DELETE(
     console.error('Error deleting patient:', error);
     return NextResponse.json(
       { error: 'Failed to delete patient' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

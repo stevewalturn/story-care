@@ -1,11 +1,11 @@
 import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+import { logPHICreate } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { transcribeAudio } from '@/libs/Deepgram';
-import { sessions, speakers, transcripts, utterances } from '@/models/Schema';
 import { requireSessionAccess } from '@/middleware/RBACMiddleware';
-import { logPHICreate } from '@/libs/AuditLogger';
+import { sessions, speakers, transcripts, utterances } from '@/models/Schema';
 import { handleAuthError } from '@/utils/AuthHelpers';
 
 type RouteContext = {
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .where(eq(sessions.id, id));
 
     // Log PHI creation (transcript generation)
-    await logPHICreate(user.uid, 'transcript', transcript.id, request, {
+    await logPHICreate(user.dbUserId, 'transcript', transcript.id, request, {
       sessionId: id,
       speakerCount: speakerRecords.length,
       utteranceCount: result.utterances.length,
