@@ -61,56 +61,83 @@ export async function createOrganization(data: {
   settings?: Partial<OrganizationSettings>;
   createdBy: string;
 }) {
-  // Generate unique join code
-  let joinCode = generateJoinCode();
-  let isUnique = false;
+  console.log('OrganizationService.createOrganization - Starting with data:', data);
 
-  // Ensure join code is unique
-  while (!isUnique) {
-    const existing = await db.query.organizations.findFirst({
-      where: eq(organizationsSchema.joinCode, joinCode),
+  try {
+    // Verify the creator (super_admin) exists
+    console.log('OrganizationService.createOrganization - Verifying creator user:', data.createdBy);
+    const creatorUser = await db.query.users.findFirst({
+      where: eq(users.id, data.createdBy),
     });
 
-    if (!existing) {
-      isUnique = true;
-    } else {
-      joinCode = generateJoinCode();
+    console.log('OrganizationService.createOrganization - Creator user found:', {
+      id: creatorUser?.id,
+      email: creatorUser?.email,
+      role: creatorUser?.role,
+      organizationId: creatorUser?.organizationId,
+    });
+
+    if (!creatorUser) {
+      throw new Error(`Creator user not found with ID: ${data.createdBy}`);
     }
-  }
 
-  // Default settings
-  const defaultSettings: OrganizationSettings = {
-    subscriptionTier: 'basic',
-    features: {
-      maxTherapists: 5,
-      maxPatients: 50,
-      aiCreditsPerMonth: 1000,
-      storageGB: 10,
-    },
-    defaults: {
-      reflectionQuestions: [],
-      surveyTemplate: null,
-      sessionTranscriptionEnabled: true,
-    },
-    branding: {
-      welcomeMessage: null,
-      supportEmail: data.contactEmail,
-    },
-  };
+    if (creatorUser.role !== 'super_admin') {
+      throw new Error(`Only super_admin can create organizations. User role: ${creatorUser.role}`);
+    }
 
-  // Merge with provided settings
-  const settings = {
-    ...defaultSettings,
-    ...data.settings,
-    features: { ...defaultSettings.features, ...data.settings?.features },
-    defaults: { ...defaultSettings.defaults, ...data.settings?.defaults },
-    branding: { ...defaultSettings.branding, ...data.settings?.branding },
-  };
+    // Generate unique join code
+    console.log('OrganizationService.createOrganization - Generating unique join code');
+    let joinCode = generateJoinCode();
+    let isUnique = false;
 
-  // Create organization
-  const [organization] = await db
-    .insert(organizationsSchema)
-    .values({
+    // Ensure join code is unique
+    while (!isUnique) {
+      const existing = await db.query.organizations.findFirst({
+        where: eq(organizationsSchema.joinCode, joinCode),
+      });
+
+      if (!existing) {
+        isUnique = true;
+      } else {
+        joinCode = generateJoinCode();
+      }
+    }
+
+    console.log('OrganizationService.createOrganization - Generated join code:', joinCode);
+
+    // Default settings
+    const defaultSettings: OrganizationSettings = {
+      subscriptionTier: 'basic',
+      features: {
+        maxTherapists: 5,
+        maxPatients: 50,
+        aiCreditsPerMonth: 1000,
+        storageGB: 10,
+      },
+      defaults: {
+        reflectionQuestions: [],
+        surveyTemplate: null,
+        sessionTranscriptionEnabled: true,
+      },
+      branding: {
+        welcomeMessage: null,
+        supportEmail: data.contactEmail,
+      },
+    };
+
+    // Merge with provided settings
+    const settings = {
+      ...defaultSettings,
+      ...data.settings,
+      features: { ...defaultSettings.features, ...data.settings?.features },
+      defaults: { ...defaultSettings.defaults, ...data.settings?.defaults },
+      branding: { ...defaultSettings.branding, ...data.settings?.branding },
+    };
+
+    console.log('OrganizationService.createOrganization - Prepared settings:', settings);
+
+    // Create organization
+    const organizationValues = {
       name: data.name,
       slug: data.slug,
       contactEmail: data.contactEmail,
@@ -119,38 +146,71 @@ export async function createOrganization(data: {
       joinCode,
       joinCodeEnabled: true,
       settings,
-      status: 'active',
+      status: 'active' as const,
       createdBy: data.createdBy,
       createdAt: new Date(),
       updatedAt: new Date(),
-    })
-    .returning();
+    };
 
-  // Create org_admin user for the new organization
-  if (!organization) {
-    throw new Error('Failed to create organization');
-  }
+    console.log('OrganizationService.createOrganization - Inserting organization with values:', organizationValues);
 
-  const adminUserResult = await db
-    .insert(users)
-    .values({
+    const [organization] = await db
+      .insert(organizationsSchema)
+      .values(organizationValues)
+      .returning();
+
+    console.log('OrganizationService.createOrganization - Organization created successfully:', {
+      id: organization?.id,
+      name: organization?.name,
+      slug: organization?.slug,
+    });
+
+    // Create org_admin user for the new organization
+    if (!organization) {
+      throw new Error('Failed to create organization');
+    }
+
+    const adminUserValues = {
       email: data.adminEmail,
       name: data.adminName,
-      role: 'org_admin',
+      role: 'org_admin' as const,
       organizationId: organization.id,
-      status: 'pending_approval', // Requires Firebase account setup
-      firebaseUid: null, // Will be set when they sign up with Firebase
+      status: 'invited' as const, // Invited by super admin, needs to sign in
+      firebaseUid: null, // Will be set when they sign in with Firebase
       createdAt: new Date(),
       updatedAt: new Date(),
-    })
-    .returning();
+    };
 
-  const adminUser = adminUserResult[0];
+    console.log('OrganizationService.createOrganization - Inserting admin user with values:', adminUserValues);
 
-  return {
-    organization,
-    adminUser,
-  };
+    const adminUserResult = await db
+      .insert(users)
+      .values(adminUserValues)
+      .returning();
+
+    const adminUser = adminUserResult[0];
+
+    console.log('OrganizationService.createOrganization - Admin user created successfully:', {
+      id: adminUser?.id,
+      email: adminUser?.email,
+      role: adminUser?.role,
+    });
+
+    console.log('OrganizationService.createOrganization - Completed successfully');
+
+    return {
+      organization,
+      adminUser,
+    };
+  } catch (error) {
+    console.error('OrganizationService.createOrganization - Error occurred:', {
+      error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      data,
+    });
+    throw error;
+  }
 }
 
 /**

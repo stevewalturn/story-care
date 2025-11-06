@@ -51,16 +51,40 @@ export async function POST(request: NextRequest) {
   try {
     const user = await requireSuperAdmin(request);
 
-    const body = await request.json();
-    const validated = createOrganizationSchema.parse(body);
+    console.log('POST /api/organizations - Super Admin authenticated:', {
+      userId: user.id,
+      dbUserId: user.dbUserId,
+      email: user.email,
+      role: user.role,
+    });
 
-    const result = await createOrganization({
+    const body = await request.json();
+    console.log('POST /api/organizations - Request body:', body);
+
+    const validated = createOrganizationSchema.parse(body);
+    console.log('POST /api/organizations - Validation passed:', validated);
+
+    const organizationData = {
       ...validated,
       createdBy: user.dbUserId,
+    };
+    console.log('POST /api/organizations - Creating organization with data:', organizationData);
+
+    const result = await createOrganization(organizationData);
+
+    console.log('POST /api/organizations - Organization created successfully:', {
+      organizationId: result.organization.id,
+      adminUserId: result.adminUser?.id,
     });
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
+    console.error('POST /api/organizations - Error occurred:', {
+      error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
     if (error instanceof Error && error.message.includes('validation')) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }

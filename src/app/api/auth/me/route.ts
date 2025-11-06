@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
         emailVerified: user.emailVerified,
         role: user.role,
         organizationId: user.organizationId,
+        status: user.status,
       },
     });
   } catch (error) {

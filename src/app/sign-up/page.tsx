@@ -1,6 +1,6 @@
 /**
- * Multi-Step Sign Up Page
- * Organization-based signup with role selection
+ * Organization Sign Up Page
+ * For creating a NEW organization with the first org admin
  */
 
 'use client';
@@ -8,29 +8,21 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Check, Building2, ArrowLeft, ArrowRight, User, Users, Mail } from 'lucide-react';
-import { signUp, sendVerificationEmail } from '@/libs/Firebase';
+import { Check, Building2, ArrowLeft, ArrowRight, User, Mail } from 'lucide-react';
+import { signUp } from '@/libs/Firebase';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
 type Step = 1 | 2 | 3 | 4;
-type Role = 'therapist' | 'patient';
-
-interface OrganizationInfo {
-  id: string;
-  name: string;
-  logoUrl: string | null;
-}
 
 export default function SignUpPage() {
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [organizationCode, setOrganizationCode] = useState('');
-  const [organization, setOrganization] = useState<OrganizationInfo | null>(null);
-  const [name, setName] = useState('');
-  const [role, setRole] = useState<Role>('therapist');
+  const [organizationName, setOrganizationName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [adminName, setAdminName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
@@ -71,37 +63,34 @@ export default function SignUpPage() {
     }
   };
 
-  // Step 2: Organization Code
-  const handleVerifyCode = async () => {
+  // Step 2: Organization Info
+  const handleStep2Submit = (e: React.FormEvent) => {
+    e.preventDefault();
     setError('');
-    setLoading(true);
 
-    try {
-      const response = await fetch('/api/organizations/verify-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: organizationCode.toUpperCase() }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.valid) {
-        setOrganization(data.organization);
-        setCurrentStep(3);
-      } else {
-        setError(data.error || 'Invalid organization code');
-      }
-    } catch (err) {
-      setError('Failed to verify code. Please try again.');
-    } finally {
-      setLoading(false);
+    if (!organizationName.trim()) {
+      setError('Organization name is required');
+      return;
     }
+
+    if (!contactEmail.trim()) {
+      setError('Contact email is required');
+      return;
+    }
+
+    setCurrentStep(3);
   };
 
-  // Step 3: Name & Role Selection
+  // Step 3: Admin Profile
   const handleStep3Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!adminName.trim()) {
+      setError('Your name is required');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -109,7 +98,7 @@ export default function SignUpPage() {
       const { auth } = await import('@/libs/Firebase');
       const currentUser = auth.currentUser;
 
-      if (!currentUser || !organization) {
+      if (!currentUser) {
         setError('Authentication error. Please try again.');
         setLoading(false);
         return;
@@ -117,7 +106,7 @@ export default function SignUpPage() {
 
       const idToken = await currentUser.getIdToken();
 
-      // Complete registration
+      // Create organization with admin
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
@@ -126,29 +115,23 @@ export default function SignUpPage() {
         },
         body: JSON.stringify({
           firebaseUid: currentUser.uid,
-          name,
           email,
-          organizationId: organization.id,
-          role,
+          adminName,
+          organizationName,
+          contactEmail,
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // Check if user was auto-approved (org_admin)
-        if (data.autoApproved) {
-          // Redirect directly to dashboard
-          router.push('/dashboard');
-        } else {
-          // Regular flow: move to pending approval step
-          setCurrentStep(4);
-        }
+        // Success! Move to completion step
+        setCurrentStep(4);
       } else {
-        setError(data.error || 'Failed to complete registration');
+        setError(data.error || 'Failed to create organization');
       }
     } catch (err) {
-      setError('Failed to complete registration. Please try again.');
+      setError('Failed to create organization. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -212,7 +195,7 @@ export default function SignUpPage() {
               StoryCare
             </h1>
           </Link>
-          <p className="text-gray-600">Digital Therapeutic Platform</p>
+          <p className="text-gray-600">Create Your Organization</p>
         </div>
 
         {/* Sign Up Form */}
@@ -248,7 +231,7 @@ export default function SignUpPage() {
                   Create your account
                 </h2>
                 <p className="mb-6 text-sm text-gray-600">
-                  Start by creating your login credentials
+                  Start by creating your admin login credentials
                 </p>
               </div>
 
@@ -257,7 +240,7 @@ export default function SignUpPage() {
                 label="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
+                placeholder="admin@yourcompany.com"
                 required
               />
 
@@ -291,15 +274,15 @@ export default function SignUpPage() {
             </form>
           )}
 
-          {/* Step 2: Organization Code */}
+          {/* Step 2: Organization Info */}
           {currentStep === 2 && (
-            <div className="space-y-4">
+            <form onSubmit={handleStep2Submit} className="space-y-4">
               <div>
                 <h2 className="mb-2 text-2xl font-bold text-gray-900">
-                  Join your organization
+                  Organization Details
                 </h2>
                 <p className="mb-6 text-sm text-gray-600">
-                  Enter the organization code provided by your administrator
+                  Tell us about your organization
                 </p>
               </div>
 
@@ -307,18 +290,27 @@ export default function SignUpPage() {
                 <div className="flex items-start">
                   <Building2 className="mr-3 h-5 w-5 text-indigo-600" />
                   <div className="text-sm text-indigo-700">
-                    <p className="font-medium">Organization Code Format</p>
-                    <p className="mt-1">Example: HEAL-WATERS-2025</p>
+                    <p className="font-medium">New Organization</p>
+                    <p className="mt-1">You'll be the first administrator</p>
                   </div>
                 </div>
               </div>
 
               <Input
                 type="text"
-                label="Organization Code"
-                value={organizationCode}
-                onChange={(e) => setOrganizationCode(e.target.value.toUpperCase())}
-                placeholder="XXXX-XXXXX-XXXX"
+                label="Organization Name"
+                value={organizationName}
+                onChange={(e) => setOrganizationName(e.target.value)}
+                placeholder="Your Organization"
+                required
+              />
+
+              <Input
+                type="email"
+                label="Contact Email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder="contact@yourcompany.com"
                 required
               />
 
@@ -333,28 +325,26 @@ export default function SignUpPage() {
                   Back
                 </Button>
                 <Button
-                  type="button"
+                  type="submit"
                   variant="primary"
-                  onClick={handleVerifyCode}
-                  disabled={loading || !organizationCode}
                   className="flex-1"
                 >
-                  {loading ? 'Verifying...' : 'Verify Code'}
+                  Continue
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
-            </div>
+            </form>
           )}
 
-          {/* Step 3: Name & Role Selection */}
-          {currentStep === 3 && organization && (
+          {/* Step 3: Admin Profile */}
+          {currentStep === 3 && (
             <form onSubmit={handleStep3Submit} className="space-y-4">
               <div>
                 <h2 className="mb-2 text-2xl font-bold text-gray-900">
-                  Complete your profile
+                  Your Profile
                 </h2>
                 <p className="mb-6 text-sm text-gray-600">
-                  Tell us a bit about yourself
+                  Complete your administrator profile
                 </p>
               </div>
 
@@ -363,8 +353,8 @@ export default function SignUpPage() {
                 <div className="flex items-start">
                   <Check className="mr-3 h-5 w-5 text-green-600" />
                   <div className="text-sm">
-                    <p className="font-medium text-green-900">Organization Verified</p>
-                    <p className="mt-1 text-green-700">{organization.name}</p>
+                    <p className="font-medium text-green-900">Organization</p>
+                    <p className="mt-1 text-green-700">{organizationName}</p>
                   </div>
                 </div>
               </div>
@@ -372,58 +362,19 @@ export default function SignUpPage() {
               <Input
                 type="text"
                 label="Full Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={adminName}
+                onChange={(e) => setAdminName(e.target.value)}
                 placeholder="John Doe"
                 required
               />
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  I am a...
-                </label>
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => setRole('therapist')}
-                    className={`flex w-full items-center rounded-lg border-2 p-4 transition-colors ${
-                      role === 'therapist'
-                        ? 'border-indigo-600 bg-indigo-50'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
-                    }`}
-                  >
-                    <User className="mr-3 h-5 w-5" />
-                    <div className="text-left">
-                      <p className="font-medium text-gray-900">Therapist</p>
-                      <p className="text-xs text-gray-500">
-                        Clinical professional providing therapy
-                      </p>
-                    </div>
-                    {role === 'therapist' && (
-                      <Check className="ml-auto h-5 w-5 text-indigo-600" />
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setRole('patient')}
-                    className={`flex w-full items-center rounded-lg border-2 p-4 transition-colors ${
-                      role === 'patient'
-                        ? 'border-indigo-600 bg-indigo-50'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
-                    }`}
-                  >
-                    <Users className="mr-3 h-5 w-5" />
-                    <div className="text-left">
-                      <p className="font-medium text-gray-900">Patient</p>
-                      <p className="text-xs text-gray-500">
-                        Receiving therapeutic services
-                      </p>
-                    </div>
-                    {role === 'patient' && (
-                      <Check className="ml-auto h-5 w-5 text-indigo-600" />
-                    )}
-                  </button>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <div className="flex items-start">
+                  <User className="mr-3 h-5 w-5 text-gray-600" />
+                  <div className="text-sm">
+                    <p className="font-medium text-gray-900">Role: Organization Administrator</p>
+                    <p className="mt-1 text-gray-600">Full access to manage your organization</p>
+                  </div>
                 </div>
               </div>
 
@@ -440,34 +391,34 @@ export default function SignUpPage() {
                 <Button
                   type="submit"
                   variant="primary"
-                  disabled={loading || !name}
+                  disabled={loading}
                   className="flex-1"
                 >
-                  {loading ? 'Completing...' : 'Complete Signup'}
+                  {loading ? 'Creating...' : 'Create Organization'}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
             </form>
           )}
 
-          {/* Step 4: Success / Pending Approval */}
+          {/* Step 4: Success */}
           {currentStep === 4 && (
             <div className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
                 <Check className="h-8 w-8 text-green-600" />
               </div>
               <h2 className="mb-2 text-2xl font-bold text-gray-900">
-                Registration Complete!
+                Organization Created!
               </h2>
               <p className="mb-6 text-gray-600">
-                Your account has been created and is now pending approval from your organization administrator.
+                Your organization has been successfully created. You can now access your dashboard and invite team members.
               </p>
               <Button
                 variant="primary"
-                onClick={() => router.push('/pending-approval')}
+                onClick={() => router.push('/dashboard')}
                 className="w-full"
               >
-                Continue
+                Go to Dashboard
               </Button>
             </div>
           )}

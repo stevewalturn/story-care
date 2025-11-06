@@ -81,7 +81,7 @@ export async function PATCH(
           name: adminName,
           role: 'org_admin',
           organizationId: id,
-          status: 'pending_approval',
+          status: 'invited',
           firebaseUid: null,
           createdAt: new Date(),
           updatedAt: new Date(),

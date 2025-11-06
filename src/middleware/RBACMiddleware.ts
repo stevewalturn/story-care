@@ -458,8 +458,13 @@ export async function canCreateForPatient(
 export function handleRBACError(error: unknown): NextResponse {
   const message = error instanceof Error ? error.message : 'Access denied';
 
-  // Log the error for debugging
-  console.error('RBAC Error:', message);
+  // Log comprehensive error details for debugging
+  console.error('RBAC Error Details:', {
+    message,
+    errorType: error instanceof Error ? error.constructor.name : typeof error,
+    stack: error instanceof Error ? error.stack : undefined,
+    fullError: error,
+  });
 
   if (message.includes('not found')) {
     return NextResponse.json({ error: message }, { status: 404 });
@@ -473,9 +478,16 @@ export function handleRBACError(error: unknown): NextResponse {
     return NextResponse.json({ error: message }, { status: 401 });
   }
 
-  // Generic error
+  // Generic error - include details in development mode
+  const isDevelopment = process.env.NODE_ENV === 'development';
   return NextResponse.json(
-    { error: 'Access control error' },
+    {
+      error: 'Access control error',
+      ...(isDevelopment && {
+        details: message,
+        stack: error instanceof Error ? error.stack : undefined,
+      }),
+    },
     { status: 500 },
   );
 }

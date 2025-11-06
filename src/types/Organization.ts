@@ -13,6 +13,7 @@ export type AuthenticatedUser = {
   email: string | null;
   emailVerified: boolean;
   role: 'super_admin' | 'org_admin' | 'therapist' | 'patient';
+  status: 'invited' | 'pending_approval' | 'active' | 'inactive';
 };
 
 // ============================================================================

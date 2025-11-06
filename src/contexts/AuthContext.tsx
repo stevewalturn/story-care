@@ -24,7 +24,7 @@ export type DbUser = {
   emailVerified: boolean;
   role: 'super_admin' | 'org_admin' | 'therapist' | 'patient';
   organizationId: string | null;
-  status?: 'pending_approval' | 'active' | 'inactive';
+  status?: 'invited' | 'pending_approval' | 'active' | 'inactive';
 };
 
 type AuthContextType = {
@@ -139,8 +139,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const data = await response.json();
             setDbUser(data.user);
 
-            // Handle pending approval users
-            if (data.user.status === 'pending_approval') {
+            // Handle invited users (pre-created, first sign-in)
+            if (data.user.status === 'invited') {
+              // Invited users are automatically activated on first sign-in
+              // The /api/auth/me endpoint should handle this automatically
+              // No redirect needed - they proceed to dashboard
+            }
+            // Handle pending approval users (self-signup)
+            else if (data.user.status === 'pending_approval') {
               router.push('/pending-approval');
             }
             // Handle inactive users

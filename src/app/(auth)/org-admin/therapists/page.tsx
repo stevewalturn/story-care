@@ -35,7 +35,7 @@ export default function TherapistsPage() {
   const fetchTherapists = async () => {
     try {
       const idToken = await user?.getIdToken();
-      const response = await fetch('/api/patients?role=therapist', {
+      const response = await fetch('/api/therapists', {
         headers: {
           Authorization: `Bearer ${idToken}`,
         },
@@ -43,7 +43,7 @@ export default function TherapistsPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setTherapists(data.patients || []);
+        setTherapists(data.therapists || []);
       }
     } catch (err) {
       console.error(err);

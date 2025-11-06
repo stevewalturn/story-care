@@ -44,19 +44,58 @@ export async function verifyIdToken(token: string) {
     const decodedToken = await adminAuth.verifyIdToken(token);
 
     // 2. Fetch user's role from database (NOT from Firebase custom claims)
-    const dbUser = await db.query.users.findFirst({
+    let dbUser = await db.query.users.findFirst({
       where: eq(users.firebaseUid, decodedToken.uid),
       columns: {
         id: true,
         role: true,
         organizationId: true,
         firebaseUid: true,
+        status: true,
       },
     });
 
-    // 3. If user doesn't exist in database, they haven't completed onboarding
+    // 3. If user doesn't exist by Firebase UID, check if they're an invited user (by email)
+    if (!dbUser && decodedToken.email) {
+      const invitedUser = await db.query.users.findFirst({
+        where: (users, { and, eq, isNull }) => and(
+          eq(users.email, decodedToken.email!),
+          isNull(users.firebaseUid)
+        ),
+        columns: {
+          id: true,
+          role: true,
+          organizationId: true,
+          firebaseUid: true,
+          status: true,
+        },
+      });
+
+      // If invited user found, link their Firebase account and activate
+      if (invitedUser && invitedUser.status === 'invited') {
+        const [updatedUser] = await db
+          .update(users)
+          .set({
+            firebaseUid: decodedToken.uid,
+            status: 'active', // Automatically activate invited users
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, invitedUser.id))
+          .returning({
+            id: true,
+            role: true,
+            organizationId: true,
+            firebaseUid: true,
+            status: true,
+          });
+
+        dbUser = updatedUser;
+      }
+    }
+
+    // 4. If user still doesn't exist, they haven't been invited or signed up
     if (!dbUser) {
-      throw new Error('User not found in database. Please complete registration.');
+      throw new Error('User not found in database. Please complete registration or contact your administrator.');
     }
 
     return {
@@ -66,6 +105,7 @@ export async function verifyIdToken(token: string) {
       email: decodedToken.email || null,
       emailVerified: decodedToken.email_verified || false,
       role: dbUser.role as 'super_admin' | 'org_admin' | 'therapist' | 'patient',
+      status: dbUser.status as 'invited' | 'pending_approval' | 'active' | 'inactive',
     };
   } catch (error) {
     console.error('Token verification failed:', error);

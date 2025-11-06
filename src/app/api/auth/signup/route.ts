@@ -1,147 +1,168 @@
 /**
- * Self-Signup API
- * Users can signup with organization code
- * Creates pending user awaiting org admin approval
+ * Organization Creation API
+ * Creates a new organization with the first org admin
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { completeRegistrationSchema } from '@/validations/AuthValidation';
+import { z } from 'zod';
 import { db } from '@/libs/DB';
-import { users } from '@/models/Schema';
+import { organizationsSchema, users } from '@/models/Schema';
+import { generateJoinCode } from '@/services/OrganizationService';
+
+// Validation schema for organization creation
+const createOrganizationSchema = z.object({
+  firebaseUid: z.string().min(1, 'Firebase UID is required'),
+  email: z.string().email('Invalid email address'),
+  adminName: z.string().min(1, 'Admin name is required'),
+  organizationName: z.string().min(1, 'Organization name is required'),
+  contactEmail: z.string().email('Invalid contact email'),
+});
 
 /**
- * POST /api/auth/signup - Self-signup with organization code
+ * POST /api/auth/signup - Create new organization with org admin
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const validated = completeRegistrationSchema.parse(body);
+    const validated = createOrganizationSchema.parse(body);
 
-    // Verify Firebase UID doesn't already exist
-    const existingUserByFirebase = await db.query.users.findFirst({
+    // Check if Firebase UID already exists
+    const existingUser = await db.query.users.findFirst({
       where: (users, { eq }) => eq(users.firebaseUid, validated.firebaseUid),
     });
 
-    if (existingUserByFirebase) {
+    if (existingUser) {
       return NextResponse.json(
         { error: 'User already exists' },
         { status: 400 },
       );
     }
 
-    // Check for existing user by email in organization
-    const existingUserByEmail = await db.query.users.findFirst({
-      where: (users, { and, eq }) => and(
-        eq(users.email, validated.email),
-        eq(users.organizationId, validated.organizationId)
-      ),
+    // Check if email already exists
+    const existingEmail = await db.query.users.findFirst({
+      where: (users, { eq }) => eq(users.email, validated.email),
     });
 
-    // Verify organization exists and is active
-    const org = await db.query.organizations.findFirst({
-      where: (orgs, { eq }) => eq(orgs.id, validated.organizationId),
-    });
-
-    if (!org) {
+    if (existingEmail) {
       return NextResponse.json(
-        { error: 'Organization not found' },
-        { status: 404 },
-      );
-    }
-
-    if (org.status !== 'active') {
-      return NextResponse.json(
-        { error: 'Organization is not active' },
+        { error: 'Email already registered' },
         { status: 400 },
       );
     }
 
-    // If user exists by email, update instead of creating new
-    if (existingUserByEmail) {
-      // User already has Firebase account linked
-      if (existingUserByEmail.firebaseUid !== null) {
-        return NextResponse.json(
-          { error: 'This email is already registered with a Firebase account' },
-          { status: 409 },
-        );
+    // Generate unique join code
+    let joinCode = generateJoinCode();
+    let isUnique = false;
+
+    while (!isUnique) {
+      const existing = await db.query.organizations.findFirst({
+        where: (orgs, { eq }) => eq(orgs.joinCode, joinCode),
+      });
+
+      if (!existing) {
+        isUnique = true;
+      } else {
+        joinCode = generateJoinCode();
       }
-
-      // Update pre-created user with Firebase UID
-      const autoApprove = existingUserByEmail.role === 'org_admin';
-
-      const updatedUsers = await db
-        .update(users)
-        .set({
-          firebaseUid: validated.firebaseUid,
-          name: validated.name,
-          status: autoApprove ? 'active' : 'pending_approval',
-          updatedAt: new Date(),
-        })
-        .where((u, { eq }) => eq(u.id, existingUserByEmail.id))
-        .returning();
-
-      if (!Array.isArray(updatedUsers) || updatedUsers.length === 0) {
-        throw new Error('Failed to update user');
-      }
-
-      const updatedUser = updatedUsers[0];
-
-      return NextResponse.json(
-        {
-          success: true,
-          userId: updatedUser.id,
-          status: updatedUser.status,
-          autoApproved: autoApprove,
-          message: autoApprove
-            ? 'Welcome! Your account has been automatically approved as organization administrator'
-            : 'Your registration is pending approval from your organization admin',
-        },
-        { status: 200 },
-      );
     }
 
-    // Create new pending user
-    const newUsers = await db
-      .insert(users)
+    // Generate slug from organization name
+    const slug = validated.organizationName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    // Default organization settings
+    const defaultSettings = {
+      subscriptionTier: 'basic',
+      features: {
+        maxTherapists: 5,
+        maxPatients: 50,
+        aiCreditsPerMonth: 1000,
+        storageGB: 10,
+      },
+      defaults: {
+        reflectionQuestions: [],
+        surveyTemplate: null,
+        sessionTranscriptionEnabled: true,
+      },
+      branding: {
+        welcomeMessage: null,
+        supportEmail: validated.contactEmail,
+      },
+    };
+
+    // Create organization
+    const [organization] = await db
+      .insert(organizationsSchema)
       .values({
-        firebaseUid: validated.firebaseUid,
-        name: validated.name,
-        email: validated.email,
-        organizationId: validated.organizationId,
-        role: validated.role,
-        status: 'pending_approval',
+        name: validated.organizationName,
+        slug,
+        contactEmail: validated.contactEmail,
+        logoUrl: null,
+        primaryColor: null,
+        joinCode,
+        joinCodeEnabled: true,
+        settings: defaultSettings,
+        status: 'active',
+        createdBy: null, // Will be updated after admin is created
         createdAt: new Date(),
         updatedAt: new Date(),
       })
       .returning();
 
-    if (!Array.isArray(newUsers) || newUsers.length === 0) {
-      throw new Error('Failed to create user');
+    if (!organization) {
+      throw new Error('Failed to create organization');
     }
 
-    const newUser = newUsers[0];
+    // Create org admin user
+    const [adminUser] = await db
+      .insert(users)
+      .values({
+        firebaseUid: validated.firebaseUid,
+        email: validated.email,
+        name: validated.adminName,
+        role: 'org_admin',
+        organizationId: organization.id,
+        status: 'active', // Immediately active since they're creating the org
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
 
-    // TODO: Send notification to org admin about pending user
-    // TODO: Send confirmation email to user
+    if (!adminUser) {
+      // Rollback: delete the organization
+      await db.delete(organizationsSchema).where((o, { eq }) => eq(o.id, organization.id));
+      throw new Error('Failed to create admin user');
+    }
+
+    // Update organization with createdBy
+    await db
+      .update(organizationsSchema)
+      .set({ createdBy: adminUser.id, updatedAt: new Date() })
+      .where((o, { eq }) => eq(o.id, organization.id));
 
     return NextResponse.json(
       {
         success: true,
-        userId: newUser.id,
-        status: 'pending_approval',
-        autoApproved: false,
-        message: 'Your registration is pending approval from your organization admin',
+        organizationId: organization.id,
+        userId: adminUser.id,
+        joinCode: organization.joinCode,
+        message: 'Organization created successfully',
       },
       { status: 201 },
     );
   } catch (error) {
-    if (error instanceof Error && error.message.includes('validation')) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: error.errors[0]?.message || 'Validation error' },
+        { status: 400 },
+      );
     }
 
-    console.error('Signup error:', error);
+    console.error('Organization creation error:', error);
     return NextResponse.json(
-      { error: 'Failed to complete signup' },
+      { error: 'Failed to create organization' },
       { status: 500 },
     );
   }

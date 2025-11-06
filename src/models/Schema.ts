@@ -27,7 +27,8 @@ export const userRoleEnum = pgEnum('user_role', [
   'patient',
 ]);
 export const userStatusEnum = pgEnum('user_status', [
-  'pending_approval',
+  'invited', // Pre-created by org admin, waiting for first sign-in
+  'pending_approval', // Self-signup, waiting for org admin approval
   'active',
   'inactive',
 ]);
