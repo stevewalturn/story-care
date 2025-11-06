@@ -37,7 +37,8 @@ export async function uploadFile(
   await fileObject.save(file, {
     contentType,
     metadata: {
-      cacheControl: 'public, max-age=31536000',
+      // HIPAA: PHI should not be cached publicly or for long periods
+      cacheControl: makePublic ? 'public, max-age=31536000' : 'private, max-age=3600',
     },
   });
 
