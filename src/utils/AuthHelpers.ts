@@ -14,17 +14,10 @@
 import { NextResponse } from 'next/server';
 
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
+import type { AuthenticatedUser } from '@/types/Organization';
 
-/**
- * User information from verified ID token
- */
-export type AuthenticatedUser = {
-  uid: string; // Firebase UID
-  dbUserId: string; // Database UUID
-  email: string | null;
-  emailVerified: boolean;
-  role: 'therapist' | 'patient' | 'admin';
-};
+// Export the type for backward compatibility
+export type { AuthenticatedUser } from '@/types/Organization';
 
 /**
  * Requires valid authentication token from request
@@ -83,13 +76,13 @@ export async function requireAuth(
  * ```typescript
  * export async function POST(request: Request) {
  *   // Only therapists and admins can create sessions
- *   const user = await requireRole(request, ['therapist', 'admin']);
+ *   const user = await requireRole(request, ['therapist', 'org_admin']);
  * }
  * ```
  */
 export async function requireRole(
   request: Request,
-  allowedRoles: Array<'therapist' | 'patient' | 'admin'>,
+  allowedRoles: Array<'super_admin' | 'org_admin' | 'therapist' | 'patient'>,
 ): Promise<AuthenticatedUser> {
   const user = await requireAuth(request);
 
@@ -103,7 +96,7 @@ export async function requireRole(
 }
 
 /**
- * Requires user to be a therapist or admin
+ * Requires user to be a therapist or org admin
  * Convenience wrapper around requireRole
  *
  * @example
@@ -116,11 +109,11 @@ export async function requireRole(
 export async function requireTherapist(
   request: Request,
 ): Promise<AuthenticatedUser> {
-  return requireRole(request, ['therapist', 'admin']);
+  return requireRole(request, ['therapist', 'org_admin', 'super_admin']);
 }
 
 /**
- * Requires user to be an admin
+ * Requires user to be an org admin or super admin
  * Convenience wrapper around requireRole
  *
  * @example
@@ -133,7 +126,7 @@ export async function requireTherapist(
 export async function requireAdmin(
   request: Request,
 ): Promise<AuthenticatedUser> {
-  return requireRole(request, ['admin']);
+  return requireRole(request, ['org_admin', 'super_admin']);
 }
 
 /**
@@ -213,13 +206,15 @@ export function getClientInfo(request: Request): {
  * Used for HIPAA-compliant patient data access control
  *
  * Rules:
- * - Admins can access any patient
+ * - Super admin can access any patient (with audit logging)
+ * - Org admin can access patients in their organization
  * - Patients can access their own data
  * - Therapists can access their assigned patients only
  *
  * @param user - Authenticated user
  * @param patientId - Patient UUID (database ID)
  * @param patientTherapistId - Therapist UUID (database ID) assigned to patient
+ * @param patientOrgId - Organization ID of the patient
  * @returns True if user has access
  *
  * @example
@@ -229,7 +224,7 @@ export function getClientInfo(request: Request): {
  *   where: eq(users.id, patientId),
  * });
  *
- * if (!canAccessPatient(user, patientId, patient.therapistId)) {
+ * if (!canAccessPatient(user, patientId, patient.therapistId, patient.organizationId)) {
  *   return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
  * }
  * ```
@@ -238,9 +233,15 @@ export function canAccessPatient(
   user: AuthenticatedUser,
   patientId: string,
   patientTherapistId: string | null,
+  patientOrgId?: string | null,
 ): boolean {
-  // Admin can access any patient
-  if (user.role === 'admin') {
+  // Super admin can access any patient
+  if (user.role === 'super_admin') {
+    return true;
+  }
+
+  // Org admin can access patients in their organization
+  if (user.role === 'org_admin' && user.organizationId === patientOrgId) {
     return true;
   }
 
@@ -249,8 +250,12 @@ export function canAccessPatient(
     return true;
   }
 
-  // Therapist can access their assigned patients (compare database UUIDs)
-  if (user.role === 'therapist' && user.dbUserId === patientTherapistId) {
+  // Therapist can access their assigned patients (compare database UUIDs) in same org
+  if (
+    user.role === 'therapist'
+    && user.dbUserId === patientTherapistId
+    && user.organizationId === patientOrgId
+  ) {
     return true;
   }
 

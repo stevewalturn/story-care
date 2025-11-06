@@ -5,16 +5,17 @@
  * This middleware enforces role-based permissions and ensures:
  * 1. Therapists can only access their assigned patients
  * 2. Patients can only access their own data
- * 3. Admins have full access (with audit logging)
+ * 3. Admins have access scoped to their organization (except super_admin)
  * 4. Cross-user data access is prevented
+ * 5. Cross-organization data access is prevented
  */
 
-import type { AuthenticatedUser } from '@/utils/AuthHelpers';
+import type { AuthenticatedUser } from '@/types/Organization';
 import { eq } from 'drizzle-orm';
 
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { users } from '@/models/Schema';
+import { users, auditLogs } from '@/models/Schema';
 import { requireAuth } from '@/utils/AuthHelpers';
 
 /**
@@ -47,8 +48,26 @@ export async function requirePatientAccess(
 ): Promise<AuthenticatedUser> {
   const user = await requireAuth(request);
 
-  // Admin has access to everything
-  if (user.role === 'admin') {
+  // Super admin has access to everything (with audit log)
+  if (user.role === 'super_admin') {
+    const patient = await db.query.users.findFirst({
+      where: eq(users.id, patientId),
+    });
+    if (patient) {
+      await requireSameOrg(user, patient.organizationId, 'patient', patientId);
+    }
+    return user;
+  }
+
+  // Org admin has access to all patients in their org
+  if (user.role === 'org_admin') {
+    const patient = await db.query.users.findFirst({
+      where: eq(users.id, patientId),
+    });
+    if (!patient) {
+      throw new Error('Patient not found');
+    }
+    await requireSameOrg(user, patient.organizationId, 'patient', patientId);
     return user;
   }
 
@@ -57,7 +76,7 @@ export async function requirePatientAccess(
     return user;
   }
 
-  // Therapist - check if patient is assigned to them
+  // Therapist - check if patient is assigned to them AND in same org
   if (user.role === 'therapist') {
     const patient = await db.query.users.findFirst({
       where: eq(users.id, patientId),
@@ -66,6 +85,9 @@ export async function requirePatientAccess(
     if (!patient) {
       throw new Error('Patient not found');
     }
+
+    // Check org boundary
+    await requireSameOrg(user, patient.organizationId, 'patient', patientId);
 
     if (patient.therapistId === user.dbUserId) {
       return user;
@@ -102,11 +124,6 @@ export async function requireSessionAccess(
 ): Promise<AuthenticatedUser> {
   const user = await requireAuth(request);
 
-  // Admin has access to everything
-  if (user.role === 'admin') {
-    return user;
-  }
-
   // Get the session to check ownership
   const session = await db.query.sessions.findFirst({
     where: (sessions, { eq }) => eq(sessions.id, sessionId),
@@ -114,6 +131,30 @@ export async function requireSessionAccess(
 
   if (!session) {
     throw new Error('Session not found');
+  }
+
+  // Super admin has access to everything (with audit log)
+  if (user.role === 'super_admin') {
+    // Get therapist to find organization
+    const therapist = await db.query.users.findFirst({
+      where: eq(users.id, session.therapistId),
+    });
+    if (therapist) {
+      await requireSameOrg(user, therapist.organizationId, 'session', sessionId);
+    }
+    return user;
+  }
+
+  // Org admin has access to all sessions in their org
+  if (user.role === 'org_admin') {
+    const therapist = await db.query.users.findFirst({
+      where: eq(users.id, session.therapistId),
+    });
+    if (!therapist) {
+      throw new Error('Session therapist not found');
+    }
+    await requireSameOrg(user, therapist.organizationId, 'session', sessionId);
+    return user;
   }
 
   // Therapist accessing their own session
@@ -162,11 +203,6 @@ export async function requireMediaAccess(
 ): Promise<AuthenticatedUser> {
   const user = await requireAuth(request);
 
-  // Admin has access to everything
-  if (user.role === 'admin') {
-    return user;
-  }
-
   // Get the media to check ownership
   const media = await db.query.mediaLibrary.findFirst({
     where: (mediaLibrary, { eq }) => eq(mediaLibrary.id, mediaId),
@@ -174,6 +210,30 @@ export async function requireMediaAccess(
 
   if (!media) {
     throw new Error('Media not found');
+  }
+
+  // Super admin has access to everything (with audit log)
+  if (user.role === 'super_admin') {
+    // Get patient to find organization
+    const patient = await db.query.users.findFirst({
+      where: eq(users.id, media.patientId),
+    });
+    if (patient) {
+      await requireSameOrg(user, patient.organizationId, 'media', mediaId);
+    }
+    return user;
+  }
+
+  // Org admin has access to all media in their org
+  if (user.role === 'org_admin') {
+    const patient = await db.query.users.findFirst({
+      where: eq(users.id, media.patientId),
+    });
+    if (!patient) {
+      throw new Error('Media patient not found');
+    }
+    await requireSameOrg(user, patient.organizationId, 'media', mediaId);
+    return user;
   }
 
   // Therapist accessing media they created
@@ -192,8 +252,12 @@ export async function requireMediaAccess(
       where: eq(users.id, media.patientId),
     });
 
-    if (patient?.therapistId === user.dbUserId) {
-      return user;
+    // Check org boundary
+    if (patient) {
+      await requireSameOrg(user, patient.organizationId, 'media', mediaId);
+      if (patient.therapistId === user.dbUserId) {
+        return user;
+      }
     }
   }
 
@@ -214,11 +278,6 @@ export async function requireStoryPageAccess(
 ): Promise<AuthenticatedUser> {
   const user = await requireAuth(request);
 
-  // Admin has access to everything
-  if (user.role === 'admin') {
-    return user;
-  }
-
   // Get the page to check ownership
   const page = await db.query.storyPages.findFirst({
     where: (storyPages, { eq }) => eq(storyPages.id, pageId),
@@ -226,6 +285,30 @@ export async function requireStoryPageAccess(
 
   if (!page) {
     throw new Error('Story page not found');
+  }
+
+  // Super admin has access to everything (with audit log)
+  if (user.role === 'super_admin') {
+    // Get patient to find organization
+    const patient = await db.query.users.findFirst({
+      where: eq(users.id, page.patientId),
+    });
+    if (patient) {
+      await requireSameOrg(user, patient.organizationId, 'story_page', pageId);
+    }
+    return user;
+  }
+
+  // Org admin has access to all story pages in their org
+  if (user.role === 'org_admin') {
+    const patient = await db.query.users.findFirst({
+      where: eq(users.id, page.patientId),
+    });
+    if (!patient) {
+      throw new Error('Story page patient not found');
+    }
+    await requireSameOrg(user, patient.organizationId, 'story_page', pageId);
+    return user;
   }
 
   // Therapist accessing page they created
@@ -259,11 +342,6 @@ export async function requireGroupAccess(
 ): Promise<AuthenticatedUser> {
   const user = await requireAuth(request);
 
-  // Admin has access to everything
-  if (user.role === 'admin') {
-    return user;
-  }
-
   // Get the group to check ownership
   const group = await db.query.groups.findFirst({
     where: (groups, { eq }) => eq(groups.id, groupId),
@@ -271,6 +349,18 @@ export async function requireGroupAccess(
 
   if (!group) {
     throw new Error('Group not found');
+  }
+
+  // Super admin has access to everything (with audit log)
+  if (user.role === 'super_admin') {
+    await requireSameOrg(user, group.organizationId, 'group', groupId);
+    return user;
+  }
+
+  // Org admin has access to all groups in their org
+  if (user.role === 'org_admin') {
+    await requireSameOrg(user, group.organizationId, 'group', groupId);
+    return user;
   }
 
   // Therapist accessing their own group
@@ -310,17 +400,7 @@ export async function canCreateForPatient(
   user: AuthenticatedUser,
   patientId: string,
 ): Promise<boolean> {
-  // Admin can create for anyone
-  if (user.role === 'admin') {
-    return true;
-  }
-
-  // Only therapists can create for patients
-  if (user.role !== 'therapist') {
-    throw new Error('Forbidden: Only therapists can create patient resources');
-  }
-
-  // Check if patient is assigned to this therapist
+  // Get patient to check organization
   const patient = await db.query.users.findFirst({
     where: eq(users.id, patientId),
   });
@@ -329,6 +409,27 @@ export async function canCreateForPatient(
     throw new Error('Patient not found');
   }
 
+  // Super admin can create for anyone (with audit log)
+  if (user.role === 'super_admin') {
+    await requireSameOrg(user, patient.organizationId, 'patient', patientId);
+    return true;
+  }
+
+  // Org admin can create for any patient in their org
+  if (user.role === 'org_admin') {
+    await requireSameOrg(user, patient.organizationId, 'patient', patientId);
+    return true;
+  }
+
+  // Only therapists can create for patients
+  if (user.role !== 'therapist') {
+    throw new Error('Forbidden: Only therapists can create patient resources');
+  }
+
+  // Check org boundary
+  await requireSameOrg(user, patient.organizationId, 'patient', patientId);
+
+  // Check if patient is assigned to this therapist
   if (patient.therapistId !== user.dbUserId) {
     throw new Error(
       'Forbidden: You can only create resources for your assigned patients',
@@ -374,4 +475,230 @@ export function handleRBACError(error: unknown): NextResponse {
     { error: 'Access control error' },
     { status: 500 },
   );
+}
+
+// ============================================================================
+// ORGANIZATION MULTI-TENANCY RBAC
+// ============================================================================
+
+/**
+ * Verifies resource belongs to same organization as user
+ * Super admin bypasses this check but access is logged
+ *
+ * @param user - Authenticated user
+ * @param resourceOrgId - Organization ID of the resource
+ * @param resourceType - Type of resource being accessed (for audit log)
+ * @param resourceId - ID of resource being accessed (for audit log)
+ * @returns void if access granted
+ * @throws Error if access denied
+ *
+ * @example
+ * ```typescript
+ * const user = await requireAuth(request);
+ * await requireSameOrg(user, patient.organizationId, 'patient', patientId);
+ * ```
+ */
+export async function requireSameOrg(
+  user: AuthenticatedUser,
+  resourceOrgId: string | null,
+  resourceType: string,
+  resourceId: string,
+): Promise<void> {
+  // Super admin bypass (with audit logging)
+  if (user.role === 'super_admin') {
+    await db.insert(auditLogs).values({
+      userId: user.dbUserId,
+      organizationId: resourceOrgId,
+      action: 'read',
+      resourceType,
+      resourceId,
+      metadata: {
+        note: 'Super admin cross-org access',
+        userRole: 'super_admin',
+      },
+      timestamp: new Date(),
+    });
+    return;
+  }
+
+  // Org boundary check
+  if (user.organizationId !== resourceOrgId) {
+    // Log violation attempt
+    await db.insert(auditLogs).values({
+      userId: user.dbUserId,
+      organizationId: user.organizationId,
+      action: 'read',
+      resourceType,
+      resourceId,
+      metadata: {
+        note: 'Organization boundary violation attempt',
+        attemptedOrgId: resourceOrgId,
+        blocked: true,
+      },
+      timestamp: new Date(),
+    });
+
+    throw new Error(
+      'Forbidden: Cannot access resource from different organization',
+    );
+  }
+}
+
+/**
+ * Requires user to be an organization admin or super admin
+ *
+ * @param request - Next.js request
+ * @returns Authenticated user if authorized
+ * @throws Error if not authorized
+ *
+ * @example
+ * ```typescript
+ * export async function POST(request: Request) {
+ *   const user = await requireOrgAdmin(request);
+ *   // User is org_admin or super_admin
+ * }
+ * ```
+ */
+export async function requireOrgAdmin(
+  request: Request,
+): Promise<AuthenticatedUser> {
+  const user = await requireAuth(request);
+
+  if (user.role !== 'org_admin' && user.role !== 'super_admin') {
+    throw new Error('Forbidden: Organization admin role required');
+  }
+
+  return user;
+}
+
+/**
+ * Requires user to be a super admin
+ *
+ * @param request - Next.js request
+ * @returns Authenticated user if authorized
+ * @throws Error if not authorized
+ *
+ * @example
+ * ```typescript
+ * export async function POST(request: Request) {
+ *   const user = await requireSuperAdmin(request);
+ *   // User is super_admin
+ * }
+ * ```
+ */
+export async function requireSuperAdmin(
+  request: Request,
+): Promise<AuthenticatedUser> {
+  const user = await requireAuth(request);
+
+  if (user.role !== 'super_admin') {
+    throw new Error('Forbidden: Super admin role required');
+  }
+
+  return user;
+}
+
+/**
+ * Verifies user can access pending users in their organization
+ *
+ * @param request - Next.js request
+ * @param pendingUserId - Pending user ID to check
+ * @returns Authenticated user if authorized
+ * @throws Error if not authorized
+ */
+export async function requirePendingUserAccess(
+  request: Request,
+  pendingUserId: string,
+): Promise<AuthenticatedUser> {
+  const user = await requireOrgAdmin(request);
+
+  // Get pending user to check organization
+  const pendingUser = await db.query.users.findFirst({
+    where: eq(users.id, pendingUserId),
+  });
+
+  if (!pendingUser) {
+    throw new Error('Pending user not found');
+  }
+
+  // Check org boundary
+  await requireSameOrg(
+    user,
+    pendingUser.organizationId,
+    'pending_user',
+    pendingUserId,
+  );
+
+  return user;
+}
+
+/**
+ * Verifies user can change another user's role
+ * Only super admin can change roles
+ *
+ * @param request - Next.js request
+ * @param targetUserId - User whose role will be changed
+ * @returns Authenticated user if authorized
+ * @throws Error if not authorized
+ */
+export async function canChangeUserRole(
+  request: Request,
+  targetUserId: string,
+): Promise<AuthenticatedUser> {
+  const user = await requireSuperAdmin(request);
+
+  // Get target user
+  const targetUser = await db.query.users.findFirst({
+    where: eq(users.id, targetUserId),
+  });
+
+  if (!targetUser) {
+    throw new Error('Target user not found');
+  }
+
+  // Cannot change super_admin role
+  if (targetUser.role === 'super_admin') {
+    throw new Error('Forbidden: Cannot change super admin role');
+  }
+
+  return user;
+}
+
+/**
+ * Verifies user can approve a pending user
+ *
+ * @param request - Next.js request
+ * @param pendingUserId - Pending user ID
+ * @returns Authenticated user if authorized
+ * @throws Error if not authorized
+ */
+export async function canApproveUser(
+  request: Request,
+  pendingUserId: string,
+): Promise<AuthenticatedUser> {
+  const user = await requireOrgAdmin(request);
+
+  // Get pending user
+  const pendingUser = await db.query.users.findFirst({
+    where: eq(users.id, pendingUserId),
+  });
+
+  if (!pendingUser) {
+    throw new Error('Pending user not found');
+  }
+
+  // Check status
+  if (pendingUser.status !== 'pending_approval') {
+    throw new Error('User is not pending approval');
+  }
+
+  // Check org boundary
+  await requireSameOrg(
+    user,
+    pendingUser.organizationId,
+    'pending_user',
+    pendingUserId,
+  );
+
+  return user;
 }
