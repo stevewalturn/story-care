@@ -6,7 +6,7 @@
 'use client';
 
 import { Activity, Building2, TrendingUp, Users } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -24,7 +24,7 @@ export default function SuperAdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = useCallback(async () => {
     try {
       const idToken = await user?.getIdToken();
       const response = await fetch('/api/super-admin/metrics', {
@@ -45,7 +45,7 @@ export default function SuperAdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     if (user && dbUser?.role === 'super_admin') {

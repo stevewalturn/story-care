@@ -6,7 +6,7 @@
 'use client';
 
 import { AlertCircle, Building2, Calendar, CheckCircle, Plus, XCircle } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -27,7 +27,7 @@ export default function OrganizationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const fetchOrganizations = async () => {
+  const fetchOrganizations = useCallback(async () => {
     try {
       const idToken = await user?.getIdToken();
       const response = await fetch('/api/organizations', {
@@ -48,7 +48,7 @@ export default function OrganizationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     if (user) {
