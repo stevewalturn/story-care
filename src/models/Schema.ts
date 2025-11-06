@@ -834,6 +834,37 @@ export const auditLogsSchema = pgTable('audit_logs', {
 });
 
 // ============================================================================
+// PLATFORM SETTINGS (Super Admin)
+// ============================================================================
+
+export const platformSettingsSchema = pgTable('platform_settings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  // General Settings
+  platformName: varchar('platform_name', { length: 255 }).notNull().default('StoryCare'),
+  supportEmail: varchar('support_email', { length: 255 }).notNull(),
+  defaultTrialDuration: integer('default_trial_duration').notNull().default(30), // days
+
+  // AI Configuration
+  defaultAiCredits: integer('default_ai_credits').notNull().default(1000),
+  openaiModel: varchar('openai_model', { length: 50 }).notNull().default('gpt-4'),
+  imageGenModel: varchar('image_gen_model', { length: 50 }).notNull().default('dall-e-3'),
+
+  // Storage Configuration
+  defaultStorageQuota: bigint('default_storage_quota', { mode: 'number' }).notNull().default(10737418240), // 10GB in bytes
+  maxFileUploadSize: bigint('max_file_upload_size', { mode: 'number' }).notNull().default(524288000), // 500MB in bytes
+
+  // Security Settings
+  requireEmailVerification: boolean('require_email_verification').notNull().default(true),
+  enableMfaForAdmins: boolean('enable_mfa_for_admins').notNull().default(true),
+  sessionTimeout: integer('session_timeout').notNull().default(15), // minutes
+
+  // Metadata
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  updatedBy: uuid('updated_by').references(() => usersSchema.id),
+});
+
+// ============================================================================
 // ENGAGEMENT TRACKING
 // ============================================================================
 
@@ -891,6 +922,7 @@ export const reflectionResponses = reflectionResponsesSchema;
 export const surveyResponses = surveyResponsesSchema;
 export const patientPageInteractions = patientPageInteractionsSchema;
 export const auditLogs = auditLogsSchema;
+export const platformSettings = platformSettingsSchema;
 
 // ============================================================================
 // EXPORTS (for type inference)
@@ -964,3 +996,6 @@ export type NewPatientPageInteraction = typeof patientPageInteractionsSchema.$in
 
 export type AuditLog = typeof auditLogsSchema.$inferSelect;
 export type NewAuditLog = typeof auditLogsSchema.$inferInsert;
+
+export type PlatformSettings = typeof platformSettingsSchema.$inferSelect;
+export type NewPlatformSettings = typeof platformSettingsSchema.$inferInsert;
