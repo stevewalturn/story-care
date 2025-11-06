@@ -2,6 +2,7 @@
 
 import { CheckSquare, FileText, MessageCircle, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
@@ -14,9 +15,24 @@ interface DashboardStats {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, dbUser, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Redirect non-therapists to their role-specific dashboard
+  useEffect(() => {
+    if (!authLoading && dbUser?.role) {
+      if (dbUser.role === 'super_admin') {
+        router.push('/super-admin/dashboard');
+      } else if (dbUser.role === 'org_admin') {
+        router.push('/org-admin/dashboard');
+      } else if (dbUser.role === 'patient') {
+        router.push('/patient/story');
+      }
+      // Therapists stay on this page
+    }
+  }, [dbUser, authLoading, router]);
 
   // Fetch dashboard stats when user is available
   useEffect(() => {

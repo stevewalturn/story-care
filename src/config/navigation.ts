@@ -83,7 +83,7 @@ export const navigationConfig: NavigationConfig = {
   org_admin: [
     {
       name: 'Dashboard',
-      href: '/dashboard',
+      href: '/org-admin/dashboard',
       icon: LayoutDashboard,
       description: 'Organization overview',
     },
