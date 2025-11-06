@@ -3,38 +3,37 @@
  * Role-based menu items for different user types
  */
 
+import type { LucideIcon } from 'lucide-react';
 import {
-  LayoutDashboard,
-  Users,
-  Building2,
-  FileText,
-  Activity,
-  Settings,
-  UserCheck,
   BookOpen,
+  Building2,
+  ClipboardList,
+  FileText,
+  Film,
   Folder,
   Image,
-  Film,
+  LayoutDashboard,
   Library,
   MessageSquare,
-  ClipboardList,
+  Settings,
+  UserCheck,
+  Users,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 
-export interface NavItem {
+export type NavItem = {
   name: string;
   href: string;
   icon: LucideIcon;
   badge?: string; // For showing counts (e.g., pending users)
   description?: string;
-}
+};
 
-export interface NavigationConfig {
+export type NavigationConfig = {
   super_admin: NavItem[];
   org_admin: NavItem[];
   therapist: NavItem[];
   patient: NavItem[];
-}
+};
 
 /**
  * Navigation menu configuration by role
@@ -62,12 +61,6 @@ export const navigationConfig: NavigationConfig = {
       href: '/super-admin/users',
       icon: Users,
       description: 'User management across organizations',
-    },
-    {
-      name: 'System Metrics',
-      href: '/super-admin/metrics',
-      icon: Activity,
-      description: 'System performance and usage',
     },
     {
       name: 'Audit Logs',
@@ -230,5 +223,5 @@ export function canAccessRoute(
   path: string,
 ): boolean {
   const navItems = getNavigationForRole(role);
-  return navItems.some((item) => path.startsWith(item.href));
+  return navItems.some(item => path.startsWith(item.href));
 }
