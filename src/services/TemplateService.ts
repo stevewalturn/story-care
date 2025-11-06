@@ -3,7 +3,7 @@
  * Business logic for template management
  */
 
-import { eq, and, or, desc, count } from 'drizzle-orm';
+import { eq, and, or, desc } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import {
   surveyTemplatesSchema,

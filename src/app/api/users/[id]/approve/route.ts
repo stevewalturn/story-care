@@ -19,7 +19,7 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const user = await canApproveUser(request, id);
+    await canApproveUser(request, id);
 
     const body = await request.json();
     const validated = approveUserSchema.parse(body);

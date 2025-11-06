@@ -10,13 +10,10 @@ import {
 } from '@/middleware/RBACMiddleware';
 import {
   createOrganizationSchema,
-  verifyOrgCodeSchema,
 } from '@/validations/OrganizationValidation';
 import {
   createOrganization,
   listOrganizations,
-  verifyJoinCode,
-  getPlatformMetrics,
 } from '@/services/OrganizationService';
 
 /**
@@ -24,7 +21,7 @@ import {
  */
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireSuperAdmin(request);
+    await requireSuperAdmin(request);
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') as

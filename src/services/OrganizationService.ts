@@ -9,7 +9,6 @@ import {
   organizationsSchema,
   users,
   sessions,
-  auditLogsSchema,
 } from '@/models/Schema';
 import type { OrganizationSettings } from '@/types/Organization';
 
@@ -147,7 +146,7 @@ export async function getOrganizationWithMetrics(organizationId: string) {
   }
 
   // Count therapists
-  const [{ count: therapistCount }] = await db
+  const therapistResult = await db
     .select({ count: count() })
     .from(users)
     .where(
@@ -156,9 +155,10 @@ export async function getOrganizationWithMetrics(organizationId: string) {
         eq(users.role, 'therapist'),
       ),
     );
+  const therapistCount = Number(therapistResult[0]?.count || 0);
 
   // Count active therapists
-  const [{ count: activeTherapistCount }] = await db
+  const activeTherapistResult = await db
     .select({ count: count() })
     .from(users)
     .where(
@@ -168,9 +168,10 @@ export async function getOrganizationWithMetrics(organizationId: string) {
         eq(users.status, 'active'),
       ),
     );
+  const activeTherapistCount = Number(activeTherapistResult[0]?.count || 0);
 
   // Count patients
-  const [{ count: patientCount }] = await db
+  const patientResult = await db
     .select({ count: count() })
     .from(users)
     .where(
@@ -179,9 +180,10 @@ export async function getOrganizationWithMetrics(organizationId: string) {
         eq(users.role, 'patient'),
       ),
     );
+  const patientCount = Number(patientResult[0]?.count || 0);
 
   // Count active patients
-  const [{ count: activePatientCount }] = await db
+  const activePatientResult = await db
     .select({ count: count() })
     .from(users)
     .where(
@@ -191,6 +193,7 @@ export async function getOrganizationWithMetrics(organizationId: string) {
         eq(users.status, 'active'),
       ),
     );
+  const activePatientCount = Number(activePatientResult[0]?.count || 0);
 
   // Count total sessions
   const therapists = await db
@@ -205,7 +208,7 @@ export async function getOrganizationWithMetrics(organizationId: string) {
 
   const therapistIds = therapists.map((t) => t.id);
 
-  const [{ count: totalSessions }] = await db
+  const totalSessionsResult = await db
     .select({ count: count() })
     .from(sessions)
     .where(
@@ -216,10 +219,11 @@ export async function getOrganizationWithMetrics(organizationId: string) {
           )
         : eq(sessions.id, ''), // No sessions if no therapists
     );
+  const totalSessions = Number(totalSessionsResult[0]?.count || 0);
 
   // Count sessions in last 30 days
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const [{ count: sessionsLast30Days }] = await db
+  // TODO: Add date filter using thirtyDaysAgo
+  const sessionsLast30DaysResult = await db
     .select({ count: count() })
     .from(sessions)
     .where(
@@ -230,6 +234,7 @@ export async function getOrganizationWithMetrics(organizationId: string) {
           )
         : eq(sessions.id, ''),
     );
+  const sessionsLast30Days = Number(sessionsLast30DaysResult[0]?.count || 0);
 
   return {
     ...organization,
@@ -279,9 +284,10 @@ export async function listOrganizations(params?: {
           .limit(limit)
           .offset(offset);
 
-  const [{ count: total }] = await db
+  const totalResult = await db
     .select({ count: count() })
     .from(organizationsSchema);
+  const total = Number(totalResult[0]?.count || 0);
 
   return {
     organizations: organizationsList,
@@ -412,24 +418,28 @@ export async function toggleJoinCode(
  * Get platform-wide metrics (Super Admin dashboard)
  */
 export async function getPlatformMetrics() {
-  const [{ count: totalOrganizations }] = await db
+  const totalOrgsResult = await db
     .select({ count: count() })
     .from(organizationsSchema);
+  const totalOrganizations = Number(totalOrgsResult[0]?.count || 0);
 
-  const [{ count: activeOrganizations }] = await db
+  const activeOrgsResult = await db
     .select({ count: count() })
     .from(organizationsSchema)
     .where(eq(organizationsSchema.status, 'active'));
+  const activeOrganizations = Number(activeOrgsResult[0]?.count || 0);
 
-  const [{ count: totalTherapists }] = await db
+  const totalTherapistsResult = await db
     .select({ count: count() })
     .from(users)
     .where(eq(users.role, 'therapist'));
+  const totalTherapists = Number(totalTherapistsResult[0]?.count || 0);
 
-  const [{ count: totalPatients }] = await db
+  const totalPatientsResult = await db
     .select({ count: count() })
     .from(users)
     .where(eq(users.role, 'patient'));
+  const totalPatients = Number(totalPatientsResult[0]?.count || 0);
 
   return {
     totalOrganizations,

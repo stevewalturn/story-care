@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   Users,
   Building2,
-  Shield,
   FileText,
   Activity,
   Settings,

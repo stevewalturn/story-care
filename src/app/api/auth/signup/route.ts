@@ -6,7 +6,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { completeRegistrationSchema } from '@/validations/AuthValidation';
-import { verifyJoinCode } from '@/services/OrganizationService';
 import { db } from '@/libs/DB';
 import { users } from '@/models/Schema';
 
@@ -50,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create pending user
-    const [newUser] = await db
+    const newUsers = await db
       .insert(users)
       .values({
         firebaseUid: validated.firebaseUid,
@@ -63,6 +62,12 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date(),
       })
       .returning();
+
+    if (!Array.isArray(newUsers) || newUsers.length === 0) {
+      throw new Error('Failed to create user');
+    }
+
+    const newUser = newUsers[0];
 
     // TODO: Send notification to org admin about pending user
     // TODO: Send confirmation email to user

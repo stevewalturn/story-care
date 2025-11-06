@@ -29,7 +29,7 @@ export const questionSchema = z.object({
   type: z.enum(['text', 'multiline', 'rating', 'multiple_choice', 'yes_no']),
   required: z.boolean().default(false),
   options: z.array(z.string()).optional(), // For multiple_choice
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 });
 
 /**
@@ -41,7 +41,7 @@ export const createSurveyTemplateSchema = z.object({
   category: z.enum(['intake', 'progress', 'outcome', 'satisfaction', 'custom']),
   questions: z.array(questionSchema).min(1),
   scope: templateScopeSchema.default('private'),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 });
 
 /**
@@ -53,7 +53,7 @@ export const createReflectionTemplateSchema = z.object({
   category: z.enum(['session', 'daily', 'weekly', 'milestone', 'custom']),
   questions: z.array(questionSchema).min(1),
   scope: templateScopeSchema.default('private'),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 });
 
 /**
@@ -65,7 +65,7 @@ export const updateTemplateSchema = z.object({
   category: z.string().optional(),
   questions: z.array(questionSchema).optional(),
   status: templateStatusSchema.optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 });
 
 /**

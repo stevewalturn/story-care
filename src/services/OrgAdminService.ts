@@ -12,7 +12,7 @@ import { users, sessions } from '@/models/Schema';
  */
 export async function getOrgMetrics(organizationId: string) {
   // Count active therapists
-  const [{ count: activeTherapists }] = await db
+  const therapistResult = await db
     .select({ count: count() })
     .from(users)
     .where(
@@ -22,9 +22,10 @@ export async function getOrgMetrics(organizationId: string) {
         eq(users.status, 'active'),
       ),
     );
+  const activeTherapists = Number(therapistResult[0]?.count || 0);
 
   // Count active patients
-  const [{ count: activePatients }] = await db
+  const patientResult = await db
     .select({ count: count() })
     .from(users)
     .where(
@@ -34,9 +35,10 @@ export async function getOrgMetrics(organizationId: string) {
         eq(users.status, 'active'),
       ),
     );
+  const activePatients = Number(patientResult[0]?.count || 0);
 
   // Count pending users
-  const [{ count: pendingUsers }] = await db
+  const pendingResult = await db
     .select({ count: count() })
     .from(users)
     .where(
@@ -45,6 +47,7 @@ export async function getOrgMetrics(organizationId: string) {
         eq(users.status, 'pending_approval'),
       ),
     );
+  const pendingUsers = Number(pendingResult[0]?.count || 0);
 
   // Count sessions in last 30 days
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -64,7 +67,7 @@ export async function getOrgMetrics(organizationId: string) {
   if (therapistIds.length > 0) {
     const sessionCounts = await Promise.all(
       therapistIds.map(async (therapistId) => {
-        const [{ count: sessionCount }] = await db
+        const result = await db
           .select({ count: count() })
           .from(sessions)
           .where(
@@ -73,10 +76,10 @@ export async function getOrgMetrics(organizationId: string) {
               gte(sessions.createdAt, thirtyDaysAgo),
             ),
           );
-        return sessionCount;
+        return Number(result[0]?.count || 0);
       }),
     );
-    sessionsLast30Days = sessionCounts.reduce((sum, count) => sum + count, 0);
+    sessionsLast30Days = sessionCounts.reduce((sum: number, count: number) => sum + count, 0);
   }
 
   // Count pending template approvals (TODO: when template system is implemented)
