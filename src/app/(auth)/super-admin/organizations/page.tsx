@@ -5,12 +5,12 @@
 
 'use client';
 
+import { AlertCircle, Building2, Calendar, CheckCircle, Plus, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
-import { Plus, Building2, Users, Calendar, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface Organization {
+type Organization = {
   id: string;
   name: string;
   slug: string;
@@ -19,19 +19,13 @@ interface Organization {
   joinCode: string;
   createdAt: string;
   trialEndsAt: string | null;
-}
+};
 
 export default function OrganizationsPage() {
   const { user } = useAuth();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (user) {
-      fetchOrganizations();
-    }
-  }, [user]);
 
   const fetchOrganizations = async () => {
     try {
@@ -55,6 +49,12 @@ export default function OrganizationsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (user) {
+      fetchOrganizations();
+    }
+  }, [user, fetchOrganizations]);
 
   const getStatusBadge = (status: string) => {
     const styles = {
@@ -117,76 +117,78 @@ export default function OrganizationsPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                 Organization
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                 Join Code
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                 Created
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
-            {organizations.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-6 py-12 text-center">
-                  <Building2 className="mx-auto h-12 w-12 text-gray-400" />
-                  <p className="mt-2 text-sm text-gray-500">
-                    No organizations found
-                  </p>
-                </td>
-              </tr>
-            ) : (
-              organizations.map((org) => (
-                <tr key={org.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-100">
-                        <Building2 className="h-5 w-5 text-indigo-600" />
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {org.name}
+            {organizations.length === 0
+              ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center">
+                      <Building2 className="mx-auto h-12 w-12 text-gray-400" />
+                      <p className="mt-2 text-sm text-gray-500">
+                        No organizations found
+                      </p>
+                    </td>
+                  </tr>
+                )
+              : (
+                  organizations.map(org => (
+                    <tr key={org.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-100">
+                            <Building2 className="h-5 w-5 text-indigo-600" />
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                              {org.name}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {org.contactEmail}
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-500">
-                          {org.contactEmail}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(org.status)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <code className="rounded bg-gray-100 px-2 py-1 font-mono text-xs text-gray-700">
+                          {org.joinCode}
+                        </code>
+                      </td>
+                      <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+                        <div className="flex items-center">
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {new Date(org.createdAt).toLocaleDateString()}
                         </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {getStatusBadge(org.status)}
-                  </td>
-                  <td className="px-6 py-4">
-                    <code className="rounded bg-gray-100 px-2 py-1 text-xs font-mono text-gray-700">
-                      {org.joinCode}
-                    </code>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex items-center">
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {new Date(org.createdAt).toLocaleDateString()}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <a
-                      href={`/super-admin/organizations/${org.id}`}
-                      className="text-indigo-600 hover:text-indigo-900"
-                    >
-                      Manage
-                    </a>
-                  </td>
-                </tr>
-              ))
-            )}
+                      </td>
+                      <td className="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
+                        <a
+                          href={`/super-admin/organizations/${org.id}`}
+                          className="text-indigo-600 hover:text-indigo-900"
+                        >
+                          Manage
+                        </a>
+                      </td>
+                    </tr>
+                  ))
+                )}
           </tbody>
         </table>
       </div>

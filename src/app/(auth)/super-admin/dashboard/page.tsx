@@ -5,30 +5,24 @@
 
 'use client';
 
+import { Activity, Building2, TrendingUp, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { MetricCard } from '@/components/dashboard/MetricCard';
-import { Building2, Users, Activity, TrendingUp } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface PlatformMetrics {
+type PlatformMetrics = {
   totalOrganizations: number;
   activeOrganizations: number;
   totalTherapists: number;
   totalPatients: number;
   aiCreditsUsedThisMonth: number;
-}
+};
 
 export default function SuperAdminDashboard() {
   const { user, dbUser } = useAuth();
   const [metrics, setMetrics] = useState<PlatformMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (user && dbUser?.role === 'super_admin') {
-      fetchMetrics();
-    }
-  }, [user, dbUser]);
 
   const fetchMetrics = async () => {
     try {
@@ -52,6 +46,12 @@ export default function SuperAdminDashboard() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (user && dbUser?.role === 'super_admin') {
+      fetchMetrics();
+    }
+  }, [user, dbUser, fetchMetrics]);
 
   if (loading) {
     return (
@@ -84,41 +84,34 @@ export default function SuperAdminDashboard() {
       {/* Metrics Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          title="Total Organizations"
+          label="Total Organizations"
           value={metrics?.totalOrganizations || 0}
-          icon={Building2}
-          trend={
-            metrics?.activeOrganizations
-              ? {
-                  value: Math.round(
-                    ((metrics.activeOrganizations / metrics.totalOrganizations) *
-                      100) ||
-                      0,
-                  ),
-                  label: 'Active',
-                }
-              : undefined
-          }
+          icon={<Building2 className="h-6 w-6" />}
+          iconBg="bg-indigo-50"
+          iconColor="text-indigo-600"
         />
 
         <MetricCard
-          title="Active Organizations"
+          label="Active Organizations"
           value={metrics?.activeOrganizations || 0}
-          icon={Activity}
+          icon={<Activity className="h-6 w-6" />}
+          iconBg="bg-green-50"
           iconColor="text-green-600"
         />
 
         <MetricCard
-          title="Total Therapists"
+          label="Total Therapists"
           value={metrics?.totalTherapists || 0}
-          icon={Users}
+          icon={<Users className="h-6 w-6" />}
+          iconBg="bg-blue-50"
           iconColor="text-blue-600"
         />
 
         <MetricCard
-          title="Total Patients"
+          label="Total Patients"
           value={metrics?.totalPatients || 0}
-          icon={TrendingUp}
+          icon={<TrendingUp className="h-6 w-6" />}
+          iconBg="bg-purple-50"
           iconColor="text-purple-600"
         />
       </div>

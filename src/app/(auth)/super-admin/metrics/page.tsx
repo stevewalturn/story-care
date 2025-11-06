@@ -5,7 +5,7 @@
 
 'use client';
 
-import { Activity, TrendingUp, Database, Zap } from 'lucide-react';
+import { Activity, Database, TrendingUp, Zap } from 'lucide-react';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 
 export default function MetricsPage() {
@@ -26,30 +26,34 @@ export default function MetricsPage() {
         </h2>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <MetricCard
-            title="API Response Time"
+            label="API Response Time"
             value="120ms"
-            icon={Activity}
-            trend={{ value: -5, label: 'vs last week' }}
+            icon={<Activity className="h-6 w-6" />}
+            iconBg="bg-purple-50"
+            iconColor="text-purple-600"
           />
 
           <MetricCard
-            title="Uptime"
+            label="Uptime"
             value="99.9%"
-            icon={TrendingUp}
+            icon={<TrendingUp className="h-6 w-6" />}
+            iconBg="bg-green-50"
             iconColor="text-green-600"
           />
 
           <MetricCard
-            title="Database Size"
+            label="Database Size"
             value="2.4GB"
-            icon={Database}
+            icon={<Database className="h-6 w-6" />}
+            iconBg="bg-blue-50"
             iconColor="text-blue-600"
           />
 
           <MetricCard
-            title="Active Sessions"
+            label="Active Sessions"
             value="1,234"
-            icon={Zap}
+            icon={<Zap className="h-6 w-6" />}
+            iconBg="bg-yellow-50"
             iconColor="text-yellow-600"
           />
         </div>
