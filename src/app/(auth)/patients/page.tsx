@@ -15,21 +15,34 @@ interface Patient {
   sessionCount: number;
   lastSession?: string;
   createdAt: string | Date;
+  therapistId?: string;
+}
+
+interface Therapist {
+  firebaseUid: string;
+  name: string;
+  patientCount: number;
 }
 
 export default function PatientsPage() {
-  const { user } = useAuth();
+  const { user, dbUser } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [therapists, setTherapists] = useState<Therapist[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | undefined>();
+
+  const isOrgAdmin = dbUser?.role === 'org_admin';
 
   // Fetch patients from API when user is available
   useEffect(() => {
     if (user?.uid) {
       fetchPatients();
+      if (isOrgAdmin) {
+        fetchTherapists();
+      }
     }
-  }, [user]);
+  }, [user, isOrgAdmin]);
 
   const fetchPatients = async () => {
     if (!user?.uid) return;
@@ -47,6 +60,22 @@ export default function PatientsPage() {
       console.error('Error fetching patients:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTherapists = async () => {
+    if (!user?.uid) return;
+
+    try {
+      const response = await authenticatedFetch('/api/therapists', user);
+      if (response.ok) {
+        const data = await response.json();
+        setTherapists(data.therapists || []);
+      } else {
+        console.error('Failed to fetch therapists');
+      }
+    } catch (error) {
+      console.error('Error fetching therapists:', error);
     }
   };
 
@@ -73,10 +102,14 @@ export default function PatientsPage() {
           console.error('Failed to update patient');
         }
       } else {
-        // Create new patient - assign to current therapist
+        // Create new patient
+        // For org admins: use selected therapistId from form
+        // For therapists: assign to themselves
+        const therapistId = isOrgAdmin ? patientData.therapistId : user?.uid;
+
         const response = await authenticatedPost('/api/patients', user, {
           ...patientData,
-          therapistId: user?.uid,
+          therapistId,
         });
 
         if (response.ok) {
@@ -129,6 +162,8 @@ export default function PatientsPage() {
         onClose={() => setShowModal(false)}
         onSave={handleSave}
         patient={editingPatient}
+        isOrgAdmin={isOrgAdmin}
+        therapists={therapists}
       />
     </div>
   );

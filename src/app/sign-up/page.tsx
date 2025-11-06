@@ -209,14 +209,14 @@ export default function SignUpPage() {
           )}
 
           {verificationSent && currentStep === 1 && (
-            <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
               <div className="flex items-start">
-                <Mail className="mr-3 h-5 w-5 text-blue-600" />
-                <div className="text-sm text-blue-700">
-                  <p className="font-medium">Verification Email Sent!</p>
+                <Mail className="mr-3 h-5 w-5 text-green-600" />
+                <div className="text-sm text-green-700">
+                  <p className="font-medium">Account Created!</p>
                   <p className="mt-1">
-                    We've sent a verification link to <strong>{email}</strong>.
-                    Please check your inbox and verify your email before continuing.
+                    Your account has been created with <strong>{email}</strong>.
+                    Please continue to set up your organization.
                   </p>
                 </div>
               </div>

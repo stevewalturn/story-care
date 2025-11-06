@@ -11,6 +11,13 @@ interface Patient {
   email: string;
   referenceImageUrl?: string;
   avatarUrl?: string;
+  therapistId?: string;
+}
+
+interface Therapist {
+  firebaseUid: string;
+  name: string;
+  patientCount: number;
 }
 
 interface PatientModalProps {
@@ -18,13 +25,16 @@ interface PatientModalProps {
   onClose: () => void;
   onSave: (patient: Patient) => void;
   patient?: Patient;
+  isOrgAdmin?: boolean;
+  therapists?: Therapist[];
 }
 
-export function PatientModal({ isOpen, onClose, onSave, patient }: PatientModalProps) {
+export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, therapists }: PatientModalProps) {
   const [formData, setFormData] = useState<Patient>({
     name: '',
     email: '',
     referenceImageUrl: '',
+    therapistId: '',
   });
   const [imagePreview, setImagePreview] = useState('');
 
@@ -35,6 +45,7 @@ export function PatientModal({ isOpen, onClose, onSave, patient }: PatientModalP
         name: patient.name || '',
         email: patient.email || '',
         referenceImageUrl: patient.referenceImageUrl || patient.avatarUrl || '',
+        therapistId: patient.therapistId || '',
       });
       setImagePreview(patient.referenceImageUrl || patient.avatarUrl || '');
     } else {
@@ -42,6 +53,7 @@ export function PatientModal({ isOpen, onClose, onSave, patient }: PatientModalP
         name: '',
         email: '',
         referenceImageUrl: '',
+        therapistId: '',
       });
       setImagePreview('');
     }
@@ -104,6 +116,31 @@ export function PatientModal({ isOpen, onClose, onSave, patient }: PatientModalP
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="john@example.com"
             />
+
+            {/* Therapist Selection (Org Admin Only) */}
+            {isOrgAdmin && therapists && therapists.length > 0 && (
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Assign to Therapist *
+                </label>
+                <select
+                  value={formData.therapistId}
+                  onChange={(e) => setFormData({ ...formData, therapistId: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  required={isOrgAdmin}
+                >
+                  <option value="">Select a therapist</option>
+                  {therapists.map((therapist) => (
+                    <option key={therapist.firebaseUid} value={therapist.firebaseUid}>
+                      {therapist.name} ({therapist.patientCount} patients)
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500">
+                  This patient will be assigned to the selected therapist
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Reference Image */}

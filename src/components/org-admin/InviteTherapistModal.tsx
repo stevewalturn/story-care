@@ -123,7 +123,7 @@ export function InviteTherapistModal({
           placeholder="jane.smith@example.com"
           required
           disabled={loading}
-          helperText="The therapist will receive an invitation at this email"
+          helperText="The therapist can sign in using this email address"
         />
 
         <Input

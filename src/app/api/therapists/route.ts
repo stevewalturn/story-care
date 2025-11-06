@@ -186,14 +186,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Send invitation email to therapist
-    // - Firebase Auth sendSignInLinkToEmail()
-    // - Or custom email with sign-in link
+    // Note: No email is sent. Therapist signs in at /sign-in using their invited email.
+    // The system will auto-link their Firebase UID and activate their account.
 
     return NextResponse.json(
       {
         therapist,
-        message: `Invitation sent to ${validated.email}`,
+        message: `Therapist invited! They can now sign in using ${validated.email}`,
       },
       { status: 201 },
     );
