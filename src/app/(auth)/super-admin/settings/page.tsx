@@ -13,7 +13,6 @@ import { useAuth } from '@/contexts/AuthContext';
 type PlatformSettings = {
   id?: string;
   defaultAiCredits: number;
-  openaiModel: string;
   imageGenModel: string;
   defaultStorageQuota: number;
   maxFileUploadSize: number;
@@ -26,7 +25,6 @@ export default function SettingsPage() {
   const { user } = useAuth();
   const [settings, setSettings] = useState<PlatformSettings>({
     defaultAiCredits: 1000,
-    openaiModel: 'gpt-4',
     imageGenModel: 'dall-e-3',
     defaultStorageQuota: 10737418240,
     maxFileUploadSize: 524288000,
@@ -155,36 +153,10 @@ export default function SettingsPage() {
                 className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               />
             </div>
-            <div>
-              <label htmlFor="openaiModel" className="block text-sm font-medium text-gray-700">
-                OpenAI Model
-              </label>
-              <select
-                id="openaiModel"
-                value={settings.openaiModel}
-                onChange={e => handleChange('openaiModel', e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              >
-                <option value="gpt-4">GPT-4</option>
-                <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="imageGenModel" className="block text-sm font-medium text-gray-700">
-                Image Generation Model
-              </label>
-              <select
-                id="imageGenModel"
-                value={settings.imageGenModel}
-                onChange={e => handleChange('imageGenModel', e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              >
-                <option value="dall-e-3">DALL-E 3</option>
-                <option value="dall-e-2">DALL-E 2</option>
-              </select>
-            </div>
           </div>
+          <p className="mt-4 text-sm text-gray-500">
+            Note: Model selection for both text generation and image generation is now available per-request for therapists, allowing them to choose the best model for each use case.
+          </p>
         </div>
 
         {/* Storage Configuration */}

@@ -43,7 +43,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
     const body = await request.json();
-    const { title, blocks, status } = body;
+    const { title, blocks, status, patientId } = body;
 
     // Update page
     const updateData: any = { updatedAt: new Date() };
@@ -55,6 +55,9 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       if (status === 'published') {
         updateData.publishedAt = new Date();
       }
+    }
+    if (patientId !== undefined) {
+      updateData.patientId = patientId;
     }
 
     const [page] = await db

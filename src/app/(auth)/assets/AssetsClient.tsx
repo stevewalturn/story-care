@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Users, Plus } from 'lucide-react';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -186,6 +188,63 @@ export function AssetsClient() {
 
   const selectedPatientData = patients.find(p => p.id === selectedPatient);
 
+  // Empty state when no patients
+  if (patients.length === 0) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-4">
+        <div className="max-w-md text-center">
+          {/* Icon */}
+          <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 to-purple-100">
+            <Users className="h-12 w-12 text-indigo-600" />
+          </div>
+
+          {/* Heading */}
+          <h1 className="mb-3 text-3xl font-bold text-gray-900">
+            No Patients Yet
+          </h1>
+
+          {/* Description */}
+          <p className="mb-8 text-base text-gray-600">
+            Add your first patient to start building their content library with media, quotes, and notes
+          </p>
+
+          {/* CTA Button */}
+          <Link href="/patients">
+            <button className="inline-flex items-center rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3 text-base font-medium text-white shadow-lg transition-all hover:from-indigo-700 hover:to-purple-700 hover:shadow-xl">
+              <Plus className="mr-2 h-5 w-5" />
+              Add Your First Patient
+            </button>
+          </Link>
+
+          {/* Additional Info */}
+          <div className="mt-12 rounded-lg border border-gray-200 bg-white p-6 text-left shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-gray-900">
+              What you can do with the Content Library:
+            </h3>
+            <ul className="space-y-2 text-sm text-gray-600">
+              <li className="flex items-start">
+                <span className="mr-2 mt-0.5 text-indigo-600">•</span>
+                <span>Store and organize patient media (images, videos, audio)</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2 mt-0.5 text-indigo-600">•</span>
+                <span>Save meaningful quotes from therapy sessions</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2 mt-0.5 text-indigo-600">•</span>
+                <span>Keep session notes and observations</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2 mt-0.5 text-indigo-600">•</span>
+                <span>Build personalized story pages for patients</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen flex-col bg-gray-50">
       {/* Header */}
@@ -194,14 +253,6 @@ export function AssetsClient() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Content Library</h1>
             <p className="mt-1 text-sm text-gray-500">Browse and manage patient content across sessions</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <button className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-              Import
-            </button>
-            <button className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
-              Create Media
-            </button>
           </div>
         </div>
 

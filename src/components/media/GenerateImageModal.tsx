@@ -17,20 +17,120 @@ type GenerateImageModalProps = {
   patients?: Patient[];
 };
 
-const IMAGE_MODELS = [
-  {
-    id: 'dall-e-3',
-    name: 'DALL-E 3',
-    description: 'High quality, detailed images with excellent prompt following',
-    maxLength: 4000,
-  },
-  {
-    id: 'dall-e-2',
-    name: 'DALL-E 2',
-    description: 'Faster generation with good quality',
-    maxLength: 1000,
-  },
-];
+const IMAGE_MODELS = {
+  'OpenAI': [
+    {
+      id: 'dall-e-3',
+      name: 'DALL-E 3',
+      description: 'High quality, detailed images with excellent prompt following',
+      maxLength: 4000,
+    },
+    {
+      id: 'dall-e-2',
+      name: 'DALL-E 2',
+      description: 'Faster generation with good quality',
+      maxLength: 1000,
+    },
+  ],
+  'Stability AI': [
+    {
+      id: 'sd3.5-large',
+      name: 'Stable Diffusion 3.5 Large',
+      description: 'Latest SD model with superior image quality',
+      maxLength: 10000,
+    },
+    {
+      id: 'sd3.5-medium',
+      name: 'Stable Diffusion 3.5 Medium',
+      description: 'Balanced quality and speed',
+      maxLength: 10000,
+    },
+    {
+      id: 'sd3-large',
+      name: 'Stable Diffusion 3 Large',
+      description: 'Previous generation with reliable results',
+      maxLength: 10000,
+    },
+    {
+      id: 'sdxl-1.0',
+      name: 'Stable Diffusion XL 1.0',
+      description: 'High resolution photorealistic images',
+      maxLength: 10000,
+    },
+  ],
+  'FAL.AI': [
+    {
+      id: 'flux-pro',
+      name: 'Flux Pro',
+      description: 'Professional-grade image generation with best quality',
+      maxLength: 10000,
+    },
+    {
+      id: 'flux-dev',
+      name: 'Flux Dev',
+      description: 'Development model for experimentation',
+      maxLength: 10000,
+    },
+    {
+      id: 'flux-schnell',
+      name: 'Flux Schnell',
+      description: 'Fast generation for rapid iteration',
+      maxLength: 10000,
+    },
+    {
+      id: 'flux-realism',
+      name: 'Flux Realism',
+      description: 'Hyper-realistic image generation',
+      maxLength: 10000,
+    },
+    {
+      id: 'sdxl',
+      name: 'Fast SDXL',
+      description: 'Fast Stable Diffusion XL generation',
+      maxLength: 10000,
+    },
+    {
+      id: 'sdxl-lightning',
+      name: 'SDXL Lightning',
+      description: 'Ultra-fast SDXL in 4 steps',
+      maxLength: 10000,
+    },
+  ],
+  'Google Vertex AI': [
+    {
+      id: 'imagen-3.0-generate-001',
+      name: 'Imagen 3',
+      description: 'Google\'s latest image generation model',
+      maxLength: 10000,
+    },
+    {
+      id: 'imagegeneration@006',
+      name: 'Imagen 2',
+      description: 'Previous generation Imagen model',
+      maxLength: 10000,
+    },
+  ],
+  'Replicate': [
+    {
+      id: 'kandinsky-2.2',
+      name: 'Kandinsky 2.2',
+      description: 'Artistic style with unique aesthetics',
+      maxLength: 10000,
+    },
+    {
+      id: 'playground-v2.5',
+      name: 'Playground v2.5',
+      description: 'Versatile model for various styles',
+      maxLength: 10000,
+    },
+    {
+      id: 'sdxl-lightning',
+      name: 'SDXL Lightning',
+      description: 'Ultra-fast SDXL in 4 steps',
+      maxLength: 10000,
+    },
+  ],
+};
 
 const IMAGE_SIZES = [
   { id: '1024x1024', label: 'Square (1024x1024)', ratio: '1:1' },
@@ -50,7 +150,7 @@ export function GenerateImageModal({
   patients = [],
 }: GenerateImageModalProps) {
   const [prompt, setPrompt] = useState('');
-  const [selectedModel, setSelectedModel] = useState('dall-e-3');
+  const [selectedModel, setSelectedModel] = useState('flux-pro');
   const [selectedSize, setSelectedSize] = useState('1024x1024');
   const [selectedStyle, setSelectedStyle] = useState('vivid');
   const [selectedPatients, setSelectedPatients] = useState<string[]>([]);
@@ -136,7 +236,16 @@ export function GenerateImageModal({
     return null;
   }
 
-  const currentModel = IMAGE_MODELS.find(m => m.id === selectedModel);
+  // Find current model from any provider
+  const getCurrentModel = () => {
+    for (const provider of Object.values(IMAGE_MODELS)) {
+      const model = provider.find(m => m.id === selectedModel);
+      if (model) return model;
+    }
+    return null;
+  };
+
+  const currentModel = getCurrentModel();
 
   return (
     <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black p-4">
@@ -237,21 +346,30 @@ export function GenerateImageModal({
               <label className="block text-sm font-medium text-gray-700">
                 AI Model
               </label>
-              <div className="space-y-2">
-                {IMAGE_MODELS.map(model => (
-                  <button
-                    key={model.id}
-                    type="button"
-                    onClick={() => setSelectedModel(model.id)}
-                    className={`w-full rounded-lg border-2 p-3 text-left transition-all ${
-                      selectedModel === model.id
-                        ? 'border-indigo-500 bg-indigo-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="font-medium text-gray-900">{model.name}</div>
-                    <div className="text-xs text-gray-600">{model.description}</div>
-                  </button>
+              <div className="max-h-96 space-y-4 overflow-y-auto rounded-lg border border-gray-200 p-3">
+                {Object.entries(IMAGE_MODELS).map(([provider, models]) => (
+                  <div key={provider} className="space-y-2">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      {provider}
+                    </div>
+                    <div className="space-y-2">
+                      {models.map(model => (
+                        <button
+                          key={model.id}
+                          type="button"
+                          onClick={() => setSelectedModel(model.id)}
+                          className={`w-full rounded-lg border-2 p-3 text-left transition-all ${
+                            selectedModel === model.id
+                              ? 'border-indigo-500 bg-indigo-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="font-medium text-gray-900">{model.name}</div>
+                          <div className="text-xs text-gray-600">{model.description}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>

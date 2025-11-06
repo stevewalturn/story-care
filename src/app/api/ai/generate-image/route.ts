@@ -3,50 +3,86 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { uploadFile } from '@/libs/GCS';
-import { generateImage, generateImagePrompt } from '@/libs/OpenAI';
+import { generateImage, type ImageGenModel } from '@/libs/ImageGeneration';
 import { mediaLibrary, sessions } from '@/models/Schema';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 
-// POST /api/ai/generate-image - Generate image with DALL-E
+// POST /api/ai/generate-image - Generate image with multiple AI providers
 export async function POST(request: NextRequest) {
   try {
     // 1. AUTHENTICATE
     const user = await requireTherapist(request);
 
     const body = await request.json();
-    const { prompt, text, theme, sessionId, patientId, title } = body;
+    const {
+      prompt,
+      model = 'dall-e-3',
+      negativePrompt,
+      width,
+      height,
+      aspectRatio,
+      seed,
+      quality,
+      style,
+      sessionId,
+      patientId,
+      title,
+    } = body;
 
-    let finalPrompt = prompt;
-
-    // If text is provided, generate prompt from it
-    if (!prompt && text) {
-      finalPrompt = await generateImagePrompt(text, theme);
-    }
-
-    if (!finalPrompt) {
+    if (!prompt) {
       return NextResponse.json(
-        { error: 'Either prompt or text is required' },
+        { error: 'Prompt is required' },
         { status: 400 },
       );
     }
 
-    // Generate image
-    const imageUrl = await generateImage(finalPrompt, {
-      size: '1024x1024',
-      quality: 'hd',
-      style: 'natural',
+    // Generate image using the unified service
+    const { imageUrl, model: usedModel } = await generateImage({
+      prompt,
+      model: model as ImageGenModel,
+      negativePrompt,
+      width,
+      height,
+      aspectRatio,
+      seed,
+      quality,
+      style,
     });
 
-    // Download and upload to GCS
-    const imageResponse = await fetch(imageUrl);
-    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    // Handle base64 or URL images
+    let imageBuffer: Buffer;
+    let contentType = 'image/png';
 
+    if (imageUrl.startsWith('data:')) {
+      // Base64 encoded image
+      const base64Data = imageUrl.split(',')[1];
+      imageBuffer = Buffer.from(base64Data, 'base64');
+
+      // Extract content type from data URL
+      const mimeMatch = imageUrl.match(/data:([^;]+);/);
+      if (mimeMatch) {
+        contentType = mimeMatch[1];
+      }
+    } else {
+      // URL - download the image
+      const imageResponse = await fetch(imageUrl);
+      imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+
+      // Get content type from response
+      const responseContentType = imageResponse.headers.get('content-type');
+      if (responseContentType) {
+        contentType = responseContentType;
+      }
+    }
+
+    // Upload to GCS
+    const fileExtension = contentType.split('/')[1] || 'png';
     const { url: gcsUrl } = await uploadFile(
       imageBuffer,
-      `generated-${Date.now()}.png`,
+      `generated-${Date.now()}.${fileExtension}`,
       {
         folder: 'media/images',
-        contentType: 'image/png',
+        contentType,
         makePublic: false,
       },
     );
@@ -78,8 +114,8 @@ export async function POST(request: NextRequest) {
         mediaUrl: gcsUrl,
         sourceType: 'generated',
         sourceSessionId: sessionId || null,
-        generationPrompt: finalPrompt,
-        aiModel: 'dall-e-3',
+        generationPrompt: prompt,
+        aiModel: usedModel,
         status: 'completed',
       })
       .returning();
@@ -88,7 +124,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       media,
-      prompt: finalPrompt,
+      prompt,
+      model: usedModel,
     });
   } catch (error) {
     console.error('Image generation error:', error);

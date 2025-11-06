@@ -18,15 +18,22 @@ type StoryPage = {
   blockCount: number;
 };
 
+type Patient = {
+  id: string;
+  name: string;
+};
+
 export function PagesClient() {
   const { user } = useAuth();
   const [pages, setPages] = useState<StoryPage[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [showEditor, setShowEditor] = useState(false);
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPages();
+    fetchPatients();
   }, []);
 
   const fetchPages = async () => {
@@ -51,6 +58,21 @@ export function PagesClient() {
     }
   };
 
+  const fetchPatients = async () => {
+    try {
+      const response = await authenticatedFetch('/api/patients', user);
+      if (!response.ok) {
+        throw new Error('Failed to fetch patients');
+      }
+
+      const data = await response.json();
+      setPatients(data.patients);
+    } catch (error) {
+      console.error('Failed to fetch patients:', error);
+      setPatients([]);
+    }
+  };
+
   const handleCreatePage = () => {
     setEditingPageId(null);
     setShowEditor(true);
@@ -61,13 +83,13 @@ export function PagesClient() {
     setShowEditor(true);
   };
 
-  const handleSavePage = async (title: string, blocks: any[]) => {
+  const handleSavePage = async (title: string, blocks: any[], patientId: string | null) => {
     try {
       let response;
       if (editingPageId) {
-        response = await authenticatedPut(`/api/pages/${editingPageId}`, user, { title, blocks });
+        response = await authenticatedPut(`/api/pages/${editingPageId}`, user, { title, blocks, patientId });
       } else {
-        response = await authenticatedPost('/api/pages', user, { title, blocks });
+        response = await authenticatedPost('/api/pages', user, { title, blocks, patientId });
       }
 
       if (!response.ok) {
@@ -239,6 +261,7 @@ export function PagesClient() {
           <div className="h-[90vh] w-full max-w-6xl overflow-hidden rounded-lg bg-white shadow-xl">
             <PageEditor
               pageId={editingPageId || undefined}
+              patients={patients}
               onSave={handleSavePage}
             />
             <div className="flex justify-end border-t border-gray-200 bg-gray-50 p-4">

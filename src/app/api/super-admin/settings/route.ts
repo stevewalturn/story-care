@@ -34,7 +34,6 @@ export async function GET(request: NextRequest) {
           supportEmail: '',
           defaultTrialDuration: 30,
           defaultAiCredits: 1000,
-          openaiModel: 'gpt-4',
           imageGenModel: 'dall-e-3',
           defaultStorageQuota: 10737418240, // 10GB
           maxFileUploadSize: 524288000, // 500MB
@@ -76,7 +75,6 @@ export async function PUT(request: NextRequest) {
           supportEmail: body.supportEmail,
           defaultTrialDuration: body.defaultTrialDuration,
           defaultAiCredits: body.defaultAiCredits,
-          openaiModel: body.openaiModel,
           imageGenModel: body.imageGenModel,
           defaultStorageQuota: body.defaultStorageQuota,
           maxFileUploadSize: body.maxFileUploadSize,
@@ -96,7 +94,6 @@ export async function PUT(request: NextRequest) {
           supportEmail: body.supportEmail,
           defaultTrialDuration: body.defaultTrialDuration,
           defaultAiCredits: body.defaultAiCredits,
-          openaiModel: body.openaiModel,
           imageGenModel: body.imageGenModel,
           defaultStorageQuota: body.defaultStorageQuota,
           maxFileUploadSize: body.maxFileUploadSize,

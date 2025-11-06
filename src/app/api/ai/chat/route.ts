@@ -1,9 +1,8 @@
 import type { NextRequest } from 'next/server';
-import type { ChatMessage } from '@/libs/OpenAI';
 import { NextResponse } from 'next/server';
 import { logPHIAccess } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
-import { chat } from '@/libs/OpenAI';
+import { generateText, type ChatMessage, type TextGenModel } from '@/libs/TextGeneration';
 import { requireSessionAccess } from '@/middleware/RBACMiddleware';
 import { aiChatMessages } from '@/models/Schema';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
@@ -39,11 +38,19 @@ export async function POST(request: NextRequest) {
       sessionId,
       selectedText,
       selectedUtteranceIds,
+      model = 'gpt-4o', // Default model
     } = body;
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
         { error: 'Messages array is required' },
+        { status: 400 },
+      );
+    }
+
+    if (!model || typeof model !== 'string') {
+      return NextResponse.json(
+        { error: 'Model is required' },
         { status: 400 },
       );
     }
@@ -71,8 +78,11 @@ ${context ? `\n\nSession Context:\n${context}` : ''}`,
 
     const fullMessages: ChatMessage[] = [systemMessage, ...messages];
 
-    // Get AI response
-    const response = await chat(fullMessages);
+    // Get AI response using selected model
+    const result = await generateText({
+      messages: fullMessages,
+      model: model as TextGenModel,
+    });
 
     // 6. SAVE TO DATABASE: Store chat history
     if (sessionId) {
@@ -89,6 +99,7 @@ ${context ? `\n\nSession Context:\n${context}` : ''}`,
             content: lastUserMessage.content,
             selectedText: selectedText || null,
             selectedUtteranceIds: selectedUtteranceIds || null,
+            aiModel: result.model, // Track which model was used
           });
         }
 
@@ -97,7 +108,8 @@ ${context ? `\n\nSession Context:\n${context}` : ''}`,
           sessionId,
           therapistId: user.dbUserId,
           role: 'assistant',
-          content: response,
+          content: result.message,
+          aiModel: result.model, // Track which model was used
         });
       } catch (dbError) {
         console.error('Error saving chat to database:', dbError);
@@ -108,7 +120,10 @@ ${context ? `\n\nSession Context:\n${context}` : ''}`,
     // 7. AUDIT LOG: Record AI processing of PHI
     await logPHIAccess(user.dbUserId, 'session', sessionId || 'chat', request);
 
-    return NextResponse.json({ message: response });
+    return NextResponse.json({
+      message: result.message,
+      model: result.model,
+    });
   } catch (error) {
     console.error('AI chat error:', error);
     return handleAuthError(error);

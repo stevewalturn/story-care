@@ -1,8 +1,9 @@
 import type { NextRequest } from 'next/server';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { pageBlocks, storyPages, users } from '@/models/Schema';
+import { verifyIdToken } from '@/libs/FirebaseAdmin';
 
 // GET /api/pages - List story pages
 export async function GET(request: NextRequest) {
@@ -10,10 +11,39 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get('patientId');
     const therapistFirebaseUid = searchParams.get('therapistId');
+    const patientView = searchParams.get('patientView');
 
     let query = db.select().from(storyPages);
 
-    if (patientId) {
+    // Patient view: show only published pages assigned to current patient
+    if (patientView === 'true') {
+      const authHeader = request.headers.get('Authorization');
+      if (!authHeader?.startsWith('Bearer ')) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+
+      const token = authHeader.substring(7);
+      const decodedToken = await verifyIdToken(token);
+
+      // Find current patient user by Firebase UID
+      const [currentUser] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.firebaseUid, decodedToken.uid))
+        .limit(1);
+
+      if (!currentUser) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+
+      // Filter: pages assigned to this patient AND published
+      query = query.where(
+        and(
+          eq(storyPages.patientId, currentUser.id),
+          eq(storyPages.status, 'published')
+        )
+      ) as any;
+    } else if (patientId) {
       query = query.where(eq(storyPages.patientId, patientId)) as any;
     } else if (therapistFirebaseUid) {
       // Convert Firebase UID to database UUID
@@ -61,27 +91,36 @@ export async function GET(request: NextRequest) {
 // POST /api/pages - Create story page
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { therapistId: therapistFirebaseUid, patientId, title, blocks } = body;
-
-    if (!therapistFirebaseUid || !patientId || !title) {
-      return NextResponse.json(
-        { error: 'therapistId, patientId, and title are required' },
-        { status: 400 },
-      );
+    // Verify authentication
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Convert Firebase UID to database UUID
+    const token = authHeader.substring(7);
+    const decodedToken = await verifyIdToken(token);
+
+    // Get current user (therapist)
     const [therapist] = await db
       .select({ id: users.id })
       .from(users)
-      .where(eq(users.firebaseUid, therapistFirebaseUid))
+      .where(eq(users.firebaseUid, decodedToken.uid))
       .limit(1);
 
     if (!therapist) {
       return NextResponse.json(
-        { error: 'Therapist not found' },
+        { error: 'User not found' },
         { status: 404 },
+      );
+    }
+
+    const body = await request.json();
+    const { patientId, title, blocks } = body;
+
+    if (!patientId || !title) {
+      return NextResponse.json(
+        { error: 'patientId and title are required' },
+        { status: 400 },
       );
     }
 

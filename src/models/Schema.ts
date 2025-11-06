@@ -349,6 +349,9 @@ export const aiChatMessagesSchema = pgTable('ai_chat_messages', {
   role: chatRoleEnum('role').notNull(),
   content: text('content').notNull(),
 
+  // AI Model used for generation
+  aiModel: varchar('ai_model', { length: 50 }), // e.g., 'gpt-4o', 'gemini-2.5-pro'
+
   // Transcript selection context
   selectedText: text('selected_text'),
   selectedUtteranceIds: uuid('selected_utterance_ids').array(),
@@ -840,7 +843,6 @@ export const platformSettingsSchema = pgTable('platform_settings', {
 
   // AI Configuration
   defaultAiCredits: integer('default_ai_credits').notNull().default(1000),
-  openaiModel: varchar('openai_model', { length: 50 }).notNull().default('gpt-4'),
   imageGenModel: varchar('image_gen_model', { length: 50 }).notNull().default('dall-e-3'),
 
   // Storage Configuration

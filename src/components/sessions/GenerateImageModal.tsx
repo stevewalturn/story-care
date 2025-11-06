@@ -5,10 +5,40 @@ import { useState } from 'react';
 type GenerateImageModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onGenerate: (prompt: string, useReference: boolean, referenceImageUrl?: string) => Promise<void>;
+  onGenerate: (prompt: string, model: string, useReference: boolean, referenceImageUrl?: string) => Promise<void>;
   patientName?: string;
   patientReferenceImage?: string;
   initialPrompt?: string;
+};
+
+const IMAGE_MODELS = {
+  'OpenAI': [
+    { id: 'dall-e-3', name: 'DALL-E 3' },
+    { id: 'dall-e-2', name: 'DALL-E 2' },
+  ],
+  'Stability AI': [
+    { id: 'sd3.5-large', name: 'Stable Diffusion 3.5 Large' },
+    { id: 'sd3.5-medium', name: 'Stable Diffusion 3.5 Medium' },
+    { id: 'sd3-large', name: 'Stable Diffusion 3 Large' },
+    { id: 'sdxl-1.0', name: 'Stable Diffusion XL 1.0' },
+  ],
+  'FAL.AI': [
+    { id: 'flux-pro', name: 'Flux Pro' },
+    { id: 'flux-dev', name: 'Flux Dev' },
+    { id: 'flux-schnell', name: 'Flux Schnell' },
+    { id: 'flux-realism', name: 'Flux Realism' },
+    { id: 'sdxl', name: 'Fast SDXL' },
+    { id: 'sdxl-lightning', name: 'SDXL Lightning' },
+  ],
+  'Google Vertex AI': [
+    { id: 'imagen-3.0-generate-001', name: 'Imagen 3' },
+    { id: 'imagegeneration@006', name: 'Imagen 2' },
+  ],
+  'Replicate': [
+    { id: 'kandinsky-2.2', name: 'Kandinsky 2.2' },
+    { id: 'playground-v2.5', name: 'Playground v2.5' },
+    { id: 'sdxl-lightning', name: 'SDXL Lightning' },
+  ],
 };
 
 export function GenerateImageModal({
@@ -25,7 +55,7 @@ export function GenerateImageModal({
   const [isGenerating, setIsGenerating] = useState(false);
   const [showContextMetadata, setShowContextMetadata] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
-  const [aiModel, setAiModel] = useState('flux-kontext-pro');
+  const [aiModel, setAiModel] = useState('flux-pro');
 
   if (!isOpen) return null;
 
@@ -35,7 +65,7 @@ export function GenerateImageModal({
     setIsGenerating(true);
     try {
       const referenceUrl = overrideImageUrl || (useReference ? patientReferenceImage : undefined);
-      await onGenerate(prompt, useReference, referenceUrl);
+      await onGenerate(prompt, aiModel, useReference, referenceUrl);
       onClose();
     } catch (error) {
       console.error('Error generating image:', error);
@@ -112,8 +142,15 @@ export function GenerateImageModal({
                 onChange={(e) => setAiModel(e.target.value)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
               >
-                <option value="flux-kontext-pro">flux-kontext-pro</option>
-                <option value="default">Default</option>
+                {Object.entries(IMAGE_MODELS).map(([provider, models]) => (
+                  <optgroup key={provider} label={provider}>
+                    {models.map(model => (
+                      <option key={model.id} value={model.id}>
+                        {model.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
               </select>
             </div>
 

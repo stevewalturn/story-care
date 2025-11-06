@@ -61,9 +61,9 @@ export default function PatientStoryPage() {
     <div className="space-y-6 p-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">My Story</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Stories for You</h1>
         <p className="mt-2 text-gray-600">
-          Explore your personalized therapeutic journey
+          Your personalized stories from your therapist
         </p>
       </div>
 

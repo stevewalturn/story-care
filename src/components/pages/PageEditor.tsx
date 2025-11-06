@@ -1,9 +1,11 @@
 'use client';
 
-import { Eye, FileText, GripVertical, Image as ImageIcon, ListChecks, MessageCircle, Trash2, Type, Video } from 'lucide-react';
-import { useState } from 'react';
+import { Eye, FileText, GripVertical, Image as ImageIcon, ListChecks, MessageCircle, Trash2, Type, Video, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type BlockType = 'text' | 'image' | 'video' | 'quote' | 'reflection' | 'survey';
 
@@ -19,23 +21,49 @@ type ContentBlock = {
   };
 };
 
+type Patient = {
+  id: string;
+  name: string;
+};
+
+type Template = {
+  id: string;
+  title: string;
+  description: string | null;
+  questions: any[];
+  category: string;
+};
+
 type PageEditorProps = {
   pageId?: string;
   initialTitle?: string;
   initialBlocks?: ContentBlock[];
-  onSave: (title: string, blocks: ContentBlock[]) => void;
+  initialPatientId?: string;
+  patients?: Patient[];
+  onSave: (title: string, blocks: ContentBlock[], patientId: string | null) => void;
 };
 
 export function PageEditor({
   pageId: _pageId,
   initialTitle = 'Untitled Page',
   initialBlocks = [],
+  initialPatientId,
+  patients = [],
   onSave,
 }: PageEditorProps) {
+  const { user } = useAuth();
   const [title, setTitle] = useState(initialTitle);
   const [blocks, setBlocks] = useState<ContentBlock[]>(initialBlocks);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(initialPatientId || null);
+
+  // Template selection
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [templateType, setTemplateType] = useState<'reflection' | 'survey' | null>(null);
+  const [reflectionTemplates, setReflectionTemplates] = useState<Template[]>([]);
+  const [surveyTemplates, setSurveyTemplates] = useState<Template[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   const blockTypes: Array<{ value: BlockType; label: string; icon: any }> = [
     { value: 'text', label: 'Text', icon: Type },
@@ -46,7 +74,43 @@ export function PageEditor({
     { value: 'survey', label: 'Survey Question', icon: ListChecks },
   ];
 
+  // Fetch templates when component mounts
+  useEffect(() => {
+    fetchTemplates();
+  }, []);
+
+  const fetchTemplates = async () => {
+    setLoadingTemplates(true);
+    try {
+      const [reflectionsRes, surveysRes] = await Promise.all([
+        authenticatedFetch('/api/templates/reflections', user),
+        authenticatedFetch('/api/templates/surveys', user),
+      ]);
+
+      if (reflectionsRes.ok) {
+        const data = await reflectionsRes.json();
+        setReflectionTemplates(data.templates || []);
+      }
+
+      if (surveysRes.ok) {
+        const data = await surveysRes.json();
+        setSurveyTemplates(data.templates || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch templates:', error);
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
+
   const addBlock = (type: BlockType) => {
+    // For reflection and survey blocks, show template picker
+    if (type === 'reflection' || type === 'survey') {
+      setTemplateType(type);
+      setShowTemplateModal(true);
+      return;
+    }
+
     const newBlock: ContentBlock = {
       id: `block-${Date.now()}`,
       type,
@@ -55,6 +119,29 @@ export function PageEditor({
     };
     setBlocks([...blocks, newBlock]);
     setSelectedBlockId(newBlock.id);
+  };
+
+  const addBlockWithTemplate = (templateId: string | null) => {
+    if (!templateType) return;
+
+    const template = templateType === 'reflection'
+      ? reflectionTemplates.find(t => t.id === templateId)
+      : surveyTemplates.find(t => t.id === templateId);
+
+    const newBlock: ContentBlock = {
+      id: `block-${Date.now()}`,
+      type: templateType,
+      order: blocks.length,
+      content: {
+        templateId: templateId || undefined,
+        question: template?.title || '',
+      },
+    };
+
+    setBlocks([...blocks, newBlock]);
+    setSelectedBlockId(newBlock.id);
+    setShowTemplateModal(false);
+    setTemplateType(null);
   };
 
   const deleteBlock = (blockId: string) => {
@@ -204,13 +291,33 @@ export function PageEditor({
             </Button>
             <Button
               variant="primary"
-              onClick={() => onSave(title, blocks)}
-              disabled={blocks.length === 0}
+              onClick={() => onSave(title, blocks, selectedPatientId)}
+              disabled={blocks.length === 0 || !selectedPatientId}
             >
               Save Page
             </Button>
           </div>
         </div>
+
+        {/* Patient Selection */}
+        <div className="mb-4">
+          <label className="mb-2 block text-sm font-medium text-gray-700">
+            Assign to Patient
+          </label>
+          <select
+            value={selectedPatientId || ''}
+            onChange={e => setSelectedPatientId(e.target.value || null)}
+            className="block w-full max-w-md rounded-lg border border-gray-300 px-4 py-2 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">Select a patient...</option>
+            {patients.map(patient => (
+              <option key={patient.id} value={patient.id}>
+                {patient.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <p className="text-sm text-gray-600">
           Build interactive story pages with media, reflections, and surveys for your patient
         </p>
@@ -395,6 +502,102 @@ export function PageEditor({
           </div>
         )}
       </div>
+
+      {/* Template Picker Modal */}
+      {showTemplateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Select
+                {' '}
+                {templateType === 'reflection' ? 'Reflection' : 'Survey'}
+                {' '}
+                Template
+              </h3>
+              <button
+                onClick={() => {
+                  setShowTemplateModal(false);
+                  setTemplateType(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="max-h-96 overflow-y-auto p-6">
+              {loadingTemplates ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* No Template Option */}
+                  <button
+                    onClick={() => addBlockWithTemplate(null)}
+                    className="w-full rounded-lg border-2 border-dashed border-gray-300 p-4 text-left transition-all hover:border-indigo-500 hover:bg-indigo-50"
+                  >
+                    <p className="font-medium text-gray-900">Create without template</p>
+                    <p className="text-sm text-gray-600">Start with a blank question</p>
+                  </button>
+
+                  {/* Template List */}
+                  {(templateType === 'reflection' ? reflectionTemplates : surveyTemplates).map(template => (
+                    <button
+                      key={template.id}
+                      onClick={() => addBlockWithTemplate(template.id)}
+                      className="w-full rounded-lg border border-gray-200 p-4 text-left transition-all hover:border-indigo-500 hover:bg-indigo-50"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">{template.title}</p>
+                          {template.description && (
+                            <p className="mt-1 text-sm text-gray-600">{template.description}</p>
+                          )}
+                          <p className="mt-2 text-xs text-gray-500">
+                            {template.questions?.length || 0}
+                            {' '}
+                            questions
+                          </p>
+                        </div>
+                        <span className="ml-4 rounded bg-indigo-100 px-2 py-1 text-xs font-medium text-indigo-700">
+                          {template.category}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+
+                  {/* Empty State */}
+                  {(templateType === 'reflection' ? reflectionTemplates : surveyTemplates).length === 0 && (
+                    <div className="py-12 text-center">
+                      <p className="text-gray-500">No templates available</p>
+                      <p className="mt-1 text-sm text-gray-400">
+                        Create templates in the Templates section
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end border-t border-gray-200 p-4">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowTemplateModal(false);
+                  setTemplateType(null);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

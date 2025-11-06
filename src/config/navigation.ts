@@ -171,6 +171,12 @@ export const navigationConfig: NavigationConfig = {
       icon: FileText,
       description: 'Create patient story pages',
     },
+    {
+      name: 'Patient Responses',
+      href: '/therapist/responses',
+      icon: MessageSquare,
+      description: 'View patient reflections and survey responses',
+    },
   ],
 
   /**
@@ -179,22 +185,10 @@ export const navigationConfig: NavigationConfig = {
    */
   patient: [
     {
-      name: 'My Story',
+      name: 'Stories for You',
       href: '/patient/story',
-      icon: FileText,
+      icon: BookOpen,
       description: 'Your personalized story pages',
-    },
-    {
-      name: 'My Sessions',
-      href: '/patient/sessions',
-      icon: Folder,
-      description: 'View your therapy sessions',
-    },
-    {
-      name: 'Messages',
-      href: '/patient/messages',
-      icon: MessageSquare,
-      description: 'Communicate with your therapist',
     },
   ],
 };

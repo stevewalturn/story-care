@@ -7,6 +7,7 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type UploadModalProps = {
   isOpen: boolean;
@@ -49,7 +50,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
     if (isOpen && user?.uid) {
       // Fetch patients (only for current therapist)
       setLoadingPatients(true);
-      fetch(`/api/patients?therapistId=${user.uid}`)
+      authenticatedFetch(`/api/patients?therapistId=${user.uid}`, user)
         .then(res => res.json())
         .then((data) => {
           const patientOptions = data.patients?.map((p: any) => ({
@@ -68,7 +69,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
 
       // Fetch groups (only for current therapist)
       setLoadingGroups(true);
-      fetch(`/api/groups?therapistId=${user.uid}`)
+      authenticatedFetch(`/api/groups?therapistId=${user.uid}`, user)
         .then(res => res.json())
         .then((data) => {
           const groupOptions = data.groups?.map((g: any) => ({
