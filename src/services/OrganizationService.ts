@@ -126,12 +126,10 @@ export async function createOrganization(data: {
 
     console.log('OrganizationService.createOrganization - Inserting admin user with values:', adminUserValues);
 
-    const adminUserResult = await db
+    const [adminUser] = await db
       .insert(users)
       .values(adminUserValues)
       .returning();
-
-    const adminUser = adminUserResult[0];
 
     console.log('OrganizationService.createOrganization - Admin user created successfully:', {
       id: adminUser?.id,

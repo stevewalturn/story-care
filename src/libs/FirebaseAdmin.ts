@@ -82,11 +82,11 @@ export async function verifyIdToken(token: string) {
           })
           .where(eq(users.id, invitedUser.id))
           .returning({
-            id: true,
-            role: true,
-            organizationId: true,
-            firebaseUid: true,
-            status: true,
+            id: users.id,
+            role: users.role,
+            organizationId: users.organizationId,
+            firebaseUid: users.firebaseUid,
+            status: users.status,
           });
 
         dbUser = updatedUser;
@@ -105,7 +105,7 @@ export async function verifyIdToken(token: string) {
       email: decodedToken.email || null,
       emailVerified: decodedToken.email_verified || false,
       role: dbUser.role as 'super_admin' | 'org_admin' | 'therapist' | 'patient',
-      status: dbUser.status as 'invited' | 'pending_approval' | 'active' | 'inactive',
+      status: dbUser.status as 'invited' | 'active' | 'inactive',
     };
   } catch (error) {
     console.error('Token verification failed:', error);

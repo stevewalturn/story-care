@@ -1,6 +1,8 @@
 /**
  * Google Vertex AI Image Generation Provider
  * Supports: Imagen 3, Imagen 2
+ *
+ * Authentication: VERTEX_API_KEY (simple API key authentication)
  */
 
 export type ImagenModel = 'imagen-3.0-generate-001' | 'imagegeneration@006';
@@ -17,30 +19,16 @@ export interface VertexGenerateOptions {
 export async function generateImageWithVertex(
   options: VertexGenerateOptions,
 ): Promise<{ imageUrl: string; model: string }> {
-  const projectId = process.env.GOOGLE_VERTEX_PROJECT_ID;
-  const location = process.env.GOOGLE_VERTEX_LOCATION || 'us-central1';
+  const apiKey = process.env.VERTEX_API_KEY;
 
-  if (!projectId) {
-    throw new Error('GOOGLE_VERTEX_PROJECT_ID is not configured');
+  if (!apiKey) {
+    throw new Error('VERTEX_API_KEY is not configured');
   }
 
   const model = options.model || 'imagen-3.0-generate-001';
 
-  // Use Google Cloud's Vertex AI REST API
-  const endpoint = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:predict`;
-
-  // Get access token from service account
-  const { GoogleAuth } = await import('google-auth-library');
-  const auth = new GoogleAuth({
-    scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-  });
-
-  const client = await auth.getClient();
-  const accessToken = await client.getAccessToken();
-
-  if (!accessToken.token) {
-    throw new Error('Failed to get Google Cloud access token');
-  }
+  // Use Gemini API endpoint with API key
+  const endpoint = `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:predict?key=${apiKey}`;
 
   const requestBody = {
     instances: [
@@ -59,7 +47,6 @@ export async function generateImageWithVertex(
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${accessToken.token}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(requestBody),

@@ -79,7 +79,14 @@ export default function OrgAdminDashboard() {
     );
   }
 
-  const statCards = [
+  const statCards: Array<{
+    title: string;
+    value: number;
+    icon: any;
+    color: string;
+    link: string | null;
+    alert?: boolean;
+  }> = [
     {
       title: 'Active Therapists',
       value: metrics.activeTherapists,
@@ -138,7 +145,7 @@ export default function OrgAdminDashboard() {
             </div>
             {stat.link && (
               <button
-                onClick={() => router.push(stat.link)}
+                onClick={() => router.push(stat.link!)}
                 className="mt-4 text-sm font-medium text-indigo-600 hover:text-indigo-700"
               >
                 View details →

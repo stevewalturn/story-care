@@ -13,7 +13,7 @@ import { db } from '@/libs/DB';
 import { auditLogs } from '@/models/Schema';
 import type { AuthenticatedUser } from '@/types/Organization';
 
-export type AuditAction = 'create' | 'read' | 'update' | 'delete' | 'login' | 'logout';
+export type AuditAction = 'create' | 'read' | 'update' | 'delete' | 'auth_success' | 'auth_failed' | 'logout' | 'export';
 
 export type AuditResourceType =
   | 'user'

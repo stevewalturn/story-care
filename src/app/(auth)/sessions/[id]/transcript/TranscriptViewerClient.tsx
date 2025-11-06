@@ -6,7 +6,7 @@ import { GenerateImageModal } from '@/components/sessions/GenerateImageModal';
 import { GenerateVideoModal } from '@/components/sessions/GenerateVideoModal';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAvailableTextModels } from '@/libs/TextGeneration';
+import { getAvailableTextModels } from '@/libs/ModelMetadata';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 
 type Utterance = {
@@ -41,7 +41,6 @@ export function TranscriptViewerClient({
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [selectedText, setSelectedText] = useState('');
-  const [_selectedUtteranceIds, _setSelectedUtteranceIds] = useState<string[]>([]);
   const [aiPrompt, setAiPrompt] = useState<string | null>(null);
 
   // Fetch session and transcript data
@@ -169,10 +168,11 @@ Transcript text:
   };
 
   // Handler for image generation
-  const handleGenerateImage = async (prompt: string, useReference: boolean, referenceImageUrl?: string) => {
+  const handleGenerateImage = async (prompt: string, model: string, useReference: boolean, referenceImageUrl?: string) => {
     try {
       const response = await authenticatedPost('/api/ai/generate-image', user, {
         prompt,
+        model,
         sessionId,
         useReference,
         referenceImageUrl,
@@ -528,7 +528,7 @@ function AIAssistantPanel({
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [_isLoadingHistory, _setIsLoadingHistory] = useState(true);
-  const [transcriptContext, _setTranscriptContext] = useState('');
+  const [transcriptContext] = useState('');
   const [selectedModel, setSelectedModel] = useState('gpt-4o');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -563,6 +563,7 @@ function AIAssistantPanel({
       handleSendMessage(triggerPrompt);
       onPromptSent();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerPrompt]);
 
   // Auto-scroll to bottom when messages change

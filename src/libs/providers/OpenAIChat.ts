@@ -3,6 +3,8 @@
  * Supports: GPT-4o, GPT-4o-mini, GPT-4-turbo, o-series reasoning models
  */
 
+import type { ChatMessage } from '../TextGeneration';
+
 export type OpenAIChatModel =
   | 'gpt-4o' // Latest multimodal
   | 'gpt-4o-mini' // Cost-efficient
@@ -14,16 +16,18 @@ export type OpenAIChatModel =
   | 'o1' // Reasoning
   | 'o1-mini'; // Reasoning
 
-export type ChatMessage = {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-};
-
 export interface OpenAIChatOptions {
   messages: ChatMessage[];
   model: OpenAIChatModel;
   temperature?: number;
   maxTokens?: number;
+}
+
+interface OpenAIChatRequestBody {
+  model: string;
+  messages: ChatMessage[];
+  temperature?: number;
+  max_tokens?: number;
 }
 
 export async function chatWithOpenAI(
@@ -40,7 +44,7 @@ export async function chatWithOpenAI(
   // o-series models have different parameter requirements
   const isReasoningModel = model.startsWith('o1') || model.startsWith('o3');
 
-  const requestBody: any = {
+  const requestBody: OpenAIChatRequestBody = {
     model,
     messages,
   };

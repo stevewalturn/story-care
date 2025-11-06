@@ -110,26 +110,6 @@ const IMAGE_MODELS = {
       maxLength: 10000,
     },
   ],
-  'Replicate': [
-    {
-      id: 'kandinsky-2.2',
-      name: 'Kandinsky 2.2',
-      description: 'Artistic style with unique aesthetics',
-      maxLength: 10000,
-    },
-    {
-      id: 'playground-v2.5',
-      name: 'Playground v2.5',
-      description: 'Versatile model for various styles',
-      maxLength: 10000,
-    },
-    {
-      id: 'sdxl-lightning',
-      name: 'SDXL Lightning',
-      description: 'Ultra-fast SDXL in 4 steps',
-      maxLength: 10000,
-    },
-  ],
 };
 
 const IMAGE_SIZES = [

@@ -34,11 +34,6 @@ const IMAGE_MODELS = {
     { id: 'imagen-3.0-generate-001', name: 'Imagen 3' },
     { id: 'imagegeneration@006', name: 'Imagen 2' },
   ],
-  'Replicate': [
-    { id: 'kandinsky-2.2', name: 'Kandinsky 2.2' },
-    { id: 'playground-v2.5', name: 'Playground v2.5' },
-    { id: 'sdxl-lightning', name: 'SDXL Lightning' },
-  ],
 };
 
 export function GenerateImageModal({

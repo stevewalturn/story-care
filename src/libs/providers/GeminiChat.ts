@@ -3,6 +3,8 @@
  * Supports: Gemini 2.5, Gemini 2.0, Gemini 1.5
  */
 
+import type { ChatMessage } from '../TextGeneration';
+
 export type GeminiChatModel =
   | 'gemini-2.5-pro' // Latest, 1M context
   | 'gemini-2.5-flash' // Speed optimized
@@ -12,16 +14,27 @@ export type GeminiChatModel =
   | 'gemini-1.5-pro' // Legacy
   | 'gemini-1.5-flash'; // Legacy
 
-export type ChatMessage = {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-};
-
 export interface GeminiChatOptions {
   messages: ChatMessage[];
   model: GeminiChatModel;
   temperature?: number;
   maxTokens?: number;
+}
+
+interface GeminiMessage {
+  role: string;
+  parts: Array<{ text: string }>;
+}
+
+interface GeminiChatRequestBody {
+  contents: GeminiMessage[];
+  generationConfig: {
+    temperature: number;
+    maxOutputTokens: number;
+  };
+  systemInstruction?: {
+    parts: Array<{ text: string }>;
+  };
 }
 
 export async function chatWithGemini(
@@ -63,7 +76,7 @@ export async function chatWithGemini(
     throw new Error('Failed to get Google Cloud access token');
   }
 
-  const requestBody: any = {
+  const requestBody: GeminiChatRequestBody = {
     contents: geminiMessages,
     generationConfig: {
       temperature,
