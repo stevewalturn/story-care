@@ -95,12 +95,12 @@ export default function SignInPage() {
                 <input type="checkbox" className="rounded" />
                 Remember me
               </label>
-              <a
-                href="#"
+              <Link
+                href="/forgot-password"
                 className="font-medium text-indigo-600 hover:text-indigo-700"
               >
                 Forgot password?
-              </a>
+              </Link>
             </div>
 
             <Button
@@ -122,15 +122,6 @@ export default function SignInPage() {
             >
               Sign up
             </Link>
-          </div>
-        </div>
-
-        {/* Demo Credentials */}
-        <div className="mt-6 text-center">
-          <div className="inline-block rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-            <p className="mb-1 font-medium">Demo Credentials:</p>
-            <p>Email: demo@storycare.com</p>
-            <p>Password: demo123</p>
           </div>
         </div>
       </div>
