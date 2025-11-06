@@ -8,14 +8,13 @@ import { z } from 'zod';
 /**
  * Organization status enum
  */
-export const organizationStatusSchema = z.enum(['active', 'trial', 'suspended']);
+export const organizationStatusSchema = z.enum(['active', 'suspended']);
 
 /**
  * Subscription tier enum
  */
 export const subscriptionTierSchema = z.enum([
   'free',
-  'trial',
   'basic',
   'professional',
   'enterprise',
@@ -54,13 +53,14 @@ export const createOrganizationSchema = z.object({
     .max(100)
     .regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens'),
   contactEmail: z.string().email(),
+  adminEmail: z.string().email(),
+  adminName: z.string().min(2).max(255),
   logoUrl: z.string().url().optional(),
   primaryColor: z
     .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/, 'Primary color must be a valid hex color')
+    .regex(/^#[0-9A-F]{6}$/i, 'Primary color must be a valid hex color')
     .optional(),
   settings: organizationSettingsSchema.optional(),
-  trialEndsAt: z.string().datetime().optional(),
 });
 
 /**
@@ -75,15 +75,16 @@ export const updateOrganizationSchema = z.object({
     .regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens')
     .optional(),
   contactEmail: z.string().email().optional(),
+  adminEmail: z.string().email().optional(),
+  adminName: z.string().min(2).max(255).optional(),
   logoUrl: z.string().url().nullable().optional(),
   primaryColor: z
     .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/, 'Primary color must be a valid hex color')
+    .regex(/^#[0-9A-F]{6}$/i, 'Primary color must be a valid hex color')
     .nullable()
     .optional(),
   settings: organizationSettingsSchema.partial().optional(),
   status: organizationStatusSchema.optional(),
-  trialEndsAt: z.string().datetime().nullable().optional(),
 });
 
 /**

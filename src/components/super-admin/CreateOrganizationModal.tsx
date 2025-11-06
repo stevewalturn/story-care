@@ -26,6 +26,8 @@ export function CreateOrganizationModal({
     name: '',
     slug: '',
     contactEmail: '',
+    adminEmail: '',
+    adminName: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -46,7 +48,7 @@ export function CreateOrganizationModal({
       });
 
       if (response.ok) {
-        setFormData({ name: '', slug: '', contactEmail: '' });
+        setFormData({ name: '', slug: '', contactEmail: '', adminEmail: '', adminName: '' });
         onSuccess();
         onClose();
       } else {
@@ -166,8 +168,58 @@ export function CreateOrganizationModal({
               value={formData.contactEmail}
               onChange={e => setFormData(prev => ({ ...prev, contactEmail: e.target.value }))}
               className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              placeholder="admin@acmetherapy.com"
+              placeholder="contact@acmetherapy.com"
             />
+            <p className="mt-1 text-xs text-gray-500">
+              General contact email for the organization
+            </p>
+          </div>
+
+          <div className="border-t border-gray-200 pt-4">
+            <h3 className="mb-3 text-sm font-medium text-gray-900">
+              Organization Administrator
+            </h3>
+
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="adminName"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Admin Name
+                </label>
+                <input
+                  type="text"
+                  id="adminName"
+                  required
+                  value={formData.adminName}
+                  onChange={e => setFormData(prev => ({ ...prev, adminName: e.target.value }))}
+                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="John Doe"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="adminEmail"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Admin Email
+                </label>
+                <input
+                  type="email"
+                  id="adminEmail"
+                  required
+                  value={formData.adminEmail}
+                  onChange={e => setFormData(prev => ({ ...prev, adminEmail: e.target.value }))}
+                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="admin@acmetherapy.com"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Admin will receive invitation to set up their account
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Actions */}

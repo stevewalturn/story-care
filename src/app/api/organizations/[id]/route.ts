@@ -3,17 +3,18 @@
  * Super Admin only - manage specific organization
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import {
-  requireSuperAdmin,
   handleRBACError,
+  requireSuperAdmin,
 } from '@/middleware/RBACMiddleware';
-import { updateOrganizationSchema } from '@/validations/OrganizationValidation';
 import {
+  deleteOrganization,
   getOrganizationWithMetrics,
   updateOrganization,
-  deleteOrganization,
 } from '@/services/OrganizationService';
+import { updateOrganizationSchema } from '@/validations/OrganizationValidation';
 
 /**
  * GET /api/organizations/[id] - Get organization details with metrics
@@ -55,15 +56,10 @@ export async function PATCH(
     const body = await request.json();
     const validated = updateOrganizationSchema.parse(body);
 
-    const organization = await updateOrganization(id, {
-      ...validated,
-      trialEndsAt:
-        validated.trialEndsAt !== undefined
-          ? validated.trialEndsAt
-            ? new Date(validated.trialEndsAt)
-            : null
-          : undefined,
-    });
+    // Separate admin fields from organization fields
+    const { adminEmail, adminName, ...orgData } = validated;
+
+    const organization = await updateOrganization(id, orgData);
 
     if (!organization) {
       return NextResponse.json(
@@ -72,7 +68,30 @@ export async function PATCH(
       );
     }
 
-    return NextResponse.json({ organization });
+    // If admin fields are provided, create admin user
+    let adminUser = null;
+    if (adminEmail && adminName) {
+      const { db } = await import('@/libs/DB');
+      const { users } = await import('@/models/Schema');
+
+      const adminUserResult = await db
+        .insert(users)
+        .values({
+          email: adminEmail,
+          name: adminName,
+          role: 'org_admin',
+          organizationId: id,
+          status: 'pending_approval',
+          firebaseUid: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      adminUser = adminUserResult[0];
+    }
+
+    return NextResponse.json({ organization, adminUser });
   } catch (error) {
     if (error instanceof Error && error.message.includes('validation')) {
       return NextResponse.json({ error: error.message }, { status: 400 });

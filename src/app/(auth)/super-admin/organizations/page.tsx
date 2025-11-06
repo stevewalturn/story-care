@@ -16,10 +16,9 @@ type Organization = {
   name: string;
   slug: string;
   contactEmail: string;
-  status: 'active' | 'trial' | 'suspended';
+  status: 'active' | 'suspended';
   joinCode: string;
   createdAt: string;
-  trialEndsAt: string | null;
 };
 
 export default function OrganizationsPage() {
@@ -63,13 +62,11 @@ export default function OrganizationsPage() {
   const getStatusBadge = (status: string) => {
     const styles = {
       active: 'bg-green-100 text-green-700 border-green-200',
-      trial: 'bg-blue-100 text-blue-700 border-blue-200',
       suspended: 'bg-red-100 text-red-700 border-red-200',
     };
 
     const icons = {
       active: CheckCircle,
-      trial: AlertCircle,
       suspended: XCircle,
     };
 

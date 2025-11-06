@@ -33,7 +33,6 @@ export const userStatusEnum = pgEnum('user_status', [
 ]);
 export const organizationStatusEnum = pgEnum('organization_status', [
   'active',
-  'trial',
   'suspended',
 ]);
 export const templateScopeEnum = pgEnum('template_scope', [
@@ -134,7 +133,7 @@ export const organizationsSchema = pgTable('organizations', {
   // Settings (JSONB for flexibility)
   settings: jsonb('settings')
     .default({
-      subscriptionTier: 'trial',
+      subscriptionTier: 'basic',
       features: {
         maxTherapists: 5,
         maxPatients: 50,
@@ -153,8 +152,7 @@ export const organizationsSchema = pgTable('organizations', {
     })
     .notNull(),
 
-  status: organizationStatusEnum('status').default('trial').notNull(),
-  trialEndsAt: timestamp('trial_ends_at'),
+  status: organizationStatusEnum('status').default('active').notNull(),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -843,7 +841,6 @@ export const platformSettingsSchema = pgTable('platform_settings', {
   // General Settings
   platformName: varchar('platform_name', { length: 255 }).notNull().default('StoryCare'),
   supportEmail: varchar('support_email', { length: 255 }).notNull(),
-  defaultTrialDuration: integer('default_trial_duration').notNull().default(30), // days
 
   // AI Configuration
   defaultAiCredits: integer('default_ai_credits').notNull().default(1000),

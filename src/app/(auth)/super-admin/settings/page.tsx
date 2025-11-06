@@ -12,9 +12,6 @@ import { useAuth } from '@/contexts/AuthContext';
 
 type PlatformSettings = {
   id?: string;
-  platformName: string;
-  supportEmail: string;
-  defaultTrialDuration: number;
   defaultAiCredits: number;
   openaiModel: string;
   imageGenModel: string;
@@ -28,9 +25,6 @@ type PlatformSettings = {
 export default function SettingsPage() {
   const { user } = useAuth();
   const [settings, setSettings] = useState<PlatformSettings>({
-    platformName: 'StoryCare',
-    supportEmail: '',
-    defaultTrialDuration: 30,
     defaultAiCredits: 1000,
     openaiModel: 'gpt-4',
     imageGenModel: 'dall-e-3',
@@ -170,18 +164,6 @@ export default function SettingsPage() {
                 type="email"
                 value={settings.supportEmail}
                 onChange={e => handleChange('supportEmail', e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label htmlFor="defaultTrialDuration" className="block text-sm font-medium text-gray-700">
-                Default Trial Duration (days)
-              </label>
-              <input
-                id="defaultTrialDuration"
-                type="number"
-                value={settings.defaultTrialDuration}
-                onChange={e => handleChange('defaultTrialDuration', Number.parseInt(e.target.value, 10))}
                 className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               />
             </div>

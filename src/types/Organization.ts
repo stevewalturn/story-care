@@ -33,7 +33,7 @@ export type OrganizationWithMetrics = Organization & {
 };
 
 export type OrganizationSettings = {
-  subscriptionTier: 'free' | 'trial' | 'basic' | 'professional' | 'enterprise';
+  subscriptionTier: 'free' | 'basic' | 'professional' | 'enterprise';
   features: {
     maxTherapists: number | null; // null = unlimited
     maxPatients: number | null;

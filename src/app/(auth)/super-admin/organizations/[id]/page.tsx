@@ -11,16 +11,24 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 
+type OrganizationAdmin = {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+  createdAt: string;
+};
+
 type OrganizationDetails = {
   id: string;
   name: string;
   slug: string;
   contactEmail: string;
-  status: 'active' | 'trial' | 'suspended';
+  status: 'active' | 'suspended';
   joinCode: string;
   createdAt: string;
   updatedAt: string;
-  trialEndsAt: string | null;
+  admins: OrganizationAdmin[];
   metrics: {
     totalUsers: number;
     totalTherapists: number;
@@ -40,7 +48,9 @@ export default function OrganizationDetailPage() {
   const [formData, setFormData] = useState({
     name: '',
     contactEmail: '',
-    status: 'active' as 'active' | 'trial' | 'suspended',
+    status: 'active' as 'active' | 'suspended',
+    adminEmail: '',
+    adminName: '',
   });
 
   const fetchOrganization = useCallback(async () => {
@@ -59,6 +69,8 @@ export default function OrganizationDetailPage() {
           name: data.organization.name,
           contactEmail: data.organization.contactEmail,
           status: data.organization.status,
+          adminEmail: '',
+          adminName: '',
         });
       } else {
         setError('Failed to load organization');
@@ -253,10 +265,53 @@ export default function OrganizationDetailPage() {
                         className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                       >
                         <option value="active">Active</option>
-                        <option value="trial">Trial</option>
                         <option value="suspended">Suspended</option>
                       </select>
                     </div>
+
+                    {(!organization.admins || organization.admins.length === 0) && (
+                      <div className="border-t border-gray-200 pt-4">
+                        <h3 className="mb-3 text-sm font-medium text-gray-900">
+                          Assign Organization Administrator
+                        </h3>
+                        <p className="mb-3 text-xs text-gray-600">
+                          This organization doesn't have an admin yet. Add one below.
+                        </p>
+
+                        <div className="space-y-4">
+                          <div>
+                            <label htmlFor="admin-name" className="block text-sm font-medium text-gray-700">
+                              Admin Name
+                            </label>
+                            <input
+                              id="admin-name"
+                              type="text"
+                              value={formData.adminName}
+                              onChange={e => setFormData(prev => ({ ...prev, adminName: e.target.value }))}
+                              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                              placeholder="John Doe"
+                            />
+                          </div>
+
+                          <div>
+                            <label htmlFor="admin-email" className="block text-sm font-medium text-gray-700">
+                              Admin Email
+                            </label>
+                            <input
+                              id="admin-email"
+                              type="email"
+                              value={formData.adminEmail}
+                              onChange={e => setFormData(prev => ({ ...prev, adminEmail: e.target.value }))}
+                              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                              placeholder="admin@example.com"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                              Leave empty to skip admin assignment
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="flex gap-2 pt-4">
                       <Button type="submit" variant="primary">
@@ -271,6 +326,8 @@ export default function OrganizationDetailPage() {
                             name: organization.name,
                             contactEmail: organization.contactEmail,
                             status: organization.status,
+                            adminEmail: '',
+                            adminName: '',
                           });
                         }}
                       >
@@ -286,6 +343,44 @@ export default function OrganizationDetailPage() {
                       <dd className="mt-1 flex items-center text-sm text-gray-900">
                         <Mail className="mr-2 h-4 w-4 text-gray-400" />
                         {organization.contactEmail}
+                      </dd>
+                    </div>
+
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Organization Admin(s)</dt>
+                      <dd className="mt-1 space-y-2">
+                        {organization.admins && organization.admins.length > 0
+                          ? (
+                              organization.admins.map(admin => (
+                                <div key={admin.id} className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 p-2">
+                                  <div>
+                                    <div className="flex items-center text-sm font-medium text-gray-900">
+                                      <Mail className="mr-2 h-4 w-4 text-gray-400" />
+                                      {admin.email}
+                                    </div>
+                                    <div className="ml-6 text-xs text-gray-600">
+                                      {admin.name}
+                                    </div>
+                                  </div>
+                                  <span
+                                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                      admin.status === 'active'
+                                        ? 'bg-green-100 text-green-700'
+                                        : admin.status === 'pending_approval'
+                                          ? 'bg-yellow-100 text-yellow-700'
+                                          : 'bg-gray-100 text-gray-700'
+                                    }`}
+                                  >
+                                    {admin.status === 'pending_approval' ? 'Pending' : admin.status}
+                                  </span>
+                                </div>
+                              ))
+                            )
+                          : (
+                              <div className="rounded-md border border-yellow-200 bg-yellow-50 p-2 text-sm text-yellow-700">
+                                No admin user assigned yet
+                              </div>
+                            )}
                       </dd>
                     </div>
 
@@ -310,19 +405,6 @@ export default function OrganizationDetailPage() {
                         })}
                       </dd>
                     </div>
-
-                    {organization.trialEndsAt && (
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Trial Ends</dt>
-                        <dd className="mt-1 text-sm text-gray-900">
-                          {new Date(organization.trialEndsAt).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
-                        </dd>
-                      </div>
-                    )}
                   </dl>
                 )}
           </div>
@@ -374,11 +456,6 @@ export default function OrganizationDetailPage() {
               {organization.status === 'active' && (
                 <span className="inline-flex items-center rounded-full border border-green-200 bg-green-100 px-3 py-1 text-sm font-medium text-green-700">
                   Active
-                </span>
-              )}
-              {organization.status === 'trial' && (
-                <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700">
-                  Trial
                 </span>
               )}
               {organization.status === 'suspended' && (

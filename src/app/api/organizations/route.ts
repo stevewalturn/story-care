@@ -3,18 +3,19 @@
  * Super Admin only - manage organizations
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import {
-  requireSuperAdmin,
   handleRBACError,
+  requireSuperAdmin,
 } from '@/middleware/RBACMiddleware';
-import {
-  createOrganizationSchema,
-} from '@/validations/OrganizationValidation';
 import {
   createOrganization,
   listOrganizations,
 } from '@/services/OrganizationService';
+import {
+  createOrganizationSchema,
+} from '@/validations/OrganizationValidation';
 
 /**
  * GET /api/organizations - List all organizations (Super Admin only)
@@ -26,7 +27,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') as
       | 'active'
-      | 'trial'
       | 'suspended'
       | null;
     const page = Number.parseInt(searchParams.get('page') || '1', 10);
@@ -54,15 +54,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = createOrganizationSchema.parse(body);
 
-    const organization = await createOrganization({
+    const result = await createOrganization({
       ...validated,
-      trialEndsAt: validated.trialEndsAt
-        ? new Date(validated.trialEndsAt)
-        : undefined,
       createdBy: user.dbUserId,
     });
 
-    return NextResponse.json({ organization }, { status: 201 });
+    return NextResponse.json(result, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message.includes('validation')) {
       return NextResponse.json({ error: error.message }, { status: 400 });

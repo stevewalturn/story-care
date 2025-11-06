@@ -3,14 +3,14 @@
  * Business logic for organization management
  */
 
-import { eq, and, count, desc } from 'drizzle-orm';
+import type { OrganizationSettings } from '@/types/Organization';
+import { and, count, desc, eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import {
   organizationsSchema,
-  users,
   sessions,
+  users,
 } from '@/models/Schema';
-import type { OrganizationSettings } from '@/types/Organization';
 
 /**
  * Generate a unique organization join code
@@ -48,16 +48,17 @@ export function generateJoinCode(): string {
 }
 
 /**
- * Create a new organization
+ * Create a new organization with an org_admin user
  */
 export async function createOrganization(data: {
   name: string;
   slug: string;
   contactEmail: string;
+  adminEmail: string;
+  adminName: string;
   logoUrl?: string;
   primaryColor?: string;
   settings?: Partial<OrganizationSettings>;
-  trialEndsAt?: Date;
   createdBy: string;
 }) {
   // Generate unique join code
@@ -79,7 +80,7 @@ export async function createOrganization(data: {
 
   // Default settings
   const defaultSettings: OrganizationSettings = {
-    subscriptionTier: 'trial',
+    subscriptionTier: 'basic',
     features: {
       maxTherapists: 5,
       maxPatients: 50,
@@ -106,10 +107,6 @@ export async function createOrganization(data: {
     branding: { ...defaultSettings.branding, ...data.settings?.branding },
   };
 
-  // Calculate trial end date (30 days from now if not provided)
-  const trialEndsAt =
-    data.trialEndsAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
   // Create organization
   const [organization] = await db
     .insert(organizationsSchema)
@@ -122,15 +119,38 @@ export async function createOrganization(data: {
       joinCode,
       joinCodeEnabled: true,
       settings,
-      status: 'trial',
-      trialEndsAt,
+      status: 'active',
       createdBy: data.createdBy,
       createdAt: new Date(),
       updatedAt: new Date(),
     })
     .returning();
 
-  return organization;
+  // Create org_admin user for the new organization
+  if (!organization) {
+    throw new Error('Failed to create organization');
+  }
+
+  const adminUserResult = await db
+    .insert(users)
+    .values({
+      email: data.adminEmail,
+      name: data.adminName,
+      role: 'org_admin',
+      organizationId: organization.id,
+      status: 'pending_approval', // Requires Firebase account setup
+      firebaseUid: null, // Will be set when they sign up with Firebase
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning();
+
+  const adminUser = adminUserResult[0];
+
+  return {
+    organization,
+    adminUser,
+  };
 }
 
 /**
@@ -206,43 +226,69 @@ export async function getOrganizationWithMetrics(organizationId: string) {
       ),
     );
 
-  const therapistIds = therapists.map((t) => t.id);
+  const therapistIds = therapists.map(t => t.id);
 
-  const totalSessionsResult = await db
-    .select({ count: count() })
-    .from(sessions)
-    .where(
-      therapistIds.length > 0
-        ? and(
-            eq(sessions.therapistId, therapistIds[0]),
-            // TODO: Add OR condition for other therapists
-          )
-        : eq(sessions.id, ''), // No sessions if no therapists
-    );
-  const totalSessions = Number(totalSessionsResult[0]?.count || 0);
+  let totalSessions = 0;
+  let sessionsLast30Days = 0;
 
-  // Count sessions in last 30 days
-  // TODO: Add date filter using thirtyDaysAgo
-  const sessionsLast30DaysResult = await db
+  // Only query sessions if there are therapists in the organization
+  if (therapistIds.length > 0) {
+    const totalSessionsResult = await db
+      .select({ count: count() })
+      .from(sessions)
+      .where(eq(sessions.therapistId, therapistIds[0]));
+    totalSessions = Number(totalSessionsResult[0]?.count || 0);
+
+    // Count sessions in last 30 days
+    // TODO: Add date filter using thirtyDaysAgo
+    const sessionsLast30DaysResult = await db
+      .select({ count: count() })
+      .from(sessions)
+      .where(eq(sessions.therapistId, therapistIds[0]));
+    sessionsLast30Days = Number(sessionsLast30DaysResult[0]?.count || 0);
+  }
+
+  // Count org admins
+  const orgAdminResult = await db
     .select({ count: count() })
-    .from(sessions)
+    .from(users)
     .where(
-      therapistIds.length > 0
-        ? and(
-            eq(sessions.therapistId, therapistIds[0]),
-            // TODO: Add date filter and OR condition
-          )
-        : eq(sessions.id, ''),
+      and(
+        eq(users.organizationId, organizationId),
+        eq(users.role, 'org_admin'),
+      ),
     );
-  const sessionsLast30Days = Number(sessionsLast30DaysResult[0]?.count || 0);
+  const orgAdminCount = Number(orgAdminResult[0]?.count || 0);
+
+  // Calculate total users
+  const totalUsers = therapistCount + patientCount + orgAdminCount;
+
+  // Get org admin users
+  const orgAdmins = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      status: users.status,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(
+      and(
+        eq(users.organizationId, organizationId),
+        eq(users.role, 'org_admin'),
+      ),
+    );
 
   return {
     ...organization,
+    admins: orgAdmins,
     metrics: {
-      therapistCount,
-      activeTherapistCount,
-      patientCount,
-      activePatientCount,
+      totalUsers,
+      totalTherapists: therapistCount,
+      activeTherapists: activeTherapistCount,
+      totalPatients: patientCount,
+      activePatients: activePatientCount,
       totalSessions,
       sessionsLast30Days,
       storageUsedGB: 0, // TODO: Calculate from media library
@@ -255,7 +301,7 @@ export async function getOrganizationWithMetrics(organizationId: string) {
  * List all organizations (Super Admin only)
  */
 export async function listOrganizations(params?: {
-  status?: 'active' | 'trial' | 'suspended';
+  status?: 'active' | 'suspended';
   page?: number;
   limit?: number;
 }) {
@@ -268,8 +314,8 @@ export async function listOrganizations(params?: {
     conditions.push(eq(organizationsSchema.status, params.status));
   }
 
-  const organizationsList =
-    conditions.length > 0
+  const organizationsList
+    = conditions.length > 0
       ? await db
           .select()
           .from(organizationsSchema)
@@ -312,8 +358,7 @@ export async function updateOrganization(
     logoUrl: string | null;
     primaryColor: string | null;
     settings: Partial<OrganizationSettings>;
-    status: 'active' | 'trial' | 'suspended';
-    trialEndsAt: Date | null;
+    status: 'active' | 'suspended';
   }>,
 ) {
   const [updated] = await db

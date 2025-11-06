@@ -15,7 +15,7 @@ import { eq } from 'drizzle-orm';
 
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { users, auditLogs } from '@/models/Schema';
+import { auditLogs, users } from '@/models/Schema';
 import { requireAuth } from '@/utils/AuthHelpers';
 
 /**
@@ -457,6 +457,9 @@ export async function canCreateForPatient(
  */
 export function handleRBACError(error: unknown): NextResponse {
   const message = error instanceof Error ? error.message : 'Access denied';
+
+  // Log the error for debugging
+  console.error('RBAC Error:', message);
 
   if (message.includes('not found')) {
     return NextResponse.json({ error: message }, { status: 404 });
