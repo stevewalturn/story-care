@@ -16,7 +16,6 @@ import {
   Library,
   MessageSquare,
   Settings,
-  UserCheck,
   Users,
 } from 'lucide-react';
 

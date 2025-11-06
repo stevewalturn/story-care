@@ -5,18 +5,18 @@
 
 'use client';
 
-import { useState } from 'react';
-import { Modal } from '@/components/ui/Modal';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
 import type { InviteTherapistInput } from '@/validations/UserValidation';
+import { useState } from 'react';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
 
-interface InviteTherapistModalProps {
+type InviteTherapistModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   idToken: string;
-}
+};
 
 export function InviteTherapistModal({
   isOpen,
@@ -50,7 +50,7 @@ export function InviteTherapistModal({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
+          'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify(formData),
       });
@@ -109,7 +109,7 @@ export function InviteTherapistModal({
           label="Full Name"
           type="text"
           value={formData.name}
-          onChange={(e) => handleChange('name', e.target.value)}
+          onChange={e => handleChange('name', e.target.value)}
           placeholder="Dr. Jane Smith"
           required
           disabled={loading}
@@ -119,7 +119,7 @@ export function InviteTherapistModal({
           label="Email Address"
           type="email"
           value={formData.email}
-          onChange={(e) => handleChange('email', e.target.value)}
+          onChange={e => handleChange('email', e.target.value)}
           placeholder="jane.smith@example.com"
           required
           disabled={loading}
@@ -130,7 +130,7 @@ export function InviteTherapistModal({
           label="License Number (Optional)"
           type="text"
           value={formData.licenseNumber}
-          onChange={(e) => handleChange('licenseNumber', e.target.value)}
+          onChange={e => handleChange('licenseNumber', e.target.value)}
           placeholder="LIC123456"
           disabled={loading}
         />
@@ -139,7 +139,7 @@ export function InviteTherapistModal({
           label="Specialty (Optional)"
           type="text"
           value={formData.specialty}
-          onChange={(e) => handleChange('specialty', e.target.value)}
+          onChange={e => handleChange('specialty', e.target.value)}
           placeholder="e.g., Narrative Therapy, Trauma Therapy"
           disabled={loading}
         />

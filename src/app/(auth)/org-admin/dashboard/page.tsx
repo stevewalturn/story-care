@@ -5,26 +5,25 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/Button';
 import {
-  Users,
-  UserCheck,
+  AlertCircle,
   Calendar,
-  Clock,
   FileText,
   TrendingUp,
-  AlertCircle,
+  UserCheck,
+  Users,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface OrgMetrics {
+type OrgMetrics = {
   activeTherapists: number;
   activePatients: number;
   sessionsLast30Days: number;
   pendingTemplateApprovals: number;
-}
+};
 
 export default function OrgAdminDashboard() {
   const { user } = useAuth();
@@ -116,13 +115,13 @@ export default function OrgAdminDashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {statCards.map((stat) => (
+        {statCards.map(stat => (
           <div
             key={stat.title}
             className="relative overflow-hidden rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
           >
             {stat.alert && (
-              <div className="absolute right-2 top-2">
+              <div className="absolute top-2 right-2">
                 <AlertCircle className="h-5 w-5 text-orange-500" />
               </div>
             )}

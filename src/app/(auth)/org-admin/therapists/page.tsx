@@ -5,21 +5,21 @@
 
 'use client';
 
+import { Search, User, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { User, Search, UserPlus } from 'lucide-react';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
 import { InviteTherapistModal } from '@/components/org-admin/InviteTherapistModal';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface Therapist {
+type Therapist = {
   id: string;
   name: string;
   email: string;
   status: 'active' | 'inactive' | 'invited';
   patientCount?: number;
   createdAt: string;
-}
+};
 
 export default function TherapistsPage() {
   const { user } = useAuth();
@@ -64,9 +64,9 @@ export default function TherapistsPage() {
   };
 
   const filteredTherapists = therapists.filter(
-    (therapist) =>
-      therapist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      therapist.email.toLowerCase().includes(searchQuery.toLowerCase()),
+    therapist =>
+      therapist.name.toLowerCase().includes(searchQuery.toLowerCase())
+      || therapist.email.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   if (loading) {
@@ -95,75 +95,77 @@ export default function TherapistsPage() {
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+        <Search className="absolute top-3 left-3 h-5 w-5 text-gray-400" />
         <Input
           type="text"
           placeholder="Search therapists..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={e => setSearchQuery(e.target.value)}
           className="pl-10"
         />
       </div>
 
       {/* Therapists Grid */}
-      {filteredTherapists.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
-          <User className="mx-auto h-12 w-12 text-gray-400" />
-          <p className="mt-2 text-sm text-gray-500">
-            {searchQuery ? 'No therapists found' : 'No therapists in your organization'}
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredTherapists.map((therapist) => (
-            <div
-              key={therapist.id}
-              className="rounded-lg border border-gray-200 bg-white p-6 transition-shadow hover:shadow-md"
-            >
-              <div className="flex items-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100">
-                  <User className="h-6 w-6 text-indigo-600" />
-                </div>
-                <div className="ml-4 flex-1">
-                  <h3 className="font-semibold text-gray-900">
-                    {therapist.name}
-                  </h3>
-                  <p className="text-sm text-gray-500">{therapist.email}</p>
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Patients</p>
-                  <p className="text-lg font-semibold text-gray-900">
-                    {therapist.patientCount || 0}
-                  </p>
-                </div>
-                <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    therapist.status === 'active'
-                      ? 'bg-green-100 text-green-700'
-                      : therapist.status === 'invited'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  {therapist.status}
-                </span>
-              </div>
-
-              <div className="mt-4 flex gap-2">
-                <Button variant="secondary" className="flex-1 text-sm">
-                  View Profile
-                </Button>
-                <Button variant="secondary" className="text-sm">
-                  •••
-                </Button>
-              </div>
+      {filteredTherapists.length === 0
+        ? (
+            <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
+              <User className="mx-auto h-12 w-12 text-gray-400" />
+              <p className="mt-2 text-sm text-gray-500">
+                {searchQuery ? 'No therapists found' : 'No therapists in your organization'}
+              </p>
             </div>
-          ))}
-        </div>
-      )}
+          )
+        : (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {filteredTherapists.map(therapist => (
+                <div
+                  key={therapist.id}
+                  className="rounded-lg border border-gray-200 bg-white p-6 transition-shadow hover:shadow-md"
+                >
+                  <div className="flex items-center">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100">
+                      <User className="h-6 w-6 text-indigo-600" />
+                    </div>
+                    <div className="ml-4 flex-1">
+                      <h3 className="font-semibold text-gray-900">
+                        {therapist.name}
+                      </h3>
+                      <p className="text-sm text-gray-500">{therapist.email}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">Patients</p>
+                      <p className="text-lg font-semibold text-gray-900">
+                        {therapist.patientCount || 0}
+                      </p>
+                    </div>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        therapist.status === 'active'
+                          ? 'bg-green-100 text-green-700'
+                          : therapist.status === 'invited'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {therapist.status}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    <Button variant="secondary" className="flex-1 text-sm">
+                      View Profile
+                    </Button>
+                    <Button variant="secondary" className="text-sm">
+                      •••
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
       {/* Invite Therapist Modal */}
       <InviteTherapistModal

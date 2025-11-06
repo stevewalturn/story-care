@@ -4,8 +4,9 @@
  * HIPAA Compliant: Requires authentication and enforces organization boundaries
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { and, count, eq, ilike } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { users } from '@/models/Schema';
 import { handleAuthError, requireAdmin, requireAuth } from '@/utils/AuthHelpers';

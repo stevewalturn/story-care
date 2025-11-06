@@ -5,13 +5,13 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Settings, Save } from 'lucide-react';
+import { Save, Settings } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface Organization {
+type Organization = {
   id: string;
   name: string;
   contactEmail: string;
@@ -21,7 +21,7 @@ interface Organization {
   status: string;
   createdAt: string;
   updatedAt: string;
-}
+};
 
 export default function OrgSettingsPage() {
   const { user } = useAuth();
@@ -97,7 +97,7 @@ export default function OrgSettingsPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
+          'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({
           name,
@@ -151,7 +151,10 @@ export default function OrgSettingsPage() {
     return (
       <div className="p-8">
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-          <p className="text-red-700">Error: {error}</p>
+          <p className="text-red-700">
+            Error:
+            {error}
+          </p>
         </div>
       </div>
     );
@@ -177,7 +180,10 @@ export default function OrgSettingsPage() {
       {/* Error Message */}
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-          <p className="text-red-700">Error: {error}</p>
+          <p className="text-red-700">
+            Error:
+            {error}
+          </p>
         </div>
       )}
 
@@ -197,7 +203,7 @@ export default function OrgSettingsPage() {
                 <Input
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={e => setName(e.target.value)}
                   required
                   className="mt-1"
                   placeholder="Enter organization name"
@@ -211,7 +217,7 @@ export default function OrgSettingsPage() {
                 <Input
                   type="email"
                   value={contactEmail}
-                  onChange={(e) => setContactEmail(e.target.value)}
+                  onChange={e => setContactEmail(e.target.value)}
                   required
                   className="mt-1"
                   placeholder="contact@example.com"
@@ -252,17 +258,19 @@ export default function OrgSettingsPage() {
             variant="primary"
             disabled={saving}
           >
-            {saving ? (
-              <>
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                Save Settings
-              </>
-            )}
+            {saving
+              ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
+                    Saving...
+                  </>
+                )
+              : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Settings
+                  </>
+                )}
           </Button>
         </div>
       </form>

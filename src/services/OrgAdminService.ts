@@ -3,9 +3,9 @@
  * Business logic for org admin dashboard and management
  */
 
-import { eq, and, count, gte } from 'drizzle-orm';
+import { and, count, eq, gte } from 'drizzle-orm';
 import { db } from '@/libs/DB';
-import { users, sessions } from '@/models/Schema';
+import { sessions, users } from '@/models/Schema';
 
 /**
  * Get organization dashboard metrics
@@ -49,7 +49,7 @@ export async function getOrgMetrics(organizationId: string) {
       ),
     );
 
-  const therapistIds = therapists.map((t) => t.id);
+  const therapistIds = therapists.map(t => t.id);
 
   let sessionsLast30Days = 0;
   if (therapistIds.length > 0) {

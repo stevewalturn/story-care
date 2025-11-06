@@ -88,13 +88,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Set up idle timeout monitoring
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      return;
+    }
 
     // Events that indicate user activity
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
 
     // Reset timer on any user activity
-    events.forEach(event => {
+    events.forEach((event) => {
       window.addEventListener(event, resetIdleTimer);
     });
 
@@ -103,7 +105,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // Cleanup
     return () => {
-      events.forEach(event => {
+      events.forEach((event) => {
         window.removeEventListener(event, resetIdleTimer);
       });
       if (idleTimerRef.current) {
