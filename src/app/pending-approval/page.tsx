@@ -21,10 +21,14 @@ export default function PendingApprovalPage() {
     if (!loading) {
       if (!user) {
         router.push('/sign-in');
-      } else if (dbUser?.status === 'active') {
-        router.push('/dashboard');
-      } else if (dbUser?.status === 'inactive') {
-        router.push('/sign-in?error=account_inactive');
+      } else if (dbUser) {
+        // Only check status once dbUser is loaded to prevent race condition
+        if (dbUser.status === 'active') {
+          router.push('/dashboard');
+        } else if (dbUser.status === 'inactive') {
+          router.push('/sign-in?error=account_inactive');
+        }
+        // If status is 'pending_approval', stay on this page (no redirect)
       }
     }
   }, [user, dbUser, loading, router]);
