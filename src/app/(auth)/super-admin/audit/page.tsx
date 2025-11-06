@@ -56,7 +56,7 @@ export default function AuditLogsPage() {
   });
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
-    limit: 50,
+    limit: 10,
     total: 0,
     totalPages: 0,
   });

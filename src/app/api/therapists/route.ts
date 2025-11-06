@@ -186,13 +186,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Note: No email is sent. Therapist signs in at /sign-in using their invited email.
-    // The system will auto-link their Firebase UID and activate their account.
+    // Note: No email is sent. Therapist can set up their account at /setup-account.
+    // The system will auto-link their Firebase UID and activate their account when they sign in.
 
     return NextResponse.json(
       {
         therapist,
-        message: `Therapist invited! They can now sign in using ${validated.email}`,
+        message: `Therapist invited! They can set up their account by visiting the sign-in page and clicking "Set Up Your Account"`,
       },
       { status: 201 },
     );

@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const role = searchParams.get('role') || '';
     const page = Number.parseInt(searchParams.get('page') || '1', 10);
-    const limit = Number.parseInt(searchParams.get('limit') || '50', 10);
+    const limit = Number.parseInt(searchParams.get('limit') || '10', 10);
     const offset = (page - 1) * limit;
 
     // Build where conditions

@@ -118,8 +118,8 @@ export async function createOrganization(data: {
       name: data.adminName,
       role: 'org_admin' as const,
       organizationId: organization.id,
-      status: 'invited' as const, // Invited by super admin, needs to sign in
-      firebaseUid: null, // Will be set when they sign in with Firebase
+      status: 'invited' as const, // Invited by super admin, needs to set up account
+      firebaseUid: null, // Will be set when they create their account via /setup-account
       createdAt: new Date(),
       updatedAt: new Date(),
     };
