@@ -32,8 +32,8 @@ export async function GET(request: NextRequest) {
       .from(sessions)
       .leftJoin(users, eq(sessions.patientId, users.id))
       .where(
-        user.role === 'admin'
-          ? isNull(sessions.deletedAt) // Admin sees all sessions
+        user.role === 'org_admin' || user.role === 'super_admin'
+          ? isNull(sessions.deletedAt) // Org/Super Admin sees all sessions in their org
           : eq(sessions.therapistId, user.dbUserId), // Therapist sees only their sessions
       )
       .orderBy(desc(sessions.createdAt));

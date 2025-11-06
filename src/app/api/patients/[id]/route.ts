@@ -104,13 +104,13 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    // Verify user has access to this patient (only therapist/admin can delete)
+    // Verify user has access to this patient (only therapist/org_admin/super_admin can delete)
     const user = await requirePatientAccess(request, id);
 
-    // Only admin can delete patients
-    if (user.role !== 'admin') {
+    // Only org_admin or super_admin can delete patients
+    if (user.role !== 'org_admin' && user.role !== 'super_admin') {
       return NextResponse.json(
-        { error: 'Forbidden: Only admins can delete patients' },
+        { error: 'Forbidden: Only organization admins can delete patients' },
         { status: 403 }
       );
     }

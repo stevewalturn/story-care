@@ -94,10 +94,10 @@ export async function GET(request: NextRequest) {
 // POST /api/notes - Create note
 export async function POST(request: NextRequest) {
   try {
-    // Require therapist or admin
+    // Require therapist or org_admin/super_admin
     const user = await requireAuth(request);
 
-    if (user.role !== 'therapist' && user.role !== 'admin') {
+    if (user.role !== 'therapist' && user.role !== 'org_admin' && user.role !== 'super_admin') {
       return NextResponse.json(
         { error: 'Forbidden: Only therapists can create notes' },
         { status: 403 },

@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     const [prompt] = await db
       .insert(therapeuticPrompts)
       .values({
-        therapistId: therapistDbId,
+        createdBy: therapistDbId || '',  // Use createdBy instead of therapistId
         title,
         description: description || null,
         promptText,

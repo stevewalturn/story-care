@@ -82,9 +82,10 @@ export async function POST(request: NextRequest) {
 
     // Convert Firebase UID to database UUID if provided
     let therapistDbId = null;
+    let organizationId = null;
     if (therapistFirebaseUid) {
       const [therapist] = await db
-        .select({ id: users.id })
+        .select({ id: users.id, organizationId: users.organizationId })
         .from(users)
         .where(eq(users.firebaseUid, therapistFirebaseUid))
         .limit(1);
@@ -97,6 +98,7 @@ export async function POST(request: NextRequest) {
       }
 
       therapistDbId = therapist.id;
+      organizationId = therapist.organizationId;
     }
 
     // Create group
@@ -106,6 +108,7 @@ export async function POST(request: NextRequest) {
         name,
         description: description || null,
         therapistId: therapistDbId,
+        organizationId: organizationId!,
       })
       .returning();
 

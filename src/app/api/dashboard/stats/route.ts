@@ -23,10 +23,10 @@ export async function GET(request: NextRequest) {
     let therapistDbId: string | null = null;
 
     // For therapists: only show their own stats
-    // For admins: can view any therapist's stats
+    // For org_admin/super_admin: can view any therapist's stats in their org
     if (user.role === 'therapist') {
       therapistDbId = user.dbUserId;
-    } else if (user.role === 'admin' && therapistFirebaseUid) {
+    } else if ((user.role === 'org_admin' || user.role === 'super_admin') && therapistFirebaseUid) {
       const [therapist] = await db
         .select({ id: users.id })
         .from(users)
