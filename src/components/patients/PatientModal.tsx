@@ -4,6 +4,7 @@ import { Upload, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { useAuth } from '@/contexts/AuthContext';
 
 type Patient = {
   id?: string;
@@ -30,6 +31,7 @@ type PatientModalProps = {
 };
 
 export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, therapists }: PatientModalProps) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState<Patient>({
     name: '',
     email: '',
@@ -37,6 +39,8 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
     therapistId: '',
   });
   const [imagePreview, setImagePreview] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Update form data when patient prop changes
   useEffect(() => {
@@ -62,15 +66,70 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
     });
   }, [patient, isOpen]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image size must be less than 10MB');
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      setUploadProgress(0);
+
+      // Create preview immediately
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
-        setFormData({ ...formData, referenceImageUrl: reader.result as string });
       };
       reader.readAsDataURL(file);
+
+      // Get auth token
+      const idToken = await user?.getIdToken();
+      if (!idToken) {
+        throw new Error('Not authenticated');
+      }
+
+      // Upload to GCS
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+
+      setUploadProgress(50);
+
+      const response = await fetch('/api/patients/upload-image', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: uploadFormData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Upload failed');
+      }
+
+      const { url } = await response.json();
+      setUploadProgress(100);
+
+      // Update form data with GCS URL
+      setFormData({ ...formData, referenceImageUrl: url });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert(error instanceof Error ? error.message : 'Failed to upload image');
+      setImagePreview('');
+    } finally {
+      setUploadingImage(false);
+      setUploadProgress(0);
     }
   };
 
@@ -161,47 +220,66 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
             </p>
 
             <div className="rounded-lg border-2 border-dashed border-gray-300 p-6">
-              {imagePreview
+              {uploadingImage
                 ? (
-                    <div className="space-y-4">
-                      <img
-                        src={imagePreview}
-                        alt="Reference"
-                        className="mx-auto h-32 w-32 rounded-lg object-cover"
-                      />
+                    <div className="space-y-4 text-center">
+                      <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                      <p className="text-sm text-gray-600">Uploading image...</p>
+                      {uploadProgress > 0 && (
+                        <div className="mx-auto w-48">
+                          <div className="h-2 overflow-hidden rounded-full bg-gray-200">
+                            <div
+                              className="h-full bg-indigo-600 transition-all duration-300"
+                              style={{ width: `${uploadProgress}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                : imagePreview
+                  ? (
+                      <div className="space-y-4">
+                        <img
+                          src={imagePreview}
+                          alt="Reference"
+                          className="mx-auto h-32 w-32 rounded-lg object-cover"
+                        />
+                        <div className="text-center">
+                          <label className="cursor-pointer text-sm font-medium text-indigo-600 hover:text-indigo-700">
+                            Change Image
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                              className="hidden"
+                              disabled={uploadingImage}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    )
+                  : (
                       <div className="text-center">
-                        <label className="cursor-pointer text-sm font-medium text-indigo-600 hover:text-indigo-700">
-                          Change Image
+                        <Upload className="mx-auto mb-3 h-12 w-12 text-gray-400" />
+                        <label className="cursor-pointer">
+                          <span className="font-medium text-indigo-600 hover:text-indigo-700">
+                            Upload a file
+                          </span>
+                          <span className="text-gray-600"> or drag and drop</span>
                           <input
                             type="file"
                             accept="image/*"
                             onChange={handleImageUpload}
                             className="hidden"
+                            disabled={uploadingImage}
                           />
                         </label>
+                        <p className="mt-2 text-xs text-gray-500">
+                          PNG, JPG, WebP, GIF up to 10MB
+                        </p>
                       </div>
-                    </div>
-                  )
-                : (
-                    <div className="text-center">
-                      <Upload className="mx-auto mb-3 h-12 w-12 text-gray-400" />
-                      <label className="cursor-pointer">
-                        <span className="font-medium text-indigo-600 hover:text-indigo-700">
-                          Upload a file
-                        </span>
-                        <span className="text-gray-600"> or drag and drop</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          className="hidden"
-                        />
-                      </label>
-                      <p className="mt-2 text-xs text-gray-500">
-                        PNG, JPG up to 10MB
-                      </p>
-                    </div>
-                  )}
+                    )}
             </div>
           </div>
 

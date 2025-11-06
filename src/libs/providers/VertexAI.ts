@@ -1,11 +1,19 @@
 /**
  * Google Vertex AI Image Generation Provider
- * Supports: Imagen 3, Imagen 2
+ * Supports: Imagen 4.0, Imagen 3.0, Imagen 2
  *
  * Authentication: VERTEX_API_KEY (simple API key authentication)
  */
 
-export type ImagenModel = 'imagen-3.0-generate-001' | 'imagegeneration@006';
+export type ImagenModel =
+  | 'imagen-4.0-generate-001'
+  | 'imagen-4.0-fast-generate-001'
+  | 'imagen-4.0-ultra-generate-001'
+  | 'imagen-3.0-generate-002'
+  | 'imagen-3.0-generate-001'
+  | 'imagen-3.0-fast-generate-001'
+  | 'imagen-3.0-capability-001'
+  | 'imagegeneration@006';
 
 export type VertexGenerateOptions = {
   prompt: string;
@@ -25,7 +33,7 @@ export async function generateImageWithVertex(
     throw new Error('VERTEX_API_KEY is not configured');
   }
 
-  const model = options.model || 'imagen-3.0-generate-001';
+  const model = options.model || 'imagen-4.0-fast-generate-001';
 
   // Use Gemini API endpoint with API key
   const endpoint = `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:predict?key=${apiKey}`;

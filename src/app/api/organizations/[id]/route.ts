@@ -88,7 +88,7 @@ export async function PATCH(
         })
         .returning();
 
-      adminUser = adminUserResult[0];
+      adminUser = Array.isArray(adminUserResult) ? adminUserResult[0] : null;
     }
 
     return NextResponse.json({ organization, adminUser });

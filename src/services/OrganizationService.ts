@@ -104,10 +104,12 @@ export async function createOrganization(data: {
       updatedAt: new Date(),
     };
 
-    const [adminUser] = await db
+    const adminUserResult = await db
       .insert(users)
       .values(adminUserValues)
       .returning();
+
+    const adminUser = Array.isArray(adminUserResult) ? adminUserResult[0] : undefined;
 
     return {
       organization,

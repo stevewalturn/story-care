@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const user = await requireOrgAdmin(request);
 
     console.error('GET /api/org-admin/organization - Fetching organization for org_admin:', {
-      userId: user.id,
+      userId: user.dbUserId,
       organizationId: user.organizationId,
     });
 
@@ -71,7 +71,7 @@ export async function PATCH(request: NextRequest) {
     const user = await requireOrgAdmin(request);
 
     console.error('PATCH /api/org-admin/organization - Update request from org_admin:', {
-      userId: user.id,
+      userId: user.dbUserId,
       organizationId: user.organizationId,
     });
 
@@ -109,6 +109,13 @@ export async function PATCH(request: NextRequest) {
       .where(eq(organizationsSchema.id, user.organizationId))
       .returning();
 
+    if (!updatedOrganization) {
+      return NextResponse.json(
+        { error: 'Failed to update organization' },
+        { status: 500 },
+      );
+    }
+
     console.error('PATCH /api/org-admin/organization - Organization updated successfully:', {
       id: updatedOrganization.id,
       name: updatedOrganization.name,
@@ -120,7 +127,7 @@ export async function PATCH(request: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
+        { error: 'Validation error', details: error.issues },
         { status: 400 },
       );
     }

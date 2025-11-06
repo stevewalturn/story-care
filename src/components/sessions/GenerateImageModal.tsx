@@ -31,7 +31,13 @@ const IMAGE_MODELS = {
     { id: 'sdxl-lightning', name: 'SDXL Lightning' },
   ],
   'Google Vertex AI': [
-    { id: 'imagen-3.0-generate-001', name: 'Imagen 3' },
+    { id: 'imagen-4.0-ultra-generate-001', name: 'Imagen 4.0 Ultra' },
+    { id: 'imagen-4.0-generate-001', name: 'Imagen 4.0' },
+    { id: 'imagen-4.0-fast-generate-001', name: 'Imagen 4.0 Fast' },
+    { id: 'imagen-3.0-generate-002', name: 'Imagen 3.0 v2' },
+    { id: 'imagen-3.0-fast-generate-001', name: 'Imagen 3.0 Fast' },
+    { id: 'imagen-3.0-generate-001', name: 'Imagen 3.0' },
+    { id: 'imagen-3.0-capability-001', name: 'Imagen 3.0 Capability' },
     { id: 'imagegeneration@006', name: 'Imagen 2' },
   ],
 };

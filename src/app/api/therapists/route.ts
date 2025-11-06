@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create invited therapist
-    const [therapist] = await db
+    const therapistResult = await db
       .insert(users)
       .values({
         name: validated.name,
@@ -178,6 +178,8 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date(),
       })
       .returning();
+
+    const therapist = Array.isArray(therapistResult) ? therapistResult[0] : undefined;
 
     if (!therapist) {
       return NextResponse.json(

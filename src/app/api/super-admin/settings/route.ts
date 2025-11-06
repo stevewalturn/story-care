@@ -71,9 +71,7 @@ export async function PUT(request: NextRequest) {
       [updatedSettings] = await db
         .insert(platformSettingsSchema)
         .values({
-          platformName: body.platformName,
           supportEmail: body.supportEmail,
-          defaultTrialDuration: body.defaultTrialDuration,
           defaultAiCredits: body.defaultAiCredits,
           imageGenModel: body.imageGenModel,
           defaultStorageQuota: body.defaultStorageQuota,
@@ -90,9 +88,7 @@ export async function PUT(request: NextRequest) {
       [updatedSettings] = await db
         .update(platformSettingsSchema)
         .set({
-          platformName: body.platformName,
           supportEmail: body.supportEmail,
-          defaultTrialDuration: body.defaultTrialDuration,
           defaultAiCredits: body.defaultAiCredits,
           imageGenModel: body.imageGenModel,
           defaultStorageQuota: body.defaultStorageQuota,

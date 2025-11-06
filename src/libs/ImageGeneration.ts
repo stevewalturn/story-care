@@ -92,7 +92,16 @@ export async function generateImage(
   }
 
   // Route to Google Vertex AI (Imagen)
-  if (model === 'imagen-3.0-generate-001' || model === 'imagegeneration@006') {
+  if (
+    model === 'imagen-4.0-generate-001'
+    || model === 'imagen-4.0-fast-generate-001'
+    || model === 'imagen-4.0-ultra-generate-001'
+    || model === 'imagen-3.0-generate-002'
+    || model === 'imagen-3.0-generate-001'
+    || model === 'imagen-3.0-fast-generate-001'
+    || model === 'imagen-3.0-capability-001'
+    || model === 'imagegeneration@006'
+  ) {
     const { generateImageWithVertex } = await import('./providers/VertexAI');
     return await generateImageWithVertex({
       prompt,

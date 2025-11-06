@@ -57,11 +57,14 @@ export async function POST(request: NextRequest) {
     if (imageUrl.startsWith('data:')) {
       // Base64 encoded image
       const base64Data = imageUrl.split(',')[1];
+      if (!base64Data) {
+        throw new Error('Invalid base64 image data');
+      }
       imageBuffer = Buffer.from(base64Data, 'base64');
 
       // Extract content type from data URL
       const mimeMatch = imageUrl.match(/data:([^;]+);/);
-      if (mimeMatch) {
+      if (mimeMatch && mimeMatch[1]) {
         contentType = mimeMatch[1];
       }
     } else {

@@ -328,7 +328,6 @@ Transcript text:
         <div className="flex w-[400px] flex-col border-l border-gray-200 bg-white">
           <LibraryPanel
             sessionId={sessionId}
-            _patientName={patientName}
             user={user}
           />
         </div>

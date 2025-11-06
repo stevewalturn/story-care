@@ -1,6 +1,6 @@
 'use client';
 
-import { Edit2, Eye, FileText, Plus, Trash2 } from 'lucide-react';
+import { CheckCircle, Edit2, FileText, Plus, Trash2, Upload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { PageEditor } from '@/components/pages/PageEditor';
 import { Button } from '@/components/ui/Button';
@@ -16,11 +16,20 @@ type StoryPage = {
   createdAt: Date;
   updatedAt: Date;
   blockCount: number;
+  status: 'draft' | 'published' | 'archived';
+  patientId: string;
 };
 
 type Patient = {
   id: string;
   name: string;
+};
+
+type ContentBlock = {
+  id: string;
+  type: 'text' | 'image' | 'video' | 'quote' | 'reflection' | 'survey';
+  order: number;
+  content: any;
 };
 
 export function PagesClient() {
@@ -30,6 +39,11 @@ export function PagesClient() {
   const [loading, setLoading] = useState(true);
   const [showEditor, setShowEditor] = useState(false);
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
+  const [editingPageData, setEditingPageData] = useState<{
+    title: string;
+    blocks: ContentBlock[];
+    patientId: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchPages();
@@ -75,12 +89,43 @@ export function PagesClient() {
 
   const handleCreatePage = () => {
     setEditingPageId(null);
+    setEditingPageData(null);
     setShowEditor(true);
   };
 
-  const handleEditPage = (pageId: string) => {
-    setEditingPageId(pageId);
-    setShowEditor(true);
+  const handleEditPage = async (pageId: string) => {
+    try {
+      // Fetch page data with blocks
+      const response = await authenticatedFetch(`/api/pages/${pageId}`, user);
+      if (!response.ok) {
+        throw new Error('Failed to fetch page');
+      }
+
+      const data = await response.json();
+      const { page, blocks: dbBlocks } = data;
+
+      // Transform database blocks to PageEditor format
+      const transformedBlocks: ContentBlock[] = dbBlocks.map((block: any) => ({
+        id: block.id,
+        type: block.blockType,
+        order: block.sequenceNumber,
+        content: {
+          text: block.textContent || undefined,
+          ...(block.settings || {}),
+        },
+      }));
+
+      setEditingPageId(pageId);
+      setEditingPageData({
+        title: page.title,
+        blocks: transformedBlocks,
+        patientId: page.patientId,
+      });
+      setShowEditor(true);
+    } catch (error) {
+      console.error('Failed to load page:', error);
+      alert('Failed to load page. Please try again.');
+    }
   };
 
   const handleSavePage = async (title: string, blocks: any[], patientId: string | null) => {
@@ -120,6 +165,24 @@ export function PagesClient() {
     } catch (error) {
       console.error('Failed to delete page:', error);
       alert('Failed to delete page. Please try again.');
+    }
+  };
+
+  const handleTogglePublish = async (pageId: string, currentStatus: 'draft' | 'published' | 'archived') => {
+    const newStatus = currentStatus === 'published' ? 'draft' : 'published';
+    const action = newStatus === 'published' ? 'publish' : 'unpublish';
+
+    try {
+      const response = await authenticatedPut(`/api/pages/${pageId}`, user, { status: newStatus });
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${action} page`);
+      }
+
+      await fetchPages();
+    } catch (error) {
+      console.error(`Failed to ${action} page:`, error);
+      alert(`Failed to ${action} page. Please try again.`);
     }
   };
 
@@ -221,14 +284,16 @@ export function PagesClient() {
                   Edit
                 </Button>
                 <Button
-                  variant="ghost"
+                  variant={page.status === 'published' ? 'ghost' : 'primary'}
                   size="sm"
-                  onClick={() => {
-                    // Preview functionality
-                    window.open(`/pages/${page.id}`, '_blank');
-                  }}
+                  onClick={() => handleTogglePublish(page.id, page.status)}
+                  title={page.status === 'published' ? 'Unpublish page' : 'Publish page'}
                 >
-                  <Eye className="h-4 w-4" />
+                  {page.status === 'published' ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
                 </Button>
                 <Button
                   variant="ghost"
@@ -261,6 +326,9 @@ export function PagesClient() {
           <div className="h-[90vh] w-full max-w-6xl overflow-auto rounded-lg bg-white shadow-xl">
             <PageEditor
               pageId={editingPageId || undefined}
+              initialTitle={editingPageData?.title}
+              initialBlocks={editingPageData?.blocks}
+              initialPatientId={editingPageData?.patientId}
               patients={patients}
               onSave={handleSavePage}
               onClose={() => setShowEditor(false)}

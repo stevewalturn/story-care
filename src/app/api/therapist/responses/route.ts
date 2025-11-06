@@ -25,18 +25,12 @@ export async function GET(request: NextRequest) {
     // HIPAA: Require therapist/admin authentication
     const user = await requireRole(request, ['therapist', 'org_admin', 'super_admin']);
 
-    // RBAC: Get patients based on role
-    let patientsQuery = db
-      .select({
-        id: users.id,
-        name: users.name,
-      })
-      .from(users)
-      .where(eq(users.role, 'patient'));
+    // RBAC: Build where conditions based on role
+    const whereConditions = [eq(users.role, 'patient')];
 
     // Therapists: Only their assigned patients
     if (user.role === 'therapist') {
-      patientsQuery = patientsQuery.where(eq(users.therapistId, user.dbUserId)) as any;
+      whereConditions.push(eq(users.therapistId, user.dbUserId));
     }
 
     // Org Admins: Only patients in their organization
@@ -47,8 +41,17 @@ export async function GET(request: NextRequest) {
           { status: 400 },
         );
       }
-      patientsQuery = patientsQuery.where(eq(users.organizationId, user.organizationId)) as any;
+      whereConditions.push(eq(users.organizationId, user.organizationId));
     }
+
+    // Get patients based on role
+    const patientsQuery = db
+      .select({
+        id: users.id,
+        name: users.name,
+      })
+      .from(users)
+      .where(and(...whereConditions));
 
     // Super admins can access all patients (no additional filter)
 

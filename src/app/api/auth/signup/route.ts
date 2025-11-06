@@ -5,10 +5,10 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/libs/DB';
 import { organizationsSchema, users } from '@/models/Schema';
-import { generateJoinCode } from '@/services/OrganizationService';
 
 // Validation schema for organization creation
 const createOrganizationSchema = z.object({
@@ -51,22 +51,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique join code
-    let joinCode = generateJoinCode();
-    let isUnique = false;
-
-    while (!isUnique) {
-      const existing = await db.query.organizations.findFirst({
-        where: (orgs, { eq }) => eq(orgs.joinCode, joinCode),
-      });
-
-      if (!existing) {
-        isUnique = true;
-      } else {
-        joinCode = generateJoinCode();
-      }
-    }
-
     // Generate slug from organization name
     const slug = validated.organizationName
       .toLowerCase()
@@ -102,8 +86,6 @@ export async function POST(request: NextRequest) {
         contactEmail: validated.contactEmail,
         logoUrl: null,
         primaryColor: null,
-        joinCode,
-        joinCodeEnabled: true,
         settings: defaultSettings,
         status: 'active',
         createdBy: null, // Will be updated after admin is created
@@ -117,7 +99,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create org admin user
-    const [adminUser] = await db
+    const adminUserResult = await db
       .insert(users)
       .values({
         firebaseUid: validated.firebaseUid,
@@ -131,9 +113,11 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
+    const adminUser = Array.isArray(adminUserResult) ? adminUserResult[0] : undefined;
+
     if (!adminUser) {
       // Rollback: delete the organization
-      await db.delete(organizationsSchema).where((o, { eq }) => eq(o.id, organization.id));
+      await db.delete(organizationsSchema).where(eq(organizationsSchema.id, organization.id));
       throw new Error('Failed to create admin user');
     }
 
@@ -141,14 +125,13 @@ export async function POST(request: NextRequest) {
     await db
       .update(organizationsSchema)
       .set({ createdBy: adminUser.id, updatedAt: new Date() })
-      .where((o, { eq }) => eq(o.id, organization.id));
+      .where(eq(organizationsSchema.id, organization.id));
 
     return NextResponse.json(
       {
         success: true,
         organizationId: organization.id,
         userId: adminUser.id,
-        joinCode: organization.joinCode,
         message: 'Organization created successfully',
       },
       { status: 201 },
@@ -156,7 +139,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: error.errors[0]?.message || 'Validation error' },
+        { error: error.issues[0]?.message || 'Validation error' },
         { status: 400 },
       );
     }

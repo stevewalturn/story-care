@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     const user = await requireSuperAdmin(request);
 
     console.error('POST /api/organizations - Super Admin authenticated:', {
-      userId: user.id,
+      userId: user.dbUserId,
       dbUserId: user.dbUserId,
       email: user.email,
       role: user.role,

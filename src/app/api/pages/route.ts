@@ -63,22 +63,31 @@ export async function GET(request: NextRequest) {
 
     const pages = await query.orderBy(desc(storyPages.updatedAt));
 
-    // Get block counts for each page
-    const pagesWithCounts = await Promise.all(
+    // Get block counts and patient names for each page
+    const pagesWithDetails = await Promise.all(
       pages.map(async (page) => {
         const blocks = await db
           .select()
           .from(pageBlocks)
           .where(eq(pageBlocks.pageId, page.id));
 
+        // Get patient name
+        const [patient] = await db
+          .select({ name: users.name })
+          .from(users)
+          .where(eq(users.id, page.patientId))
+          .limit(1);
+
         return {
           ...page,
           blockCount: blocks.length,
+          patientName: patient?.name || 'Unknown Patient',
+          isPublished: page.status === 'published',
         };
       }),
     );
 
-    return NextResponse.json({ pages: pagesWithCounts });
+    return NextResponse.json({ pages: pagesWithDetails });
   } catch (error) {
     console.error('Error fetching pages:', error);
     return NextResponse.json(
