@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       prompt,
-      model = 'dall-e-3',
+      model = 'gemini-2.5-flash-image',
       negativePrompt,
       width,
       height,
@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
       sessionId,
       patientId,
       title,
+      referenceImage, // Base64 or URL for image-to-image
     } = body;
 
     if (!prompt) {
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
       seed,
       quality,
       style,
+      referenceImage,
     });
 
     // Handle base64 or URL images

@@ -29,9 +29,8 @@ export const TEXT_GENERATION_MODELS = {
 
 // Image Generation Models
 export const IMAGE_GENERATION_MODELS = {
-  'OpenAI': [
-    { value: 'dall-e-2', label: 'DALL-E 2' },
-    { value: 'dall-e-3', label: 'DALL-E 3' },
+  'Google Gemini (Image-to-Image)': [
+    { value: 'gemini-2.5-flash-image', label: 'Nano Banana (Gemini 2.5 Flash Image) - HOT' },
   ],
   'Stability AI': [
     { value: 'sd3.5-large', label: 'Stable Diffusion 3.5 Large' },
@@ -46,16 +45,6 @@ export const IMAGE_GENERATION_MODELS = {
     { value: 'flux-realism', label: 'Flux Realism' },
     { value: 'sdxl', label: 'Fast SDXL' },
     { value: 'sdxl-lightning', label: 'SDXL Lightning' },
-  ],
-  'Google Vertex AI': [
-    { value: 'imagen-4.0-ultra-generate-001', label: 'Imagen 4.0 Ultra' },
-    { value: 'imagen-4.0-generate-001', label: 'Imagen 4.0' },
-    { value: 'imagen-4.0-fast-generate-001', label: 'Imagen 4.0 Fast' },
-    { value: 'imagen-3.0-generate-002', label: 'Imagen 3.0 v2' },
-    { value: 'imagen-3.0-fast-generate-001', label: 'Imagen 3.0 Fast' },
-    { value: 'imagen-3.0-generate-001', label: 'Imagen 3.0' },
-    { value: 'imagen-3.0-capability-001', label: 'Imagen 3.0 Capability' },
-    { value: 'imagegeneration@006', label: 'Imagen 2' },
   ],
 } as const;
 

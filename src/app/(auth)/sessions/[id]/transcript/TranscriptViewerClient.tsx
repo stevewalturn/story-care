@@ -103,7 +103,7 @@ export function TranscriptViewerClient({
 
   // Handler for analyze option
   const handleAnalyze = async (optionId: string, text: string) => {
-    console.error('Analyzing:', optionId, text);
+    console.log('Analyzing:', optionId, text);
 
     // Route to appropriate modal/action based on option
     if (optionId === 'save-quote') {
@@ -168,14 +168,14 @@ Transcript text:
   };
 
   // Handler for image generation
-  const handleGenerateImage = async (prompt: string, model: string, useReference: boolean, referenceImageUrl?: string) => {
+  const handleGenerateImage = async (prompt: string, model: string, useReference: boolean, referenceImage?: string) => {
     try {
       const response = await authenticatedPost('/api/ai/generate-image', user, {
         prompt,
         model,
         sessionId,
         useReference,
-        referenceImageUrl,
+        referenceImage, // Can be base64 or URL
         selectedText,
       });
 
@@ -184,7 +184,7 @@ Transcript text:
       }
 
       const data = await response.json();
-      console.error('Image generated:', data);
+      console.log('Image generated:', data);
       // Trigger library refresh
     } catch (error) {
       console.error('Error generating image:', error);
@@ -205,7 +205,7 @@ Transcript text:
       }
 
       const data = await response.json();
-      console.error('Video generated:', data);
+      console.log('Video generated:', data);
       // Trigger library refresh
     } catch (error) {
       console.error('Error generating video:', error);
@@ -243,7 +243,7 @@ Transcript text:
       }
 
       const data = await response.json();
-      console.error('Quote saved:', data);
+      console.log('Quote saved:', data);
       // TODO: Trigger quotes list refresh in library panel
     } catch (error) {
       console.error('Error saving quote:', error);

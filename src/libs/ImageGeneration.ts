@@ -4,18 +4,14 @@
  */
 
 import type { FalModel } from './providers/FalAI';
+import type { GeminiImageModel } from './providers/GeminiImage';
 import type { StabilityModel } from './providers/StabilityAI';
-import type { ImagenModel } from './providers/VertexAI';
-
-// OpenAI Models
-export type OpenAIModel = 'dall-e-2' | 'dall-e-3';
 
 // All available models
 export type ImageGenModel
-  = | OpenAIModel
-    | StabilityModel
+  = | StabilityModel
     | FalModel
-    | ImagenModel;
+    | GeminiImageModel;
 
 export type ImageGenerationOptions = {
   prompt: string;
@@ -27,6 +23,7 @@ export type ImageGenerationOptions = {
   seed?: number;
   quality?: 'standard' | 'hd';
   style?: 'natural' | 'vivid';
+  referenceImage?: string; // Base64 or URL for image-to-image
 };
 
 export type ImageGenerationResult = {
@@ -42,15 +39,13 @@ export async function generateImage(
 ): Promise<ImageGenerationResult> {
   const { model, prompt } = options;
 
-  // Route to OpenAI (DALL-E)
-  if (model === 'dall-e-2' || model === 'dall-e-3') {
-    const { generateImageWithOpenAI } = await import('./providers/OpenAI');
-    return await generateImageWithOpenAI({
+  // Route to Google Gemini (Image-to-Image)
+  if (model === 'gemini-2.5-flash-image') {
+    const { generateImageWithGemini } = await import('./providers/GeminiImage');
+    return await generateImageWithGemini({
       prompt,
       model,
-      size: options.width && options.height ? `${options.width}x${options.height}` as any : undefined,
-      quality: options.quality,
-      style: options.style,
+      referenceImage: options.referenceImage,
     });
   }
 
@@ -88,27 +83,6 @@ export async function generateImage(
       height: options.height,
       seed: options.seed,
       negativePrompt: options.negativePrompt,
-    });
-  }
-
-  // Route to Google Vertex AI (Imagen)
-  if (
-    model === 'imagen-4.0-generate-001'
-    || model === 'imagen-4.0-fast-generate-001'
-    || model === 'imagen-4.0-ultra-generate-001'
-    || model === 'imagen-3.0-generate-002'
-    || model === 'imagen-3.0-generate-001'
-    || model === 'imagen-3.0-fast-generate-001'
-    || model === 'imagen-3.0-capability-001'
-    || model === 'imagegeneration@006'
-  ) {
-    const { generateImageWithVertex } = await import('./providers/VertexAI');
-    return await generateImageWithVertex({
-      prompt,
-      model: model as ImagenModel,
-      negativePrompt: options.negativePrompt,
-      aspectRatio: options.aspectRatio,
-      seed: options.seed,
     });
   }
 

@@ -5,16 +5,15 @@ import { useState } from 'react';
 type GenerateImageModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onGenerate: (prompt: string, model: string, useReference: boolean, referenceImageUrl?: string) => Promise<void>;
+  onGenerate: (prompt: string, model: string, useReference: boolean, referenceImage?: string) => Promise<void>;
   patientName?: string;
   patientReferenceImage?: string;
   initialPrompt?: string;
 };
 
 const IMAGE_MODELS = {
-  'OpenAI': [
-    { id: 'dall-e-3', name: 'DALL-E 3 (OpenAI)' },
-    { id: 'dall-e-2', name: 'DALL-E 2' },
+  'Google Gemini (Image-to-Image)': [
+    { id: 'gemini-2.5-flash-image', name: 'Nano Banana (Gemini 2.5 Flash Image) - HOT' },
   ],
   'Stability AI': [
     { id: 'sd3.5-large', name: 'Stable Diffusion 3.5 Large' },
@@ -30,16 +29,6 @@ const IMAGE_MODELS = {
     { id: 'sdxl', name: 'Fast SDXL' },
     { id: 'sdxl-lightning', name: 'SDXL Lightning' },
   ],
-  'Google Vertex AI': [
-    { id: 'imagen-4.0-ultra-generate-001', name: 'Imagen 4.0 Ultra' },
-    { id: 'imagen-4.0-generate-001', name: 'Imagen 4.0' },
-    { id: 'imagen-4.0-fast-generate-001', name: 'Imagen 4.0 Fast' },
-    { id: 'imagen-3.0-generate-002', name: 'Imagen 3.0 v2' },
-    { id: 'imagen-3.0-fast-generate-001', name: 'Imagen 3.0 Fast' },
-    { id: 'imagen-3.0-generate-001', name: 'Imagen 3.0' },
-    { id: 'imagen-3.0-capability-001', name: 'Imagen 3.0 Capability' },
-    { id: 'imagegeneration@006', name: 'Imagen 2' },
-  ],
 };
 
 export function GenerateImageModal({
@@ -52,11 +41,12 @@ export function GenerateImageModal({
 }: GenerateImageModalProps) {
   const [prompt, setPrompt] = useState(initialPrompt);
   const [useReference, setUseReference] = useState(true);
-  const [overrideImageUrl, _setOverrideImageUrl] = useState('');
+  const [overrideImageUrl, setOverrideImageUrl] = useState('');
+  const [overrideImageBase64, setOverrideImageBase64] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showContextMetadata, setShowContextMetadata] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
-  const [aiModel, setAiModel] = useState('flux-pro');
+  const [aiModel, setAiModel] = useState('gemini-2.5-flash-image');
 
   if (!isOpen) {
     return null;
@@ -69,8 +59,9 @@ export function GenerateImageModal({
 
     setIsGenerating(true);
     try {
-      const referenceUrl = overrideImageUrl || (useReference ? patientReferenceImage : undefined);
-      await onGenerate(prompt, aiModel, useReference, referenceUrl);
+      // Prioritize override image (base64), then URL, then patient reference
+      const referenceImage = overrideImageBase64 || overrideImageUrl || (useReference ? patientReferenceImage : undefined);
+      await onGenerate(prompt, aiModel, useReference, referenceImage);
       onClose();
     } catch (error) {
       console.error('Error generating image:', error);
@@ -82,6 +73,29 @@ export function GenerateImageModal({
   const handleOptimizePrompt = () => {
     // TODO: Implement AI prompt optimization
     console.error('Optimize prompt');
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    // Check if it's an image
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file');
+      return;
+    }
+
+    // Read file and convert to base64
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setOverrideImageBase64(base64String);
+      // Also set URL for preview
+      setOverrideImageUrl(base64String);
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -238,13 +252,50 @@ export function GenerateImageModal({
               {/* Override with Different Image */}
               <div className="mt-3">
                 <p className="mb-2 text-xs font-medium text-gray-700">Override with Different Image (Optional)</p>
-                <div className="cursor-pointer rounded-lg border-2 border-dashed border-gray-300 p-6 text-center transition-colors hover:border-gray-400">
-                  <svg className="mx-auto mb-2 h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                  <p className="mb-1 text-sm text-gray-600">Upload Image</p>
-                  <p className="text-xs text-gray-500">or drag & drop</p>
-                </div>
+                {overrideImageUrl
+                  ? (
+                      <div className="relative rounded-lg border border-green-200 bg-green-50 p-3">
+                        <button
+                          onClick={() => {
+                            setOverrideImageUrl('');
+                            setOverrideImageBase64('');
+                          }}
+                          className="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={overrideImageUrl}
+                            alt="Override reference"
+                            className="h-20 w-20 rounded-lg object-cover"
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-green-900">Custom Reference Image</p>
+                            <p className="text-xs text-green-700">This image will be used for image-to-image generation</p>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  : (
+                      <label className="block cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileUpload}
+                          className="hidden"
+                        />
+                        <div className="rounded-lg border-2 border-dashed border-gray-300 p-6 text-center transition-colors hover:border-gray-400">
+                          <svg className="mx-auto mb-2 h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                          </svg>
+                          <p className="mb-1 text-sm text-gray-600">Upload Image</p>
+                          <p className="text-xs text-gray-500">Click to browse or drag & drop</p>
+                        </div>
+                      </label>
+                    )}
               </div>
             </div>
 
