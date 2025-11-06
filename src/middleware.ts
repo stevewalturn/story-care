@@ -13,6 +13,9 @@ const protectedRoutes = [
   '/groups',
   '/prompts',
   '/admin',
+  '/super-admin',
+  '/org-admin',
+  '/patient',
 ];
 
 // Auth pages (sign-in, sign-up)
