@@ -13,7 +13,7 @@ type GenerateImageModalProps = {
 
 const IMAGE_MODELS = {
   'OpenAI': [
-    { id: 'dall-e-3', name: 'DALL-E 3' },
+    { id: 'dall-e-3', name: 'DALL-E 3 (OpenAI)' },
     { id: 'dall-e-2', name: 'DALL-E 2' },
   ],
   'Stability AI': [
