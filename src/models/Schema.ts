@@ -20,7 +20,42 @@ import {
 // ENUMS
 // ============================================================================
 
-export const userRoleEnum = pgEnum('user_role', ['therapist', 'patient', 'admin']);
+export const userRoleEnum = pgEnum('user_role', [
+  'super_admin',
+  'org_admin',
+  'therapist',
+  'patient',
+]);
+export const userStatusEnum = pgEnum('user_status', [
+  'pending_approval',
+  'active',
+  'inactive',
+]);
+export const organizationStatusEnum = pgEnum('organization_status', [
+  'active',
+  'trial',
+  'suspended',
+]);
+export const templateScopeEnum = pgEnum('template_scope', [
+  'system',
+  'organization',
+  'private',
+]);
+export const templateStatusEnum = pgEnum('template_status', [
+  'active',
+  'pending_approval',
+  'rejected',
+  'archived',
+]);
+export const templateCategoryEnum = pgEnum('template_category', [
+  'screening',
+  'outcome',
+  'satisfaction',
+  'custom',
+  'narrative',
+  'emotion',
+  'goal-setting',
+]);
 export const sessionTypeEnum = pgEnum('session_type', ['individual', 'group']);
 export const transcriptionStatusEnum = pgEnum('transcription_status', [
   'pending',
@@ -81,6 +116,52 @@ export const auditActionEnum = pgEnum('audit_action', [
 export const chatRoleEnum = pgEnum('chat_role', ['user', 'assistant', 'system']);
 
 // ============================================================================
+// ORGANIZATIONS
+// ============================================================================
+
+export const organizationsSchema = pgTable('organizations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 100 }).unique().notNull(),
+  contactEmail: varchar('contact_email', { length: 255 }).notNull(),
+  logoUrl: text('logo_url'),
+  primaryColor: varchar('primary_color', { length: 7 }), // Hex color code
+
+  // Self-signup join code
+  joinCode: varchar('join_code', { length: 50 }).unique().notNull(),
+  joinCodeEnabled: boolean('join_code_enabled').default(true).notNull(),
+
+  // Settings (JSONB for flexibility)
+  settings: jsonb('settings')
+    .default({
+      subscriptionTier: 'trial',
+      features: {
+        maxTherapists: 5,
+        maxPatients: 50,
+        aiCreditsPerMonth: 1000,
+        storageGB: 10,
+      },
+      defaults: {
+        reflectionQuestions: [],
+        surveyTemplate: null,
+        sessionTranscriptionEnabled: true,
+      },
+      branding: {
+        welcomeMessage: null,
+        supportEmail: null,
+      },
+    })
+    .notNull(),
+
+  status: organizationStatusEnum('status').default('trial').notNull(),
+  trialEndsAt: timestamp('trial_ends_at'),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  createdBy: uuid('created_by'), // References users.id (super admin who created it) - nullable initially for bootstrap
+});
+
+// ============================================================================
 // USERS & AUTHENTICATION
 // ============================================================================
 
@@ -89,6 +170,15 @@ export const usersSchema: any = pgTable('users', {
   email: varchar('email', { length: 255 }).unique().notNull(),
   name: varchar('name', { length: 255 }).notNull(),
   role: userRoleEnum('role').notNull(),
+
+  // Organization membership
+  organizationId: uuid('organization_id').references(() => organizationsSchema.id, {
+    onDelete: 'restrict',
+  }),
+
+  // User status for approval workflow
+  status: userStatusEnum('status').default('active').notNull(),
+
   avatarUrl: text('avatar_url'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -118,6 +208,12 @@ export const groupsSchema = pgTable('groups', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: varchar('name', { length: 255 }).notNull(),
   description: text('description'),
+
+  // Organization scoping
+  organizationId: uuid('organization_id')
+    .references(() => organizationsSchema.id, { onDelete: 'cascade' })
+    .notNull(),
+
   therapistId: uuid('therapist_id')
     .references(() => usersSchema.id)
     .notNull(),
@@ -384,13 +480,104 @@ export const notesSchema = pgTable('notes', {
 });
 
 // ============================================================================
+// TEMPLATE LIBRARY (Survey & Reflection Templates)
+// ============================================================================
+
+export const surveyTemplatesSchema = pgTable('survey_templates', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  // Scope and ownership
+  scope: templateScopeEnum('scope').default('private').notNull(),
+  organizationId: uuid('organization_id').references(() => organizationsSchema.id, {
+    onDelete: 'cascade',
+  }),
+  createdBy: uuid('created_by')
+    .references(() => usersSchema.id)
+    .notNull(),
+
+  // Approval workflow
+  approvedBy: uuid('approved_by').references(() => usersSchema.id),
+  approvedAt: timestamp('approved_at'),
+  status: templateStatusEnum('status').default('active').notNull(),
+  rejectionReason: text('rejection_reason'),
+
+  // Template content
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description'),
+  category: templateCategoryEnum('category').default('custom').notNull(),
+
+  // Questions (JSONB array)
+  questions: jsonb('questions').notNull(), // Array of question objects
+
+  // Usage tracking
+  useCount: integer('use_count').default(0).notNull(),
+
+  // Metadata
+  metadata: jsonb('metadata'),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const reflectionTemplatesSchema = pgTable('reflection_templates', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  // Scope and ownership
+  scope: templateScopeEnum('scope').default('private').notNull(),
+  organizationId: uuid('organization_id').references(() => organizationsSchema.id, {
+    onDelete: 'cascade',
+  }),
+  createdBy: uuid('created_by')
+    .references(() => usersSchema.id)
+    .notNull(),
+
+  // Approval workflow
+  approvedBy: uuid('approved_by').references(() => usersSchema.id),
+  approvedAt: timestamp('approved_at'),
+  status: templateStatusEnum('status').default('active').notNull(),
+  rejectionReason: text('rejection_reason'),
+
+  // Template content
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description'),
+  category: templateCategoryEnum('category').default('custom').notNull(),
+
+  // Questions (JSONB array)
+  questions: jsonb('questions').notNull(), // Array of question objects
+
+  // Usage tracking
+  useCount: integer('use_count').default(0).notNull(),
+
+  // Metadata
+  metadata: jsonb('metadata'),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================================================
 // THERAPEUTIC PROMPTS
 // ============================================================================
 
 export const therapeuticPromptsSchema = pgTable('therapeutic_prompts', {
   id: uuid('id').primaryKey().defaultRandom(),
 
-  // Ownership (null for system prompts)
+  // Scope and ownership
+  scope: templateScopeEnum('scope').default('private').notNull(),
+  organizationId: uuid('organization_id').references(() => organizationsSchema.id, {
+    onDelete: 'cascade',
+  }),
+  createdBy: uuid('created_by')
+    .references(() => usersSchema.id)
+    .notNull(),
+
+  // Approval workflow
+  approvedBy: uuid('approved_by').references(() => usersSchema.id),
+  approvedAt: timestamp('approved_at'),
+  status: templateStatusEnum('status').default('active').notNull(),
+  rejectionReason: text('rejection_reason'),
+
+  // Legacy field (deprecated, use createdBy instead)
   therapistId: uuid('therapist_id').references(() => usersSchema.id),
 
   // Prompt content
@@ -405,6 +592,9 @@ export const therapeuticPromptsSchema = pgTable('therapeutic_prompts', {
   // Usage
   isFavorite: boolean('is_favorite').default(false),
   useCount: integer('use_count').default(0),
+
+  // Metadata
+  metadata: jsonb('metadata'),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -620,6 +810,11 @@ export const auditLogsSchema = pgTable('audit_logs', {
     .references(() => usersSchema.id)
     .notNull(),
 
+  // Organization context
+  organizationId: uuid('organization_id').references(() => organizationsSchema.id, {
+    onDelete: 'set null',
+  }),
+
   // Action details
   action: auditActionEnum('action').notNull(),
   resourceType: varchar('resource_type', { length: 50 }).notNull(), // 'session', 'patient', 'media', etc.
@@ -671,6 +866,7 @@ export const patientPageInteractionsSchema = pgTable('patient_page_interactions'
 // ============================================================================
 
 // Export table schemas both with and without 'Schema' suffix
+export const organizations = organizationsSchema;
 export const users = usersSchema;
 export const groups = groupsSchema;
 export const groupMembers = groupMembersSchema;
@@ -682,6 +878,8 @@ export const aiChatMessages = aiChatMessagesSchema;
 export const mediaLibrary = mediaLibrarySchema;
 export const quotes = quotesSchema;
 export const notes = notesSchema;
+export const surveyTemplates = surveyTemplatesSchema;
+export const reflectionTemplates = reflectionTemplatesSchema;
 export const therapeuticPrompts = therapeuticPromptsSchema;
 export const scenes = scenesSchema;
 export const sceneClips = sceneClipsSchema;
@@ -697,6 +895,9 @@ export const auditLogs = auditLogsSchema;
 // ============================================================================
 // EXPORTS (for type inference)
 // ============================================================================
+
+export type Organization = typeof organizationsSchema.$inferSelect;
+export type NewOrganization = typeof organizationsSchema.$inferInsert;
 
 export type User = typeof usersSchema.$inferSelect;
 export type NewUser = typeof usersSchema.$inferInsert;
@@ -727,6 +928,12 @@ export type NewQuote = typeof quotesSchema.$inferInsert;
 
 export type Note = typeof notesSchema.$inferSelect;
 export type NewNote = typeof notesSchema.$inferInsert;
+
+export type SurveyTemplate = typeof surveyTemplatesSchema.$inferSelect;
+export type NewSurveyTemplate = typeof surveyTemplatesSchema.$inferInsert;
+
+export type ReflectionTemplate = typeof reflectionTemplatesSchema.$inferSelect;
+export type NewReflectionTemplate = typeof reflectionTemplatesSchema.$inferInsert;
 
 export type TherapeuticPrompt = typeof therapeuticPromptsSchema.$inferSelect;
 export type NewTherapeuticPrompt = typeof therapeuticPromptsSchema.$inferInsert;

@@ -4,9 +4,10 @@ This document contains comprehensive Mermaid diagrams for the StoryCare digital 
 
 ## Table of Contents
 1. [Complete Session Workflow](#complete-session-workflow)
-2. [Authentication Flow](#authentication-flow)
-3. [Database Schema Overview](#database-schema-overview)
-4. [API Architecture](#api-architecture)
+2. [AI Speaker Labeling Process](#ai-speaker-labeling-process)
+3. [Authentication Flow](#authentication-flow)
+4. [Database Schema Overview](#database-schema-overview)
+5. [API Architecture](#api-architecture)
 
 ---
 
@@ -68,6 +69,418 @@ flowchart TD
     style DB3 fill:#336791
     style DB4 fill:#336791
     style DB5 fill:#336791
+```
+
+---
+
+## AI Speaker Labeling Process
+
+### Overview: How Speaker Identification Works
+
+This section explains how StoryCare uses Deepgram AI for speaker diarization (separating voices) and manual labeling for speaker identification.
+
+**Important:** The system uses **AI for voice separation** but **manual labeling for identification**. There is no automated AI that determines "therapist vs patient" - this requires clinical judgment.
+
+### 1. Complete Speaker Labeling Workflow
+
+```mermaid
+flowchart TD
+    Start([Audio File Uploaded]) --> Session[Session Created in DB]
+    Session --> Transcribe[POST /api/sessions/id/transcribe]
+
+    Transcribe --> Deepgram[Deepgram API Call]
+
+    Deepgram --> DG_Config{Deepgram Configuration}
+    DG_Config --> Model[Model: nova-2<br/>Most accurate model]
+    DG_Config --> Diarize[Diarization: true<br/>Separate speakers]
+    DG_Config --> Utterances[Utterances: true<br/>Segment by speaker]
+    DG_Config --> Smart[Smart Format: true<br/>Add punctuation]
+
+    Model & Diarize & Utterances & Smart --> DG_Process[Deepgram Processes Audio]
+
+    DG_Process --> DG_Result{Deepgram Response}
+
+    DG_Result --> FullText[Full Transcript Text]
+    DG_Result --> UtteranceList[Utterances Array]
+
+    UtteranceList --> U1[Utterance 1:<br/>Speaker: 0<br/>Start: 0.5s<br/>End: 3.2s<br/>Text: 'Hello...'<br/>Confidence: 0.98]
+
+    UtteranceList --> U2[Utterance 2:<br/>Speaker: 1<br/>Start: 3.5s<br/>End: 8.1s<br/>Text: 'Hi doctor...'<br/>Confidence: 0.95]
+
+    UtteranceList --> U3[Utterance 3:<br/>Speaker: 0<br/>Start: 8.5s<br/>End: 12.3s<br/>Text: 'How are you?'<br/>Confidence: 0.97]
+
+    U1 & U2 & U3 --> GroupSpeakers[Group by Speaker ID]
+
+    GroupSpeakers --> CreateSpeakers[Create Speaker Records]
+    CreateSpeakers --> S1[Speaker 1<br/>speakerLabel: 'Speaker 1'<br/>speakerType: null<br/>speakerName: null<br/>totalUtterances: 45<br/>totalDuration: 180s]
+
+    CreateSpeakers --> S2[Speaker 2<br/>speakerLabel: 'Speaker 2'<br/>speakerType: null<br/>speakerName: null<br/>totalUtterances: 38<br/>totalDuration: 150s]
+
+    S1 & S2 --> StoreDB[(Store in Database:<br/>- transcript<br/>- speakers<br/>- utterances)]
+
+    StoreDB --> Navigate[Therapist Navigates to:<br/>/sessions/id/speakers]
+
+    Navigate --> LoadUI[Load Speaker Labeling UI]
+
+    LoadUI --> ShowCards[Show Speaker Cards:<br/>- Speaker 1 Card<br/>- Speaker 2 Card]
+
+    ShowCards --> AudioSample[Generate Audio Samples<br/>GET /speakers/speakerId/audio]
+
+    AudioSample --> FirstUtterances[Extract First 3 Utterances<br/>for Each Speaker]
+
+    FirstUtterances --> PlayAudio[Therapist Plays Audio<br/>to Identify Voice]
+
+    PlayAudio --> ManualLabel{Therapist Identifies}
+
+    ManualLabel --> Label1[Speaker 1:<br/>Type: Therapist<br/>Name: Dr. Sarah Smith]
+
+    ManualLabel --> Label2[Speaker 2:<br/>Type: Patient<br/>Name: John Doe]
+
+    Label1 & Label2 --> SaveLabels[PUT /api/sessions/id/speakers]
+
+    SaveLabels --> UpdateDB[(Update Database:<br/>- speakerType<br/>- speakerName<br/>- optional userId link)]
+
+    UpdateDB --> Complete[✅ Speaker Labeling Complete]
+
+    Complete --> NextStep[Proceed to:<br/>/sessions/id/transcript<br/>Transcript Viewer with<br/>Labeled Speakers]
+
+    style Deepgram fill:#4F46E5,color:#fff
+    style DG_Process fill:#4F46E5,color:#fff
+    style ManualLabel fill:#F59E0B,color:#000
+    style Complete fill:#10B981,color:#fff
+```
+
+### 2. Deepgram Speaker Diarization Process
+
+```mermaid
+sequenceDiagram
+    participant Therapist
+    participant API as API Route
+    participant GCS as Google Cloud Storage
+    participant Deepgram as Deepgram API
+    participant DB as PostgreSQL
+
+    Therapist->>API: POST /api/sessions/[id]/transcribe
+    API->>DB: Fetch session record
+    DB-->>API: Session with audioUrl
+
+    API->>API: Update status: 'processing'
+
+    API->>Deepgram: POST /listen<br/>{<br/>  url: audioUrl,<br/>  model: 'nova-2',<br/>  diarize: true,<br/>  utterances: true,<br/>  smart_format: true<br/>}
+
+    Note over Deepgram: AI Processing:<br/>1. Speech-to-text<br/>2. Voice separation<br/>3. Speaker clustering<br/>4. Timestamp alignment
+
+    Deepgram-->>API: Response:<br/>{<br/>  text: 'full transcript...',<br/>  utterances: [<br/>    {speaker: 0, start: 0.5, end: 3.2, text: '...'},<br/>    {speaker: 1, start: 3.5, end: 8.1, text: '...'},<br/>    {speaker: 0, start: 8.5, end: 12.3, text: '...'}<br/>  ]<br/>}
+
+    API->>API: Group utterances by speaker ID
+
+    loop For each unique speaker
+        API->>DB: INSERT INTO speakers<br/>(transcriptId, speakerLabel, totalUtterances, totalDuration)
+        DB-->>API: Speaker record created
+    end
+
+    loop For each utterance
+        API->>DB: INSERT INTO utterances<br/>(transcriptId, speakerId, text, start, end, confidence, sequence)
+        DB-->>API: Utterance record created
+    end
+
+    API->>API: Update status: 'completed'
+    API->>DB: Log audit entry<br/>(PHI creation: transcript)
+
+    API-->>Therapist: {<br/>  transcript: {...},<br/>  speakers: [...],<br/>  utteranceCount: 83<br/>}
+```
+
+### 3. Speaker Labeling UI Flow
+
+```mermaid
+sequenceDiagram
+    participant Therapist
+    participant Browser
+    participant API as API Route
+    participant DB as PostgreSQL
+    participant GCS as Google Cloud Storage
+
+    Therapist->>Browser: Navigate to /sessions/[id]/speakers
+    Browser->>API: GET /api/sessions/[id]/speakers
+
+    API->>DB: SELECT * FROM speakers<br/>WHERE transcriptId = ?<br/>ORDER BY totalUtterances DESC
+    DB-->>API: [<br/>  {id: '1', speakerLabel: 'Speaker 1', type: null, name: null, utterances: 45},<br/>  {id: '2', speakerLabel: 'Speaker 2', type: null, name: null, utterances: 38}<br/>]
+
+    API-->>Browser: Speakers array
+
+    Browser->>Browser: Render speaker cards
+
+    Note over Browser: Speaker Card 1:<br/>- Label: "Speaker 1"<br/>- Stats: 45 utterances, 180s<br/>- Audio player<br/>- Type dropdown (empty)<br/>- Name input (empty)
+
+    Therapist->>Browser: Click "Play Sample" on Speaker 1
+
+    Browser->>API: GET /api/sessions/[id]/speakers/[speakerId]/audio
+
+    API->>DB: SELECT * FROM utterances<br/>WHERE speakerId = ?<br/>ORDER BY sequenceNumber<br/>LIMIT 3
+    DB-->>API: First 3 utterances with timestamps
+
+    API->>API: Build audio URL with fragments:<br/>audioUrl + '#t=0.5,3.2'
+    API-->>Browser: {audioUrl: 'https://storage.../audio.mp3#t=0.5,3.2'}
+
+    Browser->>GCS: Stream audio with timestamp
+    GCS-->>Browser: Audio stream (0.5s to 3.2s)
+
+    Browser->>Browser: Play audio sample
+
+    Note over Therapist: Listens and identifies:<br/>"This sounds like me"
+
+    Therapist->>Browser: Select Type: "Therapist"
+    Therapist->>Browser: Enter Name: "Dr. Sarah Smith"
+
+    Therapist->>Browser: Click "Play Sample" on Speaker 2
+    Browser->>API: GET /api/sessions/[id]/speakers/2/audio
+    API-->>Browser: Audio sample
+
+    Note over Therapist: Listens and identifies:<br/>"This is my patient John"
+
+    Therapist->>Browser: Select Type: "Patient"
+    Therapist->>Browser: Enter Name: "John Doe"
+
+    Therapist->>Browser: Click "Save"
+
+    Browser->>API: PUT /api/sessions/[id]/speakers<br/>{<br/>  speakers: [<br/>    {id: '1', type: 'therapist', name: 'Dr. Sarah Smith'},<br/>    {id: '2', type: 'patient', name: 'John Doe'}<br/>  ]<br/>}
+
+    loop For each speaker
+        API->>DB: UPDATE speakers<br/>SET speakerType = ?, speakerName = ?<br/>WHERE id = ?
+        DB-->>API: Updated
+    end
+
+    API->>DB: Log audit entry<br/>(PHI update: speaker identification)
+
+    API-->>Browser: {success: true}
+
+    Browser->>Browser: Show success message
+    Browser->>Browser: Enable "Continue to Transcript"
+
+    Therapist->>Browser: Click "Continue to Transcript"
+    Browser->>Browser: Navigate to /sessions/[id]/transcript
+```
+
+### 4. Database Schema for Speaker Labeling
+
+```mermaid
+erDiagram
+    SESSIONS ||--|| TRANSCRIPTS : has
+    TRANSCRIPTS ||--o{ SPEAKERS : identifies
+    TRANSCRIPTS ||--o{ UTTERANCES : contains
+    SPEAKERS ||--o{ UTTERANCES : speaks
+    SPEAKERS ||--o| USERS : may_link_to
+
+    SESSIONS {
+        uuid id PK
+        string title
+        timestamp sessionDate
+        string audioUrl
+        string transcriptionStatus
+        uuid therapistId FK
+        uuid patientId FK
+        timestamp createdAt
+    }
+
+    TRANSCRIPTS {
+        uuid id PK
+        uuid sessionId FK
+        text fullText
+        timestamp createdAt
+    }
+
+    SPEAKERS {
+        uuid id PK
+        uuid transcriptId FK
+        string speakerLabel "Speaker 1, Speaker 2"
+        string speakerType "therapist, patient, group_member"
+        string speakerName "Dr. Smith, John Doe"
+        uuid userId FK "Optional link to users table"
+        int totalUtterances
+        int totalDurationSeconds
+        timestamp createdAt
+    }
+
+    UTTERANCES {
+        uuid id PK
+        uuid transcriptId FK
+        uuid speakerId FK
+        text text "Actual spoken text"
+        decimal startTimeSeconds "0.5, 3.2, 8.5"
+        decimal endTimeSeconds "3.2, 8.1, 12.3"
+        decimal confidenceScore "0.98, 0.95, 0.97"
+        int sequenceNumber "Order in transcript"
+        timestamp createdAt
+    }
+
+    USERS {
+        uuid id PK
+        string firebaseUid
+        string email
+        string name
+        string role
+        uuid therapistId FK
+        timestamp createdAt
+    }
+```
+
+### 5. Speaker Merge Functionality
+
+```mermaid
+flowchart TD
+    Start([Therapist Notices Split Speaker]) --> Problem{Problem Identified}
+
+    Problem --> Issue["Deepgram incorrectly split<br/>one person into<br/>Speaker 1 and Speaker 3"]
+
+    Issue --> EnterMerge[Click 'Merge Speakers']
+    EnterMerge --> SelectPrimary[Select Primary: Speaker 1]
+    SelectPrimary --> SelectMerge[Select to Merge: Speaker 3]
+
+    SelectMerge --> Confirm[Click 'Merge']
+
+    Confirm --> API[POST /api/sessions/id/speakers/merge]
+
+    API --> UpdateUtterances[(Update Utterances:<br/>SET speakerId = primaryId<br/>WHERE speakerId = mergeId)]
+
+    UpdateUtterances --> RecalcStats[Recalculate Stats:<br/>totalUtterances += merged.totalUtterances<br/>totalDuration += merged.totalDuration]
+
+    RecalcStats --> DeleteMerged[(DELETE FROM speakers<br/>WHERE id = mergeId)]
+
+    DeleteMerged --> Result[✅ Speaker 3 merged into Speaker 1]
+
+    Result --> UpdateUI[Refresh UI:<br/>Only Speaker 1 and 2 remain]
+
+    UpdateUI --> Continue[Continue Labeling]
+
+    style Problem fill:#F59E0B,color:#000
+    style Result fill:#10B981,color:#fff
+```
+
+### 6. Key Algorithms Explained
+
+#### Deepgram Diarization Algorithm (Simplified)
+
+```mermaid
+flowchart LR
+    Audio[Audio Waveform] --> Feature[Feature Extraction:<br/>Mel-frequency cepstral coefficients]
+
+    Feature --> Segment[Segmentation:<br/>Detect voice activity<br/>Split into segments]
+
+    Segment --> Embed[Embedding Generation:<br/>Neural network creates<br/>voice 'fingerprints']
+
+    Embed --> Cluster[Clustering:<br/>Group similar embeddings<br/>Assign speaker IDs]
+
+    Cluster --> Align[Alignment:<br/>Match clusters to<br/>transcript timestamps]
+
+    Align --> Output[Output:<br/>Speaker 0: 0.5s-3.2s<br/>Speaker 1: 3.5s-8.1s<br/>Speaker 0: 8.5s-12.3s]
+
+    style Feature fill:#4F46E5,color:#fff
+    style Embed fill:#4F46E5,color:#fff
+    style Cluster fill:#4F46E5,color:#fff
+```
+
+#### Manual Labeling Logic
+
+```mermaid
+flowchart TD
+    Start[Speaker Cards Displayed] --> Audio[Audio Sample Available]
+
+    Audio --> Play[Therapist Plays Sample]
+
+    Play --> Identify{Can Identify Voice?}
+
+    Identify -->|Yes| Label[Select Type & Enter Name]
+    Identify -->|No| More[Play More Samples]
+
+    More --> Identify
+
+    Label --> Validate{Validation}
+
+    Validate --> TypeCheck[Type selected?]
+    Validate --> NameCheck[Name entered?]
+
+    TypeCheck & NameCheck -->|All valid| Save[Save to Database]
+
+    TypeCheck -->|Missing| Error1[Show error: Select type]
+    NameCheck -->|Missing| Error2[Show error: Enter name]
+
+    Error1 & Error2 --> Label
+
+    Save --> Next{More speakers?}
+
+    Next -->|Yes| Audio
+    Next -->|No| Complete[✅ All speakers labeled]
+
+    style Identify fill:#F59E0B,color:#000
+    style Complete fill:#10B981,color:#fff
+```
+
+### 7. Why No Automated Speaker Identification?
+
+**Clinical Reasoning:**
+
+```mermaid
+mindmap
+  root((Why Manual<br/>Labeling?))
+    Clinical Context
+      Therapist knows patient voice
+      Therapist knows their own voice
+      No training data needed
+      HIPAA privacy concerns
+    Technical Challenges
+      Voice recognition requires training
+      Patient consent for voice biometrics
+      Accuracy issues with:
+        Similar voices
+        Background noise
+        Emotions affecting voice
+    Legal Considerations
+      Biometric data = PHI
+      Requires explicit consent
+      Additional BAA requirements
+      Liability for misidentification
+    Current Solution Benefits
+      100% accuracy with human verification
+      No AI training on PHI
+      Simple, reliable process
+      Therapist maintains control
+```
+
+### 8. Future Enhancement: Voice Recognition
+
+**Potential Architecture (Not Implemented):**
+
+```mermaid
+flowchart TD
+    Start[Audio Transcribed] --> Extract[Extract Voice Embeddings]
+
+    Extract --> Compare[Compare to Database]
+
+    Compare --> DB[(Voice Profiles:<br/>- Therapist voice print<br/>- Patient voice print)]
+
+    DB --> Match{Similarity Score}
+
+    Match -->|> 90%| Auto[Auto-assign speaker]
+    Match -->|< 90%| Manual[Suggest + Manual verify]
+
+    Auto --> Verify[Therapist Reviews]
+    Manual --> Verify
+
+    Verify -->|Correct| Learn[Update voice profile]
+    Verify -->|Incorrect| Fix[Manual correction]
+
+    Fix --> Learn
+
+    Learn --> Improve[Improve future accuracy]
+
+    style Start fill:#6366F1,color:#fff
+    style Auto fill:#10B981,color:#fff
+    style Manual fill:#F59E0B,color:#000
+    style Learn fill:#8B5CF6,color:#fff
+
+    Note1[⚠️ Requires:<br/>- Patient consent<br/>- Voice biometric BAA<br/>- Training data<br/>- ML model deployment]
+
+    style Note1 fill:#EF4444,color:#fff
 ```
 
 ---

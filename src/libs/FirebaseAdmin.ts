@@ -49,6 +49,7 @@ export async function verifyIdToken(token: string) {
       columns: {
         id: true,
         role: true,
+        organizationId: true,
         firebaseUid: true,
       },
     });
@@ -61,9 +62,10 @@ export async function verifyIdToken(token: string) {
     return {
       uid: decodedToken.uid,
       dbUserId: dbUser.id, // Database UUID
+      organizationId: dbUser.organizationId,
       email: decodedToken.email || null,
       emailVerified: decodedToken.email_verified || false,
-      role: dbUser.role as 'therapist' | 'patient' | 'admin',
+      role: dbUser.role as 'super_admin' | 'org_admin' | 'therapist' | 'patient',
     };
   } catch (error) {
     console.error('Token verification failed:', error);
