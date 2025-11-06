@@ -7,6 +7,7 @@
 
 import { AlertCircle, Building2, Calendar, CheckCircle, Plus, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { CreateOrganizationModal } from '@/components/super-admin/CreateOrganizationModal';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -26,13 +27,16 @@ export default function OrganizationsPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [idToken, setIdToken] = useState<string | null>(null);
 
   const fetchOrganizations = useCallback(async () => {
     try {
-      const idToken = await user?.getIdToken();
+      const token = await user?.getIdToken();
+      setIdToken(token || null);
       const response = await fetch('/api/organizations', {
         headers: {
-          Authorization: `Bearer ${idToken}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -99,11 +103,19 @@ export default function OrganizationsPage() {
             Manage all organizations on the platform
           </p>
         </div>
-        <Button variant="primary">
+        <Button variant="primary" onClick={() => setIsModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Create Organization
         </Button>
       </div>
+
+      {/* Create Organization Modal */}
+      <CreateOrganizationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={fetchOrganizations}
+        idToken={idToken}
+      />
 
       {/* Error Message */}
       {error && (
