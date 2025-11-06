@@ -6,6 +6,7 @@
  *   tsx scripts/seed-superadmin.ts
  */
 
+import { eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { users } from '@/models/Schema';
 
@@ -44,7 +45,7 @@ async function seedSuperAdmin() {
       }
 
       // Update existing user to super admin
-      const [updatedUser] = await db
+      const updatedUsers = await db
         .update(users)
         .set({
           role: 'super_admin',
@@ -52,8 +53,14 @@ async function seedSuperAdmin() {
           organizationId: null, // Super admins are not tied to an organization
           updatedAt: new Date(),
         })
-        .where((user) => user.firebaseUid === firebaseUid)
+        .where(eq(users.firebaseUid, firebaseUid))
         .returning();
+
+      if (!Array.isArray(updatedUsers) || updatedUsers.length === 0) {
+        throw new Error('Failed to update user');
+      }
+
+      const updatedUser = updatedUsers[0]!;
 
       console.log('✅ Updated existing user to super admin');
       console.log(`   Email: ${updatedUser.email}`);
