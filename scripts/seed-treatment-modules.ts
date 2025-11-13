@@ -3,6 +3,7 @@
  * Seeds the 8 core treatment modules from ADMIN.md specification
  */
 
+import { eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import {
   moduleAiPromptsSchema,
@@ -10,7 +11,6 @@ import {
   treatmentModulesSchema,
   usersSchema,
 } from '@/models/Schema';
-import { eq } from 'drizzle-orm';
 
 async function seedTreatmentModules() {
   console.log('🌱 Seeding treatment modules...');
@@ -339,7 +339,7 @@ Format as a professional clinical note suitable for medical records.`,
     {
       name: 'Grounding & Regulation',
       domain: 'self_strength',
-      description: "Strengthen awareness of safety, calm, and the body\'s signals of peace.",
+      description: 'Strengthen awareness of safety, calm, and the body\'s signals of peace.',
       scope: 'system',
       createdBy: systemUser.id,
       organizationId: null,
@@ -347,7 +347,7 @@ Format as a professional clinical note suitable for medical records.`,
         'Where do you feel most at ease right now?',
         'When your mind gets loud, what helps you find quiet again?',
         'If calm had a color or a sound, what comes to mind?',
-        "Who or what helps you remember you\'re safe?",
+        'Who or what helps you remember you\'re safe?',
       ],
       reflectionTemplateId: null,
       surveyTemplateId: null,
@@ -385,7 +385,7 @@ Format as a professional clinical note suitable for medical records.`,
       createdBy: systemUser.id,
       organizationId: null,
       inSessionQuestions: [
-        "Who has been part of your story in ways you didn't expect?",
+        'Who has been part of your story in ways you didn\'t expect?',
         'When did you risk letting someone close again?',
         'What does real safety with another person look like to you?',
         'What makes connection worth the risk?',
@@ -470,7 +470,7 @@ Format as a professional clinical note suitable for medical records.`,
       inSessionQuestions: [
         'Who were you then, and who are you now?',
         'What has stayed true through the changes?',
-        "What\'s one small sign that you\'ve turned a corner?",
+        'What\'s one small sign that you\'ve turned a corner?',
         'If this growth had a symbol, what would it be?',
       ],
       reflectionTemplateId: null,

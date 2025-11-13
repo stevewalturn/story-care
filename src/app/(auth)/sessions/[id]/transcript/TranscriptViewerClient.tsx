@@ -1,12 +1,14 @@
 'use client';
 
+import type { AIPromptOption } from '@/components/sessions/AnalyzeSelectionModal';
 import type { TreatmentModule } from '@/models/Schema';
 // import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { MediaUploadModal } from '@/components/media/MediaUploadModal';
 import {
-  type AIPromptOption,
+
   AnalyzeSelectionModal,
 } from '@/components/sessions/AnalyzeSelectionModal';
 import { AssignModuleModal } from '@/components/sessions/AssignModuleModal';
@@ -14,7 +16,6 @@ import { EditQuoteModal } from '@/components/sessions/EditQuoteModal';
 import { GenerateImageModal } from '@/components/sessions/GenerateImageModal';
 import { GenerateVideoModal } from '@/components/sessions/GenerateVideoModal';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
-import { MediaUploadModal } from '@/components/media/MediaUploadModal';
 import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAvailableTextModels } from '@/libs/ModelMetadata';
@@ -418,7 +419,7 @@ export function TranscriptViewerClient({
         </div>
 
         {/* Center Panel - AI Assistant */}
-        <div className="flex flex-1 flex-col max-w-[800px]">
+        <div className="flex max-w-[800px] flex-1 flex-col">
           <AIAssistantPanel
             sessionId={sessionId}
             patientName={patientName}
@@ -669,7 +670,7 @@ function TranscriptPanel({
               className="max-h-80 overflow-y-auto border-t border-indigo-100 bg-white px-4 py-3"
               onMouseUp={onTextSelection}
             >
-              <div className="prose prose-xs max-w-none prose-headings:text-gray-900 prose-headings:font-semibold prose-h1:text-sm prose-h1:mb-2 prose-h2:text-xs prose-h2:mb-1.5 prose-h3:text-xs prose-h3:mt-2 prose-h3:mb-1 prose-p:text-gray-700 prose-p:text-xs prose-p:leading-relaxed prose-strong:text-gray-900 prose-strong:font-semibold prose-ul:text-gray-700 prose-ul:text-xs prose-ol:text-gray-700 prose-ol:text-xs prose-li:my-0.5 prose-blockquote:border-l-4 prose-blockquote:border-purple-400 prose-blockquote:bg-purple-50 prose-blockquote:px-3 prose-blockquote:py-1.5 prose-blockquote:my-2 prose-blockquote:text-xs prose-code:text-indigo-600 prose-code:bg-indigo-50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs">
+              <div className="prose-xs prose max-w-none prose-headings:font-semibold prose-headings:text-gray-900 prose-h1:mb-2 prose-h1:text-sm prose-h2:mb-1.5 prose-h2:text-xs prose-h3:mt-2 prose-h3:mb-1 prose-h3:text-xs prose-p:text-xs prose-p:leading-relaxed prose-p:text-gray-700 prose-blockquote:my-2 prose-blockquote:border-l-4 prose-blockquote:border-purple-400 prose-blockquote:bg-purple-50 prose-blockquote:px-3 prose-blockquote:py-1.5 prose-blockquote:text-xs prose-strong:font-semibold prose-strong:text-gray-900 prose-code:rounded prose-code:bg-indigo-50 prose-code:px-1 prose-code:py-0.5 prose-code:text-xs prose-code:text-indigo-600 prose-ol:text-xs prose-ol:text-gray-700 prose-ul:text-xs prose-ul:text-gray-700 prose-li:my-0.5">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {sessionSummary}
                 </ReactMarkdown>
@@ -898,10 +899,14 @@ function AIAssistantPanel({
                 <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
               </svg>
               <span className="font-medium text-indigo-900">
-                Using Module: {assignedModule.name}
+                Using Module:
+                {' '}
+                {assignedModule.name}
               </span>
               <span className="text-indigo-600">
-                ({assignedModule.domain})
+                (
+                {assignedModule.domain}
+                )
               </span>
             </div>
           </div>
@@ -1022,23 +1027,23 @@ function AIAssistantPanel({
                   }`}
                 >
                   {message.role === 'assistant' ? (
-                    <div className="text-sm leading-relaxed prose prose-sm max-w-none
-                      prose-headings:text-gray-900 prose-headings:font-semibold
-                      prose-h1:text-lg prose-h1:mt-4 prose-h1:mb-3
-                      prose-h2:text-base prose-h2:mt-4 prose-h2:mb-2
-                      prose-h3:text-sm prose-h3:mt-3 prose-h3:mb-2
+                    <div className="prose prose-sm max-w-none text-sm leading-relaxed
+                      prose-headings:font-semibold prose-headings:text-gray-900
+                      prose-h1:mt-4 prose-h1:mb-3 prose-h1:text-lg
+                      prose-h2:mt-4 prose-h2:mb-2 prose-h2:text-base
+                      prose-h3:mt-3 prose-h3:mb-2 prose-h3:text-sm
                       prose-p:my-2 prose-p:text-gray-700
-                      prose-ul:my-2 prose-ol:my-2
-                      prose-li:my-1 prose-li:text-gray-700
-                      prose-strong:text-gray-900 prose-strong:font-semibold
+                      prose-a:text-indigo-600 prose-a:no-underline
+                      hover:prose-a:underline prose-blockquote:rounded-r
                       prose-blockquote:border-l-4 prose-blockquote:border-indigo-500
                       prose-blockquote:bg-indigo-50 prose-blockquote:px-4
-                      prose-blockquote:py-2 prose-blockquote:rounded-r
-                      prose-blockquote:not-italic prose-blockquote:text-gray-700
-                      prose-code:text-indigo-600 prose-code:bg-indigo-50
-                      prose-code:px-1 prose-code:py-0.5 prose-code:rounded
-                      prose-code:text-xs prose-code:font-mono
-                      prose-a:text-indigo-600 prose-a:no-underline hover:prose-a:underline"
+                      prose-blockquote:py-2 prose-blockquote:text-gray-700
+                      prose-blockquote:not-italic prose-strong:font-semibold
+                      prose-strong:text-gray-900 prose-code:rounded
+                      prose-code:bg-indigo-50 prose-code:px-1
+                      prose-code:py-0.5 prose-code:font-mono prose-code:text-xs
+                      prose-code:text-indigo-600 prose-ol:my-2
+                      prose-ul:my-2 prose-li:my-1 prose-li:text-gray-700"
                     >
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {message.content}

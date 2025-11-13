@@ -260,7 +260,7 @@ export function GenerateImageModal({
                             setOverrideImageUrl('');
                             setOverrideImageBase64('');
                           }}
-                          className="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
+                          className="absolute top-2 right-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
                         >
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

@@ -3,7 +3,7 @@
  * Handle email notifications via SendGrid
  */
 
-import { eq, desc, and } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { emailNotificationsSchema, platformSettingsSchema } from '@/models/Schema';
 

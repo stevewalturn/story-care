@@ -38,14 +38,14 @@ type AnalyzeSelectionModalProps = {
 // Icon mapping helper
 const getIconComponent = (iconName: string) => {
   const iconMap: Record<string, any> = {
-    target: Target,
-    sparkles: Sparkles,
-    bookmark: Bookmark,
-    info: Info,
-    video: Video,
-    image: Image,
-    activity: Activity,
-    users: Users,
+    'target': Target,
+    'sparkles': Sparkles,
+    'bookmark': Bookmark,
+    'info': Info,
+    'video': Video,
+    'image': Image,
+    'activity': Activity,
+    'users': Users,
     'file-text': FileText,
   };
   return iconMap[iconName] || Sparkles;

@@ -1,20 +1,20 @@
 import type { NextRequest } from 'next/server';
 import type { ChatMessage, TextGenModel } from '@/libs/TextGeneration';
-import { NextResponse } from 'next/server';
 import { and, desc, eq, ne, or } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { logPHIAccess } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { generateText } from '@/libs/TextGeneration';
 import { requireSessionAccess } from '@/middleware/RBACMiddleware';
 import { aiChatMessages, sessions } from '@/models/Schema';
-import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
-import { aiRateLimit, checkRateLimit, getClientIP } from '@/utils/RateLimiter';
-import { getOrCreateSessionSummary } from '@/services/SessionSummaryService';
 import {
   generateChatSummary,
   getLatestChatSummary,
   shouldGenerateChatSummary,
 } from '@/services/ChatSummaryService';
+import { getOrCreateSessionSummary } from '@/services/SessionSummaryService';
+import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
+import { aiRateLimit, checkRateLimit, getClientIP } from '@/utils/RateLimiter';
 
 // POST /api/ai/chat - Chat with AI assistant
 // HIPAA COMPLIANCE: Requires authentication, rate limiting, and audit logging

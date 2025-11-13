@@ -7,12 +7,12 @@ import type { NextRequest } from 'next/server';
 import type { TherapeuticDomain } from '@/services/ModuleService';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { requireAuth } from '@/utils/AuthHelpers';
 import {
   createTemplate,
   listTemplates,
 
 } from '@/services/ModuleService';
+import { requireAuth } from '@/utils/AuthHelpers';
 import { createModuleSchema } from '@/validations/ModuleValidation';
 
 /**

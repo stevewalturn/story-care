@@ -4,10 +4,10 @@
  */
 
 import { eq } from 'drizzle-orm';
+import { StoryPageViewer } from '@/components/pages/StoryPageViewer';
 // import { redirect } from 'next/navigation'; // TODO: Implement redirect for invalid tokens
 import { db } from '@/libs/DB';
 import { storyPagesSchema } from '@/models/Schema';
-import { StoryPageViewer } from '@/components/pages/StoryPageViewer';
 
 type Props = {
   params: Promise<{ token: string }>;
@@ -108,7 +108,9 @@ export default async function PublicSharePage({ params }: Props) {
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            This link will expire in {expiryText}
+            This link will expire in
+            {' '}
+            {expiryText}
           </p>
         </div>
       </div>

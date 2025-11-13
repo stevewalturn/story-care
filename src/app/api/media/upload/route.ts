@@ -1,7 +1,8 @@
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 // import { arcjet, uploadRateLimit } from '@/libs/Arcjet';
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
 import { uploadFile } from '@/libs/GCS';
-import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * POST /api/media/upload
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
     if (!allAllowedTypes.includes(contentType)) {
       return NextResponse.json(
         {
-          error: `Unsupported file type: ${contentType}. Supported types: images (JPG, PNG, GIF, WebP), videos (MP4, MOV, WebM), audio (MP3, WAV, AAC, OGG)`
+          error: `Unsupported file type: ${contentType}. Supported types: images (JPG, PNG, GIF, WebP), videos (MP4, MOV, WebM), audio (MP3, WAV, AAC, OGG)`,
         },
         { status: 400 },
       );
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
       const maxSizeMB = maxSizes[mediaType] / (1024 * 1024);
       return NextResponse.json(
         {
-          error: `File too large. Maximum size for ${mediaType} files is ${maxSizeMB}MB`
+          error: `File too large. Maximum size for ${mediaType} files is ${maxSizeMB}MB`,
         },
         { status: 400 },
       );
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     // Generate filename
     const timestamp = Date.now();
-    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const sanitizedName = file.name.replace(/[^a-z0-9.-]/gi, '_');
     const filename = `${timestamp}-${sanitizedName}`;
 
     // Upload to GCS
@@ -132,7 +133,7 @@ export async function POST(request: NextRequest) {
     // - 'path': Permanent GCS path to save in database
     return NextResponse.json({
       success: true,
-      url: uploadResult.url,   // Temporary presigned URL for immediate display
+      url: uploadResult.url, // Temporary presigned URL for immediate display
       path: uploadResult.path, // SAVE THIS to database (permanent GCS path)
       filename: file.name,
       size: fileSize,
@@ -144,7 +145,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Failed to upload file',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 },
     );

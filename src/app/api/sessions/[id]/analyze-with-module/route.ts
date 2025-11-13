@@ -34,7 +34,7 @@ export async function POST(
 
     const body = await request.json();
     // Validate request body (validation result currently unused but kept for consistency)
-  analyzeSessionWithModuleSchema.parse(body);
+    analyzeSessionWithModuleSchema.parse(body);
 
     // Get session with module
     const { session, module, sessionModule } = await getSessionWithModule(id);

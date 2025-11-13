@@ -79,7 +79,7 @@ export async function chatWithGemini(
   const auth = new GoogleAuth({
     scopes: ['https://www.googleapis.com/auth/cloud-platform'],
     credentials, // Use parsed credentials if available, otherwise falls back to default
-    projectId,   // Explicitly set project ID
+    projectId, // Explicitly set project ID
   });
 
   const client = await auth.getClient();

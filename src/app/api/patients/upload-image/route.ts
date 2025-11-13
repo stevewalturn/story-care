@@ -93,8 +93,8 @@ export async function POST(request: NextRequest) {
     // - 'url': Temporary presigned URL (expires in 1 hour) for immediate display
     // - 'path': Permanent GCS path to save in database
     return NextResponse.json({
-      url,   // Temporary presigned URL for immediate display
-      path,  // SAVE THIS to database (permanent GCS path)
+      url, // Temporary presigned URL for immediate display
+      path, // SAVE THIS to database (permanent GCS path)
       filename: file.name,
       size: file.size,
       contentType: file.type,

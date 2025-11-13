@@ -6,12 +6,12 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { requireAuth } from '@/utils/AuthHelpers';
 import {
   archiveModule,
   getModuleById,
   updateModule,
 } from '@/services/ModuleService';
+import { requireAuth } from '@/utils/AuthHelpers';
 import { updateModuleSchema } from '@/validations/ModuleValidation';
 
 /**

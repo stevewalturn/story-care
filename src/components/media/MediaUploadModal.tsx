@@ -1,8 +1,8 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedPost } from '@/utils/AuthenticatedFetch';
-import { useRef, useState } from 'react';
 
 type MediaUploadModalProps = {
   isOpen: boolean;
@@ -275,7 +275,10 @@ export function MediaUploadModal({
               <div className="mt-3">
                 <div className="flex items-center justify-between text-xs text-gray-600">
                   <span>Uploading...</span>
-                  <span>{uploadProgress}%</span>
+                  <span>
+                    {uploadProgress}
+                    %
+                  </span>
                 </div>
                 <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-gray-200">
                   <div

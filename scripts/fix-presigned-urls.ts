@@ -16,14 +16,14 @@ import { extractGcsPath } from '@/libs/GCS';
 import { mediaLibrary, sessions, users } from '@/models/Schema';
 import 'dotenv/config';
 
-interface FixStats {
+type FixStats = {
   table: string;
   field: string;
   total: number;
   fixed: number;
   skipped: number;
   errors: number;
-}
+};
 
 /**
  * Extract GCS path from presigned URL or return original if already a path

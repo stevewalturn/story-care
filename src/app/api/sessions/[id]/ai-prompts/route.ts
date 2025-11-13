@@ -1,3 +1,5 @@
+import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { requireSessionAccess } from '@/middleware/RBACMiddleware';
 import {
@@ -7,8 +9,6 @@ import {
   treatmentModulesSchema,
 } from '@/models/Schema';
 import { handleAuthError } from '@/utils/AuthHelpers';
-import { eq } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
 
 /**
  * GET /api/sessions/[id]/ai-prompts
@@ -74,7 +74,7 @@ export async function GET(
       .orderBy(modulePromptLinksSchema.sortOrder);
 
     // Filter only active prompts
-    const activePrompts = linkedPrompts.filter((prompt) => prompt.isActive);
+    const activePrompts = linkedPrompts.filter(prompt => prompt.isActive);
 
     return NextResponse.json({
       module: {

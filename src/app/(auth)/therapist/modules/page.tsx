@@ -22,7 +22,6 @@ export default function TherapistModulesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-
   // Modals
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -125,7 +124,9 @@ export default function TherapistModulesPage() {
               <div>
                 <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
                   <h2 className="mb-1 text-lg font-semibold text-blue-900">
-                    System Templates ({templates.length})
+                    System Templates (
+                    {templates.length}
+                    )
                   </h2>
                   <p className="text-sm text-blue-700">
                     Global treatment modules designed by clinical experts. View details for inspiration.
@@ -139,7 +140,11 @@ export default function TherapistModulesPage() {
                   return (
                     <div key={`system-${domain}`} className="mb-8">
                       <h3 className="mb-4 text-base font-medium text-gray-900">
-                        {domainLabels[domain]} ({domainModules.length})
+                        {domainLabels[domain]}
+                        {' '}
+                        (
+                        {domainModules.length}
+                        )
                       </h3>
                       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {domainModules.map(module => (
@@ -166,7 +171,9 @@ export default function TherapistModulesPage() {
               <div>
                 <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
                   <h2 className="mb-1 text-lg font-semibold text-green-900">
-                    Organization Modules ({orgModules.length})
+                    Organization Modules (
+                    {orgModules.length}
+                    )
                   </h2>
                   <p className="text-sm text-green-700">
                     Modules created by your organization administrators. View details for reference.
@@ -180,7 +187,11 @@ export default function TherapistModulesPage() {
                   return (
                     <div key={`org-${domain}`} className="mb-8">
                       <h3 className="mb-4 text-base font-medium text-gray-900">
-                        {domainLabels[domain]} ({domainModules.length})
+                        {domainLabels[domain]}
+                        {' '}
+                        (
+                        {domainModules.length}
+                        )
                       </h3>
                       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {domainModules.map(module => (
@@ -205,7 +216,9 @@ export default function TherapistModulesPage() {
             <div>
               <div className="mb-6 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
                 <h2 className="mb-1 text-lg font-semibold text-indigo-900">
-                  My Private Modules ({privateModules.length})
+                  My Private Modules (
+                  {privateModules.length}
+                  )
                 </h2>
                 <p className="text-sm text-indigo-700">
                   Your personal treatment modules. You can edit, archive, and customize these modules.
@@ -241,7 +254,11 @@ export default function TherapistModulesPage() {
                     return (
                       <div key={`private-${domain}`} className="mb-8">
                         <h3 className="mb-4 text-base font-medium text-gray-900">
-                          {domainLabels[domain]} ({domainModules.length})
+                          {domainLabels[domain]}
+                          {' '}
+                          (
+                          {domainModules.length}
+                          )
                         </h3>
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                           {domainModules.map(module => (

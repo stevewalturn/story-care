@@ -4,8 +4,8 @@
  */
 
 import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/libs/DB';
 import { organizationsSchema, users } from '@/models/Schema';
