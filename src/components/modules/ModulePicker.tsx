@@ -152,40 +152,51 @@ export function ModulePicker({
   return (
     <div className={`relative ${className}`}>
       {/* Trigger Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="focus:ring-opacity-20 flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-left text-sm hover:border-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-        type="button"
-      >
-        {selectedModule ? (
-          <div className="flex items-center gap-2">
-            <Layers className="h-4 w-4 text-gray-400" />
-            <span className="font-medium text-gray-900">{selectedModule.name}</span>
+      <div className="relative">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="focus:ring-opacity-20 flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-left text-sm hover:border-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          type="button"
+        >
+          {selectedModule ? (
+            <div className="flex items-center gap-2">
+              <Layers className="h-4 w-4 text-gray-400" />
+              <span className="font-medium text-gray-900">{selectedModule.name}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Layers className="h-4 w-4 text-gray-400" />
+              <span className="text-gray-500">{placeholder}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-1">
+            <ChevronDown
+              className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+            />
           </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Layers className="h-4 w-4 text-gray-400" />
-            <span className="text-gray-500">{placeholder}</span>
+        </button>
+
+        {/* Clear button - positioned absolutely to avoid nesting */}
+        {allowClear && selectedModule && (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClear();
+            }}
+            className="absolute top-1/2 right-10 -translate-y-1/2 cursor-pointer rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleClear();
+              }
+            }}
+          >
+            <X className="h-4 w-4" />
           </div>
         )}
-        <div className="flex items-center gap-1">
-          {allowClear && selectedModule && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleClear();
-              }}
-              className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-              type="button"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-          <ChevronDown
-            className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-          />
-        </div>
-      </button>
+      </div>
 
       {/* Dropdown */}
       {isOpen && (

@@ -5,7 +5,7 @@ import { logPHIAccess, logPHIDelete, logPHIUpdate } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { generatePresignedUrl } from '@/libs/GCS';
 import { handleRBACError, requireSessionAccess } from '@/middleware/RBACMiddleware';
-import { groupMembers, groups, sessions, users } from '@/models/Schema';
+import { groupMembers, groups, sessionModules, sessions, treatmentModules, users } from '@/models/Schema';
 import { handleAuthError } from '@/utils/AuthHelpers';
 
 // GET /api/sessions/[id] - Get single session
@@ -20,7 +20,7 @@ export async function GET(
     // 1. AUTHENTICATION & AUTHORIZATION: Verify user has access to this session
     const user = await requireSessionAccess(request, id);
 
-    // 2. FETCH SESSION
+    // 2. FETCH SESSION WITH ASSIGNED MODULE
     const [session] = await db
       .select({
         id: sessions.id,
@@ -35,8 +35,14 @@ export async function GET(
         therapistId: sessions.therapistId,
         patientId: sessions.patientId,
         groupId: sessions.groupId,
+        // Include assigned module information
+        moduleId: sessionModules.moduleId,
+        moduleName: treatmentModules.name,
+        moduleDomain: treatmentModules.domain,
       })
       .from(sessions)
+      .leftJoin(sessionModules, eq(sessions.id, sessionModules.sessionId))
+      .leftJoin(treatmentModules, eq(sessionModules.moduleId, treatmentModules.id))
       .where(eq(sessions.id, id))
       .limit(1);
 
