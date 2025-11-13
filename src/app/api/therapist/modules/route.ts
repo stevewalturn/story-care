@@ -7,7 +7,7 @@ import type { NextRequest } from 'next/server';
 import type { TherapeuticDomain } from '@/services/ModuleService';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { requireAuth } from '@/libs/FirebaseAdmin';
+import { requireAuth } from '@/utils/AuthHelpers';
 import {
   createTherapistModule,
   listOrgModules,
@@ -15,7 +15,7 @@ import {
   listTherapistModules,
 
 } from '@/services/ModuleService';
-import { ModuleCreateSchema } from '@/validations/ModuleValidation';
+import { createModuleSchema } from '@/validations/ModuleValidation';
 
 /**
  * GET /api/therapist/modules
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     const includeOrgModules = searchParams.get('includeOrgModules') !== 'false'; // Default true
 
     // 4. FETCH THERAPIST'S PRIVATE MODULES
-    const privateModules = await listTherapistModules(user.uid, {
+    const privateModules = await listTherapistModules(user.dbUserId, {
       domain: domain || undefined,
       status: status || undefined,
     });
@@ -105,16 +105,16 @@ export async function POST(request: NextRequest) {
 
     // 3. VALIDATE REQUEST BODY
     const body = await request.json();
-    const validatedData = ModuleCreateSchema.parse(body);
+    const validatedData = createModuleSchema.parse(body);
 
     // 4. CREATE PRIVATE MODULE
     const module = await createTherapistModule({
       name: validatedData.name,
       domain: validatedData.domain as TherapeuticDomain,
       description: validatedData.description,
-      therapistId: user.uid,
-      createdBy: user.uid,
+      createdBy: user.dbUserId,
       inSessionQuestions: validatedData.inSessionQuestions,
+      reflectionQuestions: validatedData.reflectionQuestions,
       reflectionTemplateId: validatedData.reflectionTemplateId || null,
       surveyTemplateId: validatedData.surveyTemplateId || null,
       aiPromptText: validatedData.aiPromptText,
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
+        { error: 'Invalid request data', details: error.issues },
         { status: 400 },
       );
     }

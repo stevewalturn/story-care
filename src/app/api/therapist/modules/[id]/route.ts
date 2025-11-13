@@ -6,13 +6,13 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { requireAuth } from '@/libs/FirebaseAdmin';
+import { requireAuth } from '@/utils/AuthHelpers';
 import {
   archiveModule,
   getModuleById,
   updateModule,
 } from '@/services/ModuleService';
-import { ModuleUpdateSchema } from '@/validations/ModuleValidation';
+import { updateModuleSchema } from '@/validations/ModuleValidation';
 
 /**
  * GET /api/therapist/modules/[id]
@@ -50,7 +50,7 @@ export async function GET(
       );
     }
 
-    if (module.createdBy !== user.uid) {
+    if (module.createdBy !== user.dbUserId) {
       return NextResponse.json(
         { error: 'Module not found or access denied' },
         { status: 404 },
@@ -109,7 +109,7 @@ export async function PUT(
       );
     }
 
-    if (module.createdBy !== user.uid) {
+    if (module.createdBy !== user.dbUserId) {
       return NextResponse.json(
         { error: 'Module not found or access denied' },
         { status: 404 },
@@ -118,7 +118,7 @@ export async function PUT(
 
     // 4. VALIDATE REQUEST BODY
     const body = await request.json();
-    const validatedData = ModuleUpdateSchema.parse(body);
+    const validatedData = updateModuleSchema.parse(body);
 
     // 5. UPDATE MODULE
     const updatedModule = await updateModule(resolvedParams.id, {
@@ -145,7 +145,7 @@ export async function PUT(
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
+        { error: 'Invalid request data', details: error.issues },
         { status: 400 },
       );
     }
@@ -190,7 +190,7 @@ export async function DELETE(
       );
     }
 
-    if (module.createdBy !== user.uid) {
+    if (module.createdBy !== user.dbUserId) {
       return NextResponse.json(
         { error: 'Module not found or access denied' },
         { status: 404 },

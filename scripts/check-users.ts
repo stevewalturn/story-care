@@ -32,10 +32,13 @@ async function checkUsers() {
     console.log(`\nTotal users in database: ${allUsers.length}`);
 
     if (allUsers.length > 0 && superAdmins.length === 0) {
-      console.log('\n⚠️  No super admin found. First user:');
-      console.log(`  - ${allUsers[0].name} (${allUsers[0].email})`);
-      console.log(`    ID: ${allUsers[0].id}`);
-      console.log(`    Role: ${allUsers[0].role}`);
+      const firstUser = allUsers[0];
+      if (firstUser) {
+        console.log('\n⚠️  No super admin found. First user:');
+        console.log(`  - ${firstUser.name} (${firstUser.email})`);
+        console.log(`    ID: ${firstUser.id}`);
+        console.log(`    Role: ${firstUser.role}`);
+      }
     }
 
     if (allUsers.length === 0) {

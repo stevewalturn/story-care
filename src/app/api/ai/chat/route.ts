@@ -1,13 +1,20 @@
 import type { NextRequest } from 'next/server';
 import type { ChatMessage, TextGenModel } from '@/libs/TextGeneration';
 import { NextResponse } from 'next/server';
+import { and, desc, eq, ne, or } from 'drizzle-orm';
 import { logPHIAccess } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { generateText } from '@/libs/TextGeneration';
 import { requireSessionAccess } from '@/middleware/RBACMiddleware';
-import { aiChatMessages } from '@/models/Schema';
+import { aiChatMessages, sessions } from '@/models/Schema';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 import { aiRateLimit, checkRateLimit, getClientIP } from '@/utils/RateLimiter';
+import { getOrCreateSessionSummary } from '@/services/SessionSummaryService';
+import {
+  generateChatSummary,
+  getLatestChatSummary,
+  shouldGenerateChatSummary,
+} from '@/services/ChatSummaryService';
 
 // POST /api/ai/chat - Chat with AI assistant
 // HIPAA COMPLIANCE: Requires authentication, rate limiting, and audit logging
@@ -35,11 +42,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       messages,
-      context,
       sessionId,
       selectedText,
       selectedUtteranceIds,
-      model = 'gpt-4o', // Default model
+      model = 'gemini-2.5-flash', // Default model - cost-optimized with caching
     } = body;
 
     if (!messages || !Array.isArray(messages)) {
@@ -61,23 +67,152 @@ export async function POST(request: NextRequest) {
       await requireSessionAccess(request, sessionId);
     }
 
-    // 5. PROCESS AI REQUEST
-    // Add system message with therapeutic context
-    const systemMessage: ChatMessage = {
+    // 5. BUILD INTELLIGENT CONTEXT (5-Part Strategy for Prompt Caching)
+    const contextParts: ChatMessage[] = [];
+
+    // PART 1: Session Summary (CACHED - static, generated once)
+    if (sessionId) {
+      try {
+        const sessionSummary = await getOrCreateSessionSummary(sessionId);
+        contextParts.push({
+          role: 'system',
+          content: sessionSummary,
+        });
+      } catch (error) {
+        console.error('Error fetching session summary:', error);
+        // Continue without session summary
+      }
+    }
+
+    // PART 2: Module Prompt (CACHED - static for this session)
+    if (sessionId) {
+      try {
+        const [session] = await db
+          .select()
+          .from(sessions)
+          .where(eq(sessions.id, sessionId))
+          .limit(1);
+
+        if (session?.moduleId) {
+          const { treatmentModules } = await import('@/models/Schema');
+          const [module] = await db
+            .select()
+            .from(treatmentModules)
+            .where(eq(treatmentModules.id, session.moduleId))
+            .limit(1);
+
+          if (module) {
+            const modulePrompt = `# Treatment Module: ${module.name}
+
+**Domain:** ${module.domain}
+**Therapeutic Aim:** ${module.description}
+
+## Module-Specific Analysis Instructions:
+${module.aiPromptText}
+
+**Important:** Use these module-specific instructions to guide your analysis. Focus on the therapeutic domain and objectives outlined above.`;
+
+            contextParts.push({
+              role: 'system',
+              content: modulePrompt,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching module:', error);
+        // Continue without module context
+      }
+    }
+
+    // PART 3: Enhanced System Prompt (CACHED - static)
+    const systemPrompt = `You are an expert therapeutic assistant specialized in narrative therapy.
+
+**Response Format - ALWAYS use markdown:**
+- Use ### for section headers (e.g., ### Key Therapeutic Themes)
+- Use **bold** for emphasis and important concepts
+- Use bullet points (- ) or numbered lists (1. ) for clarity
+- Use > blockquotes for patient quotes
+- Use 1-5 for emotional intensity ratings when relevant
+
+**Your Expertise:**
+- Identify metaphors, sensory language, and symbolic imagery
+- Detect emotional shifts and narrative tone changes
+- Extract scene-worthy moments for visual storytelling
+- Suggest visual concepts that capture therapeutic progress
+- Reference specific timestamps from transcript when citing quotes
+- Connect insights to module objectives when applicable
+
+**Output Structure:**
+When analyzing, provide:
+1. ### Key Therapeutic Themes (2-4 themes with explanations)
+2. ### Scene-Worthy Moments (specific timestamps + visual descriptions)
+3. ### Patient Quotes (exact quotes with context)
+4. ### Therapeutic Insights (connect to module goals if assigned)
+5. ### Visual Suggestions (concrete imagery ideas)
+
+Be empathetic, insightful, and focused on narrative therapy principles.`;
+
+    contextParts.push({
       role: 'system',
-      content: `You are an expert therapeutic assistant specialized in narrative therapy.
-Your role is to help therapists analyze session transcripts and:
-- Identify key therapeutic themes
-- Suggest meaningful moments for patient stories
-- Generate image prompts for visual narratives
-- Create reflection questions
-- Extract powerful quotes
+      content: systemPrompt,
+    });
 
-Be empathetic, professional, and focused on supporting the therapeutic process.
-${context ? `\n\nSession Context:\n${context}` : ''}`,
-    };
+    // PART 4: Chat Summary (CACHED - regenerated periodically)
+    if (sessionId) {
+      try {
+        // Check if we should generate a new summary
+        if (await shouldGenerateChatSummary(sessionId, 10)) {
+          await generateChatSummary(sessionId, user.dbUserId);
+        }
 
-    const fullMessages: ChatMessage[] = [systemMessage, ...messages];
+        const chatSummary = await getLatestChatSummary(sessionId);
+        if (chatSummary) {
+          contextParts.push({
+            role: 'system',
+            content: `# Previous Conversation Summary\n\n${chatSummary}`,
+          });
+        }
+      } catch (error) {
+        console.error('Error with chat summary:', error);
+        // Continue without chat summary
+      }
+    }
+
+    // PART 5: Recent Messages (DYNAMIC - not cached)
+    if (sessionId) {
+      try {
+        const recentMessages = await db
+          .select()
+          .from(aiChatMessages)
+          .where(
+            and(
+              eq(aiChatMessages.sessionId, sessionId),
+              or(
+                eq(aiChatMessages.role, 'user'),
+                eq(aiChatMessages.role, 'assistant'),
+              ),
+              ne(aiChatMessages.promptType, 'conversation_summary'),
+            ),
+          )
+          .orderBy(desc(aiChatMessages.createdAt))
+          .limit(5);
+
+        // Add recent messages in chronological order
+        const chronologicalMessages = recentMessages.reverse();
+        for (const msg of chronologicalMessages) {
+          contextParts.push({
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching recent messages:', error);
+        // Continue without recent messages
+      }
+    }
+
+    // Combine all context parts with new messages
+    const fullMessages: ChatMessage[] = [...contextParts, ...messages];
 
     // Get AI response using selected model
     const result = await generateText({

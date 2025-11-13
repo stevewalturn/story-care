@@ -16,8 +16,9 @@ import { generateStoryPageFromModuleSchema } from '@/validations/ModuleValidatio
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     const user = await requireAuth(request);
 
@@ -30,7 +31,7 @@ export async function POST(
     }
 
     // Verify module exists and is accessible
-    const { module } = await getModuleById(params.id);
+    const { module } = await getModuleById(id);
 
     if (!module) {
       return NextResponse.json({ error: 'Module not found' }, { status: 404 });
@@ -59,7 +60,7 @@ export async function POST(
 
     // Generate story page
     const result = await generateStoryPageFromModule({
-      moduleId: params.id,
+      moduleId: id,
       sessionId: validated.sessionId,
       patientId: validated.patientId,
       therapistId: user.dbUserId,

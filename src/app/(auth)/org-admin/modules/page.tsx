@@ -168,8 +168,8 @@ export default function OrgAdminModulesPage() {
 
           {/* Domain Filter */}
           <ModuleDomainFilter
-            selected={selectedDomain}
-            onChange={setSelectedDomain}
+            selectedDomain={selectedDomain}
+            onSelectDomain={setSelectedDomain}
           />
         </div>
 

@@ -6,13 +6,13 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { requireAuth } from '@/libs/FirebaseAdmin';
+import { requireAuth } from '@/utils/AuthHelpers';
 import {
   archiveModule,
   getModuleById,
   updateModule,
 } from '@/services/ModuleService';
-import { ModuleUpdateSchema } from '@/validations/ModuleValidation';
+import { updateModuleSchema } from '@/validations/ModuleValidation';
 
 /**
  * GET /api/super-admin/module-templates/[id]
@@ -104,7 +104,7 @@ export async function PUT(
 
     // 4. VALIDATE REQUEST BODY
     const body = await request.json();
-    const validatedData = ModuleUpdateSchema.parse(body);
+    const validatedData = updateModuleSchema.parse(body);
 
     // 5. UPDATE TEMPLATE
     const updatedTemplate = await updateModule(resolvedParams.id, {
@@ -131,7 +131,7 @@ export async function PUT(
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
+        { error: 'Invalid request data', details: error.issues },
         { status: 400 },
       );
     }

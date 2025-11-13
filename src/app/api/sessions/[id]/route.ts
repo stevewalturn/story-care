@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { logPHIAccess, logPHIDelete, logPHIUpdate } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
+import { generatePresignedUrl } from '@/libs/GCS';
 import { handleRBACError, requireSessionAccess } from '@/middleware/RBACMiddleware';
 import { groupMembers, groups, sessions, users } from '@/models/Schema';
 import { handleAuthError } from '@/utils/AuthHelpers';
@@ -59,13 +60,23 @@ export async function GET(
         .where(eq(users.id, session.patientId))
         .limit(1);
 
+      // Generate presigned URLs (HIPAA compliant, 1-hour expiration)
+      const [signedAudioUrl, signedAvatarUrl] = await Promise.all([
+        session.audioUrl ? generatePresignedUrl(session.audioUrl, 1) : null,
+        patient?.avatarUrl ? generatePresignedUrl(patient.avatarUrl, 1) : null,
+      ]);
+
       // 3. AUDIT LOG: Record PHI access
       await logPHIAccess(user.dbUserId, 'session', id, request);
 
       return NextResponse.json({
         session: {
           ...session,
-          patient,
+          audioUrl: signedAudioUrl || session.audioUrl,
+          patient: patient ? {
+            ...patient,
+            avatarUrl: signedAvatarUrl || patient.avatarUrl,
+          } : null,
         },
       });
     }
@@ -92,24 +103,46 @@ export async function GET(
         .innerJoin(users, eq(groupMembers.patientId, users.id))
         .where(eq(groupMembers.groupId, session.groupId));
 
+      // Generate presigned URLs (HIPAA compliant, 1-hour expiration)
+      const signedAudioUrl = session.audioUrl ? await generatePresignedUrl(session.audioUrl, 1) : null;
+
+      const membersWithSignedUrls = await Promise.all(
+        members.map(async (member) => {
+          const signedAvatarUrl = member.avatarUrl ? await generatePresignedUrl(member.avatarUrl, 1) : null;
+          return {
+            ...member,
+            avatarUrl: signedAvatarUrl || member.avatarUrl,
+          };
+        }),
+      );
+
       // 3. AUDIT LOG: Record PHI access
       await logPHIAccess(user.dbUserId, 'session', id, request);
 
       return NextResponse.json({
         session: {
           ...session,
+          audioUrl: signedAudioUrl || session.audioUrl,
           group: {
             ...group,
-            members,
+            members: membersWithSignedUrls,
           },
         },
       });
     }
 
+    // Generate presigned URL for audio if no patient or group
+    const signedAudioUrl = session.audioUrl ? await generatePresignedUrl(session.audioUrl, 1) : null;
+
     // 3. AUDIT LOG: Record PHI access
     await logPHIAccess(user.dbUserId, 'session', id, request);
 
-    return NextResponse.json({ session });
+    return NextResponse.json({
+      session: {
+        ...session,
+        audioUrl: signedAudioUrl || session.audioUrl,
+      },
+    });
   } catch (error) {
     console.error('Error fetching session:', error);
     if (error instanceof Error && error.message.includes('Forbidden')) {

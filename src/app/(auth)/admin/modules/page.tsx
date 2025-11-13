@@ -11,13 +11,13 @@ import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function AdminModulesPage() {
-  const { user, loading } = useAuth();
+  const { dbUser, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && dbUser) {
       // Redirect based on user role
-      switch (user.role) {
+      switch (dbUser.role) {
         case 'super_admin':
           router.push('/super-admin/module-templates');
           break;
@@ -32,7 +32,7 @@ export default function AdminModulesPage() {
           router.push('/dashboard');
       }
     }
-  }, [user, loading, router]);
+  }, [dbUser, loading, router]);
 
   // Show loading state while redirecting
   return (

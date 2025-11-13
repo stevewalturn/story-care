@@ -101,4 +101,104 @@ export async function listFiles(prefix: string): Promise<string[]> {
   return files.map(file => file.name);
 }
 
+/**
+ * Extract GCS path from a full URL
+ * Supports various GCS URL formats:
+ * - https://storage.googleapis.com/bucket-name/path/to/file.jpg
+ * - gs://bucket-name/path/to/file.jpg
+ * - https://storage.cloud.google.com/bucket-name/path/to/file.jpg
+ *
+ * @param url - Full GCS URL or already a path
+ * @returns GCS path or null if invalid
+ */
+export function extractGcsPath(url: string | null | undefined): string | null {
+  if (!url) return null;
+
+  // If it's already a path (no protocol), return as-is
+  if (!url.startsWith('http') && !url.startsWith('gs://')) {
+    return url;
+  }
+
+  // Handle gs:// protocol
+  if (url.startsWith('gs://')) {
+    const match = url.match(/^gs:\/\/[^/]+\/(.+)$/);
+    return match ? match[1] : null;
+  }
+
+  // Handle https:// URLs from GCS
+  const storageMatch = url.match(/storage\.googleapis\.com\/[^/]+\/(.+)/);
+  if (storageMatch) return storageMatch[1];
+
+  const cloudMatch = url.match(/storage\.cloud\.google\.com\/[^/]+\/(.+)/);
+  if (cloudMatch) return cloudMatch[1];
+
+  // If no match, return null
+  return null;
+}
+
+/**
+ * Generate presigned URL for a single URL/path
+ * Safely handles null/undefined and already-signed URLs
+ *
+ * @param urlOrPath - GCS URL, path, or null
+ * @param expiresInHours - Expiration time (default: 1 hour)
+ * @returns Presigned URL or original URL if extraction fails
+ */
+export async function generatePresignedUrl(
+  urlOrPath: string | null | undefined,
+  expiresInHours = 1,
+): Promise<string | null> {
+  if (!urlOrPath) return null;
+
+  // If it's already a signed URL (contains X-Goog-Signature), return as-is
+  if (urlOrPath.includes('X-Goog-Signature')) {
+    return urlOrPath;
+  }
+
+  const path = extractGcsPath(urlOrPath);
+  if (!path) {
+    // If we can't extract a path, return original URL
+    console.warn(`[GCS] Could not extract path from URL: ${urlOrPath}`);
+    return urlOrPath;
+  }
+
+  try {
+    const signedUrl = await getSignedUrl(path, expiresInHours);
+    return signedUrl;
+  } catch (error) {
+    console.error(`[GCS] Failed to generate signed URL for path: ${path}`, error);
+    return urlOrPath; // Fallback to original URL
+  }
+}
+
+/**
+ * Batch generate presigned URLs for media items
+ * Processes mediaUrl and thumbnailUrl fields
+ *
+ * @param items - Array of items with mediaUrl and/or thumbnailUrl fields
+ * @param expiresInHours - Expiration time (default: 1 hour)
+ * @returns Items with presigned URLs
+ */
+export async function generatePresignedUrlsForMedia<T extends { mediaUrl?: string | null; thumbnailUrl?: string | null }>(
+  items: T[],
+  expiresInHours = 1,
+): Promise<T[]> {
+  const results = await Promise.all(
+    items.map(async (item) => {
+      const [signedMediaUrl, signedThumbnailUrl] = await Promise.all([
+        item.mediaUrl ? generatePresignedUrl(item.mediaUrl, expiresInHours) : null,
+        item.thumbnailUrl ? generatePresignedUrl(item.thumbnailUrl, expiresInHours) : null,
+      ]);
+
+      return {
+        ...item,
+        mediaUrl: signedMediaUrl || item.mediaUrl,
+        thumbnailUrl: signedThumbnailUrl || item.thumbnailUrl,
+      };
+    }),
+  );
+
+  return results;
+}
+
 export { bucket, storage };

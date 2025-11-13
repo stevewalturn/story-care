@@ -65,8 +65,21 @@ export async function chatWithGemini(
 
   // Get access token
   const { GoogleAuth } = await import('google-auth-library');
+
+  // Parse credentials from environment variable
+  let credentials;
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
+    try {
+      credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+    } catch (error) {
+      throw new Error('Invalid GOOGLE_SERVICE_ACCOUNT_KEY format. Must be valid JSON.');
+    }
+  }
+
   const auth = new GoogleAuth({
     scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+    credentials, // Use parsed credentials if available, otherwise falls back to default
+    projectId,   // Explicitly set project ID
   });
 
   const client = await auth.getClient();

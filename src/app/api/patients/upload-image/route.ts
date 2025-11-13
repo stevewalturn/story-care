@@ -89,9 +89,12 @@ export async function POST(request: NextRequest) {
       uploadType: 'patient_reference_image',
     });
 
+    // IMPORTANT: Clients should save 'path' to database (users.referenceImageUrl), not 'url'
+    // - 'url': Temporary presigned URL (expires in 1 hour) for immediate display
+    // - 'path': Permanent GCS path to save in database
     return NextResponse.json({
-      url,
-      path,
+      url,   // Temporary presigned URL for immediate display
+      path,  // SAVE THIS to database (permanent GCS path)
       filename: file.name,
       size: file.size,
       contentType: file.type,

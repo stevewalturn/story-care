@@ -3,6 +3,7 @@ import { and, desc, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { logPHIAccess } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
+import { generatePresignedUrl } from '@/libs/GCS';
 import { groupMembers, groups, sessionModules, sessions, treatmentModules, users } from '@/models/Schema';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 
@@ -66,10 +67,29 @@ export async function GET(request: NextRequest) {
       .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
       .orderBy(desc(sessions.createdAt));
 
-    // 5. AUDIT LOG: Record PHI access
+    // 5. GENERATE PRESIGNED URLS: HIPAA compliant (1-hour expiration)
+    const sessionsWithSignedUrls = await Promise.all(
+      sessionsList.map(async (session) => {
+        const [signedAudioUrl, signedAvatarUrl] = await Promise.all([
+          session.audioUrl ? generatePresignedUrl(session.audioUrl, 1) : null,
+          session.patient?.avatarUrl ? generatePresignedUrl(session.patient.avatarUrl, 1) : null,
+        ]);
+
+        return {
+          ...session,
+          audioUrl: signedAudioUrl || session.audioUrl,
+          patient: session.patient ? {
+            ...session.patient,
+            avatarUrl: signedAvatarUrl || session.patient.avatarUrl,
+          } : null,
+        };
+      }),
+    );
+
+    // 6. AUDIT LOG: Record PHI access
     await logPHIAccess(user.dbUserId, 'session', 'list', request);
 
-    return NextResponse.json({ sessions: sessionsList });
+    return NextResponse.json({ sessions: sessionsWithSignedUrls });
   } catch (error) {
     console.error('Error fetching sessions:', error);
     return handleAuthError(error);
@@ -114,13 +134,9 @@ export async function POST(request: NextRequest) {
     // 3. AUTHORIZATION CHECK: Verify therapist can create for these patients
     if (user.role === 'therapist') {
       // Verify all patients are assigned to this therapist
-      const patientsToVerify = await db.query.users.findMany({
-        where: eq(users.id, patientIds[0]), // Check first patient for simplicity
-      });
-
       for (const patientId of patientIds) {
         const patient = await db.query.users.findFirst({
-          where: eq(users.id, patientId),
+          where: (users, { eq }) => eq(users.id, patientId),
         });
 
         if (!patient) {
@@ -140,7 +156,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. CREATE SESSION (with auto-group creation for multiple patients)
-    let groupId = null;
+    let groupId: string | null = null;
 
     if (sessionType === 'group') {
       // Auto-create a temporary group for this session
@@ -151,13 +167,13 @@ export async function POST(request: NextRequest) {
         .values({
           name: groupName,
           description: `Auto-generated group for session: ${title}`,
-          therapistId: user.dbUserId,
-          organizationId: user.organizationId,
+          organizationId: user.organizationId || '',
+          therapistId: user.dbUserId || user.uid,
         })
         .returning();
 
       const newGroup = groupResult[0];
-      groupId = newGroup?.id;
+      groupId = newGroup?.id || null;
 
       if (!groupId) {
         return NextResponse.json(

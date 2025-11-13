@@ -3,6 +3,7 @@
  * Handle email notifications via SendGrid
  */
 
+import { eq, desc, and } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { emailNotificationsSchema, platformSettingsSchema } from '@/models/Schema';
 
@@ -51,6 +52,10 @@ export async function sendStoryPageNotification(params: {
     })
     .returning();
 
+  if (!notification) {
+    throw new Error('Failed to create email notification record');
+  }
+
   // TODO: Integrate with SendGrid API
   // For now, just mark as pending. Actual sending will be implemented in Phase 6
   // await sendViaSendGrid(params.patientEmail, subject, bodyHtml, bodyText);
@@ -93,6 +98,10 @@ export async function sendModuleCompletionNotification(params: {
     })
     .returning();
 
+  if (!notification) {
+    throw new Error('Failed to create email notification record');
+  }
+
   // TODO: Integrate with SendGrid API
   await updateEmailStatus(notification.id, 'sent', new Date());
 
@@ -125,7 +134,7 @@ export async function updateEmailStatus(
   await db
     .update(emailNotificationsSchema)
     .set(updates)
-    .where(eq => eq(emailNotificationsSchema.id, notificationId));
+    .where(eq(emailNotificationsSchema.id, notificationId));
 }
 
 /**
@@ -301,7 +310,7 @@ export async function getEmailNotificationById(notificationId: string) {
   const [notification] = await db
     .select()
     .from(emailNotificationsSchema)
-    .where(eq => eq(emailNotificationsSchema.id, notificationId))
+    .where(eq(emailNotificationsSchema.id, notificationId))
     .limit(1);
 
   return notification || null;
@@ -323,27 +332,26 @@ export async function listEmailNotifications(params: {
   const conditions = [];
 
   if (params.recipientUserId) {
-    conditions.push(eq => eq(emailNotificationsSchema.recipientUserId, params.recipientUserId));
+    conditions.push(eq(emailNotificationsSchema.recipientUserId, params.recipientUserId));
   }
 
   if (params.storyPageId) {
-    conditions.push(eq => eq(emailNotificationsSchema.storyPageId, params.storyPageId));
+    conditions.push(eq(emailNotificationsSchema.storyPageId, params.storyPageId));
   }
 
   if (params.status) {
-    conditions.push(eq => eq(emailNotificationsSchema.status, params.status));
+    conditions.push(eq(emailNotificationsSchema.status, params.status));
   }
 
   if (params.type) {
-    conditions.push(eq => eq(emailNotificationsSchema.notificationType, params.type));
+    conditions.push(eq(emailNotificationsSchema.notificationType, params.type));
   }
 
-  // TODO: Apply conditions properly with Drizzle ORM
-  // For now, just return all notifications
   const notifications = await query
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
     .limit(params.limit || 50)
     .offset(params.offset || 0)
-    .orderBy(desc => desc(emailNotificationsSchema.createdAt));
+    .orderBy(desc(emailNotificationsSchema.createdAt));
 
   return notifications;
 }

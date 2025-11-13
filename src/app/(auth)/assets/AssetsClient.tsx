@@ -42,6 +42,10 @@ export function AssetsClient() {
   const [deletingQuote, setDeletingQuote] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Media delete state
+  const [deletingMedia, setDeletingMedia] = useState<MediaItem | null>(null);
+  const [isDeletingMedia, setIsDeletingMedia] = useState(false);
+
   // Load patients on mount (only when user is available)
   useEffect(() => {
     if (user) {
@@ -210,6 +214,30 @@ export function AssetsClient() {
       alert('Failed to delete quote. Please try again.');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteMedia = async () => {
+    if (!deletingMedia) return;
+
+    try {
+      setIsDeletingMedia(true);
+      const response = await authenticatedFetch(`/api/media/${deletingMedia.id}`, user, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Refresh media list
+        await loadMedia();
+        setDeletingMedia(null);
+      } else {
+        throw new Error('Failed to delete media');
+      }
+    } catch (error) {
+      console.error('Error deleting media:', error);
+      alert('Failed to delete media. Please try again.');
+    } finally {
+      setIsDeletingMedia(false);
     }
   };
 
@@ -456,7 +484,7 @@ export function AssetsClient() {
                 {media.map(item => (
                   <div
                     key={item.id}
-                    className="group cursor-pointer overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:border-indigo-300 hover:shadow-lg"
+                    className="group relative cursor-pointer overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:border-indigo-300 hover:shadow-lg"
                   >
                     {/* Thumbnail */}
                     <div className="relative aspect-video bg-gray-100">
@@ -499,6 +527,20 @@ export function AssetsClient() {
                                 </svg>
                               </div>
                             )}
+
+                      {/* Delete button - shows on hover */}
+                      <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletingMedia(item);
+                          }}
+                          className="rounded-lg bg-white/90 p-2 text-gray-700 shadow-sm backdrop-blur-sm transition-all hover:bg-red-50 hover:text-red-600"
+                          title="Delete media"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
 
                     {/* Info */}
@@ -917,7 +959,7 @@ export function AssetsClient() {
         />
       )}
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Quote Confirmation Dialog */}
       <DeleteConfirmationDialog
         isOpen={!!deletingQuote}
         onClose={() => setDeletingQuote(null)}
@@ -925,6 +967,16 @@ export function AssetsClient() {
         title="Delete Quote"
         message="Are you sure you want to delete this quote? This action cannot be undone."
         isDeleting={isDeleting}
+      />
+
+      {/* Delete Media Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        isOpen={!!deletingMedia}
+        onClose={() => setDeletingMedia(null)}
+        onConfirm={handleDeleteMedia}
+        title="Delete Media"
+        message={`Are you sure you want to delete "${deletingMedia?.title}"? This action cannot be undone and will remove the media from the patient's library.`}
+        isDeleting={isDeletingMedia}
       />
     </div>
   );

@@ -2,6 +2,7 @@ import type { TherapeuticDomain } from '@/models/Schema';
 import { Calendar, Folder, Layers, Trash2, User, Users } from 'lucide-react';
 import { ModuleBadge } from '@/components/modules/ModuleBadge';
 import { Card } from '@/components/ui/Card';
+import { extractFilename } from '@/utils/Helpers';
 
 type SessionCardProps = {
   id: string;
@@ -19,7 +20,7 @@ type SessionCardProps = {
 };
 
 export function SessionCard({
-  title: _title,
+  title,
   date,
   type,
   patientName,
@@ -45,6 +46,9 @@ export function SessionCard({
     }
   };
 
+  // Clean up title: extract filename if it's a path
+  const displayTitle = extractFilename(title);
+
   return (
     <Card hover onClick={onClick}>
       <div className="p-6">
@@ -63,8 +67,8 @@ export function SessionCard({
           {/* Content */}
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
-              <h3 className="truncate text-base font-semibold text-gray-900">
-                {patientName || groupName}
+              <h3 className="truncate text-base font-semibold text-gray-900" title={title}>
+                {displayTitle}
               </h3>
               {onDelete && (
                 <button
@@ -76,11 +80,11 @@ export function SessionCard({
                 </button>
               )}
             </div>
-            <p className="mt-1 text-sm text-gray-500">
-              {sessionCount}
-              {' '}
-              {sessionCount === 1 ? 'session' : 'sessions'}
-            </p>
+            {(patientName || groupName) && (
+              <p className="mt-1 text-sm text-gray-500">
+                {patientName || groupName}
+              </p>
+            )}
 
             {/* Latest session info */}
             <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">

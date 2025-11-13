@@ -18,9 +18,10 @@ import { analyzeSessionWithModuleSchema } from '@/validations/ModuleValidation';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const user = await requireAuth(request);
 
     // Only therapists and admins can run analysis
@@ -32,10 +33,11 @@ export async function POST(
     }
 
     const body = await request.json();
-    const validated = analyzeSessionWithModuleSchema.parse(body);
+    // Validate request body (validation result currently unused but kept for consistency)
+  analyzeSessionWithModuleSchema.parse(body);
 
     // Get session with module
-    const { session, module, sessionModule } = await getSessionWithModule(params.id);
+    const { session, module, sessionModule } = await getSessionWithModule(id);
 
     if (!session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
@@ -51,7 +53,7 @@ export async function POST(
     // TODO: Verify therapist has access to the session
 
     // TODO: Fetch transcript for the session
-    // const transcript = await getTranscriptBySessionId(params.id);
+    // const transcript = await getTranscriptBySessionId(id);
 
     // TODO: Call OpenAI API with module's AI prompt
     // For now, we'll create a placeholder analysis result
@@ -80,7 +82,7 @@ export async function POST(
 
     // Update session module with analysis result
     const updatedSessionModule = await updateSessionModuleAnalysis(
-      params.id,
+      id,
       analysisResult,
     );
 

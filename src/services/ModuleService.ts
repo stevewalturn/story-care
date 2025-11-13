@@ -31,6 +31,7 @@ export async function createModule(data: {
   createdBy: string;
   organizationId?: string | null;
   inSessionQuestions: string[];
+  reflectionQuestions?: string[];
   reflectionTemplateId?: string | null;
   surveyTemplateId?: string | null;
   aiPromptText: string;
@@ -46,6 +47,7 @@ export async function createModule(data: {
       createdBy: data.createdBy,
       organizationId: data.organizationId || null,
       inSessionQuestions: data.inSessionQuestions,
+      reflectionQuestions: data.reflectionQuestions || [],
       reflectionTemplateId: data.reflectionTemplateId || null,
       surveyTemplateId: data.surveyTemplateId || null,
       aiPromptText: data.aiPromptText,
@@ -166,6 +168,7 @@ export async function updateModule(
     name?: string;
     description?: string;
     inSessionQuestions?: string[];
+    reflectionQuestions?: string[];
     reflectionTemplateId?: string | null;
     surveyTemplateId?: string | null;
     aiPromptText?: string;
@@ -355,6 +358,7 @@ export async function createTemplate(data: {
   description: string;
   createdBy: string;
   inSessionQuestions: string[];
+  reflectionQuestions?: string[];
   reflectionTemplateId?: string | null;
   surveyTemplateId?: string | null;
   aiPromptText: string;
@@ -413,6 +417,7 @@ export async function createOrgModule(data: {
   organizationId: string;
   createdBy: string;
   inSessionQuestions: string[];
+  reflectionQuestions?: string[];
   reflectionTemplateId?: string | null;
   surveyTemplateId?: string | null;
   aiPromptText: string;
@@ -451,6 +456,7 @@ export async function copyTemplateToOrg(
     organizationId,
     createdBy: userId,
     inSessionQuestions: template.inSessionQuestions as string[],
+    reflectionQuestions: template.reflectionQuestions as string[],
     reflectionTemplateId: template.reflectionTemplateId,
     surveyTemplateId: template.surveyTemplateId,
     aiPromptText: template.aiPromptText,
@@ -508,6 +514,7 @@ export async function createTherapistModule(data: {
   description: string;
   createdBy: string;
   inSessionQuestions: string[];
+  reflectionQuestions?: string[];
   reflectionTemplateId?: string | null;
   surveyTemplateId?: string | null;
   aiPromptText: string;

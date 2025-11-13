@@ -16,9 +16,10 @@ import { assignModuleToSessionSchema } from '@/validations/ModuleValidation';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const user = await requireAuth(request);
 
     // Only therapists and admins can assign modules
@@ -59,7 +60,7 @@ export async function POST(
 
     // Assign module to session
     const sessionModule = await assignModuleToSession({
-      sessionId: params.id,
+      sessionId: id,
       moduleId: validated.moduleId,
       assignedBy: user.dbUserId,
       notes: validated.notes,
@@ -74,6 +75,7 @@ export async function POST(
       { status: 201 },
     );
   } catch (error) {
+    console.error('Error assigning module to session:', error);
     if (error instanceof Error && error.message.includes('validation')) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }

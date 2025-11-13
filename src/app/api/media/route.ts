@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
+import { generatePresignedUrlsForMedia } from '@/libs/GCS';
 import { mediaLibrary, sessions, users } from '@/models/Schema';
 
 // GET /api/media - List media files
@@ -62,7 +63,10 @@ export async function GET(request: NextRequest) {
 
     const media = await query.orderBy(desc(mediaLibrary.createdAt));
 
-    return NextResponse.json({ media });
+    // Generate presigned URLs for all media items (HIPAA compliant, 1-hour expiration)
+    const mediaWithSignedUrls = await generatePresignedUrlsForMedia(media, 1);
+
+    return NextResponse.json({ media: mediaWithSignedUrls });
   } catch (error) {
     console.error('Error fetching media:', error);
     return NextResponse.json(

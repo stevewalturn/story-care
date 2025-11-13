@@ -12,12 +12,13 @@ import { useState } from 'react';
 type ModuleDetailsModalProps = {
   module: TreatmentModule;
   onClose: () => void;
-  onEdit: () => void;
+  onEdit?: () => void; // Optional - only provided for editable modules
+  onCopy?: () => void; // Optional - only provided for system modules
 };
 
 type Tab = 'overview' | 'questions' | 'prompt';
 
-export function ModuleDetailsModal({ module, onClose, onEdit }: ModuleDetailsModalProps) {
+export function ModuleDetailsModal({ module, onClose, onEdit, onCopy }: ModuleDetailsModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
 
   const domainInfo = getDomainInfo(module.domain);
@@ -49,13 +50,15 @@ export function ModuleDetailsModal({ module, onClose, onEdit }: ModuleDetailsMod
                 <p className="mt-2 text-gray-600">{module.description}</p>
               </div>
               <div className="flex gap-2">
-                <button
-                  onClick={onEdit}
-                  className="rounded-lg border border-gray-300 p-2 text-gray-700 hover:bg-gray-50"
-                  type="button"
-                >
-                  <Pencil className="h-5 w-5" />
-                </button>
+                {onEdit && (
+                  <button
+                    onClick={onEdit}
+                    className="rounded-lg border border-gray-300 p-2 text-gray-700 hover:bg-gray-50"
+                    type="button"
+                  >
+                    <Pencil className="h-5 w-5" />
+                  </button>
+                )}
                 <button
                   onClick={onClose}
                   className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
@@ -151,13 +154,14 @@ export function ModuleDetailsModal({ module, onClose, onEdit }: ModuleDetailsMod
 
             {/* Questions Tab */}
             {activeTab === 'questions' && (
-              <div className="space-y-4">
+              <div className="space-y-6">
+                {/* Opening Questions (In-Session) */}
                 <div>
                   <h3 className="mb-3 text-sm font-semibold text-gray-900">
                     Opening Questions (In-Session)
                   </h3>
                   <p className="mb-4 text-sm text-gray-600">
-                    These questions guide the therapeutic conversation during sessions.
+                    Questions for therapists to guide the therapeutic conversation during live sessions.
                   </p>
                   <ol className="space-y-3">
                     {(module.inSessionQuestions as string[])?.map((question, index) => (
@@ -168,7 +172,29 @@ export function ModuleDetailsModal({ module, onClose, onEdit }: ModuleDetailsMod
                         <p className="flex-1 text-gray-700">{question}</p>
                       </li>
                     )) || (
-                      <p className="text-sm text-gray-500">No questions defined</p>
+                      <p className="text-sm text-gray-500">No in-session questions defined</p>
+                    )}
+                  </ol>
+                </div>
+
+                {/* Reflection Questions (Post-Session) */}
+                <div>
+                  <h3 className="mb-3 text-sm font-semibold text-gray-900">
+                    Reflection Questions (Post-Session)
+                  </h3>
+                  <p className="mb-4 text-sm text-gray-600">
+                    Questions for patients to answer in story pages after the session.
+                  </p>
+                  <ol className="space-y-3">
+                    {(module.reflectionQuestions as string[])?.map((question, index) => (
+                      <li key={index} className="flex gap-3 rounded-lg border border-green-200 bg-green-50 p-4">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-100 text-sm font-semibold text-green-700">
+                          {index + 1}
+                        </span>
+                        <p className="flex-1 text-gray-700">{question}</p>
+                      </li>
+                    )) || (
+                      <p className="text-sm text-gray-500">No reflection questions defined</p>
                     )}
                   </ol>
                 </div>
@@ -190,12 +216,12 @@ export function ModuleDetailsModal({ module, onClose, onEdit }: ModuleDetailsMod
                   </div>
                 </div>
 
-                {module.aiPromptMetadata && (
+                {module.aiPromptMetadata && (module.aiPromptMetadata as any) && (
                   <div>
                     <h3 className="mb-2 text-sm font-semibold text-gray-900">Expected Output Format</h3>
                     <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                       <pre className="font-mono text-xs whitespace-pre-wrap text-gray-700">
-                        {JSON.stringify(module.aiPromptMetadata, null, 2)}
+                        {JSON.stringify(module.aiPromptMetadata || {}, null, 2)}
                       </pre>
                     </div>
                   </div>
@@ -211,14 +237,27 @@ export function ModuleDetailsModal({ module, onClose, onEdit }: ModuleDetailsMod
               {' '}
               <code className="rounded bg-gray-100 px-1 font-mono text-xs">{module.id}</code>
             </p>
-            <button
-              onClick={onEdit}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-              type="button"
-            >
-              <Pencil className="h-4 w-4" />
-              Edit Module
-            </button>
+            <div className="flex gap-2">
+              {onCopy && (
+                <button
+                  onClick={onCopy}
+                  className="inline-flex items-center gap-2 rounded-lg bg-gray-600 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+                  type="button"
+                >
+                  Copy Module
+                </button>
+              )}
+              {onEdit && (
+                <button
+                  onClick={onEdit}
+                  className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                  type="button"
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit Module
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

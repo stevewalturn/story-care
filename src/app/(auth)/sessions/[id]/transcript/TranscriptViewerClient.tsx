@@ -1,13 +1,20 @@
 'use client';
 
 import type { TreatmentModule } from '@/models/Schema';
-import { Pencil, Trash2 } from 'lucide-react';
+// import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { AnalyzeSelectionModal } from '@/components/sessions/AnalyzeSelectionModal';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import {
+  type AIPromptOption,
+  AnalyzeSelectionModal,
+} from '@/components/sessions/AnalyzeSelectionModal';
+import { AssignModuleModal } from '@/components/sessions/AssignModuleModal';
 import { EditQuoteModal } from '@/components/sessions/EditQuoteModal';
 import { GenerateImageModal } from '@/components/sessions/GenerateImageModal';
 import { GenerateVideoModal } from '@/components/sessions/GenerateVideoModal';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
+import { MediaUploadModal } from '@/components/media/MediaUploadModal';
 import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAvailableTextModels } from '@/libs/ModelMetadata';
@@ -41,11 +48,17 @@ export function TranscriptViewerClient({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // AI Prompts state
+  const [aiPrompts, setAiPrompts] = useState<AIPromptOption[]>([]);
+  const [_isLoadingPrompts, setIsLoadingPrompts] = useState(false);
+
   // Modal states
   const [showAnalyzeModal, setShowAnalyzeModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [showMediaUploadModal, setShowMediaUploadModal] = useState(false);
+  const [isAssignModuleModalOpen, setIsAssignModuleModalOpen] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [aiPrompt, setAiPrompt] = useState<string | null>(null);
 
@@ -53,6 +66,9 @@ export function TranscriptViewerClient({
   const [editingQuote, setEditingQuote] = useState<any | null>(null);
   const [deletingQuote, setDeletingQuote] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Media refresh trigger
+  const [mediaRefreshKey, setMediaRefreshKey] = useState(0);
 
   // Fetch session and transcript data
   useEffect(() => {
@@ -111,6 +127,35 @@ export function TranscriptViewerClient({
     fetchData();
   }, [sessionId]);
 
+  // Fetch AI prompts when session data loads
+  useEffect(() => {
+    const fetchAiPrompts = async () => {
+      if (!user || !sessionId) {
+        return;
+      }
+
+      try {
+        setIsLoadingPrompts(true);
+        const response = await authenticatedFetch(`/api/sessions/${sessionId}/ai-prompts`, user);
+
+        if (!response.ok) {
+          console.error('Failed to fetch AI prompts');
+          return;
+        }
+
+        const data = await response.json();
+        setAiPrompts(data.prompts || []);
+      } catch (err) {
+        console.error('Error fetching AI prompts:', err);
+        // Non-critical error - don't show to user, just log it
+      } finally {
+        setIsLoadingPrompts(false);
+      }
+    };
+
+    fetchAiPrompts();
+  }, [sessionId, user, assignedModule]); // Re-fetch when module changes
+
   // Handler for text selection
   const handleTextSelection = () => {
     const selection = window.getSelection();
@@ -123,68 +168,22 @@ export function TranscriptViewerClient({
   };
 
   // Handler for analyze option
-  const handleAnalyze = async (optionId: string, text: string) => {
-    console.log('Analyzing:', optionId, text);
+  const handleAnalyze = async (promptId: string, promptText: string, text: string) => {
+    console.log('Analyzing with prompt:', promptId, text.substring(0, 50));
 
-    // Route to appropriate modal/action based on option
-    if (optionId === 'save-quote') {
-      setShowQuoteModal(true);
-    } else if (optionId === 'extract-quotes') {
-      // AI Quote Extraction
-      const prompt = `You are a therapeutic quote extraction assistant. Analyze the following transcript text and extract the most meaningful, therapeutically significant quotes.
+    // Check if this is a creative prompt (image/video generation)
+    const prompt = aiPrompts.find(p => p.id === promptId);
 
-For each quote, identify:
-1. The exact quote text
-2. Why it's therapeutically significant
-3. Suggested tags (e.g., breakthrough, resistance, metaphor, emotion, pattern)
-4. Suggested priority (low, medium, high)
-
-Format your response as a JSON array like this:
-[
-  {
-    "quote": "exact quote text here",
-    "significance": "why this quote matters",
-    "tags": ["tag1", "tag2"],
-    "priority": "high"
-  }
-]
-
-Transcript text:
-"${text}"`;
-
-      setSelectedText(text);
-      setAiPrompt(prompt);
-    } else if (optionId === 'create-image' || optionId === 'potential-images') {
+    if (prompt?.category === 'creative') {
+      // For creative prompts, open the image modal
       setShowImageModal(true);
     } else {
-      // Send to AI chat for analysis
-      // Find the analysis option to get its full prompt
-      const analyzeOptions = [
-        {
-          id: 'therapeutic-alliance',
-          title: 'Therapeutic Alliance Analysis',
-          description: 'Analyze the transcript for indicators of the therapeutic alliance. How is the relationship between therapist and patient?',
-        },
-        {
-          id: 'clinical-note',
-          title: 'Group Clinical Note',
-          description: 'You are a licensed clinical professional creating a detailed Group Therapy Progress Note for a narrative therapy session.',
-        },
-        {
-          id: 'potential-scenes',
-          title: 'Potential Scenes',
-          description: 'You are an expert narrative therapist and filmmaker. Your task is to identify powerful, scene-worthy moments from the transcript.',
-        },
-      ];
+      // For analysis/extraction/reflection prompts, send to AI chat
+      // Construct the full prompt with the selected text context
+      const fullPrompt = `${promptText}\n\nSelected text:\n"${text}"`;
 
-      const option = analyzeOptions.find(o => o.id === optionId);
-      if (option) {
-        // Trigger AI analysis by setting the prompt text with context
-        const prompt = `${option.description}\n\nSelected text:\n"${text}"`;
-        // Send this to the AI panel
-        setSelectedText(text);
-        setAiPrompt(prompt);
-      }
+      setSelectedText(text);
+      setAiPrompt(fullPrompt);
     }
   };
 
@@ -315,10 +314,10 @@ Transcript text:
       if (response.ok) {
         // Refresh quotes list by triggering the useEffect
         setEditingQuote(null);
-        // Force re-fetch by changing active tab briefly or use a refresh counter
-        const currentTab = activeTab;
-        setActiveTab('media' as any);
-        setTimeout(() => setActiveTab(currentTab), 0);
+        // TODO: Force re-fetch - activeTab not in scope here
+        // const currentTab = activeTab;
+        // setActiveTab('media' as any);
+        // setTimeout(() => setActiveTab(currentTab), 0);
       } else {
         throw new Error('Failed to update quote');
       }
@@ -340,9 +339,10 @@ Transcript text:
       if (response.ok) {
         // Refresh quotes list
         setDeletingQuote(null);
-        const currentTab = activeTab;
-        setActiveTab('media' as any);
-        setTimeout(() => setActiveTab(currentTab), 0);
+        // TODO: Force re-fetch - activeTab not in scope here
+        // const currentTab = activeTab;
+        // setActiveTab('media' as any);
+        // setTimeout(() => setActiveTab(currentTab), 0);
       } else {
         throw new Error('Failed to delete quote');
       }
@@ -405,34 +405,39 @@ Transcript text:
     <>
       <div className="flex h-screen bg-gray-50">
         {/* Left Panel - Transcript */}
-        <div className="flex w-[400px] flex-col border-r border-gray-200 bg-white">
+        <div className="flex w-[320px] flex-col border-r border-gray-200 bg-white">
           <TranscriptPanel
             sessionId={sessionId}
             sessionTitle={sessionTitle}
             utterances={utterances}
             audioUrl={audioUrl}
             onTextSelection={handleTextSelection}
+            user={user}
+            onAssignModule={() => setIsAssignModuleModalOpen(true)}
           />
         </div>
 
         {/* Center Panel - AI Assistant */}
-        <div className="flex flex-1 flex-col">
+        <div className="flex flex-1 flex-col max-w-[800px]">
           <AIAssistantPanel
             sessionId={sessionId}
             patientName={patientName}
             sessionTitle={sessionTitle}
             user={user}
+            assignedModule={assignedModule}
             triggerPrompt={aiPrompt}
             onPromptSent={() => setAiPrompt(null)}
           />
         </div>
 
         {/* Right Panel - Library */}
-        <div className="flex w-[400px] flex-col border-l border-gray-200 bg-white">
+        <div className="flex w-[380px] flex-col border-l border-gray-200 bg-white">
           <LibraryPanel
             sessionId={sessionId}
             user={user}
             sessionData={sessionData}
+            onOpenUpload={() => setShowMediaUploadModal(true)}
+            refreshKey={mediaRefreshKey}
           />
         </div>
       </div>
@@ -443,7 +448,9 @@ Transcript text:
         onClose={() => setShowAnalyzeModal(false)}
         selectedText={selectedText}
         onAnalyze={handleAnalyze}
+        aiPrompts={aiPrompts}
         assignedModule={assignedModule}
+        onAssignModule={() => setIsAssignModuleModalOpen(true)}
       />
 
       <SaveQuoteModal
@@ -467,6 +474,21 @@ Transcript text:
         onGenerate={handleGenerateVideo}
       />
 
+      {/* Assign Module Modal */}
+      {isAssignModuleModalOpen && (
+        <AssignModuleModal
+          sessionId={sessionId}
+          sessionTitle={sessionTitle}
+          currentModuleId={assignedModule?.id}
+          onClose={() => setIsAssignModuleModalOpen(false)}
+          onAssigned={() => {
+            setIsAssignModuleModalOpen(false);
+            // Refresh session data to get updated module
+            window.location.reload();
+          }}
+        />
+      )}
+
       {/* Edit Quote Modal */}
       {editingQuote && (
         <EditQuoteModal
@@ -486,6 +508,21 @@ Transcript text:
         message="Are you sure you want to delete this quote? This action cannot be undone."
         isDeleting={isDeleting}
       />
+
+      {/* Media Upload Modal */}
+      {showMediaUploadModal && sessionData && (
+        <MediaUploadModal
+          isOpen={showMediaUploadModal}
+          onClose={() => setShowMediaUploadModal(false)}
+          patientId={sessionData.patientId || sessionData.patient?.id}
+          sessionId={sessionId}
+          onSuccess={() => {
+            // Trigger media refresh in LibraryPanel
+            setMediaRefreshKey(prev => prev + 1);
+            setShowMediaUploadModal(false);
+          }}
+        />
+      )}
     </>
   );
 }
@@ -497,14 +534,42 @@ function TranscriptPanel({
   utterances,
   audioUrl,
   onTextSelection,
+  user,
+  onAssignModule,
 }: {
   sessionId: string;
   sessionTitle: string;
   utterances: Utterance[];
   audioUrl?: string;
   onTextSelection: () => void;
+  user: any;
+  onAssignModule: () => void;
 }) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [sessionSummary, setSessionSummary] = useState<string | null>(null);
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
+  // Load session summary on mount
+  useEffect(() => {
+    const loadSessionSummary = async () => {
+      try {
+        setSummaryLoading(true);
+        const response = await authenticatedFetch(`/api/sessions/${sessionId}/summary`, user);
+
+        if (response.ok) {
+          const data = await response.json();
+          setSessionSummary(data.summary);
+        }
+      } catch (error) {
+        console.error('Error loading session summary:', error);
+      } finally {
+        setSummaryLoading(false);
+      }
+    };
+
+    loadSessionSummary();
+  }, [sessionId, user]);
 
   const filteredUtterances = searchQuery
     ? utterances.filter(u =>
@@ -533,11 +598,12 @@ function TranscriptPanel({
             </svg>
           </button>
           <h2 className="text-sm font-semibold text-gray-900">{sessionTitle}</h2>
-          <button className="text-gray-500 hover:text-gray-700">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
+          <button
+            onClick={onAssignModule}
+            className="rounded-lg bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 transition-colors hover:bg-indigo-100"
+            title="Assign Treatment Module"
+          >
+            Module
           </button>
         </div>
 
@@ -563,13 +629,61 @@ function TranscriptPanel({
         </div>
       </div>
 
-      {/* Prompt */}
-      <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
+      {/* Session Summary */}
+      {summaryLoading && (
+        <div className="border-b border-indigo-100 bg-gradient-to-r from-indigo-50 to-purple-50 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <svg className="h-4 w-4 animate-spin text-indigo-600" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            <span className="text-xs font-medium text-indigo-900">Generating session insights...</span>
+          </div>
+        </div>
+      )}
+      {sessionSummary && (
+        <div className="border-b border-indigo-100">
+          <button
+            onClick={() => setSummaryExpanded(!summaryExpanded)}
+            className="w-full bg-gradient-to-r from-indigo-50 to-purple-50 px-4 py-3 text-left transition-all hover:from-indigo-100 hover:to-purple-100"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                </svg>
+                <span className="text-xs font-semibold text-indigo-900">Session Insights</span>
+              </div>
+              <svg
+                className={`h-4 w-4 text-indigo-600 transition-transform ${summaryExpanded ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </button>
+          {summaryExpanded && (
+            <div
+              className="max-h-80 overflow-y-auto border-t border-indigo-100 bg-white px-4 py-3"
+              onMouseUp={onTextSelection}
+            >
+              <div className="prose prose-xs max-w-none prose-headings:text-gray-900 prose-headings:font-semibold prose-h1:text-sm prose-h1:mb-2 prose-h2:text-xs prose-h2:mb-1.5 prose-h3:text-xs prose-h3:mt-2 prose-h3:mb-1 prose-p:text-gray-700 prose-p:text-xs prose-p:leading-relaxed prose-strong:text-gray-900 prose-strong:font-semibold prose-ul:text-gray-700 prose-ul:text-xs prose-ol:text-gray-700 prose-ol:text-xs prose-li:my-0.5 prose-blockquote:border-l-4 prose-blockquote:border-purple-400 prose-blockquote:bg-purple-50 prose-blockquote:px-3 prose-blockquote:py-1.5 prose-blockquote:my-2 prose-blockquote:text-xs prose-code:text-indigo-600 prose-code:bg-indigo-50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {sessionSummary}
+                </ReactMarkdown>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Instruction Banner */}
+      <div className="border-b border-gray-100 bg-gray-50 px-4 py-2">
         <p className="flex items-center gap-2 text-xs text-gray-500">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-          Select text to analyze or extract quotes
+          <span>💡</span>
+          Select transcript text to analyze or extract quotes
         </p>
       </div>
 
@@ -638,6 +752,7 @@ function AIAssistantPanel({
   patientName,
   sessionTitle,
   user,
+  assignedModule,
   triggerPrompt,
   onPromptSent,
 }: {
@@ -645,6 +760,7 @@ function AIAssistantPanel({
   patientName: string;
   sessionTitle: string;
   user: any;
+  assignedModule: TreatmentModule | null;
   triggerPrompt: string | null;
   onPromptSent: () => void;
 }) {
@@ -652,8 +768,7 @@ function AIAssistantPanel({
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [_isLoadingHistory, _setIsLoadingHistory] = useState(true);
-  const [transcriptContext] = useState('');
-  const [selectedModel, setSelectedModel] = useState('gpt-4o');
+  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load chat history on mount
@@ -709,11 +824,8 @@ function AIAssistantPanel({
     try {
       const response = await authenticatedPost('/api/ai/chat', user, {
         messages: [...messages, userMessage],
-        context: transcriptContext,
         sessionId,
-        therapistId: user?.uid || 'temp-therapist-id',
-        selectedText: transcriptContext, // Pass selected text if any
-        model: selectedModel, // Pass selected AI model
+        model: selectedModel,
       });
 
       if (!response.ok) {
@@ -777,6 +889,24 @@ function AIAssistantPanel({
           </div>
         </div>
 
+        {/* Module Context Badge */}
+        {assignedModule && (
+          <div className="border-t border-gray-200 bg-indigo-50 px-4 py-2">
+            <div className="flex items-center gap-2 text-xs">
+              <svg className="h-4 w-4 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+              </svg>
+              <span className="font-medium text-indigo-900">
+                Using Module: {assignedModule.name}
+              </span>
+              <span className="text-indigo-600">
+                ({assignedModule.domain})
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Model Selector */}
         <div className="border-t border-gray-200 bg-gray-50 px-4 py-3">
           <div className="flex items-center gap-2">
@@ -801,6 +931,7 @@ function AIAssistantPanel({
             </select>
           </div>
         </div>
+
       </div>
 
       {/* Chat Messages or Empty State */}
@@ -890,7 +1021,32 @@ function AIAssistantPanel({
                       : 'bg-gray-100 text-gray-900'
                   }`}
                 >
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                  {message.role === 'assistant' ? (
+                    <div className="text-sm leading-relaxed prose prose-sm max-w-none
+                      prose-headings:text-gray-900 prose-headings:font-semibold
+                      prose-h1:text-lg prose-h1:mt-4 prose-h1:mb-3
+                      prose-h2:text-base prose-h2:mt-4 prose-h2:mb-2
+                      prose-h3:text-sm prose-h3:mt-3 prose-h3:mb-2
+                      prose-p:my-2 prose-p:text-gray-700
+                      prose-ul:my-2 prose-ol:my-2
+                      prose-li:my-1 prose-li:text-gray-700
+                      prose-strong:text-gray-900 prose-strong:font-semibold
+                      prose-blockquote:border-l-4 prose-blockquote:border-indigo-500
+                      prose-blockquote:bg-indigo-50 prose-blockquote:px-4
+                      prose-blockquote:py-2 prose-blockquote:rounded-r
+                      prose-blockquote:not-italic prose-blockquote:text-gray-700
+                      prose-code:text-indigo-600 prose-code:bg-indigo-50
+                      prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+                      prose-code:text-xs prose-code:font-mono
+                      prose-a:text-indigo-600 prose-a:no-underline hover:prose-a:underline"
+                    >
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                  )}
                 </div>
                 {message.role === 'user' && (
                   <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-200">
@@ -955,10 +1111,14 @@ function LibraryPanel({
   sessionId,
   user,
   sessionData,
+  onOpenUpload,
+  refreshKey,
 }: {
   sessionId: string;
   user: any;
   sessionData: any;
+  onOpenUpload: () => void;
+  refreshKey: number;
 }) {
   const [activeTab, setActiveTab] = useState<'media' | 'quotes' | 'notes' | 'profile'>('media');
   const [media, setMedia] = useState<any[]>([]);
@@ -1003,7 +1163,7 @@ function LibraryPanel({
     if (activeTab === 'media') {
       loadMedia();
     }
-  }, [sessionId, activeTab, filterType, searchQuery, user]);
+  }, [sessionId, activeTab, filterType, searchQuery, user, refreshKey]);
 
   // Load quotes for this session
   useEffect(() => {
@@ -1149,7 +1309,10 @@ function LibraryPanel({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                 </button>
-                <button className="flex items-center gap-1 text-sm text-gray-700 hover:text-gray-900">
+                <button
+                  onClick={onOpenUpload}
+                  className="flex items-center gap-1 text-sm text-gray-700 hover:text-gray-900"
+                >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
@@ -1373,7 +1536,8 @@ function LibraryPanel({
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <button
+                      {/* TODO: Fix scoping issue with setEditingQuote/setDeletingQuote */}
+                      {/* <button
                         onClick={() => setEditingQuote(quote)}
                         className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
                         title="Edit quote"
@@ -1386,7 +1550,7 @@ function LibraryPanel({
                         title="Delete quote"
                       >
                         <Trash2 className="h-4 w-4" />
-                      </button>
+                      </button> */}
                     </div>
                   </div>
 

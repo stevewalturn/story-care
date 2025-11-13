@@ -14,9 +14,11 @@ import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type ModuleCardProps = {
   module: TreatmentModule;
-  onView?: () => void;
-  onEdit?: () => void;
-  onCopy?: () => void;
+  onView?: (module: TreatmentModule) => void;
+  onViewDetails?: (module: TreatmentModule) => void;
+  onEdit?: (module: TreatmentModule) => void;
+  onCopy?: (module: TreatmentModule) => void;
+  onArchived?: () => void;
   onRefresh?: () => void;
   isTemplate?: boolean;
   apiEndpoint?: string; // For archive endpoint override (e.g., /api/org-admin/modules)
@@ -28,7 +30,7 @@ export function ModuleCard({
   onEdit,
   onCopy,
   onRefresh,
-  isTemplate = false,
+  isTemplate: _isTemplate = false,
   apiEndpoint = '/api/modules',
 }: ModuleCardProps) {
   const { user } = useAuth();
@@ -115,7 +117,7 @@ export function ModuleCard({
                   <button
                     onClick={() => {
                       setShowMenu(false);
-                      onView();
+                      onView(module);
                     }}
                     className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                     type="button"
@@ -129,7 +131,7 @@ export function ModuleCard({
                   <button
                     onClick={() => {
                       setShowMenu(false);
-                      onCopy();
+                      onCopy(module);
                     }}
                     className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-blue-600 hover:bg-blue-50"
                     type="button"
@@ -143,7 +145,7 @@ export function ModuleCard({
                   <button
                     onClick={() => {
                       setShowMenu(false);
-                      onEdit();
+                      onEdit(module);
                     }}
                     className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                     type="button"
@@ -174,7 +176,7 @@ export function ModuleCard({
 
       {/* Content */}
       <button
-        onClick={() => onView && onView()}
+        onClick={() => onView && onView(module)}
         className="w-full text-left"
         type="button"
       >

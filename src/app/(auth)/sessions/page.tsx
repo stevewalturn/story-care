@@ -27,7 +27,7 @@ type Session = {
 export default function SessionsPage() {
   const { user } = useAuth();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [isAssignModuleModalOpen, setIsAssignModuleModalOpen] = useState(false);
+  const [_isAssignModuleModalOpen, setIsAssignModuleModalOpen] = useState(false);
   const [selectedSessionForModule, setSelectedSessionForModule] = useState<Session | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sessions, setSessions] = useState<Session[]>([]);

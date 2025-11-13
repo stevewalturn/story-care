@@ -7,7 +7,7 @@ import type { NextRequest } from 'next/server';
 import type { TherapeuticDomain } from '@/services/ModuleService';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { requireAuth } from '@/libs/FirebaseAdmin';
+import { requireAuth } from '@/utils/AuthHelpers';
 import {
   copyTemplateToOrg,
   createOrgModule,
@@ -15,7 +15,7 @@ import {
   listTemplates,
 
 } from '@/services/ModuleService';
-import { ModuleCreateSchema } from '@/validations/ModuleValidation';
+import { createModuleSchema } from '@/validations/ModuleValidation';
 
 /**
  * GET /api/org-admin/modules
@@ -130,15 +130,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Otherwise, create new module from scratch
-    const validatedData = ModuleCreateSchema.parse(body);
+    const validatedData = createModuleSchema.parse(body);
 
     const module = await createOrgModule({
       name: validatedData.name,
       domain: validatedData.domain as TherapeuticDomain,
       description: validatedData.description,
       organizationId: user.organizationId,
-      createdBy: user.uid,
+      createdBy: user.dbUserId,
       inSessionQuestions: validatedData.inSessionQuestions,
+      reflectionQuestions: validatedData.reflectionQuestions,
       reflectionTemplateId: validatedData.reflectionTemplateId || null,
       surveyTemplateId: validatedData.surveyTemplateId || null,
       aiPromptText: validatedData.aiPromptText,
@@ -157,7 +158,7 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
+        { error: 'Invalid request data', details: error.issues },
         { status: 400 },
       );
     }

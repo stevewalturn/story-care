@@ -1,80 +1,76 @@
 'use client';
 
 import type { TreatmentModule } from '@/models/Schema';
-import { Target } from 'lucide-react';
+import {
+  Activity,
+  Bookmark,
+  FileText,
+  Image,
+  Info,
+  Sparkles,
+  Target,
+  Users,
+  Video,
+} from 'lucide-react';
 import { useState } from 'react';
 import { ModuleBadge } from '@/components/modules/ModuleBadge';
 
-type AnalyzeOption = {
+export type AIPromptOption = {
   id: string;
-  title: string;
-  description: string;
+  name: string;
+  promptText: string;
+  description: string | null;
   category: string;
-  badge?: string;
   icon: string;
+  sortOrder?: number;
 };
-
-const ANALYZE_OPTIONS: AnalyzeOption[] = [
-  {
-    id: 'save-quote',
-    title: 'Save as Quote',
-    description: 'Save this selection to the patient\'s quote library with tags and notes.',
-    category: 'library',
-    icon: 'bookmark',
-  },
-  {
-    id: 'extract-quotes',
-    title: 'Extract Meaningful Quotes (AI)',
-    description: 'AI will analyze the selected text and extract the most meaningful, therapeutically significant quotes.',
-    category: 'ai_extraction',
-    badge: 'AI',
-    icon: 'sparkles',
-  },
-  {
-    id: 'therapeutic-alliance',
-    title: 'Therapeutic Alliance Analysis',
-    description: 'Analyze the transcript for indicators of the therapeutic alliance. How is the relationship between therapist and patient?',
-    category: 'reflection',
-    icon: 'info',
-  },
-  {
-    id: 'potential-images',
-    title: 'Potential Images',
-    description: 'You are a narrative therapy media assistant. Your task is to analyze the provided transcript and generate image suggestions.',
-    category: 'image_suggestions',
-    badge: 'JSON',
-    icon: 'sparkles',
-  },
-  {
-    id: 'clinical-note',
-    title: 'Group Clinical Note',
-    description: 'You are a licensed clinical professional creating a detailed Group Therapy Progress Note for a narrative therapy session.',
-    category: 'analysis',
-    icon: 'info',
-  },
-  {
-    id: 'potential-scenes',
-    title: 'Potential Scenes',
-    description: 'You are an expert narrative therapist and filmmaker. Your task is to identify powerful, scene-worthy moments from the transcript.',
-    category: 'analysis',
-    badge: 'JSON',
-    icon: 'sparkles',
-  },
-  {
-    id: 'create-image',
-    title: 'Create an Image from Selection',
-    description: 'You are a visual artist and therapist. Based on the following text selection, create a single, compelling image prompt.',
-    category: 'creative',
-    icon: 'sparkles',
-  },
-];
 
 type AnalyzeSelectionModalProps = {
   isOpen: boolean;
   onClose: () => void;
   selectedText: string;
-  onAnalyze: (optionId: string, selectedText: string) => void;
+  onAnalyze: (promptId: string, promptText: string, selectedText: string) => void;
+  aiPrompts: AIPromptOption[];
   assignedModule?: TreatmentModule | null;
+  onAssignModule: () => void;
+};
+
+// Icon mapping helper
+const getIconComponent = (iconName: string) => {
+  const iconMap: Record<string, any> = {
+    target: Target,
+    sparkles: Sparkles,
+    bookmark: Bookmark,
+    info: Info,
+    video: Video,
+    image: Image,
+    activity: Activity,
+    users: Users,
+    'file-text': FileText,
+  };
+  return iconMap[iconName] || Sparkles;
+};
+
+// Icon color mapping by category
+const getIconColor = (category: string) => {
+  const colorMap: Record<string, string> = {
+    analysis: 'text-blue-500',
+    creative: 'text-purple-500',
+    extraction: 'text-green-500',
+    reflection: 'text-indigo-500',
+  };
+  return colorMap[category] || 'text-gray-500';
+};
+
+// Badge color mapping by category
+const getBadgeColor = (category: string) => {
+  const colorMap: Record<string, string> = {
+    analysis: 'bg-blue-100 text-blue-700',
+    creative: 'bg-purple-100 text-purple-700',
+    extraction: 'bg-green-100 text-green-700',
+    reflection: 'bg-indigo-100 text-indigo-700',
+  };
+  return colorMap[category] || 'bg-gray-100 text-gray-600';
 };
 
 export function AnalyzeSelectionModal({
@@ -82,32 +78,28 @@ export function AnalyzeSelectionModal({
   onClose,
   selectedText,
   onAnalyze,
+  aiPrompts,
   assignedModule,
+  onAssignModule,
 }: AnalyzeSelectionModalProps) {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
-
-  // Create module-specific options if module is assigned
-  const moduleOptions: AnalyzeOption[] = assignedModule
-    ? [
-        {
-          id: 'module-analysis',
-          title: `${assignedModule.name} Protocol Analysis`,
-          description: `${assignedModule.aiPromptText.substring(0, 150)}...`,
-          category: 'module',
-          badge: 'Protocol',
-          icon: 'target',
-        },
-      ]
-    : [];
 
   if (!isOpen) {
     return null;
   }
 
-  const handleAnalyze = (optionId: string) => {
-    onAnalyze(optionId, selectedText);
+  const handleAnalyze = (promptId: string, promptText: string) => {
+    onAnalyze(promptId, promptText, selectedText);
     onClose();
   };
+
+  // Auto-open Assign Module modal if no prompts available
+  if (aiPrompts.length === 0) {
+    // Trigger the Assign Module modal and close this one
+    onAssignModule();
+    onClose();
+    return null;
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -139,145 +131,75 @@ export function AnalyzeSelectionModal({
 
         {/* Options */}
         <div className="max-h-[60vh] space-y-3 overflow-y-auto p-6">
-          {/* Module-Specific Options (if module assigned) */}
+          {/* Module Header (if module assigned) */}
           {assignedModule && (
-            <>
-              <div className="mb-4 flex items-center gap-2">
-                <Target className="h-4 w-4 text-indigo-600" />
-                <span className="text-sm font-semibold text-gray-900">Treatment Protocol Options</span>
-                <ModuleBadge
-                  moduleName={assignedModule.name}
-                  domain={assignedModule.domain as any}
-                  size="sm"
-                  showIcon={false}
-                />
-              </div>
-              {moduleOptions.map(option => (
-                <button
-                  key={option.id}
-                  onClick={() => handleAnalyze(option.id)}
-                  onMouseEnter={() => setSelectedOption(option.id)}
-                  onMouseLeave={() => setSelectedOption(null)}
-                  className={`w-full rounded-lg border-2 text-left transition-all ${
-                    selectedOption === option.id
-                      ? 'border-indigo-500 bg-gradient-to-br from-indigo-50 to-purple-50'
-                      : 'border-indigo-200 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 hover:border-indigo-400'
-                  }`}
-                >
-                  <div className="p-4">
-                    <div className="flex items-start gap-3">
-                      {/* Icon */}
-                      <div className="mt-0.5 flex-shrink-0 text-indigo-600">
-                        <Target className="h-5 w-5" />
-                      </div>
-
-                      {/* Content */}
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-1 flex items-center gap-2">
-                          <h3 className="text-sm font-semibold text-gray-900">{option.title}</h3>
-                          <span className="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
-                            {option.badge}
-                          </span>
-                        </div>
-                        <p className="text-xs leading-relaxed text-gray-600">
-                          {option.description}
-                        </p>
-                      </div>
-
-                      {/* Arrow */}
-                      <div className="flex-shrink-0">
-                        <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              ))}
-
-              {/* Divider */}
-              <div className="relative py-2">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center">
-                  <span className="bg-white px-3 text-xs font-medium text-gray-500">
-                    General Analysis Options
-                  </span>
-                </div>
-              </div>
-            </>
+            <div className="mb-4 flex items-center gap-2">
+              <Target className="h-4 w-4 text-indigo-600" />
+              <span className="text-sm font-semibold text-gray-900">
+                {assignedModule.name}
+                {' '}
+                AI Prompts
+              </span>
+              <ModuleBadge
+                moduleName={assignedModule.name}
+                domain={assignedModule.domain as any}
+                size="sm"
+                showIcon={false}
+              />
+            </div>
           )}
 
-          {/* Standard Options */}
-          {ANALYZE_OPTIONS.map(option => (
-            <button
-              key={option.id}
-              onClick={() => handleAnalyze(option.id)}
-              onMouseEnter={() => setSelectedOption(option.id)}
-              onMouseLeave={() => setSelectedOption(null)}
-              className={`w-full rounded-lg border-2 text-left transition-all ${
-                selectedOption === option.id
-                  ? 'border-indigo-500 bg-indigo-50'
-                  : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50'
-              }`}
-            >
-              <div className="p-4">
-                <div className="flex items-start gap-3">
-                  {/* Icon */}
-                  <div className={`mt-0.5 flex-shrink-0 ${
-                    option.icon === 'sparkles'
-                      ? 'text-purple-500'
-                      : option.icon === 'bookmark' ? 'text-green-500' : 'text-blue-500'
-                  }`}
-                  >
-                    {option.icon === 'sparkles'
-                      ? (
-                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                          </svg>
-                        )
-                      : option.icon === 'bookmark'
-                        ? (
-                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                            </svg>
-                          )
-                        : (
-                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          )}
-                  </div>
+          {/* AI Prompts */}
+          {aiPrompts.map((prompt) => {
+            const IconComponent = getIconComponent(prompt.icon);
+            const iconColorClass = getIconColor(prompt.category);
+            const badgeColorClass = getBadgeColor(prompt.category);
 
-                  {/* Content */}
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex items-center gap-2">
-                      <h3 className="text-sm font-semibold text-gray-900">{option.title}</h3>
-                      {option.badge && (
-                        <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
-                          {option.badge}
-                        </span>
-                      )}
-                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                        {option.category}
-                      </span>
+            return (
+              <button
+                key={prompt.id}
+                onClick={() => handleAnalyze(prompt.id, prompt.promptText)}
+                onMouseEnter={() => setSelectedOption(prompt.id)}
+                onMouseLeave={() => setSelectedOption(null)}
+                className={`w-full rounded-lg border-2 text-left transition-all ${
+                  selectedOption === prompt.id
+                    ? 'border-indigo-500 bg-indigo-50'
+                    : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50'
+                }`}
+              >
+                <div className="p-4">
+                  <div className="flex items-start gap-3">
+                    {/* Icon */}
+                    <div className={`mt-0.5 flex-shrink-0 ${iconColorClass}`}>
+                      <IconComponent className="h-5 w-5" />
                     </div>
-                    <p className="text-xs leading-relaxed text-gray-600">
-                      {option.description}
-                    </p>
-                  </div>
 
-                  {/* Arrow */}
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
+                    {/* Content */}
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex flex-wrap items-center gap-2">
+                        <h3 className="text-sm font-semibold text-gray-900">{prompt.name}</h3>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${badgeColorClass}`}>
+                          {prompt.category}
+                        </span>
+                      </div>
+                      {prompt.description && (
+                        <p className="text-xs leading-relaxed text-gray-600">
+                          {prompt.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Arrow */}
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
 
         {/* Footer */}

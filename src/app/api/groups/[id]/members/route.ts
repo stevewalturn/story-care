@@ -15,7 +15,7 @@ export async function GET(
     const resolvedParams = await params;
 
     // 1. AUTHENTICATE
-    const user = await requireAuth(request);
+    await requireAuth(request); // Authenticated but not used
 
     // 2. FETCH GROUP MEMBERS
     const members = await db

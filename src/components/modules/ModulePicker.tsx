@@ -29,7 +29,7 @@ export function ModulePicker({
   allowClear = true,
   filterDomain,
 }: ModulePickerProps) {
-  const { user } = useAuth();
+  const { user, dbUser } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [modules, setModules] = useState<TreatmentModule[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -60,11 +60,10 @@ export function ModulePicker({
       }
       params.append('status', 'active');
 
-      // Determine API endpoint based on user role
-      const apiEndpoint = '/api/modules'; // Fallback
+      // Fetch modules based on user role
       let allModules: TreatmentModule[] = [];
 
-      if (user?.role === 'super_admin') {
+      if (dbUser?.role === 'super_admin') {
         // Super admins see all templates
         const response = await authenticatedFetch(
           `/api/super-admin/module-templates?${params.toString()}`,
@@ -74,7 +73,7 @@ export function ModulePicker({
           const data = await response.json();
           allModules = data.templates || [];
         }
-      } else if (user?.role === 'org_admin') {
+      } else if (dbUser?.role === 'org_admin') {
         // Org admins see: templates + org modules
         const response = await authenticatedFetch(
           `/api/org-admin/modules?${params.toString()}`,
@@ -84,7 +83,7 @@ export function ModulePicker({
           const data = await response.json();
           allModules = [...(data.templates || []), ...(data.modules || [])];
         }
-      } else if (user?.role === 'therapist') {
+      } else if (dbUser?.role === 'therapist') {
         // Therapists see: templates + org modules + private modules
         const response = await authenticatedFetch(
           `/api/therapist/modules?${params.toString()}`,

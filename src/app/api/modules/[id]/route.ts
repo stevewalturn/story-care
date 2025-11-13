@@ -18,12 +18,13 @@ import { updateModuleSchema } from '@/validations/ModuleValidation';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     const user = await requireAuth(request);
 
-    const moduleData = await getModuleById(params.id);
+    const moduleData = await getModuleById(id);
 
     if (!moduleData.module) {
       return NextResponse.json({ error: 'Module not found' }, { status: 404 });
@@ -70,13 +71,14 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     const user = await requireAuth(request);
 
     // Get existing module to check permissions
-    const { module: existingModule } = await getModuleById(params.id);
+    const { module: existingModule } = await getModuleById(id);
 
     if (!existingModule) {
       return NextResponse.json({ error: 'Module not found' }, { status: 404 });
@@ -116,7 +118,7 @@ export async function PUT(
     const body = await request.json();
     const validated = updateModuleSchema.parse(body);
 
-    const updatedModule = await updateModule(params.id, validated);
+    const updatedModule = await updateModule(id, validated);
 
     return NextResponse.json({ module: updatedModule });
   } catch (error) {
@@ -132,13 +134,14 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     const user = await requireAuth(request);
 
     // Get existing module to check permissions
-    const { module: existingModule } = await getModuleById(params.id);
+    const { module: existingModule } = await getModuleById(id);
 
     if (!existingModule) {
       return NextResponse.json({ error: 'Module not found' }, { status: 404 });
@@ -172,7 +175,7 @@ export async function DELETE(
       );
     }
 
-    const archivedModule = await archiveModule(params.id);
+    const archivedModule = await archiveModule(id);
 
     return NextResponse.json({
       message: 'Module archived successfully',

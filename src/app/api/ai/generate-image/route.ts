@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     // Upload to GCS
     const fileExtension = contentType.split('/')[1] || 'png';
-    const { url: gcsUrl } = await uploadFile(
+    const { path: gcsPath } = await uploadFile(
       imageBuffer,
       `generated-${Date.now()}.${fileExtension}`,
       {
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Save to database
+    // 3. Save to database (save GCS path, not presigned URL)
     const result = await db
       .insert(mediaLibrary)
       .values({
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
         createdByTherapistId: user.dbUserId,
         title: title || 'AI Generated Image',
         mediaType: 'image',
-        mediaUrl: gcsUrl,
+        mediaUrl: gcsPath, // Save GCS path, not presigned URL
         sourceType: 'generated',
         sourceSessionId: sessionId || null,
         generationPrompt: prompt,

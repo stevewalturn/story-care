@@ -161,12 +161,6 @@ export const navigationConfig: NavigationConfig = {
       description: 'Media library (images, videos)',
     },
     {
-      name: 'Prompts',
-      href: '/prompts',
-      icon: BookOpen,
-      description: 'Therapeutic prompts',
-    },
-    {
       name: 'Scenes',
       href: '/scenes',
       icon: Film,

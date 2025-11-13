@@ -27,6 +27,7 @@ export async function generateStoryPageFromModule(params: {
   includeMedia?: boolean;
   sendNotification?: boolean;
   customTitle?: string;
+  customMessage?: string;
 }) {
   // 1. Fetch module with templates
   const { module, reflectionTemplate, surveyTemplate } = await getModuleById(params.moduleId);
@@ -65,10 +66,15 @@ export async function generateStoryPageFromModule(params: {
     })
     .returning();
 
+  if (!storyPage) {
+    throw new Error('Failed to create story page');
+  }
+
   // 5. Build page blocks
   const blocks = await buildPageBlocks({
     pageId: storyPage.id,
     sessionId: params.sessionId,
+    patientId: params.patientId,
     includeMedia: params.includeMedia || false,
     aiAnalysisResult: sessionModule.aiAnalysisResult,
   });
@@ -99,18 +105,26 @@ export async function generateStoryPageFromModule(params: {
   // 9. Send notification (if requested and page is published)
   let emailNotification = null;
   if (params.sendNotification && storyPage.status === 'published') {
-    // Get patient details for notification
+    // Get patient and therapist details for notification
     const patient = await db.query.users.findFirst({
       where: (users, { eq }) => eq(users.id, params.patientId),
     });
 
-    if (patient && patient.email) {
+    const therapist = await db.query.users.findFirst({
+      where: (users, { eq }) => eq(users.id, params.therapistId),
+    });
+
+    if (patient && patient.email && therapist) {
+      const storyPageUrl = `${process.env.NEXT_PUBLIC_APP_URL}/patient/story/${storyPage.id}`;
+
       emailNotification = await sendStoryPageNotification({
-        patientId: params.patientId,
+        patientUserId: params.patientId,
         patientEmail: patient.email,
         patientName: patient.name,
+        therapistName: therapist.name,
         storyPageId: storyPage.id,
         storyPageTitle: params.customTitle || module.name,
+        storyPageUrl,
         customMessage: params.customMessage,
       });
     }
@@ -129,6 +143,7 @@ export async function generateStoryPageFromModule(params: {
 async function buildPageBlocks(params: {
   pageId: string;
   sessionId: string;
+  patientId: string;
   includeMedia: boolean;
   aiAnalysisResult: any;
 }) {
@@ -179,9 +194,9 @@ async function buildPageBlocks(params: {
           pageId: params.pageId,
           blockType,
           sequenceNumber: sequenceNumber++,
-          mediaUrl: media.mediaUrl,
-          mediaCaption: media.description || media.title,
+          mediaId: media.id,
           settings: {
+            caption: media.description || media.title,
             thumbnailUrl: media.thumbnailUrl,
             width: media.widthPx,
             height: media.heightPx,
@@ -191,7 +206,9 @@ async function buildPageBlocks(params: {
         })
         .returning();
 
-      blocks.push(mediaBlock);
+      if (mediaBlock) {
+        blocks.push(mediaBlock);
+      }
     }
   }
 
@@ -262,6 +279,10 @@ async function createReflectionBlock(params: {
       updatedAt: new Date(),
     })
     .returning();
+
+  if (!block) {
+    throw new Error('Failed to create reflection block');
+  }
 
   // 2. Clone questions from template
   const templateQuestions = params.reflectionTemplate.questions as any[];
@@ -343,7 +364,7 @@ function generatePageTitle(moduleName: string, aiAnalysisResult: any): string {
     const summary = aiAnalysisResult.thematicSummary as string;
     const firstSentence = summary.split('.')[0];
 
-    if (firstSentence.length > 10 && firstSentence.length < 60) {
+    if (firstSentence && firstSentence.length > 10 && firstSentence.length < 60) {
       return firstSentence;
     }
   }
@@ -371,8 +392,12 @@ export async function publishAndNotify(params: {
       publishedAt: new Date(),
       updatedAt: new Date(),
     })
-    .where(eq => eq(storyPagesSchema.id, params.storyPageId))
+    .where(eq(storyPagesSchema.id, params.storyPageId))
     .returning();
+
+  if (!storyPage) {
+    throw new Error('Failed to update story page status');
+  }
 
   // 2. Send email notification
   const storyPageUrl = `${process.env.NEXT_PUBLIC_APP_URL}/patient/story/${params.storyPageId}`;
@@ -388,6 +413,10 @@ export async function publishAndNotify(params: {
     customMessage: params.customMessage,
   });
 
+  if (!emailNotification) {
+    throw new Error('Failed to send email notification');
+  }
+
   // 3. Link email notification to story page
   await db
     .update(storyPagesSchema)
@@ -395,7 +424,7 @@ export async function publishAndNotify(params: {
       emailNotificationId: emailNotification.id,
       updatedAt: new Date(),
     })
-    .where(eq => eq(storyPagesSchema.id, params.storyPageId));
+    .where(eq(storyPagesSchema.id, params.storyPageId));
 
   return {
     storyPage,

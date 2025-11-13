@@ -7,13 +7,13 @@ import type { NextRequest } from 'next/server';
 import type { TherapeuticDomain } from '@/services/ModuleService';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { requireAuth } from '@/libs/FirebaseAdmin';
+import { requireAuth } from '@/utils/AuthHelpers';
 import {
   createTemplate,
   listTemplates,
 
 } from '@/services/ModuleService';
-import { ModuleCreateSchema } from '@/validations/ModuleValidation';
+import { createModuleSchema } from '@/validations/ModuleValidation';
 
 /**
  * GET /api/super-admin/module-templates
@@ -79,15 +79,16 @@ export async function POST(request: NextRequest) {
 
     // 3. VALIDATE REQUEST BODY
     const body = await request.json();
-    const validatedData = ModuleCreateSchema.parse(body);
+    const validatedData = createModuleSchema.parse(body);
 
     // 4. CREATE TEMPLATE
     const template = await createTemplate({
       name: validatedData.name,
       domain: validatedData.domain as TherapeuticDomain,
       description: validatedData.description,
-      createdBy: user.uid,
+      createdBy: user.dbUserId,
       inSessionQuestions: validatedData.inSessionQuestions,
+      reflectionQuestions: validatedData.reflectionQuestions,
       reflectionTemplateId: validatedData.reflectionTemplateId || null,
       surveyTemplateId: validatedData.surveyTemplateId || null,
       aiPromptText: validatedData.aiPromptText,
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
+        { error: 'Invalid request data', details: error.issues },
         { status: 400 },
       );
     }

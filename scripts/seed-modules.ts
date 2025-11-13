@@ -355,6 +355,10 @@ export async function seedModules() {
         })
         .returning();
 
+      if (!reflectionTemplate) {
+        throw new Error('Failed to create reflection template');
+      }
+
       console.log(`  ✅ Reflection template created: ${reflectionTemplate.id}`);
 
       // 2. Create survey template
@@ -377,6 +381,10 @@ export async function seedModules() {
         })
         .returning();
 
+      if (!surveyTemplate) {
+        throw new Error('Failed to create survey template');
+      }
+
       console.log(`  ✅ Survey template created: ${surveyTemplate.id}`);
 
       // 3. Create treatment module
@@ -391,6 +399,7 @@ export async function seedModules() {
           createdBy: SYSTEM_USER_ID,
           organizationId: null,
           inSessionQuestions: moduleData.inSessionQuestions,
+          reflectionQuestions: moduleData.reflectionQuestions.map(q => q.text),
           reflectionTemplateId: reflectionTemplate.id,
           surveyTemplateId: surveyTemplate.id,
           aiPromptText: moduleData.aiPrompt,
@@ -411,6 +420,10 @@ export async function seedModules() {
           updatedAt: new Date(),
         })
         .returning();
+
+      if (!module) {
+        throw new Error('Failed to create treatment module');
+      }
 
       console.log(`  ✅ Module created: ${module.id}`);
       console.log(`  🎉 Successfully seeded: ${moduleData.name}`);

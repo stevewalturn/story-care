@@ -121,6 +121,8 @@ export const therapeuticDomainEnum = pgEnum('therapeutic_domain', [
   'identity_transformation',
   'purpose_future',
 ]);
+export type TherapeuticDomain = typeof therapeuticDomainEnum.enumValues[number];
+
 export const moduleStatusEnum = pgEnum('module_status', ['active', 'archived', 'pending_approval']);
 export const notificationTypeEnum = pgEnum('notification_type', [
   'story_page_published',
@@ -288,6 +290,11 @@ export const sessionsSchema = pgTable('sessions', {
   moduleId: uuid('module_id'), // Will reference treatment_modules.id
   moduleAssignedAt: timestamp('module_assigned_at'),
 
+  // AI-Generated Session Summary (for context caching)
+  sessionSummary: text('session_summary'),
+  sessionSummaryGeneratedAt: timestamp('session_summary_generated_at'),
+  sessionSummaryModel: varchar('session_summary_model', { length: 50 }),
+
   // Metadata
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -392,7 +399,10 @@ export const aiChatMessagesSchema = pgTable('ai_chat_messages', {
   generatedMediaId: uuid('generated_media_id'),
 
   // Generation metadata
-  promptType: varchar('prompt_type', { length: 100 }), // 'image', 'video', 'analysis', 'quote', etc.
+  promptType: varchar('prompt_type', { length: 100 }), // 'image', 'video', 'analysis', 'quote', 'conversation_summary', etc.
+
+  // For conversation summaries - tracks what messages were summarized
+  summaryUpToMessageId: uuid('summary_up_to_message_id'),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
@@ -650,7 +660,8 @@ export const treatmentModulesSchema = pgTable('treatment_modules', {
     .notNull(),
 
   // Module Components (JSONB for flexibility)
-  inSessionQuestions: jsonb('in_session_questions').notNull(), // Array of opening questions for live sessions
+  inSessionQuestions: jsonb('in_session_questions').notNull(), // Opening questions for therapists during live sessions
+  reflectionQuestions: jsonb('reflection_questions'), // Post-session reflection questions for patients in story pages
   reflectionTemplateId: uuid('reflection_template_id').references(
     () => reflectionTemplatesSchema.id,
   ),
@@ -667,6 +678,47 @@ export const treatmentModulesSchema = pgTable('treatment_modules', {
   // Audit
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================================================
+// MODULE AI PROMPTS
+// ============================================================================
+
+export const moduleAiPromptsSchema = pgTable('module_ai_prompts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  // Prompt Details
+  name: varchar('name', { length: 255 }).notNull(),
+  promptText: text('prompt_text').notNull(),
+  description: text('description'),
+
+  // Classification
+  category: varchar('category', { length: 100 }).notNull(), // 'analysis', 'creative', 'extraction', 'reflection'
+  icon: varchar('icon', { length: 50 }).default('sparkles'), // Icon name for UI (e.g., 'sparkles', 'target', 'lightbulb')
+
+  // Status
+  isActive: boolean('is_active').default(true).notNull(),
+
+  // Audit
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Junction table: Links modules to their AI prompts
+export const modulePromptLinksSchema = pgTable('module_prompt_links', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  moduleId: uuid('module_id')
+    .references(() => treatmentModulesSchema.id, { onDelete: 'cascade' })
+    .notNull(),
+  promptId: uuid('prompt_id')
+    .references(() => moduleAiPromptsSchema.id, { onDelete: 'cascade' })
+    .notNull(),
+
+  // Display order in UI
+  sortOrder: integer('sort_order').default(0).notNull(),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 // ============================================================================
@@ -818,6 +870,12 @@ export const storyPagesSchema = pgTable('story_pages', {
 
   // Publishing
   publishedAt: timestamp('published_at'),
+
+  // Shareable Links
+  shareToken: varchar('share_token', { length: 64 }).unique(),
+  shareExpiresAt: timestamp('share_expires_at'),
+  shareExpiryDuration: varchar('share_expiry_duration', { length: 20 }), // '15min', '1hour', '2hours'
+  isShareable: boolean('is_shareable').default(false),
 
   // Treatment Module Integration
   moduleId: uuid('module_id'), // Will reference treatment_modules.id
@@ -1067,6 +1125,8 @@ export const surveyTemplates = surveyTemplatesSchema;
 export const reflectionTemplates = reflectionTemplatesSchema;
 export const therapeuticPrompts = therapeuticPromptsSchema;
 export const treatmentModules = treatmentModulesSchema;
+export const moduleAiPrompts = moduleAiPromptsSchema;
+export const modulePromptLinks = modulePromptLinksSchema;
 export const sessionModules = sessionModulesSchema;
 export const emailNotifications = emailNotificationsSchema;
 export const scenes = scenesSchema;
@@ -1129,6 +1189,12 @@ export type NewTherapeuticPrompt = typeof therapeuticPromptsSchema.$inferInsert;
 
 export type TreatmentModule = typeof treatmentModulesSchema.$inferSelect;
 export type NewTreatmentModule = typeof treatmentModulesSchema.$inferInsert;
+
+export type ModuleAiPrompt = typeof moduleAiPromptsSchema.$inferSelect;
+export type NewModuleAiPrompt = typeof moduleAiPromptsSchema.$inferInsert;
+
+export type ModulePromptLink = typeof modulePromptLinksSchema.$inferSelect;
+export type NewModulePromptLink = typeof modulePromptLinksSchema.$inferInsert;
 
 export type SessionModule = typeof sessionModulesSchema.$inferSelect;
 export type NewSessionModule = typeof sessionModulesSchema.$inferInsert;

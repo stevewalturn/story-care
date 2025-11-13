@@ -20,12 +20,14 @@ async function getSystemUser() {
 
     if (superAdmins.length > 0) {
       const user = superAdmins[0];
-      console.log('✅ Found super admin:');
-      console.log(`   Name: ${user.name}`);
-      console.log(`   Email: ${user.email}`);
-      console.log(`   ID: ${user.id}\n`);
-      console.log(`Update seed-modules.ts with:`);
-      console.log(`const SYSTEM_USER_ID = '${user.id}';`);
+      if (user) {
+        console.log('✅ Found super admin:');
+        console.log(`   Name: ${user.name}`);
+        console.log(`   Email: ${user.email}`);
+        console.log(`   ID: ${user.id}\n`);
+        console.log(`Update seed-modules.ts with:`);
+        console.log(`const SYSTEM_USER_ID = '${user.id}';`);
+      }
       return;
     }
 
@@ -34,14 +36,16 @@ async function getSystemUser() {
 
     if (anyUsers.length > 0) {
       const user = anyUsers[0];
-      console.log('⚠️  No super admin found. First user:');
-      console.log(`   Name: ${user.name}`);
-      console.log(`   Email: ${user.email}`);
-      console.log(`   Role: ${user.role}`);
-      console.log(`   ID: ${user.id}\n`);
-      console.log(`You can use this user ID or create a super admin first.`);
-      console.log(`\nUpdate seed-modules.ts with:`);
-      console.log(`const SYSTEM_USER_ID = '${user.id}';`);
+      if (user) {
+        console.log('⚠️  No super admin found. First user:');
+        console.log(`   Name: ${user.name}`);
+        console.log(`   Email: ${user.email}`);
+        console.log(`   Role: ${user.role}`);
+        console.log(`   ID: ${user.id}\n`);
+        console.log(`You can use this user ID or create a super admin first.`);
+        console.log(`\nUpdate seed-modules.ts with:`);
+        console.log(`const SYSTEM_USER_ID = '${user.id}';`);
+      }
       return;
     }
 
