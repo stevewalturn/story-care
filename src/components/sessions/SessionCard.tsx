@@ -25,7 +25,7 @@ export function SessionCard({
   type,
   patientName,
   groupName,
-  sessionCount,
+  sessionCount: _sessionCount,
   moduleName,
   moduleDomain,
   onClick,

@@ -314,7 +314,7 @@ async function createSurveyBlock(params: {
   sequenceNumber: number;
 }) {
   // 1. Create survey block
-  const [block] = await db
+  const blockResult = await db
     .insert(pageBlocksSchema)
     .values({
       pageId: params.pageId,
@@ -329,6 +329,11 @@ async function createSurveyBlock(params: {
       updatedAt: new Date(),
     })
     .returning();
+
+  const block = blockResult[0];
+  if (!block) {
+    throw new Error('Failed to create survey block');
+  }
 
   // 2. Clone questions from template
   const templateQuestions = params.surveyTemplate.questions as any[];

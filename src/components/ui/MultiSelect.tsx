@@ -50,6 +50,8 @@ export function MultiSelect({
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
+
+    return undefined;
   }, [isOpen]);
 
   // Filter options based on search query

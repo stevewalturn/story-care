@@ -27,8 +27,10 @@ type ModuleCardProps = {
 export function ModuleCard({
   module,
   onView,
+  onViewDetails: _onViewDetails,
   onEdit,
   onCopy,
+  onArchived,
   onRefresh,
   isTemplate: _isTemplate = false,
   apiEndpoint = '/api/modules',
@@ -155,9 +157,9 @@ export function ModuleCard({
                   </button>
                 )}
 
-                {onEdit && <hr className="my-1" />}
+                {onArchived && <hr className="my-1" />}
 
-                {onEdit && (
+                {onArchived && (
                   <button
                     onClick={handleArchive}
                     className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"

@@ -33,7 +33,7 @@ type Props = {
   isPublicShare?: boolean;
 };
 
-export function StoryPageViewer({ pageId, isPublicShare = false }: Props) {
+export function StoryPageViewer({ pageId, isPublicShare: _isPublicShare = false }: Props) {
   const [page, setPage] = useState<any>(null);
   const [blocks, setBlocks] = useState<PageBlock[]>([]);
   const [reflectionQuestions, setReflectionQuestions] = useState<ReflectionQuestion[]>([]);

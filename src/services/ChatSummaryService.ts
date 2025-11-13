@@ -90,14 +90,14 @@ export async function generateChatSummary(
   sessionId: string,
   therapistId: string,
 ): Promise<string> {
-  // Get the latest summary to know where we left off
-  const latestSummary = await db.query.aiChatMessages.findFirst({
-    where: and(
-      eq(aiChatMessagesSchema.sessionId, sessionId),
-      eq(aiChatMessagesSchema.promptType, 'conversation_summary'),
-    ),
-    orderBy: [desc(aiChatMessagesSchema.createdAt)],
-  });
+  // TODO: Implement latest summary check for context continuity
+  // const latestSummary = await db.query.aiChatMessages.findFirst({
+  //   where: and(
+  //     eq(aiChatMessagesSchema.sessionId, sessionId),
+  //     eq(aiChatMessagesSchema.promptType, 'conversation_summary'),
+  //   ),
+  //   orderBy: [desc(aiChatMessagesSchema.createdAt)],
+  // });
 
   // Get messages since last summary (or all messages if no summary exists)
   const messages = await db.query.aiChatMessages.findMany({

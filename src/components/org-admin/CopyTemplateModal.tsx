@@ -82,15 +82,15 @@ export function CopyTemplateModal({ template, onClose, onCopied }: CopyTemplateM
           {/* Template Info */}
           <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
             <div className="mb-2 flex items-center gap-2">
-              <ModuleBadge domain={template.domain} />
+              <ModuleBadge domain={template.domain} moduleName={template.name} />
               <span className="text-xs font-medium text-gray-500">System Template</span>
             </div>
             <h3 className="mb-1 text-lg font-semibold text-gray-900">{template.name}</h3>
             <p className="text-sm text-gray-600">{template.description}</p>
-            {template.inSessionQuestions && template.inSessionQuestions.length > 0 && (
+            {(template.inSessionQuestions as any[]) && (template.inSessionQuestions as any[]).length > 0 && (
               <div className="mt-3 border-t border-blue-200 pt-3">
                 <p className="text-xs font-medium text-gray-700">
-                  {template.inSessionQuestions.length}
+                  {(template.inSessionQuestions as any[]).length}
                   {' '}
                   in-session questions included
                 </p>

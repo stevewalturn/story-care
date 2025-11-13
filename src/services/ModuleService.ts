@@ -440,7 +440,7 @@ export async function copyTemplateToOrg(
   customName?: string,
 ) {
   // Fetch the template
-  const { module: template, reflectionTemplate, surveyTemplate }
+  const { module: template, reflectionTemplate: _reflectionTemplate, surveyTemplate: _surveyTemplate }
     = await getModuleById(templateId);
 
   // Verify it's a system template

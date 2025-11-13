@@ -3,7 +3,7 @@
  * Generates and manages AI-powered session summaries for context caching
  */
 
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import {
   sessionsSchema,

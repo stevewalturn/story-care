@@ -122,15 +122,15 @@ export function extractGcsPath(url: string | null | undefined): string | null {
   // Handle gs:// protocol
   if (url.startsWith('gs://')) {
     const match = url.match(/^gs:\/\/[^/]+\/(.+)$/);
-    return match ? match[1] : null;
+    return match ? match[1] || null : null;
   }
 
   // Handle https:// URLs from GCS
   const storageMatch = url.match(/storage\.googleapis\.com\/[^/]+\/(.+)/);
-  if (storageMatch) return storageMatch[1];
+  if (storageMatch) return storageMatch[1] || null;
 
   const cloudMatch = url.match(/storage\.cloud\.google\.com\/[^/]+\/(.+)/);
-  if (cloudMatch) return cloudMatch[1];
+  if (cloudMatch) return cloudMatch[1] || null;
 
   // If no match, return null
   return null;
