@@ -3,19 +3,19 @@
  * Generates and manages AI-powered session summaries for context caching
  */
 
+import type { ChatMessage } from '@/libs/TextGeneration';
 import { eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
+import { generateText } from '@/libs/TextGeneration';
 import {
+  groupsSchema,
   sessionsSchema,
-  transcriptsSchema,
-  utterancesSchema,
   speakersSchema,
+  transcriptsSchema,
   treatmentModulesSchema,
   usersSchema,
-  groupsSchema,
+  utterancesSchema,
 } from '@/models/Schema';
-import { generateText } from '@/libs/TextGeneration';
-import type { ChatMessage } from '@/libs/TextGeneration';
 
 /**
  * Format time from seconds to MM:SS

@@ -164,7 +164,7 @@ export function StoryPageViewer({ pageId, isPublicShare: _isPublicShare = false 
 
       {/* Content Blocks */}
       <div className="space-y-12">
-        {sortedBlocks.map((block) => (
+        {sortedBlocks.map(block => (
           <div key={block.id} className="rounded-lg">
             {/* Text Block */}
             {block.blockType === 'text' && (
@@ -199,7 +199,7 @@ export function StoryPageViewer({ pageId, isPublicShare: _isPublicShare = false 
 
             {/* Quote Block */}
             {block.blockType === 'quote' && (
-              <blockquote className="border-l-4 border-indigo-500 bg-indigo-50 px-6 py-4 italic text-gray-800">
+              <blockquote className="border-l-4 border-indigo-500 bg-indigo-50 px-6 py-4 text-gray-800 italic">
                 {block.textContent}
               </blockquote>
             )}
@@ -211,16 +211,15 @@ export function StoryPageViewer({ pageId, isPublicShare: _isPublicShare = false 
                   Reflection Questions
                 </h3>
                 <div className="space-y-4">
-                  {reflectionQuestions.map((q) => (
+                  {reflectionQuestions.map(q => (
                     <div key={q.id}>
                       <label className="mb-2 block text-sm font-medium text-purple-900">
                         {q.questionText}
                       </label>
                       <textarea
                         value={reflectionAnswers[q.id] || ''}
-                        onChange={(e) =>
-                          setReflectionAnswers({ ...reflectionAnswers, [q.id]: e.target.value })
-                        }
+                        onChange={e =>
+                          setReflectionAnswers({ ...reflectionAnswers, [q.id]: e.target.value })}
                         className="w-full rounded-lg border border-purple-200 p-3 focus:border-purple-500 focus:outline-none"
                         rows={4}
                         placeholder="Share your thoughts..."
@@ -238,7 +237,7 @@ export function StoryPageViewer({ pageId, isPublicShare: _isPublicShare = false 
                   Survey Questions
                 </h3>
                 <div className="space-y-4">
-                  {surveyQuestions.map((q) => (
+                  {surveyQuestions.map(q => (
                     <div key={q.id}>
                       <label className="mb-2 block text-sm font-medium text-blue-900">
                         {q.questionText}
@@ -249,9 +248,8 @@ export function StoryPageViewer({ pageId, isPublicShare: _isPublicShare = false 
                           min="1"
                           max="10"
                           value={surveyAnswers[q.id] || 5}
-                          onChange={(e) =>
-                            setSurveyAnswers({ ...surveyAnswers, [q.id]: Number.parseInt(e.target.value) })
-                          }
+                          onChange={e =>
+                            setSurveyAnswers({ ...surveyAnswers, [q.id]: Number.parseInt(e.target.value) })}
                           className="w-full"
                         />
                       )}
@@ -264,9 +262,8 @@ export function StoryPageViewer({ pageId, isPublicShare: _isPublicShare = false 
                                 name={q.id}
                                 value={option}
                                 checked={surveyAnswers[q.id] === option}
-                                onChange={(e) =>
-                                  setSurveyAnswers({ ...surveyAnswers, [q.id]: e.target.value })
-                                }
+                                onChange={e =>
+                                  setSurveyAnswers({ ...surveyAnswers, [q.id]: e.target.value })}
                                 className="text-blue-600"
                               />
                               <span className="text-sm text-gray-700">{option}</span>

@@ -3,11 +3,11 @@
  * Manages conversation summaries for AI context caching
  */
 
+import type { ChatMessage } from '@/libs/TextGeneration';
 import { and, desc, eq, ne, or } from 'drizzle-orm';
 import { db } from '@/libs/DB';
-import { aiChatMessagesSchema } from '@/models/Schema';
 import { generateText } from '@/libs/TextGeneration';
-import type { ChatMessage } from '@/libs/TextGeneration';
+import { aiChatMessagesSchema } from '@/models/Schema';
 
 /**
  * Check if a new conversation summary should be generated
