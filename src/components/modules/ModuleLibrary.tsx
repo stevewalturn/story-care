@@ -5,15 +5,15 @@
  * Displays grid of treatment modules with filtering and search
  */
 
-import { useEffect, useState } from 'react';
-import { Plus, Search } from 'lucide-react';
 import type { TreatmentModule } from '@/models/Schema';
+import { Plus, Search } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { ModuleCard } from './ModuleCard';
+import { ModuleDetailsModal } from './ModuleDetailsModal';
 import { ModuleDomainFilter } from './ModuleDomainFilter';
 import { ModuleEditor } from './ModuleEditor';
-import { ModuleDetailsModal } from './ModuleDetailsModal';
 
 type TherapeuticDomain = 'self_strength' | 'relationships_repair' | 'identity_transformation' | 'purpose_future' | null;
 
@@ -134,21 +134,21 @@ export function ModuleLibrary() {
       {/* Controls */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         {/* Search */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+        <div className="relative max-w-md flex-1">
+          <Search className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             placeholder="Search modules..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
           />
         </div>
 
         {/* Create Button */}
         <button
           onClick={handleCreateModule}
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none"
           type="button"
         >
           <Plus className="h-5 w-5" />
@@ -177,7 +177,9 @@ export function ModuleLibrary() {
                   <span className={`inline-block h-3 w-3 rounded-full ${domainInfo.color}`} />
                   {domainInfo.name}
                   <span className="text-sm font-normal text-gray-500">
-                    ({domainModules.length})
+                    (
+                    {domainModules.length}
+                    )
                   </span>
                 </h2>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

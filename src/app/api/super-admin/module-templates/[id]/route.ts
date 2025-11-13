@@ -3,14 +3,14 @@
  * GET, PUT, DELETE operations for specific system templates
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAuth } from '@/libs/FirebaseAdmin';
 import {
   archiveModule,
   getModuleById,
   updateModule,
-  type TherapeuticDomain,
 } from '@/services/ModuleService';
 import { ModuleUpdateSchema } from '@/validations/ModuleValidation';
 

@@ -1,5 +1,6 @@
 'use client';
 
+import type { TreatmentModule } from '@/models/Schema';
 import { Eye, FileText, GripVertical, Image as ImageIcon, ListChecks, MessageCircle, Sparkles, Trash2, Type, Video, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { AssetPickerModal } from '@/components/pages/AssetPickerModal';
@@ -8,7 +9,6 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
-import type { TreatmentModule } from '@/models/Schema';
 
 type BlockType = 'text' | 'image' | 'video' | 'quote' | 'reflection' | 'survey';
 
@@ -168,9 +168,9 @@ export function PageEditor({
         const data = await response.json();
         // Filter sessions that have modules assigned
         const sessionsWithModules = (data.sessions as SessionWithModule[])
-          .filter((session) => session.moduleId && session.module)
+          .filter(session => session.moduleId && session.module)
           .filter((session): session is SessionWithModule & { module: NonNullable<SessionWithModule['module']> } =>
-            session.module !== null
+            session.module !== null,
           );
         setAvailableSessions(sessionsWithModules);
       }
@@ -586,7 +586,7 @@ export function PageEditor({
                 </Button>
                 {/* Show dropdown if multiple sessions */}
                 {availableSessions.length > 1 && showSessionDropdown && (
-                  <div className="absolute right-0 top-full z-10 mt-1 w-64 rounded-lg border border-gray-200 bg-white shadow-lg">
+                  <div className="absolute top-full right-0 z-10 mt-1 w-64 rounded-lg border border-gray-200 bg-white shadow-lg">
                     <div className="p-2">
                       <p className="mb-2 px-2 text-xs font-medium text-gray-500">Select a session:</p>
                       {availableSessions.map(session => (

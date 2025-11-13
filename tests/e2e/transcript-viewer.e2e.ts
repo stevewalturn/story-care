@@ -62,6 +62,7 @@ test.describe('Transcript Viewer - Group Session', () => {
 
     // Verify NO "coming soon" message
     const comingSoonText = await page.locator('text=/coming soon/i').count();
+
     expect(comingSoonText).toBe(0);
 
     // Check for media content or empty state
@@ -81,6 +82,7 @@ test.describe('Transcript Viewer - Group Session', () => {
 
     // Verify NO "coming soon" message
     const comingSoonText = await page.locator('text=/coming soon/i').count();
+
     expect(comingSoonText).toBe(0);
 
     // Check for quotes content or proper empty state
@@ -101,6 +103,7 @@ test.describe('Transcript Viewer - Group Session', () => {
 
     // Verify NO "coming soon" message
     const comingSoonText = await page.locator('text=/coming soon/i').count();
+
     expect(comingSoonText).toBe(0);
 
     // Check for notes content or proper empty state
@@ -121,11 +124,13 @@ test.describe('Transcript Viewer - Group Session', () => {
 
     // Verify NO "coming soon" message
     const comingSoonText = await page.locator('text=/coming soon/i').count();
+
     expect(comingSoonText).toBe(0);
 
     // Check for profile content
-    const hasProfileContent = await page.locator('text=/session details|patient information|group session/i').isVisible();
-    expect(hasProfileContent).toBeTruthy();
+    const hasProfileContent = page.locator('text=/session details|patient information|group session/i');
+
+    await expect(hasProfileContent).toBeVisible();
 
     // Verify it shows "Group Session" (since this is a multi-patient session)
     const hasGroupSessionLabel = await page.locator('text=/group session/i').isVisible().catch(() => false);
@@ -147,6 +152,7 @@ test.describe('Transcript Viewer - Group Session', () => {
 
       // Verify no "coming soon" in any tab
       const comingSoonCount = await page.locator('text=/coming soon/i').count();
+
       expect(comingSoonCount).toBe(0);
     }
   });
@@ -157,15 +163,18 @@ test.describe('Transcript Viewer - Group Session', () => {
     await page.waitForTimeout(1000);
 
     // Check for session details section
-    const hasSessionDetails = await page.locator('text=/session details/i').isVisible();
-    expect(hasSessionDetails).toBeTruthy();
+    const hasSessionDetails = page.locator('text=/session details/i');
+
+    await expect(hasSessionDetails).toBeVisible();
 
     // Verify session type is shown
-    const hasSessionType = await page.locator('text=/type:/i').isVisible();
-    expect(hasSessionType).toBeTruthy();
+    const hasSessionType = page.locator('text=/type:/i');
+
+    await expect(hasSessionType).toBeVisible();
 
     // Verify transcription status is shown
-    const hasStatus = await page.locator('text=/status:/i').isVisible();
-    expect(hasStatus).toBeTruthy();
+    const hasStatus = page.locator('text=/status:/i');
+
+    await expect(hasStatus).toBeVisible();
   });
 });

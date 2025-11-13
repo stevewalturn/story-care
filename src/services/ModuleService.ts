@@ -3,7 +3,7 @@
  * Business logic for treatment module management
  */
 
-import type { TemplateScope, TemplateStatus } from '@/types/Organization';
+import type { TemplateScope } from '@/types/Organization';
 import { and, desc, eq, or, sql } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import {
@@ -12,11 +12,11 @@ import {
   treatmentModulesSchema,
 } from '@/models/Schema';
 
-export type TherapeuticDomain =
-  | 'self_strength'
-  | 'relationships_repair'
-  | 'identity_transformation'
-  | 'purpose_future';
+export type TherapeuticDomain
+  = | 'self_strength'
+    | 'relationships_repair'
+    | 'identity_transformation'
+    | 'purpose_future';
 
 export type ModuleStatus = 'active' | 'archived' | 'pending_approval';
 
@@ -435,8 +435,8 @@ export async function copyTemplateToOrg(
   customName?: string,
 ) {
   // Fetch the template
-  const { module: template, reflectionTemplate, surveyTemplate } =
-    await getModuleById(templateId);
+  const { module: template, reflectionTemplate, surveyTemplate }
+    = await getModuleById(templateId);
 
   // Verify it's a system template
   if (template.scope !== 'system') {

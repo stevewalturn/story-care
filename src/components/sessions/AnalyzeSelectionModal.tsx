@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { Target } from 'lucide-react';
 import type { TreatmentModule } from '@/models/Schema';
+import { Target } from 'lucide-react';
+import { useState } from 'react';
 import { ModuleBadge } from '@/components/modules/ModuleBadge';
 
 type AnalyzeOption = {
@@ -92,7 +92,7 @@ export function AnalyzeSelectionModal({
         {
           id: 'module-analysis',
           title: `${assignedModule.name} Protocol Analysis`,
-          description: assignedModule.aiPromptText.substring(0, 150) + '...',
+          description: `${assignedModule.aiPromptText.substring(0, 150)}...`,
           category: 'module',
           badge: 'Protocol',
           icon: 'target',

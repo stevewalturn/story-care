@@ -5,15 +5,15 @@
  * Read-only view of module with tabbed interface
  */
 
+import type { TreatmentModule } from '@/models/Schema';
 import { Pencil, TrendingUp, X } from 'lucide-react';
 import { useState } from 'react';
-import type { TreatmentModule } from '@/models/Schema';
 
-interface ModuleDetailsModalProps {
+type ModuleDetailsModalProps = {
   module: TreatmentModule;
   onClose: () => void;
   onEdit: () => void;
-}
+};
 
 type Tab = 'overview' | 'questions' | 'prompt';
 
@@ -184,7 +184,7 @@ export function ModuleDetailsModal({ module, onClose, onEdit }: ModuleDetailsMod
                     This prompt guides AI to extract module-specific insights from transcripts.
                   </p>
                   <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                    <pre className="whitespace-pre-wrap font-mono text-sm text-gray-700">
+                    <pre className="font-mono text-sm whitespace-pre-wrap text-gray-700">
                       {module.aiPromptText}
                     </pre>
                   </div>
@@ -194,7 +194,7 @@ export function ModuleDetailsModal({ module, onClose, onEdit }: ModuleDetailsMod
                   <div>
                     <h3 className="mb-2 text-sm font-semibold text-gray-900">Expected Output Format</h3>
                     <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                      <pre className="whitespace-pre-wrap font-mono text-xs text-gray-700">
+                      <pre className="font-mono text-xs whitespace-pre-wrap text-gray-700">
                         {JSON.stringify(module.aiPromptMetadata, null, 2)}
                       </pre>
                     </div>
@@ -207,7 +207,9 @@ export function ModuleDetailsModal({ module, onClose, onEdit }: ModuleDetailsMod
           {/* Footer */}
           <div className="flex items-center justify-between border-t border-gray-200 px-6 py-4">
             <p className="text-sm text-gray-500">
-              Module ID: <code className="rounded bg-gray-100 px-1 font-mono text-xs">{module.id}</code>
+              Module ID:
+              {' '}
+              <code className="rounded bg-gray-100 px-1 font-mono text-xs">{module.id}</code>
             </p>
             <button
               onClick={onEdit}

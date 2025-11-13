@@ -88,7 +88,7 @@ export function MultiSelect({
       {label && (
         <label className="mb-2 block text-sm font-medium text-gray-700">
           {label}
-          {required && <span className="text-red-500 ml-1">*</span>}
+          {required && <span className="ml-1 text-red-500">*</span>}
         </label>
       )}
 
@@ -102,10 +102,10 @@ export function MultiSelect({
             error
               ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
               : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
-          } ${disabled ? 'cursor-not-allowed bg-gray-100' : 'hover:border-gray-400'} focus:outline-none focus:ring-2 focus:ring-opacity-20`}
+          } ${disabled ? 'cursor-not-allowed bg-gray-100' : 'hover:border-gray-400'} focus:ring-opacity-20 focus:ring-2 focus:outline-none`}
         >
           <div className="flex items-center justify-between gap-2">
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
               {selectedOptions.length === 0 ? (
                 <span className="text-gray-500">{placeholder}</span>
               ) : (
@@ -146,7 +146,7 @@ export function MultiSelect({
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search..."
-                className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
               />
             </div>
 
@@ -177,7 +177,7 @@ export function MultiSelect({
                   {searchQuery ? 'No matching options found' : 'No options available'}
                 </div>
               ) : (
-                filteredOptions.map(option => {
+                filteredOptions.map((option) => {
                   const isSelected = selectedValues.includes(option.value);
                   return (
                     <button
@@ -209,7 +209,12 @@ export function MultiSelect({
             {/* Footer */}
             {selectedOptions.length > 0 && (
               <div className="border-t border-gray-200 px-3 py-2 text-xs text-gray-500">
-                {selectedOptions.length} item{selectedOptions.length !== 1 ? 's' : ''} selected
+                {selectedOptions.length}
+                {' '}
+                item
+                {selectedOptions.length !== 1 ? 's' : ''}
+                {' '}
+                selected
               </div>
             )}
           </div>

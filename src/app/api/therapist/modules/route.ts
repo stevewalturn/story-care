@@ -3,7 +3,9 @@
  * Manages therapist-scoped private treatment modules
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import type { TherapeuticDomain } from '@/services/ModuleService';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAuth } from '@/libs/FirebaseAdmin';
 import {
@@ -11,7 +13,7 @@ import {
   listOrgModules,
   listTemplates,
   listTherapistModules,
-  type TherapeuticDomain,
+
 } from '@/services/ModuleService';
 import { ModuleCreateSchema } from '@/validations/ModuleValidation';
 

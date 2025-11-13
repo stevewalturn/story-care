@@ -1,18 +1,17 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import type { TreatmentModule } from '@/models/Schema';
 import { Pencil, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { AnalyzeSelectionModal } from '@/components/sessions/AnalyzeSelectionModal';
 import { EditQuoteModal } from '@/components/sessions/EditQuoteModal';
 import { GenerateImageModal } from '@/components/sessions/GenerateImageModal';
 import { GenerateVideoModal } from '@/components/sessions/GenerateVideoModal';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
-import { ModuleAnalysisPanel } from '@/components/sessions/ModuleAnalysisPanel';
 import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAvailableTextModels } from '@/libs/ModelMetadata';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
-import type { TreatmentModule } from '@/models/Schema';
 
 type Utterance = {
   id: string;
@@ -1542,7 +1541,8 @@ function LibraryPanel({
                         : sessionData.transcriptionStatus === 'processing'
                           ? 'bg-yellow-100 text-yellow-700'
                           : 'bg-gray-100 text-gray-700'
-                    }`}>
+                    }`}
+                    >
                       {sessionData.transcriptionStatus || 'pending'}
                     </span>
                   </div>

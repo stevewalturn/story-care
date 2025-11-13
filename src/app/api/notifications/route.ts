@@ -5,12 +5,12 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import {
   listEmailNotifications,
   sendStoryPageNotification,
 } from '@/services/EmailService';
 import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
-import { z } from 'zod';
 
 /**
  * Validation schema for sending notifications

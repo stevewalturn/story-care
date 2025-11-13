@@ -6,13 +6,13 @@
  * Supports different action sets based on context (template vs module)
  */
 
+import type { TreatmentModule } from '@/models/Schema';
 import { Archive, Copy, Eye, MoreVertical, Pencil, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
-import type { TreatmentModule } from '@/models/Schema';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
-interface ModuleCardProps {
+type ModuleCardProps = {
   module: TreatmentModule;
   onView?: () => void;
   onEdit?: () => void;
@@ -20,7 +20,7 @@ interface ModuleCardProps {
   onRefresh?: () => void;
   isTemplate?: boolean;
   apiEndpoint?: string; // For archive endpoint override (e.g., /api/org-admin/modules)
-}
+};
 
 export function ModuleCard({
   module,
@@ -67,7 +67,7 @@ export function ModuleCard({
     <div className="group relative rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
       {/* Domain gradient header */}
       <div
-        className={`absolute left-0 top-0 h-1 w-full rounded-t-xl bg-gradient-to-r ${domainInfo.gradient}`}
+        className={`absolute top-0 left-0 h-1 w-full rounded-t-xl bg-gradient-to-r ${domainInfo.gradient}`}
       />
 
       {/* Header */}
@@ -190,7 +190,12 @@ export function ModuleCard({
         <div className="flex items-center gap-4 text-xs text-gray-500">
           <div className="flex items-center gap-1">
             <TrendingUp className="h-3.5 w-3.5" />
-            <span>Used {module.useCount} times</span>
+            <span>
+              Used
+              {module.useCount}
+              {' '}
+              times
+            </span>
           </div>
         </div>
       </button>
@@ -199,7 +204,9 @@ export function ModuleCard({
       {module.status !== 'active' && (
         <div className="mt-4 border-t border-gray-100 pt-3">
           <span className="inline-flex items-center gap-1 text-xs text-gray-500">
-            Status: {module.status === 'archived' ? '📦 Archived' : '⏳ Pending'}
+            Status:
+            {' '}
+            {module.status === 'archived' ? '📦 Archived' : '⏳ Pending'}
           </span>
         </div>
       )}

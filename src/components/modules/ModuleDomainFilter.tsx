@@ -9,10 +9,10 @@ import { Heart, Sparkles, Target, Users } from 'lucide-react';
 
 type TherapeuticDomain = 'self_strength' | 'relationships_repair' | 'identity_transformation' | 'purpose_future' | null;
 
-interface ModuleDomainFilterProps {
+type ModuleDomainFilterProps = {
   selectedDomain: TherapeuticDomain;
   onSelectDomain: (domain: TherapeuticDomain) => void;
-}
+};
 
 const domains = [
   {
@@ -78,7 +78,7 @@ export function ModuleDomainFilter({ selectedDomain, onSelectDomain }: ModuleDom
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {domains.map(domain => {
+        {domains.map((domain) => {
           const Icon = domain.icon;
           const isSelected = selectedDomain === domain.id;
 
@@ -114,7 +114,7 @@ export function ModuleDomainFilter({ selectedDomain, onSelectDomain }: ModuleDom
 
               {/* Selected indicator */}
               {isSelected && (
-                <div className="absolute right-3 top-3">
+                <div className="absolute top-3 right-3">
                   <div className={`h-2 w-2 rounded-full ${domain.color}`} />
                 </div>
               )}

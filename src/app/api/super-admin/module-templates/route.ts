@@ -3,13 +3,15 @@
  * Manages system-scoped treatment module templates
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import type { TherapeuticDomain } from '@/services/ModuleService';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAuth } from '@/libs/FirebaseAdmin';
 import {
   createTemplate,
   listTemplates,
-  type TherapeuticDomain,
+
 } from '@/services/ModuleService';
 import { ModuleCreateSchema } from '@/validations/ModuleValidation';
 

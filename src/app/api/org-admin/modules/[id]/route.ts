@@ -3,7 +3,8 @@
  * GET, PUT, DELETE operations for specific organization modules
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAuth } from '@/libs/FirebaseAdmin';
 import {

@@ -9,14 +9,12 @@ import {
   mediaLibrarySchema,
   pageBlocksSchema,
   reflectionQuestionsSchema,
-  reflectionTemplatesSchema,
   storyPagesSchema,
   surveyQuestionsSchema,
-  surveyTemplatesSchema,
 } from '@/models/Schema';
+import { sendStoryPageNotification } from './EmailService';
 import { getModuleById } from './ModuleService';
 import { getSessionModuleBySessionId, linkStoryPageToSessionModule } from './SessionService';
-import { sendStoryPageNotification } from './EmailService';
 
 /**
  * Generate complete story page from module
@@ -45,9 +43,9 @@ export async function generateStoryPageFromModule(params: {
   }
 
   // 3. Generate page title
-  const pageTitle =
-    params.customTitle ||
-    generatePageTitle(module.name, sessionModule.aiAnalysisResult);
+  const pageTitle
+    = params.customTitle
+      || generatePageTitle(module.name, sessionModule.aiAnalysisResult);
 
   // 4. Create story page
   const [storyPage] = await db

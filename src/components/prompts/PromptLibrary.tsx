@@ -2,10 +2,10 @@
 
 import { BookOpen, CheckCircle, Copy, Edit2, Plus, Search, Tag, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type Prompt = {
   id: string;

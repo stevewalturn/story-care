@@ -160,7 +160,7 @@ function SignInForm() {
               Click any account below to auto-fill credentials:
             </p>
             <div className="grid grid-cols-2 gap-2">
-              {mockAccounts.map((account) => (
+              {mockAccounts.map(account => (
                 <button
                   key={account.email}
                   type="button"

@@ -5,15 +5,15 @@
  * Create/Edit treatment module modal with full form
  */
 
+import type { TreatmentModule } from '@/models/Schema';
 import { Minus, Plus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import type { TreatmentModule } from '@/models/Schema';
 
-interface ModuleEditorProps {
+type ModuleEditorProps = {
   module: TreatmentModule | null;
   onClose: () => void;
   onSaved: () => void;
-}
+};
 
 type TherapeuticDomain = 'self_strength' | 'relationships_repair' | 'identity_transformation' | 'purpose_future';
 
@@ -133,14 +133,16 @@ export function ModuleEditor({ module, onClose, onSaved }: ModuleEditorProps) {
                   {/* Name */}
                   <div>
                     <label className="mb-1 block text-sm font-medium text-gray-700">
-                      Module Name <span className="text-red-500">*</span>
+                      Module Name
+                      {' '}
+                      <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       value={name}
                       onChange={e => setName(e.target.value)}
                       required
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                       placeholder="e.g., Self-Resilience & Re-Authoring"
                     />
                   </div>
@@ -148,13 +150,15 @@ export function ModuleEditor({ module, onClose, onSaved }: ModuleEditorProps) {
                   {/* Domain */}
                   <div>
                     <label className="mb-1 block text-sm font-medium text-gray-700">
-                      Therapeutic Domain <span className="text-red-500">*</span>
+                      Therapeutic Domain
+                      {' '}
+                      <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={domain}
                       onChange={e => setDomain(e.target.value as TherapeuticDomain)}
                       required
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                     >
                       <option value="self_strength">Self & Strength</option>
                       <option value="relationships_repair">Relationships & Repair</option>
@@ -166,13 +170,15 @@ export function ModuleEditor({ module, onClose, onSaved }: ModuleEditorProps) {
                   {/* Scope */}
                   <div>
                     <label className="mb-1 block text-sm font-medium text-gray-700">
-                      Scope <span className="text-red-500">*</span>
+                      Scope
+                      {' '}
+                      <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={scope}
                       onChange={e => setScope(e.target.value as any)}
                       required
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                     >
                       <option value="private">Private (Only me)</option>
                       <option value="organization">Organization (My org)</option>
@@ -186,14 +192,16 @@ export function ModuleEditor({ module, onClose, onSaved }: ModuleEditorProps) {
                   {/* Description */}
                   <div>
                     <label className="mb-1 block text-sm font-medium text-gray-700">
-                      Therapeutic Aim <span className="text-red-500">*</span>
+                      Therapeutic Aim
+                      {' '}
+                      <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       value={description}
                       onChange={e => setDescription(e.target.value)}
                       required
                       rows={3}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                       placeholder="Describe the clinical aim of this module..."
                     />
                   </div>
@@ -222,7 +230,7 @@ export function ModuleEditor({ module, onClose, onSaved }: ModuleEditorProps) {
                         type="text"
                         value={question}
                         onChange={e => handleQuestionChange(index, e.target.value)}
-                        className="flex-1 rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="flex-1 rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                         placeholder={`Question ${index + 1}`}
                       />
                       {inSessionQuestions.length > 1 && (
@@ -242,14 +250,16 @@ export function ModuleEditor({ module, onClose, onSaved }: ModuleEditorProps) {
               {/* AI Prompt */}
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">
-                  AI Analysis Prompt <span className="text-red-500">*</span>
+                  AI Analysis Prompt
+                  {' '}
+                  <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={aiPromptText}
                   onChange={e => setAiPromptText(e.target.value)}
                   required
                   rows={6}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                   placeholder="Instructions for AI to analyze transcript with this module's focus..."
                 />
                 <p className="mt-1 text-xs text-gray-500">

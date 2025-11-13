@@ -1,15 +1,15 @@
 'use client';
 
 import type { SessionUploadData } from '@/components/sessions/UploadModal';
+import type { TherapeuticDomain } from '@/models/Schema';
 import { Filter, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { AssignModuleModal } from '@/components/sessions/AssignModuleModal';
 import { SessionCard } from '@/components/sessions/SessionCard';
 import { UploadModal } from '@/components/sessions/UploadModal';
-import { AssignModuleModal } from '@/components/sessions/AssignModuleModal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
-import type { TherapeuticDomain } from '@/models/Schema';
 
 type Session = {
   id: string;

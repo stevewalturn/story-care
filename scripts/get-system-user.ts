@@ -2,10 +2,10 @@
  * Get or create system user for seeding
  */
 
-import 'dotenv/config';
+import { eq } from 'drizzle-orm';
 import { db } from '../src/libs/DB.js';
 import { usersSchema } from '../src/models/Schema.js';
-import { eq } from 'drizzle-orm';
+import 'dotenv/config';
 
 async function getSystemUser() {
   try {

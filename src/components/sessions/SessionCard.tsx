@@ -1,7 +1,7 @@
-import { Calendar, Folder, Layers, Trash2, User, Users } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
-import { ModuleBadge } from '@/components/modules/ModuleBadge';
 import type { TherapeuticDomain } from '@/models/Schema';
+import { Calendar, Folder, Layers, Trash2, User, Users } from 'lucide-react';
+import { ModuleBadge } from '@/components/modules/ModuleBadge';
+import { Card } from '@/components/ui/Card';
 
 type SessionCardProps = {
   id: string;

@@ -2,10 +2,10 @@
 
 import { Image as ImageIcon, Music, Plus, Search, Video } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type MediaItem = {
   id: string;

@@ -2,9 +2,9 @@
  * Check for existing users in database
  */
 
+import { eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { usersSchema } from '@/models/Schema';
-import { eq } from 'drizzle-orm';
 
 async function checkUsers() {
   try {

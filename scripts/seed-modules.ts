@@ -3,10 +3,10 @@
  * Populates database with 8 pre-defined therapeutic protocols
  */
 
-import 'dotenv/config';
-import { db } from '@/libs/DB';
-import { treatmentModulesSchema, reflectionTemplatesSchema, surveyTemplatesSchema } from '@/models/Schema';
 import { eq } from 'drizzle-orm';
+import { db } from '@/libs/DB';
+import { reflectionTemplatesSchema, surveyTemplatesSchema, treatmentModulesSchema } from '@/models/Schema';
+import 'dotenv/config';
 
 // System user ID for seeded modules (Super Admin: admin@storycare.com)
 const SYSTEM_USER_ID = '4e22d6db-5ed1-4eb3-b2cb-638f8a9e0211';
@@ -75,7 +75,7 @@ const DEFAULT_MODULES = [
       },
     ],
     aiPrompt:
-      "Read the transcript. Locate passages about struggle and choice. Identify metaphors or sensory details (weather, light, movement) connected to perseverance. Summarize the story arc of endurance in 2 sentences. Suggest 2--3 visual scenes that convey 'still moving.' Pull 1 quote that captures personal agency.",
+      'Read the transcript. Locate passages about struggle and choice. Identify metaphors or sensory details (weather, light, movement) connected to perseverance. Summarize the story arc of endurance in 2 sentences. Suggest 2--3 visual scenes that convey \'still moving.\' Pull 1 quote that captures personal agency.',
     surveyQuestions: [
       ...DEFAULT_SURVEY_QUESTIONS,
       {
@@ -92,7 +92,7 @@ const DEFAULT_MODULES = [
   {
     name: 'Grounding & Regulation',
     domain: 'self_strength' as const,
-    description: "Strengthen awareness of safety, calm, and the body's signals of peace.",
+    description: 'Strengthen awareness of safety, calm, and the body\'s signals of peace.',
     inSessionQuestions: [
       'Where do you feel most at ease right now?',
       'When your mind gets loud, what helps you find quiet again?',
@@ -126,7 +126,7 @@ const DEFAULT_MODULES = [
     description:
       'Rebuild trust and belonging through stories of reaching, helping, or being helped.',
     inSessionQuestions: [
-      "Who has been part of your story in ways you didn't expect?",
+      'Who has been part of your story in ways you didn\'t expect?',
       'When did you risk letting someone close again?',
       'What does real safety with another person look like to you?',
       'What makes connection worth the risk?',
@@ -158,7 +158,7 @@ const DEFAULT_MODULES = [
     description: 'Support release of resentment or self-blame and strengthen compassion.',
     inSessionQuestions: [
       'What story keeps replaying when you try to rest?',
-      "If you could put down a weight you've carried too long, what might it be?",
+      'If you could put down a weight you\'ve carried too long, what might it be?',
       'What would forgiveness—of yourself or someone else—feel like in your body?',
       'What would freedom look like if you saw it?',
     ],
@@ -190,12 +190,12 @@ const DEFAULT_MODULES = [
     inSessionQuestions: [
       'Who were you then, and who are you now?',
       'What has stayed true through the changes?',
-      "What's one small sign that you've turned a corner?",
+      'What\'s one small sign that you\'ve turned a corner?',
       'If this growth had a symbol, what would it be?',
     ],
     reflectionQuestions: [
       {
-        text: "What in this image shows the person you're becoming?",
+        text: 'What in this image shows the person you\'re becoming?',
         type: 'open_text' as const,
         required: true,
       },
@@ -211,7 +211,7 @@ const DEFAULT_MODULES = [
       },
     ],
     aiPrompt:
-      "Find contrasts between past and present self ('I used to… now I…'). Extract identity words and values (hopeful, calm, strong). Summarize transformation in 2 lines. Propose 2 visuals showing change or emergence. Include 1 quote showing preferred-identity language.",
+      'Find contrasts between past and present self (\'I used to… now I…\'). Extract identity words and values (hopeful, calm, strong). Summarize transformation in 2 lines. Propose 2 visuals showing change or emergence. Include 1 quote showing preferred-identity language.',
     surveyQuestions: DEFAULT_SURVEY_QUESTIONS,
   },
   {
@@ -273,7 +273,7 @@ const DEFAULT_MODULES = [
       },
     ],
     aiPrompt:
-      "Identify value or purpose statements ('matters, meaning, direction'). Extract navigation metaphors (path, compass, horizon). Summarize motivational theme. Suggest visuals of forward movement or clarity. Provide therapist insight summarizing core value driver.",
+      'Identify value or purpose statements (\'matters, meaning, direction\'). Extract navigation metaphors (path, compass, horizon). Summarize motivational theme. Suggest visuals of forward movement or clarity. Provide therapist insight summarizing core value driver.',
     surveyQuestions: DEFAULT_SURVEY_QUESTIONS,
   },
   {
@@ -282,7 +282,7 @@ const DEFAULT_MODULES = [
     description: 'Help patients maintain progress and see growth as an ongoing story.',
     inSessionQuestions: [
       'What helps you stay on track when things get messy again?',
-      "What reminds you of the progress you've made?",
+      'What reminds you of the progress you\'ve made?',
       'What practices or people keep you steady?',
       'If your future self looked back on this time, what would they thank you for?',
     ],

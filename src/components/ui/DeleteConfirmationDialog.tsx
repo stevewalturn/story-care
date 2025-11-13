@@ -7,14 +7,14 @@
 
 import { AlertTriangle } from 'lucide-react';
 
-interface DeleteConfirmationDialogProps {
+type DeleteConfirmationDialogProps = {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
   title: string;
   message: string;
   isDeleting?: boolean;
-}
+};
 
 export function DeleteConfirmationDialog({
   isOpen,

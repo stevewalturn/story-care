@@ -5,21 +5,21 @@
  * Reusable dropdown/selector for choosing treatment modules
  */
 
+import type { TherapeuticDomain, TreatmentModule } from '@/models/Schema';
 import { Check, ChevronDown, Layers, Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import type { TherapeuticDomain, TreatmentModule } from '@/models/Schema';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { ModuleBadge } from './ModuleBadge';
 
-interface ModulePickerProps {
+type ModulePickerProps = {
   selectedModuleId?: string | null;
   onSelect: (module: TreatmentModule | null) => void;
   placeholder?: string;
   className?: string;
   allowClear?: boolean;
   filterDomain?: TherapeuticDomain;
-}
+};
 
 export function ModulePicker({
   selectedModuleId,
@@ -61,7 +61,7 @@ export function ModulePicker({
       params.append('status', 'active');
 
       // Determine API endpoint based on user role
-      let apiEndpoint = '/api/modules'; // Fallback
+      const apiEndpoint = '/api/modules'; // Fallback
       let allModules: TreatmentModule[] = [];
 
       if (user?.role === 'super_admin') {
@@ -132,9 +132,9 @@ export function ModulePicker({
   const filteredModules = modules.filter((module) => {
     const query = searchQuery.toLowerCase();
     return (
-      module.name.toLowerCase().includes(query) ||
-      module.description.toLowerCase().includes(query) ||
-      module.domain.toLowerCase().includes(query)
+      module.name.toLowerCase().includes(query)
+      || module.description.toLowerCase().includes(query)
+      || module.domain.toLowerCase().includes(query)
     );
   });
 
@@ -155,7 +155,7 @@ export function ModulePicker({
       {/* Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-left text-sm hover:border-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-20"
+        className="focus:ring-opacity-20 flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-left text-sm hover:border-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
         type="button"
       >
         {selectedModule ? (
@@ -199,13 +199,13 @@ export function ModulePicker({
             {/* Search */}
             <div className="border-b border-gray-200 p-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Search modules..."
-                  className="w-full rounded-md border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full rounded-md border border-gray-300 py-2 pr-3 pl-9 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                   autoFocus
                 />
               </div>
@@ -223,17 +223,17 @@ export function ModulePicker({
                 <div className="space-y-4">
                   {Object.entries(modulesByDomain).map(([domain, domainModules]) => (
                     <div key={domain}>
-                      <div className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      <div className="mb-2 px-2 text-xs font-semibold tracking-wider text-gray-500 uppercase">
                         {getDomainLabel(domain as TherapeuticDomain)}
                       </div>
                       <div className="space-y-1">
-                        {domainModules.map((module) => (
+                        {domainModules.map(module => (
                           <button
                             key={module.id}
                             onClick={() => handleSelect(module)}
                             className={`group flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors ${
                               selectedModule?.id === module.id
-                                ? 'bg-indigo-50 ring-2 ring-indigo-500 ring-opacity-50'
+                                ? 'ring-opacity-50 bg-indigo-50 ring-2 ring-indigo-500'
                                 : 'hover:bg-gray-50'
                             }`}
                             type="button"
@@ -269,7 +269,12 @@ export function ModulePicker({
             {/* Footer */}
             {filteredModules.length > 0 && (
               <div className="border-t border-gray-200 px-3 py-2 text-xs text-gray-500">
-                {filteredModules.length} module{filteredModules.length !== 1 ? 's' : ''} available
+                {filteredModules.length}
+                {' '}
+                module
+                {filteredModules.length !== 1 ? 's' : ''}
+                {' '}
+                available
               </div>
             )}
           </div>

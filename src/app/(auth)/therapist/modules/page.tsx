@@ -5,15 +5,15 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Layers, Plus, Search } from 'lucide-react';
 import type { TreatmentModule } from '@/models/Schema';
-import { useAuth } from '@/contexts/AuthContext';
-import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
+import { Layers, Plus, Search } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { ModuleCard } from '@/components/modules/ModuleCard';
+import { ModuleDetailsModal } from '@/components/modules/ModuleDetailsModal';
 import { ModuleDomainFilter } from '@/components/modules/ModuleDomainFilter';
 import { ModuleEditor } from '@/components/modules/ModuleEditor';
-import { ModuleDetailsModal } from '@/components/modules/ModuleDetailsModal';
+import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type TherapeuticDomain = 'self_strength' | 'relationships_repair' | 'identity_transformation' | 'purpose_future' | null;
 
@@ -167,13 +167,13 @@ export default function TherapistModulesPage() {
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           {/* Search Bar */}
           <div className="relative flex-1 sm:max-w-md">
-            <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder={showReference ? 'Search reference library...' : 'Search my modules...'}
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 py-2.5 pl-10 pr-4 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20"
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full rounded-lg border border-gray-200 py-2.5 pr-4 pl-10 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-500/20 focus:outline-none"
             />
           </div>
 
@@ -222,7 +222,11 @@ export default function TherapistModulesPage() {
                   return (
                     <div key={domain}>
                       <h2 className="mb-4 text-lg font-semibold text-gray-900">
-                        {domainLabels[domain]} ({domainModules.length})
+                        {domainLabels[domain]}
+                        {' '}
+                        (
+                        {domainModules.length}
+                        )
                       </h2>
                       {domainModules.length === 0 ? (
                         <div className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 p-8 text-center">
@@ -232,7 +236,7 @@ export default function TherapistModulesPage() {
                         </div>
                       ) : (
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                          {domainModules.map((module) => (
+                          {domainModules.map(module => (
                             <ModuleCard
                               key={module.id}
                               module={module}
@@ -273,7 +277,11 @@ export default function TherapistModulesPage() {
                   return (
                     <div key={domain}>
                       <h2 className="mb-4 text-lg font-semibold text-gray-900">
-                        {domainLabels[domain]} ({domainModules.length})
+                        {domainLabels[domain]}
+                        {' '}
+                        (
+                        {domainModules.length}
+                        )
                       </h2>
                       {domainModules.length === 0 ? (
                         <div className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 p-8 text-center">
@@ -283,7 +291,7 @@ export default function TherapistModulesPage() {
                         </div>
                       ) : (
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                          {domainModules.map((module) => (
+                          {domainModules.map(module => (
                             <ModuleCard
                               key={module.id}
                               module={module}

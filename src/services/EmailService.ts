@@ -6,11 +6,11 @@
 import { db } from '@/libs/DB';
 import { emailNotificationsSchema, platformSettingsSchema } from '@/models/Schema';
 
-export type NotificationType =
-  | 'story_page_published'
-  | 'module_completed'
-  | 'session_reminder'
-  | 'survey_reminder';
+export type NotificationType
+  = | 'story_page_published'
+    | 'module_completed'
+    | 'session_reminder'
+    | 'survey_reminder';
 
 export type NotificationStatus = 'pending' | 'sent' | 'failed' | 'bounced' | 'opened' | 'clicked';
 
@@ -138,8 +138,8 @@ export async function getEmailSettings() {
     fromName: settings?.emailFromName || 'StoryCare',
     fromAddress: settings?.emailFromAddress || 'notifications@storycare.app',
     footerText:
-      settings?.emailFooterText ||
-      'You received this because you are a patient in the StoryCare platform.',
+      settings?.emailFooterText
+      || 'You received this because you are a patient in the StoryCare platform.',
     provider: settings?.smtpProvider || 'sendgrid',
     enabled: settings?.enableEmailNotifications ?? true,
   };
@@ -318,7 +318,7 @@ export async function listEmailNotifications(params: {
   limit?: number;
   offset?: number;
 }) {
-  let query = db.select().from(emailNotificationsSchema);
+  const query = db.select().from(emailNotificationsSchema);
 
   const conditions = [];
 

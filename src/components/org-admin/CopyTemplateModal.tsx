@@ -5,18 +5,18 @@
  * Allows org admins to copy system templates to their organization
  */
 
-import { useState } from 'react';
-import { Copy, X } from 'lucide-react';
 import type { TreatmentModule } from '@/models/Schema';
+import { Copy, X } from 'lucide-react';
+import { useState } from 'react';
+import { ModuleBadge } from '@/components/modules/ModuleBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
-import { ModuleBadge } from '@/components/modules/ModuleBadge';
 
-interface CopyTemplateModalProps {
+type CopyTemplateModalProps = {
   template: TreatmentModule;
   onClose: () => void;
   onCopied: () => void;
-}
+};
 
 export function CopyTemplateModal({ template, onClose, onCopied }: CopyTemplateModalProps) {
   const { user } = useAuth();
@@ -90,7 +90,9 @@ export function CopyTemplateModal({ template, onClose, onCopied }: CopyTemplateM
             {template.inSessionQuestions && template.inSessionQuestions.length > 0 && (
               <div className="mt-3 border-t border-blue-200 pt-3">
                 <p className="text-xs font-medium text-gray-700">
-                  {template.inSessionQuestions.length} in-session questions included
+                  {template.inSessionQuestions.length}
+                  {' '}
+                  in-session questions included
                 </p>
               </div>
             )}
@@ -106,7 +108,7 @@ export function CopyTemplateModal({ template, onClose, onCopied }: CopyTemplateM
               type="text"
               value={customName}
               onChange={e => setCustomName(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
               placeholder="Enter module name..."
               disabled={isCopying}
             />

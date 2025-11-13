@@ -2,11 +2,11 @@
 
 import { Pause, Play, User, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { Button } from '@/components/ui/Button';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { Input } from '@/components/ui/Input';
+import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type Speaker = {
   id: string;

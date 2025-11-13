@@ -5,21 +5,21 @@
  * Generates story pages from treatment modules and session analysis
  */
 
+import type { TreatmentModule } from '@/models/Schema';
 import { CheckCircle, FileText, Lightbulb, MessageSquare, Sparkles, X } from 'lucide-react';
 import { useState } from 'react';
-import type { TreatmentModule } from '@/models/Schema';
+import { ModuleBadge } from '@/components/modules/ModuleBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
-import { ModuleBadge } from '@/components/modules/ModuleBadge';
 
-interface ModulePageGeneratorProps {
+type ModulePageGeneratorProps = {
   module: TreatmentModule;
   sessionId: string;
   patientId: string;
   patientName: string;
   onClose: () => void;
   onGenerated: (pageId: string) => void;
-}
+};
 
 export function ModulePageGenerator({
   module,
@@ -183,8 +183,8 @@ export function ModulePageGenerator({
                     <input
                       type="text"
                       value={customTitle}
-                      onChange={(e) => setCustomTitle(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      onChange={e => setCustomTitle(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                       placeholder="e.g., Your Journey of Resilience"
                     />
                   </div>
@@ -195,7 +195,7 @@ export function ModulePageGenerator({
                       type="checkbox"
                       id="includeMedia"
                       checked={includeMedia}
-                      onChange={(e) => setIncludeMedia(e.target.checked)}
+                      onChange={e => setIncludeMedia(e.target.checked)}
                       className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                     />
                     <label htmlFor="includeMedia" className="text-sm text-gray-700">
@@ -209,7 +209,7 @@ export function ModulePageGenerator({
                       type="checkbox"
                       id="sendNotification"
                       checked={sendNotification}
-                      onChange={(e) => setSendNotification(e.target.checked)}
+                      onChange={e => setSendNotification(e.target.checked)}
                       className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                     />
                     <label htmlFor="sendNotification" className="text-sm text-gray-700">
@@ -225,9 +225,9 @@ export function ModulePageGenerator({
                       </label>
                       <textarea
                         value={customMessage}
-                        onChange={(e) => setCustomMessage(e.target.value)}
+                        onChange={e => setCustomMessage(e.target.value)}
                         rows={3}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                         placeholder="Add a personal message for the patient..."
                       />
                     </div>

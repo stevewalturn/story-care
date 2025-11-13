@@ -5,16 +5,16 @@
  * Displays treatment module with domain-specific styling
  */
 
-import { Heart, Sparkles, Target, Users } from 'lucide-react';
 import type { TherapeuticDomain } from '@/models/Schema';
+import { Heart, Sparkles, Target, Users } from 'lucide-react';
 
-interface ModuleBadgeProps {
+type ModuleBadgeProps = {
   moduleName: string;
   domain: TherapeuticDomain;
   size?: 'sm' | 'md' | 'lg';
   showIcon?: boolean;
   onClick?: () => void;
-}
+};
 
 const domainConfig = {
   self_strength: {

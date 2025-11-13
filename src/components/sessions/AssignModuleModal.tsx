@@ -5,21 +5,21 @@
  * Modal for assigning treatment modules to therapy sessions
  */
 
+import type { TreatmentModule } from '@/models/Schema';
 import { CheckCircle, FileText, Lightbulb, MessageSquare, X } from 'lucide-react';
 import { useState } from 'react';
-import type { TreatmentModule } from '@/models/Schema';
-import { useAuth } from '@/contexts/AuthContext';
-import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { ModuleBadge } from '@/components/modules/ModuleBadge';
 import { ModulePicker } from '@/components/modules/ModulePicker';
+import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
-interface AssignModuleModalProps {
+type AssignModuleModalProps = {
   sessionId: string;
   sessionTitle: string;
   currentModuleId?: string | null;
   onClose: () => void;
   onAssigned: () => void;
-}
+};
 
 export function AssignModuleModal({
   sessionId,
@@ -79,7 +79,9 @@ export function AssignModuleModal({
             <div>
               <h2 className="text-xl font-semibold text-gray-900">Assign Treatment Module</h2>
               <p className="mt-1 text-sm text-gray-600">
-                Session: <span className="font-medium">{sessionTitle}</span>
+                Session:
+                {' '}
+                <span className="font-medium">{sessionTitle}</span>
               </p>
             </div>
             <button
@@ -97,7 +99,9 @@ export function AssignModuleModal({
               {/* Module Picker */}
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Select Treatment Module <span className="text-red-500">*</span>
+                  Select Treatment Module
+                  {' '}
+                  <span className="text-red-500">*</span>
                 </label>
                 <ModulePicker
                   selectedModuleId={currentModuleId}
@@ -148,7 +152,10 @@ export function AssignModuleModal({
                             ))}
                           {(selectedModule.inSessionQuestions as string[]).length > 3 && (
                             <li className="text-gray-500">
-                              +{(selectedModule.inSessionQuestions as string[]).length - 3} more
+                              +
+                              {(selectedModule.inSessionQuestions as string[]).length - 3}
+                              {' '}
+                              more
                               questions
                             </li>
                           )}
@@ -186,9 +193,9 @@ export function AssignModuleModal({
                 </label>
                 <textarea
                   value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
+                  onChange={e => setNotes(e.target.value)}
                   rows={3}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                   placeholder="Add any notes about why this module was chosen or session context..."
                 />
               </div>

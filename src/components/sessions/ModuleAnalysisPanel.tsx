@@ -5,15 +5,15 @@
  * Displays assigned treatment module information in transcript viewer
  */
 
+import type { TreatmentModule } from '@/models/Schema';
 import { ChevronDown, ChevronUp, Lightbulb, MessageSquare, Target } from 'lucide-react';
 import { useState } from 'react';
-import type { TreatmentModule } from '@/models/Schema';
 import { ModuleBadge } from '@/components/modules/ModuleBadge';
 
-interface ModuleAnalysisPanelProps {
+type ModuleAnalysisPanelProps = {
   module: TreatmentModule;
   onAnalyzeWithModule?: () => void;
-}
+};
 
 export function ModuleAnalysisPanel({ module, onAnalyzeWithModule }: ModuleAnalysisPanelProps) {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -50,7 +50,7 @@ export function ModuleAnalysisPanel({ module, onAnalyzeWithModule }: ModuleAnaly
 
       {/* Content */}
       {isExpanded && (
-        <div className="border-t border-indigo-200 p-4 space-y-4">
+        <div className="space-y-4 border-t border-indigo-200 p-4">
           {/* Therapeutic Aim */}
           <div>
             <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900">
@@ -94,7 +94,9 @@ export function ModuleAnalysisPanel({ module, onAnalyzeWithModule }: ModuleAnaly
           {/* Info Footer */}
           <div className="rounded-lg border border-indigo-200 bg-white/50 p-3">
             <p className="text-xs text-gray-600">
-              <span className="font-semibold">Protocol Guidance:</span> Use the opening questions above to guide your analysis.
+              <span className="font-semibold">Protocol Guidance:</span>
+              {' '}
+              Use the opening questions above to guide your analysis.
               When analyzing text, module-specific prompts will be automatically included.
             </p>
           </div>
