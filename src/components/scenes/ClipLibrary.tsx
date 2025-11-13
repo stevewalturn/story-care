@@ -2,6 +2,8 @@
 
 import { Image as ImageIcon, Music, Plus, Search, Video } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
@@ -19,6 +21,7 @@ type ClipLibraryProps = {
 };
 
 export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'image' | 'video' | 'audio'>('all');
   const [media, setMedia] = useState<MediaItem[]>([]);
@@ -58,7 +61,7 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
         params.append('search', searchQuery);
       }
 
-      const response = await fetch(`/api/media?${params}`);
+      const response = await authenticatedFetch(`/api/media?${params}`, user);
       if (!response.ok) {
         throw new Error('Failed to fetch media');
       }

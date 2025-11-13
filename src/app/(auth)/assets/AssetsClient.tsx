@@ -1,8 +1,10 @@
 'use client';
 
-import { Plus, Users } from 'lucide-react';
+import { Pencil, Plus, Trash2, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { EditQuoteModal } from '@/components/sessions/EditQuoteModal';
+import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -34,6 +36,11 @@ export function AssetsClient() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterSource, setFilterSource] = useState('all');
   const [filterType, setFilterType] = useState<'all' | 'image' | 'video' | 'audio'>('all');
+
+  // Quote edit/delete state
+  const [editingQuote, setEditingQuote] = useState<any | null>(null);
+  const [deletingQuote, setDeletingQuote] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load patients on mount (only when user is available)
   useEffect(() => {
@@ -157,6 +164,52 @@ export function AssetsClient() {
       console.error('Error loading notes:', error);
     } finally {
       setIsLoadingNotes(false);
+    }
+  };
+
+  // Quote edit/delete handlers
+  const handleEditQuote = async (quoteId: string, updates: { quoteText: string; tags: string[]; notes: string }) => {
+    try {
+      const response = await authenticatedFetch(`/api/quotes/${quoteId}`, user, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+
+      if (response.ok) {
+        // Refresh quotes list
+        await loadQuotes();
+        setEditingQuote(null);
+      } else {
+        throw new Error('Failed to update quote');
+      }
+    } catch (error) {
+      console.error('Error updating quote:', error);
+      throw error;
+    }
+  };
+
+  const handleDeleteQuote = async () => {
+    if (!deletingQuote) return;
+
+    try {
+      setIsDeleting(true);
+      const response = await authenticatedFetch(`/api/quotes/${deletingQuote.id}`, user, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Refresh quotes list
+        await loadQuotes();
+        setDeletingQuote(null);
+      } else {
+        throw new Error('Failed to delete quote');
+      }
+    } catch (error) {
+      console.error('Error deleting quote:', error);
+      alert('Failed to delete quote. Please try again.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -554,23 +607,19 @@ export function AssetsClient() {
                               )}
                             </div>
                             <div className="flex items-center gap-2">
-                              {quote.priority && (
-                                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                                  quote.priority === 'high'
-                                    ? 'bg-red-100 text-red-700'
-                                    : quote.priority === 'medium'
-                                      ? 'bg-yellow-100 text-yellow-700'
-                                      : 'bg-gray-100 text-gray-700'
-                                }`}
-                                >
-                                  {quote.priority}
-                                  -Priority
-                                </span>
-                              )}
-                              <button className="text-gray-400 hover:text-gray-600">
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                                </svg>
+                              <button
+                                onClick={() => setEditingQuote(quote)}
+                                className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
+                                title="Edit quote"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => setDeletingQuote(quote)}
+                                className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                                title="Delete quote"
+                              >
+                                <Trash2 className="h-4 w-4" />
                               </button>
                             </div>
                           </div>
@@ -857,6 +906,26 @@ export function AssetsClient() {
           </div>
         </div>
       )}
+
+      {/* Edit Quote Modal */}
+      {editingQuote && (
+        <EditQuoteModal
+          isOpen={!!editingQuote}
+          onClose={() => setEditingQuote(null)}
+          quote={editingQuote}
+          onSave={handleEditQuote}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        isOpen={!!deletingQuote}
+        onClose={() => setDeletingQuote(null)}
+        onConfirm={handleDeleteQuote}
+        title="Delete Quote"
+        message="Are you sure you want to delete this quote? This action cannot be undone."
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

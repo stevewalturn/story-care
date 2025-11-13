@@ -2,6 +2,8 @@
 
 import { Pause, Play, User, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { Button } from '@/components/ui/Button';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { Input } from '@/components/ui/Input';
@@ -29,6 +31,7 @@ export function SpeakerLabeling({
   onSave,
   onCancel,
 }: SpeakerLabelingProps) {
+  const { user } = useAuth();
   const [speakers, setSpeakers] = useState<Speaker[]>(initialSpeakers);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [mergeMode, setMergeMode] = useState(false);
@@ -82,7 +85,7 @@ export function SpeakerLabeling({
       // Generate sample audio URL from API if not provided
       try {
         setLoadingAudio(speakerId);
-        const response = await fetch(`/api/sessions/${sessionId}/speakers/${speakerId}/audio`);
+        const response = await authenticatedFetch(`/api/sessions/${sessionId}/speakers/${speakerId}/audio`, user);
 
         if (!response.ok) {
           throw new Error('Failed to fetch audio sample');

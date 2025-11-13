@@ -114,6 +114,34 @@ export const auditActionEnum = pgEnum('audit_action', [
 ]);
 export const chatRoleEnum = pgEnum('chat_role', ['user', 'assistant', 'system']);
 
+// Treatment Module System Enums
+export const therapeuticDomainEnum = pgEnum('therapeutic_domain', [
+  'self_strength',
+  'relationships_repair',
+  'identity_transformation',
+  'purpose_future',
+]);
+export const moduleStatusEnum = pgEnum('module_status', ['active', 'archived', 'pending_approval']);
+export const notificationTypeEnum = pgEnum('notification_type', [
+  'story_page_published',
+  'module_completed',
+  'session_reminder',
+  'survey_reminder',
+]);
+export const notificationStatusEnum = pgEnum('notification_status', [
+  'pending',
+  'sent',
+  'failed',
+  'bounced',
+  'opened',
+  'clicked',
+]);
+export const generationSourceEnum = pgEnum('generation_source', [
+  'manual',
+  'module_auto',
+  'ai_suggested',
+]);
+
 // ============================================================================
 // ORGANIZATIONS
 // ============================================================================
@@ -255,6 +283,10 @@ export const sessionsSchema = pgTable('sessions', {
     'pending',
   ),
   transcriptionError: text('transcription_error'),
+
+  // Treatment Module Integration
+  moduleId: uuid('module_id'), // Will reference treatment_modules.id
+  moduleAssignedAt: timestamp('module_assigned_at'),
 
   // Metadata
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -442,7 +474,6 @@ export const quotesSchema = pgTable('quotes', {
   endTimeSeconds: decimal('end_time_seconds', { precision: 10, scale: 3 }),
 
   // Metadata
-  priority: priorityEnum('priority').default('medium'),
   tags: text('tags').array(),
   notes: text('notes'),
 
@@ -598,6 +629,117 @@ export const therapeuticPromptsSchema = pgTable('therapeutic_prompts', {
 });
 
 // ============================================================================
+// TREATMENT MODULES
+// ============================================================================
+
+export const treatmentModulesSchema = pgTable('treatment_modules', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  // Basic Information
+  name: varchar('name', { length: 255 }).notNull(),
+  domain: therapeuticDomainEnum('domain').notNull(),
+  description: text('description').notNull(),
+
+  // Scope & Ownership
+  scope: templateScopeEnum('scope').default('system').notNull(),
+  organizationId: uuid('organization_id').references(() => organizationsSchema.id, {
+    onDelete: 'cascade',
+  }),
+  createdBy: uuid('created_by')
+    .references(() => usersSchema.id)
+    .notNull(),
+
+  // Module Components (JSONB for flexibility)
+  inSessionQuestions: jsonb('in_session_questions').notNull(), // Array of opening questions for live sessions
+  reflectionTemplateId: uuid('reflection_template_id').references(
+    () => reflectionTemplatesSchema.id,
+  ),
+  surveyTemplateId: uuid('survey_template_id').references(() => surveyTemplatesSchema.id),
+
+  // AI Prompts
+  aiPromptText: text('ai_prompt_text').notNull(),
+  aiPromptMetadata: jsonb('ai_prompt_metadata'), // { output_format: 'structured', expected_fields: [...] }
+
+  // Usage Tracking
+  useCount: integer('use_count').default(0).notNull(),
+  status: moduleStatusEnum('status').default('active').notNull(),
+
+  // Audit
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================================================
+// SESSION-MODULE LINKING
+// ============================================================================
+
+export const sessionModulesSchema = pgTable('session_modules', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  sessionId: uuid('session_id')
+    .references(() => sessionsSchema.id, { onDelete: 'cascade' })
+    .notNull(),
+  moduleId: uuid('module_id').references(() => treatmentModulesSchema.id, {
+    onDelete: 'set null',
+  }),
+
+  // Assignment Context
+  assignedBy: uuid('assigned_by')
+    .references(() => usersSchema.id)
+    .notNull(),
+  assignedAt: timestamp('assigned_at').defaultNow().notNull(),
+
+  // Analysis Tracking
+  aiAnalysisCompleted: boolean('ai_analysis_completed').default(false),
+  aiAnalysisResult: jsonb('ai_analysis_result'), // Structured output from module-specific prompt
+
+  // Story Page Generation
+  storyPageId: uuid('story_page_id').references(() => storyPagesSchema.id),
+  storyPageGeneratedAt: timestamp('story_page_generated_at'),
+
+  notes: text('notes'), // Therapist notes about this module application
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ============================================================================
+// EMAIL NOTIFICATIONS
+// ============================================================================
+
+export const emailNotificationsSchema = pgTable('email_notifications', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  // Notification Context
+  notificationType: notificationTypeEnum('notification_type').notNull(),
+  recipientUserId: uuid('recipient_user_id')
+    .references(() => usersSchema.id)
+    .notNull(),
+  recipientEmail: varchar('recipient_email', { length: 255 }).notNull(),
+
+  // Content
+  subject: varchar('subject', { length: 255 }).notNull(),
+  bodyText: text('body_text').notNull(),
+  bodyHtml: text('body_html'),
+
+  // Related Resources
+  storyPageId: uuid('story_page_id').references(() => storyPagesSchema.id),
+  sessionId: uuid('session_id').references(() => sessionsSchema.id),
+  moduleId: uuid('module_id').references(() => treatmentModulesSchema.id),
+
+  // Delivery Status
+  status: notificationStatusEnum('status').default('pending').notNull(),
+  sentAt: timestamp('sent_at'),
+  openedAt: timestamp('opened_at'),
+  clickedAt: timestamp('clicked_at'),
+  errorMessage: text('error_message'),
+
+  // Email Service Metadata
+  externalId: varchar('external_id', { length: 255 }), // SendGrid message ID
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ============================================================================
 // SCENES
 // ============================================================================
 
@@ -676,6 +818,12 @@ export const storyPagesSchema = pgTable('story_pages', {
 
   // Publishing
   publishedAt: timestamp('published_at'),
+
+  // Treatment Module Integration
+  moduleId: uuid('module_id'), // Will reference treatment_modules.id
+  autoGenerated: boolean('auto_generated').default(false),
+  generationSource: generationSourceEnum('generation_source').default('manual'),
+  emailNotificationId: uuid('email_notification_id'), // Will reference email_notifications.id
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -854,6 +1002,17 @@ export const platformSettingsSchema = pgTable('platform_settings', {
   enableMfaForAdmins: boolean('enable_mfa_for_admins').notNull().default(true),
   sessionTimeout: integer('session_timeout').notNull().default(15), // minutes
 
+  // Email Configuration
+  emailFromName: varchar('email_from_name', { length: 100 }).notNull().default('StoryCare'),
+  emailFromAddress: varchar('email_from_address', { length: 255 })
+    .notNull()
+    .default('notifications@storycare.app'),
+  emailFooterText: text('email_footer_text')
+    .notNull()
+    .default('You received this because you are a patient in the StoryCare platform.'),
+  smtpProvider: varchar('smtp_provider', { length: 50 }).notNull().default('sendgrid'),
+  enableEmailNotifications: boolean('enable_email_notifications').notNull().default(true),
+
   // Metadata
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
   updatedBy: uuid('updated_by').references(() => usersSchema.id),
@@ -907,6 +1066,9 @@ export const notes = notesSchema;
 export const surveyTemplates = surveyTemplatesSchema;
 export const reflectionTemplates = reflectionTemplatesSchema;
 export const therapeuticPrompts = therapeuticPromptsSchema;
+export const treatmentModules = treatmentModulesSchema;
+export const sessionModules = sessionModulesSchema;
+export const emailNotifications = emailNotificationsSchema;
 export const scenes = scenesSchema;
 export const sceneClips = sceneClipsSchema;
 export const storyPages = storyPagesSchema;
@@ -964,6 +1126,15 @@ export type NewReflectionTemplate = typeof reflectionTemplatesSchema.$inferInser
 
 export type TherapeuticPrompt = typeof therapeuticPromptsSchema.$inferSelect;
 export type NewTherapeuticPrompt = typeof therapeuticPromptsSchema.$inferInsert;
+
+export type TreatmentModule = typeof treatmentModulesSchema.$inferSelect;
+export type NewTreatmentModule = typeof treatmentModulesSchema.$inferInsert;
+
+export type SessionModule = typeof sessionModulesSchema.$inferSelect;
+export type NewSessionModule = typeof sessionModulesSchema.$inferInsert;
+
+export type EmailNotification = typeof emailNotificationsSchema.$inferSelect;
+export type NewEmailNotification = typeof emailNotificationsSchema.$inferInsert;
 
 export type Scene = typeof scenesSchema.$inferSelect;
 export type NewScene = typeof scenesSchema.$inferInsert;

@@ -5,9 +5,11 @@ import { Filter, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SessionCard } from '@/components/sessions/SessionCard';
 import { UploadModal } from '@/components/sessions/UploadModal';
+import { AssignModuleModal } from '@/components/sessions/AssignModuleModal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
+import type { TherapeuticDomain } from '@/models/Schema';
 
 type Session = {
   id: string;
@@ -17,11 +19,16 @@ type Session = {
   patientName?: string;
   groupName?: string;
   sessionCount?: number;
+  moduleName?: string;
+  moduleDomain?: TherapeuticDomain;
+  moduleId?: string;
 };
 
 export default function SessionsPage() {
   const { user } = useAuth();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isAssignModuleModalOpen, setIsAssignModuleModalOpen] = useState(false);
+  const [selectedSessionForModule, setSelectedSessionForModule] = useState<Session | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -57,6 +64,9 @@ export default function SessionsPage() {
           patientName: session.patient?.name,
           groupName: session.group?.name,
           sessionCount: 1, // TODO: Calculate from database
+          moduleId: session.moduleId,
+          moduleName: session.module?.name,
+          moduleDomain: session.module?.domain,
         }));
         setSessions(formattedSessions);
       }
@@ -95,9 +105,7 @@ export default function SessionsPage() {
         therapistId: user.uid,
         title: data.title,
         sessionDate: data.sessionDate,
-        sessionType: data.sessionType,
-        patientId: data.patientId || null,
-        groupId: data.groupId || null,
+        patientIds: data.patientIds, // Send array of patient IDs (sessionType auto-computed on backend)
         audioUrl: data.audioUrl,
       };
 
@@ -166,6 +174,17 @@ export default function SessionsPage() {
       console.error('Error deleting session:', error);
       alert(error instanceof Error ? error.message : 'Failed to delete session. Please try again.');
     }
+  };
+
+  const handleAssignModule = (session: Session) => {
+    setSelectedSessionForModule(session);
+    setIsAssignModuleModalOpen(true);
+  };
+
+  const handleModuleAssigned = async () => {
+    setIsAssignModuleModalOpen(false);
+    setSelectedSessionForModule(null);
+    await fetchSessions();
   };
 
   return (
@@ -246,6 +265,7 @@ export default function SessionsPage() {
                       window.location.href = `/sessions/${session.id}/transcript`;
                     }}
                     onDelete={() => handleDelete(session.id)}
+                    onAssignModule={() => handleAssignModule(session)}
                   />
                 ))}
               </div>
@@ -257,6 +277,20 @@ export default function SessionsPage() {
         onClose={() => setIsUploadModalOpen(false)}
         onUpload={handleUpload}
       />
+
+      {/* Assign Module Modal */}
+      {selectedSessionForModule && (
+        <AssignModuleModal
+          sessionId={selectedSessionForModule.id}
+          sessionTitle={selectedSessionForModule.title}
+          currentModuleId={selectedSessionForModule.moduleId}
+          onClose={() => {
+            setIsAssignModuleModalOpen(false);
+            setSelectedSessionForModule(null);
+          }}
+          onAssigned={handleModuleAssigned}
+        />
+      )}
     </div>
   );
 }

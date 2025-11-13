@@ -1,6 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { Target } from 'lucide-react';
+import type { TreatmentModule } from '@/models/Schema';
+import { ModuleBadge } from '@/components/modules/ModuleBadge';
 
 type AnalyzeOption = {
   id: string;
@@ -71,6 +74,7 @@ type AnalyzeSelectionModalProps = {
   onClose: () => void;
   selectedText: string;
   onAnalyze: (optionId: string, selectedText: string) => void;
+  assignedModule?: TreatmentModule | null;
 };
 
 export function AnalyzeSelectionModal({
@@ -78,8 +82,23 @@ export function AnalyzeSelectionModal({
   onClose,
   selectedText,
   onAnalyze,
+  assignedModule,
 }: AnalyzeSelectionModalProps) {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
+
+  // Create module-specific options if module is assigned
+  const moduleOptions: AnalyzeOption[] = assignedModule
+    ? [
+        {
+          id: 'module-analysis',
+          title: `${assignedModule.name} Protocol Analysis`,
+          description: assignedModule.aiPromptText.substring(0, 150) + '...',
+          category: 'module',
+          badge: 'Protocol',
+          icon: 'target',
+        },
+      ]
+    : [];
 
   if (!isOpen) {
     return null;
@@ -120,6 +139,77 @@ export function AnalyzeSelectionModal({
 
         {/* Options */}
         <div className="max-h-[60vh] space-y-3 overflow-y-auto p-6">
+          {/* Module-Specific Options (if module assigned) */}
+          {assignedModule && (
+            <>
+              <div className="mb-4 flex items-center gap-2">
+                <Target className="h-4 w-4 text-indigo-600" />
+                <span className="text-sm font-semibold text-gray-900">Treatment Protocol Options</span>
+                <ModuleBadge
+                  moduleName={assignedModule.name}
+                  domain={assignedModule.domain as any}
+                  size="sm"
+                  showIcon={false}
+                />
+              </div>
+              {moduleOptions.map(option => (
+                <button
+                  key={option.id}
+                  onClick={() => handleAnalyze(option.id)}
+                  onMouseEnter={() => setSelectedOption(option.id)}
+                  onMouseLeave={() => setSelectedOption(null)}
+                  className={`w-full rounded-lg border-2 text-left transition-all ${
+                    selectedOption === option.id
+                      ? 'border-indigo-500 bg-gradient-to-br from-indigo-50 to-purple-50'
+                      : 'border-indigo-200 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 hover:border-indigo-400'
+                  }`}
+                >
+                  <div className="p-4">
+                    <div className="flex items-start gap-3">
+                      {/* Icon */}
+                      <div className="mt-0.5 flex-shrink-0 text-indigo-600">
+                        <Target className="h-5 w-5" />
+                      </div>
+
+                      {/* Content */}
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 flex items-center gap-2">
+                          <h3 className="text-sm font-semibold text-gray-900">{option.title}</h3>
+                          <span className="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
+                            {option.badge}
+                          </span>
+                        </div>
+                        <p className="text-xs leading-relaxed text-gray-600">
+                          {option.description}
+                        </p>
+                      </div>
+
+                      {/* Arrow */}
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+
+              {/* Divider */}
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300" />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-white px-3 text-xs font-medium text-gray-500">
+                    General Analysis Options
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Standard Options */}
           {ANALYZE_OPTIONS.map(option => (
             <button
               key={option.id}

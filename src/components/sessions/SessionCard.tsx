@@ -1,5 +1,7 @@
-import { Calendar, Folder, Trash2, User, Users } from 'lucide-react';
+import { Calendar, Folder, Layers, Trash2, User, Users } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
+import { ModuleBadge } from '@/components/modules/ModuleBadge';
+import type { TherapeuticDomain } from '@/models/Schema';
 
 type SessionCardProps = {
   id: string;
@@ -9,8 +11,11 @@ type SessionCardProps = {
   patientName?: string;
   groupName?: string;
   sessionCount?: number;
+  moduleName?: string;
+  moduleDomain?: TherapeuticDomain;
   onClick?: () => void;
   onDelete?: () => void;
+  onAssignModule?: () => void;
 };
 
 export function SessionCard({
@@ -20,13 +25,23 @@ export function SessionCard({
   patientName,
   groupName,
   sessionCount,
+  moduleName,
+  moduleDomain,
   onClick,
   onDelete,
+  onAssignModule,
 }: SessionCardProps) {
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
     if (onDelete) {
       onDelete();
+    }
+  };
+
+  const handleAssignModule = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    if (onAssignModule) {
+      onAssignModule();
     }
   };
 
@@ -78,6 +93,29 @@ export function SessionCard({
                 <span className="capitalize">{type}</span>
               </div>
             </div>
+
+            {/* Treatment Module Badge */}
+            {moduleName && moduleDomain ? (
+              <div className="mt-3">
+                <ModuleBadge
+                  moduleName={moduleName}
+                  domain={moduleDomain}
+                  size="sm"
+                  onClick={onAssignModule}
+                />
+              </div>
+            ) : onAssignModule ? (
+              <div className="mt-3">
+                <button
+                  onClick={handleAssignModule}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+                  type="button"
+                >
+                  <Layers className="h-3 w-3" />
+                  <span>Assign Module</span>
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

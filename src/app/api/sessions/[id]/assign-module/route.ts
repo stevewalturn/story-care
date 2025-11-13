@@ -1,0 +1,82 @@
+/**
+ * Assign Module to Session API
+ * Link a treatment module to a therapy session
+ */
+
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import { getModuleById } from '@/services/ModuleService';
+import { assignModuleToSession } from '@/services/SessionService';
+import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
+import { assignModuleToSessionSchema } from '@/validations/ModuleValidation';
+
+/**
+ * POST /api/sessions/[id]/assign-module
+ * Assign a module to a session for targeted analysis
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  try {
+    const user = await requireAuth(request);
+
+    // Only therapists and admins can assign modules
+    if (user.role === 'patient') {
+      return NextResponse.json(
+        { error: 'Forbidden: Patients cannot assign modules' },
+        { status: 403 },
+      );
+    }
+
+    const body = await request.json();
+    const validated = assignModuleToSessionSchema.parse(body);
+
+    // Verify module exists and is accessible
+    const { module } = await getModuleById(validated.moduleId);
+
+    if (!module) {
+      return NextResponse.json({ error: 'Module not found' }, { status: 404 });
+    }
+
+    // Check module access
+    if (module.scope === 'organization' && module.organizationId !== user.organizationId) {
+      return NextResponse.json(
+        { error: 'Forbidden: Module not accessible' },
+        { status: 403 },
+      );
+    }
+
+    if (module.scope === 'private' && module.createdBy !== user.dbUserId) {
+      return NextResponse.json(
+        { error: 'Forbidden: Module not accessible' },
+        { status: 403 },
+      );
+    }
+
+    // TODO: Verify therapist has access to the session
+    // Ensure session belongs to therapist or their organization
+
+    // Assign module to session
+    const sessionModule = await assignModuleToSession({
+      sessionId: params.id,
+      moduleId: validated.moduleId,
+      assignedBy: user.dbUserId,
+      notes: validated.notes,
+    });
+
+    return NextResponse.json(
+      {
+        message: 'Module assigned to session successfully',
+        sessionModule,
+        module,
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('validation')) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    return handleAuthError(error);
+  }
+}

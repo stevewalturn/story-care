@@ -8,7 +8,6 @@ type SaveQuoteModalProps = {
   selectedText: string;
   onSave: (quoteData: {
     quoteText: string;
-    priority: 'low' | 'medium' | 'high';
     tags: string[];
     notes: string;
   }) => Promise<void>;
@@ -20,7 +19,6 @@ export function SaveQuoteModal({
   selectedText,
   onSave,
 }: SaveQuoteModalProps) {
-  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [tags, setTags] = useState<string>('');
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -34,12 +32,10 @@ export function SaveQuoteModal({
     try {
       await onSave({
         quoteText: selectedText,
-        priority,
         tags: tags.split(',').map(t => t.trim()).filter(t => t.length > 0),
         notes,
       });
       // Reset form
-      setPriority('medium');
       setTags('');
       setNotes('');
       onClose();
@@ -98,45 +94,6 @@ export function SaveQuoteModal({
               {' '}
               characters
             </p>
-          </div>
-
-          {/* Priority */}
-          <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
-              Priority
-            </label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPriority('low')}
-                className={`flex-1 rounded-lg border-2 px-4 py-2 transition-all ${
-                  priority === 'low'
-                    ? 'border-gray-400 bg-gray-50 font-medium text-gray-900'
-                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                }`}
-              >
-                Low
-              </button>
-              <button
-                onClick={() => setPriority('medium')}
-                className={`flex-1 rounded-lg border-2 px-4 py-2 transition-all ${
-                  priority === 'medium'
-                    ? 'border-yellow-400 bg-yellow-50 font-medium text-yellow-900'
-                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                }`}
-              >
-                Medium
-              </button>
-              <button
-                onClick={() => setPriority('high')}
-                className={`flex-1 rounded-lg border-2 px-4 py-2 transition-all ${
-                  priority === 'high'
-                    ? 'border-red-400 bg-red-50 font-medium text-red-900'
-                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                }`}
-              >
-                High
-              </button>
-            </div>
           </div>
 
           {/* Tags */}

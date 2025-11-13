@@ -28,6 +28,41 @@ function SignInForm() {
     }
   }, [searchParams]);
 
+  // Mock accounts for testing
+  const mockAccounts = [
+    {
+      email: 'zharfan@walturn.com',
+      password: 'securepassword',
+      role: 'Super Admin',
+      color: 'bg-purple-100 text-purple-700 border-purple-300',
+    },
+    {
+      email: 'amri@walturn.com',
+      password: 'securepassword',
+      role: 'Org Admin',
+      color: 'bg-blue-100 text-blue-700 border-blue-300',
+    },
+    {
+      email: 'zharfan.akbar104@gmail.com',
+      password: 'securepassword',
+      role: 'Therapist',
+      color: 'bg-green-100 text-green-700 border-green-300',
+    },
+    {
+      email: 'akbar129031@gmail.com',
+      password: 'securepassword',
+      role: 'Patient',
+      color: 'bg-orange-100 text-orange-700 border-orange-300',
+    },
+  ];
+
+  const handleMockAccountClick = (mockEmail: string, mockPassword: string) => {
+    setEmail(mockEmail);
+    setPassword(mockPassword);
+    setError('');
+    setSuccessMessage('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -100,6 +135,46 @@ function SignInForm() {
               {error}
             </div>
           )}
+
+          {/* Mock Test Accounts */}
+          <div className="mb-6 rounded-lg border-2 border-dashed border-yellow-300 bg-yellow-50 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <svg
+                className="h-5 w-5 text-yellow-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <span className="text-sm font-semibold text-yellow-800">
+                Test Accounts (Demo Only)
+              </span>
+            </div>
+            <p className="mb-3 text-xs text-yellow-700">
+              Click any account below to auto-fill credentials:
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {mockAccounts.map((account) => (
+                <button
+                  key={account.email}
+                  type="button"
+                  onClick={() => handleMockAccountClick(account.email, account.password)}
+                  className={`rounded-lg border-2 ${account.color} px-3 py-2 text-left transition-all hover:shadow-md active:scale-95`}
+                >
+                  <div className="text-xs font-semibold">{account.role}</div>
+                  <div className="mt-1 truncate text-xs opacity-75">
+                    {account.email.split('@')[0]}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input

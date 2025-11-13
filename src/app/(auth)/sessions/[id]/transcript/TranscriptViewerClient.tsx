@@ -1,13 +1,18 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { AnalyzeSelectionModal } from '@/components/sessions/AnalyzeSelectionModal';
+import { EditQuoteModal } from '@/components/sessions/EditQuoteModal';
 import { GenerateImageModal } from '@/components/sessions/GenerateImageModal';
 import { GenerateVideoModal } from '@/components/sessions/GenerateVideoModal';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
+import { ModuleAnalysisPanel } from '@/components/sessions/ModuleAnalysisPanel';
+import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAvailableTextModels } from '@/libs/ModelMetadata';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
+import type { TreatmentModule } from '@/models/Schema';
 
 type Utterance = {
   id: string;
@@ -32,6 +37,8 @@ export function TranscriptViewerClient({
   const [audioUrl, setAudioUrl] = useState<string | undefined>();
   const [sessionTitle, setSessionTitle] = useState<string>('');
   const [patientName, setPatientName] = useState<string>('');
+  const [assignedModule, setAssignedModule] = useState<TreatmentModule | null>(null);
+  const [sessionData, setSessionData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,21 +50,36 @@ export function TranscriptViewerClient({
   const [selectedText, setSelectedText] = useState('');
   const [aiPrompt, setAiPrompt] = useState<string | null>(null);
 
+  // Quote edit/delete state
+  const [editingQuote, setEditingQuote] = useState<any | null>(null);
+  const [deletingQuote, setDeletingQuote] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Fetch session and transcript data
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
 
-        // Fetch session to get audio URL and title
+        // Fetch session to get audio URL, title, and module
         const sessionResponse = await authenticatedFetch(`/api/sessions/${sessionId}`, user);
         if (!sessionResponse.ok) {
           throw new Error('Failed to fetch session');
         }
-        const sessionData = await sessionResponse.json();
-        setAudioUrl(sessionData.session.audioUrl);
-        setSessionTitle(sessionData.session.title);
-        setPatientName(sessionData.session.patient?.name || sessionData.session.group?.name || 'Unknown');
+        const sessionDataResponse = await sessionResponse.json();
+        setSessionData(sessionDataResponse.session);
+        setAudioUrl(sessionDataResponse.session.audioUrl);
+        setSessionTitle(sessionDataResponse.session.title);
+        setPatientName(sessionDataResponse.session.patient?.name || sessionDataResponse.session.group?.name || 'Unknown');
+
+        // Fetch assigned module if exists
+        if (sessionDataResponse.session.moduleId) {
+          const moduleResponse = await authenticatedFetch(`/api/modules/${sessionDataResponse.session.moduleId}`, user);
+          if (moduleResponse.ok) {
+            const moduleData = await moduleResponse.json();
+            setAssignedModule(moduleData.module);
+          }
+        }
 
         // Fetch transcript and utterances
         const transcriptResponse = await authenticatedFetch(`/api/sessions/${sessionId}/transcript`, user);
@@ -215,7 +237,6 @@ Transcript text:
   // Handler for saving quote
   const handleSaveQuote = async (quoteData: {
     quoteText: string;
-    priority: 'low' | 'medium' | 'high';
     tags: string[];
     notes: string;
   }) => {
@@ -226,28 +247,111 @@ Transcript text:
         throw new Error('Failed to fetch session');
       }
       const sessionData = await sessionResponse.json();
-      const patientId = sessionData.session.patientId;
+      const { sessionType, patientId, groupId } = sessionData.session;
 
-      if (!patientId) {
-        throw new Error('No patient associated with this session');
+      // Handle both individual and group sessions
+      if (sessionType === 'individual') {
+        // Individual session - save to single patient
+        if (!patientId) {
+          throw new Error('No patient associated with this individual session');
+        }
+
+        const response = await authenticatedPost('/api/quotes', user, {
+          ...quoteData,
+          patientId,
+          sessionId,
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to save quote');
+        }
+
+        const data = await response.json();
+        console.log('Quote saved:', data);
+      } else {
+        // Group session - save to all patients in the group
+        if (!groupId) {
+          throw new Error('No group associated with this group session');
+        }
+
+        // Fetch all group members
+        const groupResponse = await authenticatedFetch(`/api/groups/${groupId}/members`, user);
+        if (!groupResponse.ok) {
+          throw new Error('Failed to fetch group members');
+        }
+
+        const { members } = await groupResponse.json();
+
+        // Create quote for each patient in the group
+        for (const member of members) {
+          const response = await authenticatedPost('/api/quotes', user, {
+            ...quoteData,
+            patientId: member.patientId,
+            sessionId,
+          });
+
+          if (!response.ok) {
+            console.error(`Failed to save quote for patient ${member.patientId}`);
+          }
+        }
+
+        console.log(`Quote saved for ${members.length} patient(s) in group`);
       }
-
-      const response = await authenticatedPost('/api/quotes', user, {
-        ...quoteData,
-        patientId,
-        sessionId,
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save quote');
-      }
-
-      const data = await response.json();
-      console.log('Quote saved:', data);
       // TODO: Trigger quotes list refresh in library panel
     } catch (error) {
       console.error('Error saving quote:', error);
       throw error;
+    }
+  };
+
+  // Quote edit/delete handlers
+  const handleEditQuote = async (quoteId: string, updates: { quoteText: string; tags: string[]; notes: string }) => {
+    try {
+      const response = await authenticatedFetch(`/api/quotes/${quoteId}`, user, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+
+      if (response.ok) {
+        // Refresh quotes list by triggering the useEffect
+        setEditingQuote(null);
+        // Force re-fetch by changing active tab briefly or use a refresh counter
+        const currentTab = activeTab;
+        setActiveTab('media' as any);
+        setTimeout(() => setActiveTab(currentTab), 0);
+      } else {
+        throw new Error('Failed to update quote');
+      }
+    } catch (error) {
+      console.error('Error updating quote:', error);
+      throw error;
+    }
+  };
+
+  const handleDeleteQuote = async () => {
+    if (!deletingQuote) return;
+
+    try {
+      setIsDeleting(true);
+      const response = await authenticatedFetch(`/api/quotes/${deletingQuote.id}`, user, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Refresh quotes list
+        setDeletingQuote(null);
+        const currentTab = activeTab;
+        setActiveTab('media' as any);
+        setTimeout(() => setActiveTab(currentTab), 0);
+      } else {
+        throw new Error('Failed to delete quote');
+      }
+    } catch (error) {
+      console.error('Error deleting quote:', error);
+      alert('Failed to delete quote. Please try again.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -329,6 +433,7 @@ Transcript text:
           <LibraryPanel
             sessionId={sessionId}
             user={user}
+            sessionData={sessionData}
           />
         </div>
       </div>
@@ -339,6 +444,7 @@ Transcript text:
         onClose={() => setShowAnalyzeModal(false)}
         selectedText={selectedText}
         onAnalyze={handleAnalyze}
+        assignedModule={assignedModule}
       />
 
       <SaveQuoteModal
@@ -360,6 +466,26 @@ Transcript text:
         isOpen={showVideoModal}
         onClose={() => setShowVideoModal(false)}
         onGenerate={handleGenerateVideo}
+      />
+
+      {/* Edit Quote Modal */}
+      {editingQuote && (
+        <EditQuoteModal
+          isOpen={!!editingQuote}
+          onClose={() => setEditingQuote(null)}
+          quote={editingQuote}
+          onSave={handleEditQuote}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        isOpen={!!deletingQuote}
+        onClose={() => setDeletingQuote(null)}
+        onConfirm={handleDeleteQuote}
+        title="Delete Quote"
+        message="Are you sure you want to delete this quote? This action cannot be undone."
+        isDeleting={isDeleting}
       />
     </>
   );
@@ -829,15 +955,19 @@ function AIAssistantPanel({
 function LibraryPanel({
   sessionId,
   user,
+  sessionData,
 }: {
   sessionId: string;
   user: any;
+  sessionData: any;
 }) {
   const [activeTab, setActiveTab] = useState<'media' | 'quotes' | 'notes' | 'profile'>('media');
   const [media, setMedia] = useState<any[]>([]);
   const [quotes, setQuotes] = useState<any[]>([]);
+  const [notes, setNotes] = useState<any[]>([]);
   const [isLoadingMedia, setIsLoadingMedia] = useState(true);
   const [isLoadingQuotes, setIsLoadingQuotes] = useState(false);
+  const [isLoadingNotes, setIsLoadingNotes] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'image' | 'video' | 'audio'>('all');
 
@@ -904,6 +1034,37 @@ function LibraryPanel({
 
     if (activeTab === 'quotes') {
       loadQuotes();
+    }
+  }, [sessionId, activeTab, searchQuery, user]);
+
+  // Load notes for this session
+  useEffect(() => {
+    const loadNotes = async () => {
+      try {
+        setIsLoadingNotes(true);
+        const params = new URLSearchParams({
+          sessionId,
+        });
+
+        if (searchQuery) {
+          params.append('search', searchQuery);
+        }
+
+        const response = await authenticatedFetch(`/api/notes?${params.toString()}`, user);
+
+        if (response.ok) {
+          const data = await response.json();
+          setNotes(data.notes || []);
+        }
+      } catch (error) {
+        console.error('Error loading notes:', error);
+      } finally {
+        setIsLoadingNotes(false);
+      }
+    };
+
+    if (activeTab === 'notes') {
+      loadNotes();
     }
   }, [sessionId, activeTab, searchQuery, user]);
 
@@ -1213,23 +1374,19 @@ function LibraryPanel({
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      {quote.priority && (
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          quote.priority === 'high'
-                            ? 'bg-red-100 text-red-700'
-                            : quote.priority === 'medium'
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : 'bg-gray-100 text-gray-700'
-                        }`}
-                        >
-                          {quote.priority}
-                          -Priority
-                        </span>
-                      )}
-                      <button className="text-gray-400 hover:text-gray-600">
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                        </svg>
+                      <button
+                        onClick={() => setEditingQuote(quote)}
+                        className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
+                        title="Edit quote"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => setDeletingQuote(quote)}
+                        className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                        title="Delete quote"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
@@ -1271,18 +1428,164 @@ function LibraryPanel({
       {/* Notes Tab */}
       {activeTab === 'notes' && (
         <div className="flex-1 overflow-y-auto p-4">
-          <div className="py-12 text-center">
-            <p className="text-sm text-gray-500">Notes coming soon</p>
-          </div>
+          {isLoadingNotes ? (
+            <div className="py-12 text-center">
+              <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+              <p className="text-sm text-gray-500">Loading notes...</p>
+            </div>
+          ) : notes.length === 0 ? (
+            <div className="py-12 text-center">
+              <p className="text-sm text-gray-500">No notes for this session yet</p>
+              <p className="mt-1 text-xs text-gray-400">Notes will appear here once created</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {notes.map(note => (
+                <div
+                  key={note.id}
+                  className="rounded-lg border border-gray-200 p-4 transition-all hover:border-indigo-300 hover:shadow-sm"
+                >
+                  {/* Header */}
+                  <div className="mb-2 flex items-start justify-between">
+                    <h4 className="font-medium text-gray-900">{note.title || 'Untitled Note'}</h4>
+                    <span className="text-xs text-gray-500">
+                      {note.createdAt ? new Date(note.createdAt).toLocaleDateString() : ''}
+                    </span>
+                  </div>
+
+                  {/* Content */}
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap text-gray-700">
+                    {note.content}
+                  </p>
+
+                  {/* Tags */}
+                  {note.tags && note.tags.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1">
+                      {note.tags.map((tag: string, idx: number) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       {/* Profile Tab */}
       {activeTab === 'profile' && (
         <div className="flex-1 overflow-y-auto p-4">
-          <div className="py-12 text-center">
-            <p className="text-sm text-gray-500">Patient profile coming soon</p>
-          </div>
+          {!sessionData ? (
+            <div className="py-12 text-center">
+              <p className="text-sm text-gray-500">Loading profile...</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Patient/Group Info */}
+              <div className="rounded-lg border border-gray-200 bg-white p-4">
+                <div className="flex items-start gap-4">
+                  {/* Avatar/Image */}
+                  {(sessionData.patient?.avatarUrl || sessionData.patient?.referenceImageUrl) ? (
+                    <img
+                      src={sessionData.patient.avatarUrl || sessionData.patient.referenceImageUrl}
+                      alt={sessionData.patient?.name || sessionData.group?.name}
+                      className="h-16 w-16 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100">
+                      <svg className="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                  )}
+
+                  {/* Info */}
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900">
+                      {sessionData.patient?.name || sessionData.group?.name || 'Unknown'}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {sessionData.sessionType === 'individual' ? 'Individual Session' : 'Group Session'}
+                    </p>
+                    {sessionData.patient?.email && (
+                      <p className="mt-1 text-xs text-gray-500">{sessionData.patient.email}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Session Info */}
+              <div className="rounded-lg border border-gray-200 bg-white p-4">
+                <h4 className="mb-3 text-sm font-semibold text-gray-900">Session Details</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Date:</span>
+                    <span className="font-medium text-gray-900">
+                      {sessionData.sessionDate ? new Date(sessionData.sessionDate).toLocaleDateString() : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Type:</span>
+                    <span className="font-medium text-gray-900 capitalize">{sessionData.sessionType || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Status:</span>
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                      sessionData.transcriptionStatus === 'completed'
+                        ? 'bg-green-100 text-green-700'
+                        : sessionData.transcriptionStatus === 'processing'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {sessionData.transcriptionStatus || 'pending'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Patient Info (if individual session) */}
+              {sessionData.patient && (
+                <div className="rounded-lg border border-gray-200 bg-white p-4">
+                  <h4 className="mb-3 text-sm font-semibold text-gray-900">Patient Information</h4>
+                  <div className="space-y-2">
+                    {sessionData.patient.dateOfBirth && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Date of Birth:</span>
+                        <span className="font-medium text-gray-900">
+                          {new Date(sessionData.patient.dateOfBirth).toLocaleDateString()}
+                        </span>
+                      </div>
+                    )}
+                    {sessionData.patient.createdAt && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Patient Since:</span>
+                        <span className="font-medium text-gray-900">
+                          {new Date(sessionData.patient.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Module Info (if assigned) */}
+              {sessionData.module && (
+                <div className="rounded-lg border border-gray-200 bg-white p-4">
+                  <h4 className="mb-3 text-sm font-semibold text-gray-900">Treatment Module</h4>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-indigo-600">{sessionData.module.name}</p>
+                    <p className="text-xs text-gray-600">{sessionData.module.description}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </>

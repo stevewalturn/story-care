@@ -2,6 +2,8 @@
 
 import { BookOpen, CheckCircle, Copy, Edit2, Plus, Search, Tag, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
@@ -40,6 +42,7 @@ export function PromptLibrary({
   onEditClick,
   onDeleteClick,
 }: PromptLibraryProps) {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -70,7 +73,7 @@ export function PromptLibrary({
         params.append('search', searchQuery);
       }
 
-      const response = await fetch(`/api/prompts?${params}`);
+      const response = await authenticatedFetch(`/api/prompts?${params}`, user);
       if (!response.ok) {
         throw new Error('Failed to fetch prompts');
       }

@@ -12,6 +12,7 @@ import {
   Film,
   Folder,
   Image,
+  Layers,
   LayoutDashboard,
   Library,
   MessageSquare,
@@ -48,6 +49,12 @@ export const navigationConfig: NavigationConfig = {
       href: '/super-admin/dashboard',
       icon: LayoutDashboard,
       description: 'Platform-wide metrics and analytics',
+    },
+    {
+      name: 'Module Templates',
+      href: '/super-admin/module-templates',
+      icon: Layers,
+      description: 'Manage system-wide module templates',
     },
     {
       name: 'Organizations',
@@ -87,6 +94,12 @@ export const navigationConfig: NavigationConfig = {
       description: 'Organization overview',
     },
     {
+      name: 'Treatment Modules',
+      href: '/org-admin/modules',
+      icon: Layers,
+      description: 'Manage organization modules',
+    },
+    {
       name: 'Therapists',
       href: '/org-admin/therapists',
       icon: Users,
@@ -97,12 +110,6 @@ export const navigationConfig: NavigationConfig = {
       href: '/patients',
       icon: Users,
       description: 'View all patients',
-    },
-    {
-      name: 'Groups',
-      href: '/groups',
-      icon: Users,
-      description: 'Therapy groups',
     },
     {
       name: 'Template Library',
@@ -130,16 +137,16 @@ export const navigationConfig: NavigationConfig = {
       description: 'Overview and recent activity',
     },
     {
+      name: 'My Modules',
+      href: '/therapist/modules',
+      icon: Layers,
+      description: 'My personal treatment modules',
+    },
+    {
       name: 'My Patients',
       href: '/patients',
       icon: Users,
       description: 'Manage your patients',
-    },
-    {
-      name: 'Groups',
-      href: '/groups',
-      icon: Users,
-      description: 'Group therapy sessions',
     },
     {
       name: 'Sessions',

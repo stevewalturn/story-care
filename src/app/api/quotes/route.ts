@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get('patientId');
     const sessionId = searchParams.get('sessionId');
-    const priority = searchParams.get('priority');
     const search = searchParams.get('search');
 
     // Select with speaker and session info
@@ -19,7 +18,6 @@ export async function GET(request: NextRequest) {
       .select({
         id: quotes.id,
         quoteText: quotes.quoteText,
-        priority: quotes.priority,
         tags: quotes.tags,
         notes: quotes.notes,
         startTimeSeconds: quotes.startTimeSeconds,
@@ -45,9 +43,6 @@ export async function GET(request: NextRequest) {
     }
     if (sessionId) {
       filters.push(eq(quotes.sessionId, sessionId));
-    }
-    if (priority) {
-      filters.push(eq(quotes.priority, priority as any));
     }
     if (search) {
       filters.push(
@@ -88,7 +83,6 @@ export async function POST(request: NextRequest) {
       speakerId,
       startTimeSeconds,
       endTimeSeconds,
-      priority,
       tags,
       notes,
     } = body;
@@ -111,7 +105,6 @@ export async function POST(request: NextRequest) {
         speakerId: speakerId || null,
         startTimeSeconds: startTimeSeconds ? String(startTimeSeconds) : null,
         endTimeSeconds: endTimeSeconds ? String(endTimeSeconds) : null,
-        priority: priority || 'medium',
         tags: tags || null,
         notes: notes || null,
         createdByTherapistId: user.dbUserId,

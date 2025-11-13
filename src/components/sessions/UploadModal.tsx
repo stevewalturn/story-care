@@ -3,9 +3,9 @@
 import { Upload, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { Dropdown } from '@/components/ui/Dropdown';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
+import { MultiSelect } from '@/components/ui/MultiSelect';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -18,9 +18,7 @@ type UploadModalProps = {
 export type SessionUploadData = {
   title: string;
   sessionDate: string;
-  sessionType: 'individual' | 'group';
-  patientId?: string;
-  groupId?: string;
+  patientIds: string[];
   audioFile: File | null;
   audioUrl?: string;
 };
@@ -30,27 +28,22 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   const [formData, setFormData] = useState<SessionUploadData>({
     title: '',
     sessionDate: new Date().toISOString().split('T')[0] || '',
-    sessionType: 'individual',
-    patientId: '',
-    groupId: '',
+    patientIds: [],
     audioFile: null,
   });
 
   const [dragActive, setDragActive] = useState(false);
   const [patients, setPatients] = useState<Array<{ value: string; label: string }>>([]);
-  const [groups, setGroups] = useState<Array<{ value: string; label: string }>>([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
-  const [loadingGroups, setLoadingGroups] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch patients and groups when modal opens
+  // Fetch patients when modal opens
   useEffect(() => {
     if (!isOpen || !user?.uid) return;
 
-    const fetchData = async () => {
-      // Fetch patients (only for current therapist)
+    const fetchPatients = async () => {
       setLoadingPatients(true);
       try {
         const res = await authenticatedFetch(`/api/patients?therapistId=${user.uid}`, user);
@@ -59,33 +52,16 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
           value: p.id,
           label: p.name,
         })) || [];
-        setPatients([{ value: '', label: 'Select a patient...' }, ...patientOptions]);
+        setPatients(patientOptions);
       } catch (err) {
         console.error('Failed to fetch patients:', err);
-        setPatients([{ value: '', label: 'Select a patient...' }]);
+        setPatients([]);
       } finally {
         setLoadingPatients(false);
       }
-
-      // Fetch groups (only for current therapist)
-      setLoadingGroups(true);
-      try {
-        const res = await authenticatedFetch(`/api/groups?therapistId=${user.uid}`, user);
-        const data = await res.json();
-        const groupOptions = data.groups?.map((g: any) => ({
-          value: g.id,
-          label: g.name,
-        })) || [];
-        setGroups([{ value: '', label: 'Select a group...' }, ...groupOptions]);
-      } catch (err) {
-        console.error('Failed to fetch groups:', err);
-        setGroups([{ value: '', label: 'Select a group...' }]);
-      } finally {
-        setLoadingGroups(false);
-      }
     };
 
-    fetchData();
+    fetchPatients();
   }, [isOpen, user?.uid]);
 
   const handleDrag = (e: React.DragEvent) => {
@@ -191,8 +167,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       && formData.audioUrl
       && !uploadingFile
       && !isSubmitting
-      && ((formData.sessionType === 'individual' && formData.patientId)
-        || (formData.sessionType === 'group' && formData.groupId));
+      && formData.patientIds.length > 0;
 
   return (
     <Modal
@@ -225,52 +200,25 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
           onChange={e => setFormData({ ...formData, title: e.target.value })}
         />
 
-        {/* Session Date and Type */}
-        <div className="grid grid-cols-2 gap-4">
-          <Input
-            label="Session Date"
-            type="date"
-            value={formData.sessionDate}
-            onChange={e =>
-              setFormData({ ...formData, sessionDate: e.target.value })}
-          />
-          <Dropdown
-            label="Session Type"
-            value={formData.sessionType}
-            onChange={value =>
-              setFormData({
-                ...formData,
-                sessionType: value as 'individual' | 'group',
-              })}
-            options={[
-              { value: 'individual', label: 'Individual' },
-              { value: 'group', label: 'Group' },
-            ]}
-          />
-        </div>
+        {/* Session Date */}
+        <Input
+          label="Session Date"
+          type="date"
+          value={formData.sessionDate}
+          onChange={e =>
+            setFormData({ ...formData, sessionDate: e.target.value })}
+        />
 
-        {/* Patient or Group Selection */}
-        {formData.sessionType === 'individual'
-          ? (
-              <Dropdown
-                label="Patient"
-                value={formData.patientId || ''}
-                onChange={value => setFormData({ ...formData, patientId: value })}
-                options={loadingPatients ? [{ value: '', label: 'Loading patients...' }] : patients}
-                placeholder="Select a patient..."
-                disabled={loadingPatients}
-              />
-            )
-          : (
-              <Dropdown
-                label="Group"
-                value={formData.groupId || ''}
-                onChange={value => setFormData({ ...formData, groupId: value })}
-                options={loadingGroups ? [{ value: '', label: 'Loading groups...' }] : groups}
-                placeholder="Select a group..."
-                disabled={loadingGroups}
-              />
-            )}
+        {/* Patient Selection (Multi-Select) */}
+        <MultiSelect
+          label="Patients"
+          options={patients}
+          selectedValues={formData.patientIds}
+          onChange={patientIds => setFormData({ ...formData, patientIds })}
+          placeholder={loadingPatients ? 'Loading patients...' : 'Select patient(s)...'}
+          disabled={loadingPatients}
+          required
+        />
 
         {/* File Upload Area */}
         <div>

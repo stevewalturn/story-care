@@ -49,7 +49,6 @@ export async function PUT(
     const body = await request.json();
     const {
       quoteText,
-      priority,
       tags,
       notes,
     } = body;
@@ -61,9 +60,6 @@ export async function PUT(
 
     if (quoteText !== undefined) {
       updateData.quoteText = quoteText;
-    }
-    if (priority !== undefined) {
-      updateData.priority = priority;
     }
     if (tags !== undefined) {
       updateData.tags = tags;

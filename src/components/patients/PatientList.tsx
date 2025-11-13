@@ -72,10 +72,10 @@ export function PatientList({
             {/* Avatar */}
             <div className="mb-4 flex items-start justify-between">
               <div className="flex items-center gap-3">
-                {patient.referenceImageUrl
+                {patient.referenceImageUrl || patient.avatarUrl
                   ? (
                       <img
-                        src={patient.referenceImageUrl}
+                        src={patient.referenceImageUrl || patient.avatarUrl}
                         alt={patient.name}
                         className="h-12 w-12 rounded-full object-cover"
                       />
