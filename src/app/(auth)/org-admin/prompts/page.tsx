@@ -282,7 +282,7 @@ function PromptCard({ prompt, activeTab, onClone, onDelete }: PromptCardProps) {
 
       {/* Content Preview */}
       <p className="mb-4 text-sm text-gray-600 line-clamp-3">
-        {prompt.content}
+        {prompt.promptText}
       </p>
 
       {/* Usage Stats (for usage tab) */}

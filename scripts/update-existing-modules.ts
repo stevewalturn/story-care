@@ -5,7 +5,7 @@
 
 import { db } from '@/libs/DB';
 import { treatmentModulesSchema } from '@/models/Schema';
-import { eq, isNotNull } from 'drizzle-orm';
+import { isNotNull } from 'drizzle-orm';
 import 'dotenv/config';
 
 export async function updateExistingModules() {
