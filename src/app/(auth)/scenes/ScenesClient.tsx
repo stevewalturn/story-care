@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, Eye, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, Download, Eye, Loader2, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { ClipLibrary } from '@/components/scenes/ClipLibrary';
@@ -29,7 +29,12 @@ type MediaItem = {
   duration?: number;
 };
 
-export function ScenesClient() {
+type ScenesClientProps = {
+  initialSceneId?: string | null;
+  onBackToLibrary?: () => void;
+};
+
+export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientProps) {
   const { user } = useAuth();
   const [sceneName, setSceneName] = useState('Untitled Scene');
   const [sceneDescription, setSceneDescription] = useState('');
@@ -37,11 +42,18 @@ export function ScenesClient() {
   const [totalDuration, setTotalDuration] = useState(60); // 60 seconds default
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [currentSceneId, setCurrentSceneId] = useState<string | null>(null);
+  const [currentSceneId, setCurrentSceneId] = useState<string | null>(initialSceneId || null);
   const [selectedPatient, setSelectedPatient] = useState<string>('');
   const [patients, setPatients] = useState<any[]>([]);
   const [scenes, setScenes] = useState<any[]>([]);
   const [isLoadingScenes, setIsLoadingScenes] = useState(false);
+
+  // Load initial scene if provided
+  useEffect(() => {
+    if (initialSceneId) {
+      loadScene(initialSceneId);
+    }
+  }, [initialSceneId]);
 
   // Load patients on mount
   useEffect(() => {
@@ -335,6 +347,16 @@ export function ScenesClient() {
     <div className="flex h-[calc(100vh-80px)] flex-col p-8">
       {/* Header */}
       <div className="mb-6">
+        {/* Back Button */}
+        {onBackToLibrary && (
+          <div className="mb-4">
+            <Button variant="ghost" onClick={onBackToLibrary}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Scenes
+            </Button>
+          </div>
+        )}
+
         {/* Patient & Scene Selector */}
         <div className="mb-4 flex items-center gap-4">
           <div className="max-w-xs flex-1">

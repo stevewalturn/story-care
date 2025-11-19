@@ -58,6 +58,12 @@ export const navigationConfig: NavigationConfig = {
       description: 'Manage system-wide module templates',
     },
     {
+      name: 'Templates Library',
+      href: '/super-admin/templates',
+      icon: FileText,
+      description: 'Manage system reflection and survey templates',
+    },
+    {
       name: 'Prompt Library',
       href: '/super-admin/prompts',
       icon: Sparkles,
@@ -119,10 +125,10 @@ export const navigationConfig: NavigationConfig = {
       description: 'View all patients',
     },
     {
-      name: 'Template Library',
+      name: 'Templates Library',
       href: '/org-admin/templates',
-      icon: Library,
-      description: 'Approve and manage templates',
+      icon: FileText,
+      description: 'Manage organization reflection and survey templates',
     },
     {
       name: 'Prompt Library',
@@ -190,6 +196,12 @@ export const navigationConfig: NavigationConfig = {
       href: '/therapist/responses',
       icon: MessageSquare,
       description: 'View patient reflections and survey responses',
+    },
+    {
+      name: 'Templates Library',
+      href: '/therapist/templates',
+      icon: Library,
+      description: 'Browse and manage reflection and survey templates',
     },
     {
       name: 'Prompt Library',

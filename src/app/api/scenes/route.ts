@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server';
 import { and, desc, eq, ilike } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { scenes } from '@/models/Schema';
+import { scenes, usersSchema } from '@/models/Schema';
 
 // GET /api/scenes - List scenes
 export async function GET(request: NextRequest) {
@@ -17,14 +17,17 @@ export async function GET(request: NextRequest) {
         title: scenes.title,
         description: scenes.description,
         patientId: scenes.patientId,
+        patientName: usersSchema.name,
         createdByTherapistId: scenes.createdByTherapistId,
         assembledVideoUrl: scenes.assembledVideoUrl,
+        thumbnailUrl: scenes.thumbnailUrl,
         durationSeconds: scenes.durationSeconds,
         status: scenes.status,
         createdAt: scenes.createdAt,
         updatedAt: scenes.updatedAt,
       })
-      .from(scenes);
+      .from(scenes)
+      .leftJoin(usersSchema, eq(scenes.patientId, usersSchema.id));
 
     // Build filters
     const filters = [];

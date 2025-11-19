@@ -1,8 +1,41 @@
+'use client';
+
+import { useState } from 'react';
 import { ScenesClient } from './ScenesClient';
+import { ScenesLibrary } from './ScenesLibrary';
 
-export default async function ScenesPage() {
-  // In real implementation, fetch scenes data
-  // const scenes = await getScenes();
+export default function ScenesPage() {
+  const [view, setView] = useState<'library' | 'editor'>('library');
+  const [editingSceneId, setEditingSceneId] = useState<string | null>(null);
 
-  return <ScenesClient />;
+  const handleEditScene = (sceneId: string) => {
+    setEditingSceneId(sceneId);
+    setView('editor');
+  };
+
+  const handleCreateNew = () => {
+    setEditingSceneId(null);
+    setView('editor');
+  };
+
+  const handleBackToLibrary = () => {
+    setView('library');
+    setEditingSceneId(null);
+  };
+
+  if (view === 'library') {
+    return (
+      <ScenesLibrary
+        onEditScene={handleEditScene}
+        onCreateNew={handleCreateNew}
+      />
+    );
+  }
+
+  return (
+    <ScenesClient
+      initialSceneId={editingSceneId}
+      onBackToLibrary={handleBackToLibrary}
+    />
+  );
 }

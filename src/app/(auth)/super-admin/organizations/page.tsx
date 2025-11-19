@@ -133,9 +133,6 @@ export default function OrganizationsPage() {
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                Join Code
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                 Created
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
@@ -147,7 +144,7 @@ export default function OrganizationsPage() {
             {organizations.length === 0
               ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center">
+                    <td colSpan={4} className="px-6 py-12 text-center">
                       <Building2 className="mx-auto h-12 w-12 text-gray-400" />
                       <p className="mt-2 text-sm text-gray-500">
                         No organizations found
@@ -175,11 +172,6 @@ export default function OrganizationsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(org.status)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <code className="rounded bg-gray-100 px-2 py-1 font-mono text-xs text-gray-700">
-                          {org.joinCode}
-                        </code>
                       </td>
                       <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
                         <div className="flex items-center">
