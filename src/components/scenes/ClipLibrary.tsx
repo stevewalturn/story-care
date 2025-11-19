@@ -47,6 +47,7 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
 
   const fetchMedia = async () => {
     if (!patientId) {
+      console.log('No patientId provided, skipping media fetch');
       return;
     }
 
@@ -61,15 +62,20 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
         params.append('search', searchQuery);
       }
 
+      console.log('Fetching media with params:', params.toString());
       const response = await authenticatedFetch(`/api/media?${params}`, user);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Media fetch failed:', response.status, errorText);
         throw new Error('Failed to fetch media');
       }
 
       const data = await response.json();
+      console.log('Media fetch successful:', data);
 
       // Transform API data to MediaItem format
-      const transformedMedia: MediaItem[] = data.media.map((item: any) => ({
+      const transformedMedia: MediaItem[] = (data.media || []).map((item: any) => ({
         id: item.id,
         type: item.mediaType,
         title: item.title,
@@ -77,6 +83,7 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
         duration: item.durationSeconds,
       }));
 
+      console.log('Transformed media items:', transformedMedia);
       setMedia(transformedMedia);
     } catch (error) {
       console.error('Failed to fetch media:', error);
@@ -224,12 +231,16 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
 
                   {/* Add button */}
                   <Button
-                    variant="ghost"
+                    variant="primary"
                     size="sm"
-                    onClick={() => onAddToTimeline(item, item.duration || 5)}
-                    className="opacity-0 transition-opacity group-hover:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log('Adding clip to timeline:', item);
+                      onAddToTimeline(item, item.duration || 5);
+                    }}
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="mr-1 h-4 w-4" />
+                    Add
                   </Button>
                 </div>
               </div>
