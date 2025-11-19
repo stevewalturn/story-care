@@ -1,12 +1,14 @@
 'use client';
 
-import { Pencil, Plus, Trash2, Users } from 'lucide-react';
+import { Pencil, Plus, Trash2, Upload, Users } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
 import { EditQuoteModal } from '@/components/sessions/EditQuoteModal';
+import { Button } from '@/components/ui/Button';
 import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
+import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 
 type MediaItem = {
   id: string;
@@ -45,6 +47,14 @@ export function AssetsClient() {
   // Media delete state
   const [deletingMedia, setDeletingMedia] = useState<MediaItem | null>(null);
   const [isDeletingMedia, setIsDeletingMedia] = useState(false);
+
+  // Upload state
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadDescription, setUploadDescription] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load patients on mount (only when user is available)
   useEffect(() => {
@@ -241,6 +251,91 @@ export function AssetsClient() {
     }
   };
 
+  const handleUploadClick = () => {
+    if (!selectedPatient) {
+      toast.error('Please select a patient first');
+      return;
+    }
+    setShowUploadModal(true);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUploadFile(file);
+      // Auto-fill title with filename (without extension)
+      const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+      setUploadTitle(nameWithoutExt);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!uploadFile || !selectedPatient || !user) {
+      toast.error('Please select a file');
+      return;
+    }
+
+    setIsUploading(true);
+    const toastId = toast.loading('Uploading file...');
+
+    try {
+      // Step 1: Upload file to GCS
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+
+      const token = await user.getIdToken();
+
+      const uploadResponse = await fetch('/api/media/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const uploadData = await uploadResponse.json();
+
+      // Step 2: Save media entry to database
+      toast.loading('Saving to database...', { id: toastId });
+
+      const mediaResponse = await authenticatedPost('/api/media', user, {
+        patientId: selectedPatient,
+        createdByTherapistId: user.uid,
+        title: uploadTitle || uploadFile.name,
+        description: uploadDescription || null,
+        mediaType: uploadData.mediaType,
+        mediaUrl: uploadData.path, // Save GCS path, not temporary URL
+        thumbnailUrl: uploadData.mediaType === 'image' ? uploadData.path : null,
+        sourceType: 'uploaded',
+      });
+
+      if (!mediaResponse.ok) {
+        throw new Error('Failed to save media to database');
+      }
+
+      toast.success('File uploaded successfully!', { id: toastId });
+
+      // Close modal and reset
+      setShowUploadModal(false);
+      setUploadFile(null);
+      setUploadTitle('');
+      setUploadDescription('');
+
+      // Refresh media list
+      await loadMedia();
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error(`Upload failed: ${error.message}`, { id: toastId });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -382,7 +477,15 @@ export function AssetsClient() {
                 's Library
               </h2>
               <div className="flex items-center gap-2">
-                <button className="text-gray-500 hover:text-gray-700">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleUploadClick}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Media
+                </Button>
+                <button onClick={() => loadMedia()} className="text-gray-500 hover:text-gray-700">
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
@@ -978,6 +1081,89 @@ export function AssetsClient() {
         message={`Are you sure you want to delete "${deletingMedia?.title}"? This action cannot be undone and will remove the media from the patient's library.`}
         isDeleting={isDeletingMedia}
       />
+
+      {/* Upload Media Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
+            <h2 className="mb-4 text-xl font-bold text-gray-900">Upload Media</h2>
+
+            <div className="space-y-4">
+              {/* File Input */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Select File
+                </label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*,audio/*"
+                  onChange={handleFileSelect}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                />
+                {uploadFile && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Selected: {uploadFile.name} ({(uploadFile.size / 1024 / 1024).toFixed(2)} MB)
+                  </p>
+                )}
+              </div>
+
+              {/* Title */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  value={uploadTitle}
+                  onChange={(e) => setUploadTitle(e.target.value)}
+                  placeholder="Enter media title"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Description (Optional) */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Description
+                  {' '}
+                  <span className="text-gray-400">(optional)</span>
+                </label>
+                <textarea
+                  value={uploadDescription}
+                  onChange={(e) => setUploadDescription(e.target.value)}
+                  placeholder="Add a description..."
+                  rows={3}
+                  className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowUploadModal(false);
+                  setUploadFile(null);
+                  setUploadTitle('');
+                  setUploadDescription('');
+                }}
+                disabled={isUploading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleUpload}
+                disabled={!uploadFile || isUploading}
+              >
+                {isUploading ? 'Uploading...' : 'Upload'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
