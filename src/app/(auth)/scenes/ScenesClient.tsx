@@ -1,7 +1,8 @@
 'use client';
 
-import { Download, Eye, Save } from 'lucide-react';
+import { Download, Eye, Loader2, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { ClipLibrary } from '@/components/scenes/ClipLibrary';
 import { SceneTimeline } from '@/components/scenes/SceneTimeline';
 import { Button } from '@/components/ui/Button';
@@ -35,6 +36,7 @@ export function ScenesClient() {
   const [clips, setClips] = useState<Clip[]>([]);
   const [totalDuration, setTotalDuration] = useState(60); // 60 seconds default
   const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [currentSceneId, setCurrentSceneId] = useState<string | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<string>('');
   const [patients, setPatients] = useState<any[]>([]);
@@ -55,16 +57,19 @@ export function ScenesClient() {
 
   const fetchPatients = async () => {
     try {
-      const response = await authenticatedFetch('/api/users?role=patient', user);
+      const response = await authenticatedFetch('/api/patients', user);
       if (response.ok) {
         const data = await response.json();
-        setPatients(data.users || []);
-        if (data.users && data.users.length > 0) {
-          setSelectedPatient(data.users[0].id);
+        setPatients(data.patients || []);
+        if (data.patients && data.patients.length > 0) {
+          setSelectedPatient(data.patients[0].id);
         }
+      } else {
+        toast.error('Failed to load patients');
       }
     } catch (error) {
       console.error('Error fetching patients:', error);
+      toast.error('Error loading patients');
     }
   };
 
@@ -124,6 +129,8 @@ export function ScenesClient() {
   };
 
   const handleAddClip = (media: MediaItem, duration: number) => {
+    console.log('handleAddClip called:', { media, duration });
+
     // Calculate start time (end of last clip)
     const startTime = clips.reduce((sum, clip) => {
       const clipEnd = clip.startTime + clip.duration;
@@ -141,7 +148,10 @@ export function ScenesClient() {
       audioTrack: media.type === 'audio' ? media.title : undefined,
     };
 
+    console.log('New clip created:', newClip);
+
     const updatedClips = [...clips, newClip];
+    console.log('Updated clips array:', updatedClips);
     setClips(updatedClips);
 
     // Adjust total duration if needed
@@ -149,15 +159,20 @@ export function ScenesClient() {
     if (sceneEnd > totalDuration) {
       setTotalDuration(Math.ceil(sceneEnd / 10) * 10); // Round up to nearest 10s
     }
+
+    // Show success toast
+    toast.success(`Added "${media.title}" to timeline`);
   };
 
   const handleSaveScene = async () => {
     if (!selectedPatient) {
-      alert('Please select a patient first');
+      toast.error('Please select a patient first');
       return;
     }
 
     setIsSaving(true);
+    const toastId = toast.loading('Saving scene...');
+
     try {
       // Create or update scene
       let sceneId = currentSceneId;
@@ -204,11 +219,13 @@ export function ScenesClient() {
         });
       }
 
-      alert('Scene saved successfully!');
+      toast.success('Scene saved successfully!', { id: toastId });
       fetchScenes(); // Refresh scenes list
+      return sceneId;
     } catch (error) {
       console.error('Error saving scene:', error);
-      alert('Failed to save scene');
+      toast.error('Failed to save scene', { id: toastId });
+      return null;
     } finally {
       setIsSaving(false);
     }
@@ -216,31 +233,39 @@ export function ScenesClient() {
 
   const handleExport = async () => {
     if (!currentSceneId) {
-      alert('Please save the scene first before exporting');
+      toast.error('Please save the scene first before exporting');
       return;
     }
 
     if (clips.length === 0) {
-      alert('Add clips to the timeline before exporting');
+      toast.error('Add clips to the timeline before exporting');
       return;
     }
 
-    const confirmed = confirm(
+    // Show confirmation toast
+    const proceed = window.confirm(
       `This will assemble ${clips.length} clips into a video. This may take several minutes depending on the scene length. Continue?`,
     );
 
-    if (!confirmed) {
+    if (!proceed) {
       return;
     }
 
-    try {
-      setIsSaving(true);
+    setIsExporting(true);
+    const toastId = toast.loading(`Assembling ${clips.length} clips... This may take a few minutes.`);
 
+    try {
       // First, save the scene to ensure clips are up to date
-      await handleSaveScene();
+      const savedSceneId = await handleSaveScene();
+
+      if (!savedSceneId) {
+        throw new Error('Failed to save scene before exporting');
+      }
 
       // Then trigger assembly
-      const response = await authenticatedPost(`/api/scenes/${currentSceneId}/assemble`, user, {
+      toast.loading('Processing video with FFmpeg...', { id: toastId });
+
+      const response = await authenticatedPost(`/api/scenes/${savedSceneId}/assemble`, user, {
         audioTrack: null, // Optional: add background music
       });
 
@@ -251,27 +276,30 @@ export function ScenesClient() {
 
       const data = await response.json();
 
-      alert(
-        `Scene assembled successfully!\n\nVideo URL: ${data.assembledVideoUrl}\nDuration: ${Math.round(data.durationSeconds)}s\nClips: ${data.clipCount}`,
+      toast.success(
+        `Scene assembled successfully! Duration: ${Math.round(data.durationSeconds)}s, ${data.clipCount} clips`,
+        { id: toastId, duration: 5000 },
       );
 
       // Refresh scene to get updated URL
-      if (currentSceneId) {
-        await loadScene(currentSceneId);
+      if (savedSceneId) {
+        await loadScene(savedSceneId);
       }
     } catch (error: any) {
       console.error('Export error:', error);
-      alert(`Failed to export scene: ${error.message}`);
+      toast.error(`Failed to export scene: ${error.message}`, { id: toastId });
     } finally {
-      setIsSaving(false);
+      setIsExporting(false);
     }
   };
 
   const handlePreview = async () => {
     if (!currentSceneId) {
-      alert('Please save the scene first before previewing');
+      toast.error('Please save the scene first before previewing');
       return;
     }
+
+    const toastId = toast.loading('Checking scene status...');
 
     try {
       // Check if scene is assembled
@@ -284,10 +312,12 @@ export function ScenesClient() {
       const data = await response.json();
 
       if (data.isAssembled && data.assembledVideoUrl) {
-        // Open video in new tab or show modal
+        toast.success('Opening video preview...', { id: toastId });
+        // Open video in new tab
         window.open(data.assembledVideoUrl, '_blank');
       } else {
-        const shouldAssemble = confirm(
+        toast.dismiss(toastId);
+        const shouldAssemble = window.confirm(
           'This scene has not been assembled yet. Would you like to assemble it now?',
         );
 
@@ -297,7 +327,7 @@ export function ScenesClient() {
       }
     } catch (error: any) {
       console.error('Preview error:', error);
-      alert(`Failed to preview scene: ${error.message}`);
+      toast.error(`Failed to preview scene: ${error.message}`, { id: toastId });
     }
   };
 
@@ -377,21 +407,47 @@ export function ScenesClient() {
             />
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={handlePreview} disabled={!selectedPatient || clips.length === 0}>
+            <Button
+              variant="ghost"
+              onClick={handlePreview}
+              disabled={!selectedPatient || clips.length === 0 || isExporting}
+            >
               <Eye className="mr-2 h-4 w-4" />
               Preview
             </Button>
-            <Button variant="secondary" onClick={handleExport} disabled={!selectedPatient || clips.length === 0}>
-              <Download className="mr-2 h-4 w-4" />
-              Export
+            <Button
+              variant="secondary"
+              onClick={handleExport}
+              disabled={!selectedPatient || clips.length === 0 || isExporting || isSaving}
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Assembling...
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export
+                </>
+              )}
             </Button>
             <Button
               variant="primary"
               onClick={handleSaveScene}
-              disabled={isSaving || clips.length === 0 || !selectedPatient}
+              disabled={isSaving || clips.length === 0 || !selectedPatient || isExporting}
             >
-              <Save className="mr-2 h-4 w-4" />
-              {isSaving ? 'Saving...' : 'Save Scene'}
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Scene
+                </>
+              )}
             </Button>
           </div>
         </div>
