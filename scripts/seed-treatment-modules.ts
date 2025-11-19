@@ -273,6 +273,7 @@ Format as a professional clinical note suitable for medical records.`,
         .insert(moduleAiPromptsSchema)
         .values({
           ...promptData,
+          createdBy: systemUser.id,
           isActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),

@@ -51,12 +51,6 @@ const DEFAULT_MODULES = [
     domain: 'self_strength' as const,
     description:
       'Help people remember and re-tell how they have faced hardship and what kept them going.',
-    inSessionQuestions: [
-      'When you look back on a hard time, what moment shows you still standing?',
-      'What helped you keep moving when everything said stop?',
-      'Who or what gave you a reason to try again?',
-      'If that moment were a short film, what image would open it?',
-    ],
     reflectionQuestions: [
       {
         text: 'What in this image or scene shows the part of you that refuses to quit?',
@@ -93,12 +87,6 @@ const DEFAULT_MODULES = [
     name: 'Grounding & Regulation',
     domain: 'self_strength' as const,
     description: 'Strengthen awareness of safety, calm, and the body\'s signals of peace.',
-    inSessionQuestions: [
-      'Where do you feel most at ease right now?',
-      'When your mind gets loud, what helps you find quiet again?',
-      'If calm had a color or a sound, what comes to mind?',
-      'Who or what helps you remember you\'re safe?',
-    ],
     reflectionQuestions: [
       {
         text: 'What about this scene feels most like calm or safety for you?',
@@ -125,12 +113,6 @@ const DEFAULT_MODULES = [
     domain: 'relationships_repair' as const,
     description:
       'Rebuild trust and belonging through stories of reaching, helping, or being helped.',
-    inSessionQuestions: [
-      'Who has been part of your story in ways you didn\'t expect?',
-      'When did you risk letting someone close again?',
-      'What does real safety with another person look like to you?',
-      'What makes connection worth the risk?',
-    ],
     reflectionQuestions: [
       {
         text: 'What do you see in this image about closeness or distance?',
@@ -156,12 +138,6 @@ const DEFAULT_MODULES = [
     name: 'Forgiveness & Letting Go',
     domain: 'relationships_repair' as const,
     description: 'Support release of resentment or self-blame and strengthen compassion.',
-    inSessionQuestions: [
-      'What story keeps replaying when you try to rest?',
-      'If you could put down a weight you\'ve carried too long, what might it be?',
-      'What would forgiveness—of yourself or someone else—feel like in your body?',
-      'What would freedom look like if you saw it?',
-    ],
     reflectionQuestions: [
       {
         text: 'What stands out in this image about release or holding on?',
@@ -187,12 +163,6 @@ const DEFAULT_MODULES = [
     name: 'Becoming',
     domain: 'identity_transformation' as const,
     description: 'Integrate new identity and notice growth after change.',
-    inSessionQuestions: [
-      'Who were you then, and who are you now?',
-      'What has stayed true through the changes?',
-      'What\'s one small sign that you\'ve turned a corner?',
-      'If this growth had a symbol, what would it be?',
-    ],
     reflectionQuestions: [
       {
         text: 'What in this image shows the person you\'re becoming?',
@@ -218,12 +188,6 @@ const DEFAULT_MODULES = [
     name: 'Acceptance & Continuity',
     domain: 'identity_transformation' as const,
     description: 'Integrate past and present selves; reduce shame and self-judgment.',
-    inSessionQuestions: [
-      'What truths about you have survived everything?',
-      'Which parts of your past still ask to be understood?',
-      'What would it mean to make peace with that version of you?',
-      'What picture comes to mind when you think of wholeness?',
-    ],
     reflectionQuestions: [
       {
         text: 'What in this scene feels reconciled or whole?',
@@ -249,12 +213,6 @@ const DEFAULT_MODULES = [
     name: 'Direction',
     domain: 'purpose_future' as const,
     description: 'Clarify values and visualize next steps that feel purposeful.',
-    inSessionQuestions: [
-      'What do you want your life to stand for?',
-      'When have you felt most alive or most yourself?',
-      'What direction do you hope this story is heading?',
-      'Who or what helps you keep sight of what matters?',
-    ],
     reflectionQuestions: [
       {
         text: 'What value shines through this scene?',
@@ -280,12 +238,6 @@ const DEFAULT_MODULES = [
     name: 'Sustaining Change',
     domain: 'purpose_future' as const,
     description: 'Help patients maintain progress and see growth as an ongoing story.',
-    inSessionQuestions: [
-      'What helps you stay on track when things get messy again?',
-      'What reminds you of the progress you\'ve made?',
-      'What practices or people keep you steady?',
-      'If your future self looked back on this time, what would they thank you for?',
-    ],
     reflectionQuestions: [
       {
         text: 'What in this image shows steadiness or rhythm?',
@@ -398,10 +350,11 @@ export async function seedModules() {
           scope: 'system',
           createdBy: SYSTEM_USER_ID,
           organizationId: null,
-          inSessionQuestions: moduleData.inSessionQuestions,
           reflectionQuestions: moduleData.reflectionQuestions.map(q => q.text),
           reflectionTemplateId: reflectionTemplate.id,
+          useReflectionTemplate: true, // Use template for reflections
           surveyTemplateId: surveyTemplate.id,
+          useSurveyTemplate: true, // Use template for surveys
           aiPromptText: moduleData.aiPrompt,
           aiPromptMetadata: {
             output_format: 'structured',
