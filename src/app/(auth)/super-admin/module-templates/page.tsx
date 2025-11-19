@@ -10,21 +10,18 @@ import { Layers, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ModuleCard } from '@/components/modules/ModuleCard';
 import { ModuleDetailsModal } from '@/components/modules/ModuleDetailsModal';
-import { ModuleDomainFilter } from '@/components/modules/ModuleDomainFilter';
 import { ModuleEditor } from '@/components/modules/ModuleEditor';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
-type TherapeuticDomain = 'self_strength' | 'relationships_repair' | 'identity_transformation' | 'purpose_future' | null;
+type TherapeuticDomain = 'all' | 'self_strength' | 'relationships_repair' | 'identity_transformation' | 'purpose_future';
 
 export default function SuperAdminModuleTemplatesPage() {
   const { user } = useAuth();
+  const [activeDomain, setActiveDomain] = useState<TherapeuticDomain>('all');
   const [modules, setModules] = useState<TreatmentModule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Filters
-  const [selectedDomain, setSelectedDomain] = useState<TherapeuticDomain>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Modals
@@ -35,18 +32,15 @@ export default function SuperAdminModuleTemplatesPage() {
   // Fetch templates
   useEffect(() => {
     fetchTemplates();
-  }, [selectedDomain]);
+  }, [user]);
 
   async function fetchTemplates() {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (selectedDomain) {
-        params.append('domain', selectedDomain);
-      }
+      setError(null);
 
       const response = await authenticatedFetch(
-        `/api/super-admin/module-templates?${params.toString()}`,
+        `/api/super-admin/module-templates`,
         user,
       );
 
@@ -63,46 +57,42 @@ export default function SuperAdminModuleTemplatesPage() {
     }
   }
 
-  // Filter modules by search query
+  // Filter modules by domain and search
   const filteredModules = modules.filter((module) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      module.name.toLowerCase().includes(query)
-      || module.description.toLowerCase().includes(query)
-    );
+    const matchesDomain = activeDomain === 'all' || module.domain === activeDomain;
+    const matchesSearch = !searchQuery
+      || module.name.toLowerCase().includes(searchQuery.toLowerCase())
+      || module.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesDomain && matchesSearch;
   });
 
-  // Group modules by domain
-  const modulesByDomain = {
-    self_strength: filteredModules.filter(m => m.domain === 'self_strength'),
-    relationships_repair: filteredModules.filter(m => m.domain === 'relationships_repair'),
-    identity_transformation: filteredModules.filter(m => m.domain === 'identity_transformation'),
-    purpose_future: filteredModules.filter(m => m.domain === 'purpose_future'),
+  // Get module count by domain
+  const getDomainCount = (domain: TherapeuticDomain) => {
+    if (domain === 'all') return modules.length;
+    return modules.filter(m => m.domain === domain).length;
   };
 
-  const domainLabels = {
-    self_strength: 'Self & Strength',
-    relationships_repair: 'Relationships & Repair',
-    identity_transformation: 'Identity & Transformation',
-    purpose_future: 'Purpose & Future',
-  };
+  const domains: { id: TherapeuticDomain; label: string }[] = [
+    { id: 'all', label: 'All Templates' },
+    { id: 'self_strength', label: 'Self & Strength' },
+    { id: 'relationships_repair', label: 'Relationships & Repair' },
+    { id: 'identity_transformation', label: 'Identity & Transformation' },
+    { id: 'purpose_future', label: 'Purpose & Future' },
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="border-b bg-white">
-        <div className="px-8 py-6">
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="mx-auto max-w-7xl">
+        {/* Header */}
+        <div className="mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600">
-                <Layers className="h-6 w-6 text-white" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600">
+                <Layers className="h-5 w-5 text-white" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Module Templates</h1>
-                <p className="text-sm text-gray-600">
-                  System-wide templates available to all organizations
-                </p>
+                <p className="text-sm text-gray-600">System-wide templates available to all organizations</p>
               </div>
             </div>
             <button
@@ -110,127 +100,92 @@ export default function SuperAdminModuleTemplatesPage() {
                 setSelectedModule(null);
                 setIsEditorOpen(true);
               }}
-              className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2.5 font-semibold text-white shadow-md transition-all hover:shadow-lg active:scale-95"
+              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              type="button"
             >
-              <Plus className="h-5 w-5" />
-              New Template
+              <Plus className="h-4 w-4" />
+              Create Template
             </button>
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="p-8">
-        {/* Search and Filters */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          {/* Search Bar */}
-          <div className="relative flex-1 sm:max-w-md">
-            <Search className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400" />
+        {/* Domain Tabs */}
+        <div className="mb-6 flex gap-2 overflow-x-auto border-b border-gray-200">
+          {domains.map(dom => (
+            <button
+              key={dom.id}
+              onClick={() => setActiveDomain(dom.id)}
+              className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
+                activeDomain === dom.id
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+              type="button"
+            >
+              {dom.label}
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs ${
+                  activeDomain === dom.id
+                    ? 'bg-indigo-100 text-indigo-600'
+                    : 'bg-gray-100 text-gray-600'
+                }`}
+              >
+                {getDomainCount(dom.id)}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="mb-6">
+          <div className="relative max-w-md">
+            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="Search templates..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 py-2.5 pr-4 pl-10 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-9 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
             />
           </div>
-
-          {/* Domain Filter */}
-          <ModuleDomainFilter
-            selectedDomain={selectedDomain}
-            onSelectDomain={setSelectedDomain}
-          />
         </div>
 
-        {/* Error State */}
-        {error && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {/* Loading State */}
-        {loading && (
+        {/* Content */}
+        {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="mb-3 inline-block h-8 w-8 animate-spin rounded-full border-4 border-purple-200 border-t-purple-600" />
-              <p className="text-sm text-gray-600">Loading templates...</p>
-            </div>
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
           </div>
-        )}
-
-        {/* Module Grid by Domain */}
-        {!loading && !error && (
-          <div className="space-y-8">
-            {(Object.keys(modulesByDomain) as (keyof typeof modulesByDomain)[]).map((domain) => {
-              const domainModules = modulesByDomain[domain];
-              if (domainModules.length === 0 && !selectedDomain) return null;
-              if (selectedDomain && selectedDomain !== domain) return null;
-
-              return (
-                <div key={domain}>
-                  <h2 className="mb-4 text-lg font-semibold text-gray-900">
-                    {domainLabels[domain]}
-                    {' '}
-                    (
-                    {domainModules.length}
-                    )
-                  </h2>
-                  {domainModules.length === 0 ? (
-                    <div className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 p-8 text-center">
-                      <p className="text-sm text-gray-600">
-                        No templates in this domain yet
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                      {domainModules.map(module => (
-                        <ModuleCard
-                          key={module.id}
-                          module={module}
-                          onView={() => {
-                            setSelectedModule(module);
-                            setIsDetailsOpen(true);
-                          }}
-                          onEdit={() => {
-                            setSelectedModule(module);
-                            setIsEditorOpen(true);
-                          }}
-                          onRefresh={fetchTemplates}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* Empty State */}
-            {filteredModules.length === 0 && !loading && (
-              <div className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 p-12 text-center">
-                <Layers className="mx-auto mb-3 h-12 w-12 text-gray-400" />
-                <h3 className="mb-2 text-lg font-semibold text-gray-900">
-                  No templates found
-                </h3>
-                <p className="mb-4 text-sm text-gray-600">
-                  {searchQuery
-                    ? 'Try adjusting your search or filters'
-                    : 'Get started by creating your first system template'}
-                </p>
-                {!searchQuery && (
-                  <button
-                    onClick={() => {
-                      setSelectedModule(null);
-                      setIsEditorOpen(true);
-                    }}
-                    className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create Template
-                  </button>
-                )}
-              </div>
-            )}
+        ) : error ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+            <p className="text-sm text-red-800">{error}</p>
+          </div>
+        ) : filteredModules.length === 0 ? (
+          <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
+            <Layers className="mx-auto mb-3 h-12 w-12 text-gray-400" />
+            <h3 className="mb-1 text-lg font-semibold text-gray-900">No templates found</h3>
+            <p className="text-sm text-gray-600">
+              {searchQuery
+                ? 'Try adjusting your search'
+                : 'Create your first module template to get started'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredModules.map(module => (
+              <ModuleCard
+                key={module.id}
+                module={module}
+                onView={() => {
+                  setSelectedModule(module);
+                  setIsDetailsOpen(true);
+                }}
+                onEdit={() => {
+                  setSelectedModule(module);
+                  setIsEditorOpen(true);
+                }}
+                onRefresh={fetchTemplates}
+              />
+            ))}
           </div>
         )}
       </div>
