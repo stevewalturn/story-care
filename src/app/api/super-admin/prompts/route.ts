@@ -4,11 +4,12 @@
  * POST: Create new system prompt
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/libs/DB';
-import { moduleAiPromptsSchema, usersSchema } from '@/models/Schema';
+import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { db } from '@/libs/DB';
 import { adminAuth } from '@/libs/FirebaseAdmin';
+import { moduleAiPromptsSchema, usersSchema } from '@/models/Schema';
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,11 +21,11 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.substring(7);
     const decodedToken = await adminAuth.verifyIdToken(token);
-    const userId = decodedToken.uid;
+    const firebaseUid = decodedToken.uid;
 
-    // Verify role
+    // Verify role - query by firebaseUid, not id
     const user = await db.query.usersSchema.findFirst({
-      where: eq(usersSchema.id, userId),
+      where: eq(usersSchema.firebaseUid, firebaseUid),
     });
 
     if (!user || user.role !== 'super_admin') {
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
         .orderBy(
           moduleAiPromptsSchema.scope,
           moduleAiPromptsSchema.category,
-          moduleAiPromptsSchema.name
+          moduleAiPromptsSchema.name,
         );
     } else {
       prompts = await db
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
         .orderBy(
           moduleAiPromptsSchema.scope,
           moduleAiPromptsSchema.category,
-          moduleAiPromptsSchema.name
+          moduleAiPromptsSchema.name,
         );
     }
 
@@ -75,11 +76,11 @@ export async function POST(request: NextRequest) {
 
     const token = authHeader.substring(7);
     const decodedToken = await adminAuth.verifyIdToken(token);
-    const userId = decodedToken.uid;
+    const firebaseUid = decodedToken.uid;
 
-    // Verify role
+    // Verify role - query by firebaseUid, not id
     const user = await db.query.usersSchema.findFirst({
-      where: eq(usersSchema.id, userId),
+      where: eq(usersSchema.firebaseUid, firebaseUid),
     });
 
     if (!user || user.role !== 'super_admin') {
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
     if (!name || !promptText || !category) {
       return NextResponse.json(
         { error: 'Missing required fields: name, promptText, category' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
     if (!validCategories.includes(category)) {
       return NextResponse.json(
         { error: `Invalid category. Must be one of: ${validCategories.join(', ')}` },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest) {
         icon: icon || 'sparkles',
         scope: 'system',
         organizationId: null, // System prompts don't belong to an organization
-        createdBy: userId,
+        createdBy: user.id, // Use database UUID, not Firebase UID
         isActive: true,
         useCount: 0,
       })

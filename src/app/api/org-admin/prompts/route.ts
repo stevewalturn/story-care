@@ -4,11 +4,12 @@
  * POST: Create new organization prompt
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { and, eq, or } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { moduleAiPromptsSchema, usersSchema } from '@/models/Schema';
-import { eq, and, or } from 'drizzle-orm';
 import { adminAuth } from '@/libs/FirebaseAdmin';
+import { moduleAiPromptsSchema, usersSchema } from '@/models/Schema';
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,11 +21,11 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.substring(7);
     const decodedToken = await adminAuth.verifyIdToken(token);
-    const userId = decodedToken.uid;
+    const firebaseUid = decodedToken.uid;
 
     // Get user's organization ID and verify role
     const user = await db.query.usersSchema.findFirst({
-      where: eq(usersSchema.id, userId),
+      where: eq(usersSchema.firebaseUid, firebaseUid),
     });
 
     if (!user || user.role !== 'org_admin') {
@@ -42,10 +43,10 @@ export async function GET(request: NextRequest) {
             eq(moduleAiPromptsSchema.scope, 'system'),
             and(
               eq(moduleAiPromptsSchema.scope, 'organization'),
-              eq(moduleAiPromptsSchema.organizationId, user.organizationId!)
-            )
-          )
-        )
+              eq(moduleAiPromptsSchema.organizationId, user.organizationId!),
+            ),
+          ),
+        ),
       )
       .orderBy(moduleAiPromptsSchema.scope, moduleAiPromptsSchema.category, moduleAiPromptsSchema.name);
 
@@ -66,11 +67,11 @@ export async function POST(request: NextRequest) {
 
     const token = authHeader.substring(7);
     const decodedToken = await adminAuth.verifyIdToken(token);
-    const userId = decodedToken.uid;
+    const firebaseUid = decodedToken.uid;
 
     // Get user's organization ID and verify role
     const user = await db.query.usersSchema.findFirst({
-      where: eq(usersSchema.id, userId),
+      where: eq(usersSchema.firebaseUid, firebaseUid),
     });
 
     if (!user || user.role !== 'org_admin') {
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
     if (!name || !promptText || !category) {
       return NextResponse.json(
         { error: 'Missing required fields: name, promptText, category' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
     if (!validCategories.includes(category)) {
       return NextResponse.json(
         { error: `Invalid category. Must be one of: ${validCategories.join(', ')}` },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
         icon: icon || 'sparkles',
         scope: 'organization',
         organizationId: user.organizationId,
-        createdBy: userId,
+        createdBy: user.id,
         isActive: true,
         useCount: 0,
       })

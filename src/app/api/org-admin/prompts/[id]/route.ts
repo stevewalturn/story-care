@@ -5,11 +5,12 @@
  * DELETE: Delete organization prompt
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/libs/DB';
-import { moduleAiPromptsSchema, usersSchema } from '@/models/Schema';
+import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { db } from '@/libs/DB';
 import { adminAuth } from '@/libs/FirebaseAdmin';
+import { moduleAiPromptsSchema, usersSchema } from '@/models/Schema';
 
 type RouteParams = {
   params: Promise<{ id: string }>;
@@ -27,11 +28,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const token = authHeader.substring(7);
     const decodedToken = await adminAuth.verifyIdToken(token);
-    const userId = decodedToken.uid;
+    const firebaseUid = decodedToken.uid;
 
     // Verify role
     const user = await db.query.usersSchema.findFirst({
-      where: eq(usersSchema.id, userId),
+      where: eq(usersSchema.firebaseUid, firebaseUid),
     });
 
     if (!user || user.role !== 'org_admin') {
@@ -65,11 +66,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const token = authHeader.substring(7);
     const decodedToken = await adminAuth.verifyIdToken(token);
-    const userId = decodedToken.uid;
+    const firebaseUid = decodedToken.uid;
 
     // Get user's organization ID and verify role
     const user = await db.query.usersSchema.findFirst({
-      where: eq(usersSchema.id, userId),
+      where: eq(usersSchema.firebaseUid, firebaseUid),
     });
 
     if (!user || user.role !== 'org_admin') {
@@ -89,7 +90,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (existingPrompt.scope !== 'organization' || existingPrompt.organizationId !== user.organizationId) {
       return NextResponse.json(
         { error: 'You can only edit prompts from your organization' },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -102,7 +103,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       if (!validCategories.includes(category)) {
         return NextResponse.json(
           { error: `Invalid category. Must be one of: ${validCategories.join(', ')}` },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -141,11 +142,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     const token = authHeader.substring(7);
     const decodedToken = await adminAuth.verifyIdToken(token);
-    const userId = decodedToken.uid;
+    const firebaseUid = decodedToken.uid;
 
     // Verify role
     const user = await db.query.usersSchema.findFirst({
-      where: eq(usersSchema.id, userId),
+      where: eq(usersSchema.firebaseUid, firebaseUid),
     });
 
     if (!user || user.role !== 'org_admin') {
@@ -164,7 +165,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     if (existingPrompt.scope !== 'organization' || existingPrompt.organizationId !== user.organizationId) {
       return NextResponse.json(
         { error: 'You can only delete prompts from your organization' },
-        { status: 403 }
+        { status: 403 },
       );
     }
 

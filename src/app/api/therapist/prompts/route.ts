@@ -4,11 +4,12 @@
  * POST: Create new private prompt
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { and, eq, or } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { moduleAiPromptsSchema } from '@/models/Schema';
-import { eq, and, or } from 'drizzle-orm';
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
+import { moduleAiPromptsSchema, usersSchema } from '@/models/Schema';
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,10 +21,18 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.substring(7);
     const decodedToken = await verifyIdToken(token);
-    const userId = decodedToken.dbUserId;
+    const firebaseUid = decodedToken.uid;
 
-    // TODO: Get user's organizationId from database
-    // For now, we'll return all system and private prompts
+    // Get user from database to get organizationId and user UUID
+    const user = await db.query.usersSchema.findFirst({
+      where: eq(usersSchema.firebaseUid, firebaseUid),
+    });
+
+    if (!user || user.role !== 'therapist') {
+      return NextResponse.json({ error: 'Forbidden: Therapist access required' }, { status: 403 });
+    }
+
+    // Fetch system prompts + org prompts + private prompts
     const prompts = await db
       .select()
       .from(moduleAiPromptsSchema)
@@ -32,10 +41,13 @@ export async function GET(request: NextRequest) {
           eq(moduleAiPromptsSchema.isActive, true),
           or(
             eq(moduleAiPromptsSchema.scope, 'system'),
-            // eq(moduleAiPromptsSchema.organizationId, userOrgId),
-            eq(moduleAiPromptsSchema.createdBy, userId)
-          )
-        )
+            and(
+              eq(moduleAiPromptsSchema.scope, 'organization'),
+              eq(moduleAiPromptsSchema.organizationId, user.organizationId!),
+            ),
+            eq(moduleAiPromptsSchema.createdBy, user.id),
+          ),
+        ),
       )
       .orderBy(moduleAiPromptsSchema.scope, moduleAiPromptsSchema.category, moduleAiPromptsSchema.name);
 
@@ -56,7 +68,16 @@ export async function POST(request: NextRequest) {
 
     const token = authHeader.substring(7);
     const decodedToken = await verifyIdToken(token);
-    const userId = decodedToken.dbUserId;
+    const firebaseUid = decodedToken.uid;
+
+    // Get user from database
+    const user = await db.query.usersSchema.findFirst({
+      where: eq(usersSchema.firebaseUid, firebaseUid),
+    });
+
+    if (!user || user.role !== 'therapist') {
+      return NextResponse.json({ error: 'Forbidden: Therapist access required' }, { status: 403 });
+    }
 
     const body = await request.json();
     const { name, promptText, description, category, icon } = body;
@@ -65,7 +86,7 @@ export async function POST(request: NextRequest) {
     if (!name || !promptText || !category) {
       return NextResponse.json(
         { error: 'Missing required fields: name, promptText, category' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -74,7 +95,7 @@ export async function POST(request: NextRequest) {
     if (!validCategories.includes(category)) {
       return NextResponse.json(
         { error: `Invalid category. Must be one of: ${validCategories.join(', ')}` },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -89,7 +110,7 @@ export async function POST(request: NextRequest) {
         icon: icon || 'sparkles',
         scope: 'private',
         organizationId: null, // Private prompts don't belong to an organization
-        createdBy: userId,
+        createdBy: user.id,
         isActive: true,
         useCount: 0,
       })
