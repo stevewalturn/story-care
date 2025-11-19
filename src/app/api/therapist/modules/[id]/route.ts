@@ -11,6 +11,10 @@ import {
   getModuleById,
   updateModule,
 } from '@/services/ModuleService';
+import {
+  createReflectionTemplate,
+  createSurveyTemplate,
+} from '@/services/TemplateService';
 import { requireAuth } from '@/utils/AuthHelpers';
 import { updateModuleSchema } from '@/validations/ModuleValidation';
 
@@ -120,13 +124,46 @@ export async function PUT(
     const body = await request.json();
     const validatedData = updateModuleSchema.parse(body);
 
-    // 5. UPDATE MODULE
+    // 5. CREATE TEMPLATES IF NEEDED
+    let reflectionTemplateId = validatedData.reflectionTemplateId || null;
+    let surveyTemplateId = validatedData.surveyTemplateId || null;
+
+    // Create reflection template if using template mode and questions provided
+    // Only create if no existing templateId (don't duplicate on edits)
+    if (body.useReflectionTemplate && body.reflectionTemplateQuestions && !module.reflectionTemplateId) {
+      const reflectionTemplate = await createReflectionTemplate({
+        title: body.reflectionTemplateTitle || `${validatedData.name} - Reflections`,
+        description: body.reflectionTemplateDescription || null,
+        category: 'custom',
+        questions: body.reflectionTemplateQuestions,
+        scope: 'private',
+        createdBy: user.dbUserId,
+        organizationId: null,
+      });
+      reflectionTemplateId = reflectionTemplate!.id;
+    }
+
+    // Create survey template if using template mode and questions provided
+    if (body.useSurveyTemplate && body.surveyTemplateQuestions && !module.surveyTemplateId) {
+      const surveyTemplate = await createSurveyTemplate({
+        title: body.surveyTemplateTitle || `${validatedData.name} - Survey`,
+        description: body.surveyTemplateDescription || null,
+        category: 'custom',
+        questions: body.surveyTemplateQuestions,
+        scope: 'private',
+        createdBy: user.dbUserId,
+        organizationId: null,
+      });
+      surveyTemplateId = surveyTemplate!.id;
+    }
+
+    // 6. UPDATE MODULE
     const updatedModule = await updateModule(resolvedParams.id, {
       name: validatedData.name,
       description: validatedData.description,
-      inSessionQuestions: validatedData.inSessionQuestions,
-      reflectionTemplateId: validatedData.reflectionTemplateId || null,
-      surveyTemplateId: validatedData.surveyTemplateId || null,
+      reflectionQuestions: validatedData.reflectionQuestions,
+      reflectionTemplateId,
+      surveyTemplateId,
       aiPromptText: validatedData.aiPromptText,
       aiPromptMetadata: validatedData.aiPromptMetadata,
       status: validatedData.status,

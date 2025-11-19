@@ -155,28 +155,6 @@ export function ModuleDetailsModal({ module, onClose, onEdit, onCopy }: ModuleDe
             {/* Questions Tab */}
             {activeTab === 'questions' && (
               <div className="space-y-6">
-                {/* Opening Questions (In-Session) */}
-                <div>
-                  <h3 className="mb-3 text-sm font-semibold text-gray-900">
-                    Opening Questions (In-Session)
-                  </h3>
-                  <p className="mb-4 text-sm text-gray-600">
-                    Questions for therapists to guide the therapeutic conversation during live sessions.
-                  </p>
-                  <ol className="space-y-3">
-                    {(module.inSessionQuestions as string[])?.map((question, index) => (
-                      <li key={index} className="flex gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700">
-                          {index + 1}
-                        </span>
-                        <p className="flex-1 text-gray-700">{question}</p>
-                      </li>
-                    )) || (
-                      <p className="text-sm text-gray-500">No in-session questions defined</p>
-                    )}
-                  </ol>
-                </div>
-
                 {/* Reflection Questions (Post-Session) */}
                 <div>
                   <h3 className="mb-3 text-sm font-semibold text-gray-900">

@@ -30,7 +30,6 @@ export async function createModule(data: {
   scope: TemplateScope;
   createdBy: string;
   organizationId?: string | null;
-  inSessionQuestions: string[];
   reflectionQuestions?: string[];
   reflectionTemplateId?: string | null;
   surveyTemplateId?: string | null;
@@ -46,7 +45,6 @@ export async function createModule(data: {
       scope: data.scope,
       createdBy: data.createdBy,
       organizationId: data.organizationId || null,
-      inSessionQuestions: data.inSessionQuestions,
       reflectionQuestions: data.reflectionQuestions || [],
       reflectionTemplateId: data.reflectionTemplateId || null,
       surveyTemplateId: data.surveyTemplateId || null,
@@ -357,7 +355,7 @@ export async function createTemplate(data: {
   domain: TherapeuticDomain;
   description: string;
   createdBy: string;
-  inSessionQuestions: string[];
+
   reflectionQuestions?: string[];
   reflectionTemplateId?: string | null;
   surveyTemplateId?: string | null;
@@ -416,7 +414,7 @@ export async function createOrgModule(data: {
   description: string;
   organizationId: string;
   createdBy: string;
-  inSessionQuestions: string[];
+
   reflectionQuestions?: string[];
   reflectionTemplateId?: string | null;
   surveyTemplateId?: string | null;
@@ -455,7 +453,7 @@ export async function copyTemplateToOrg(
     description: template.description,
     organizationId,
     createdBy: userId,
-    inSessionQuestions: template.inSessionQuestions as string[],
+
     reflectionQuestions: template.reflectionQuestions as string[],
     reflectionTemplateId: template.reflectionTemplateId,
     surveyTemplateId: template.surveyTemplateId,
@@ -513,7 +511,7 @@ export async function createTherapistModule(data: {
   domain: TherapeuticDomain;
   description: string;
   createdBy: string;
-  inSessionQuestions: string[];
+
   reflectionQuestions?: string[];
   reflectionTemplateId?: string | null;
   surveyTemplateId?: string | null;

@@ -14,6 +14,10 @@ import {
   listTemplates,
 
 } from '@/services/ModuleService';
+import {
+  createReflectionTemplate,
+  createSurveyTemplate,
+} from '@/services/TemplateService';
 import { requireAuth } from '@/utils/AuthHelpers';
 import { createModuleSchema } from '@/validations/ModuleValidation';
 
@@ -132,16 +136,48 @@ export async function POST(request: NextRequest) {
     // Otherwise, create new module from scratch
     const validatedData = createModuleSchema.parse(body);
 
+    // Create templates if needed
+    let reflectionTemplateId = validatedData.reflectionTemplateId || null;
+    let surveyTemplateId = validatedData.surveyTemplateId || null;
+
+    // Create reflection template if using template mode and questions provided
+    if (body.useReflectionTemplate && body.reflectionTemplateQuestions) {
+      const reflectionTemplate = await createReflectionTemplate({
+        title: body.reflectionTemplateTitle || `${validatedData.name} - Reflections`,
+        description: body.reflectionTemplateDescription || null,
+        category: 'custom',
+        questions: body.reflectionTemplateQuestions,
+        scope: 'organization',
+        createdBy: user.dbUserId,
+        organizationId: user.organizationId,
+      });
+      reflectionTemplateId = reflectionTemplate!.id;
+    }
+
+    // Create survey template if using template mode and questions provided
+    if (body.useSurveyTemplate && body.surveyTemplateQuestions) {
+      const surveyTemplate = await createSurveyTemplate({
+        title: body.surveyTemplateTitle || `${validatedData.name} - Survey`,
+        description: body.surveyTemplateDescription || null,
+        category: 'custom',
+        questions: body.surveyTemplateQuestions,
+        scope: 'organization',
+        createdBy: user.dbUserId,
+        organizationId: user.organizationId,
+      });
+      surveyTemplateId = surveyTemplate!.id;
+    }
+
     const module = await createOrgModule({
       name: validatedData.name,
       domain: validatedData.domain as TherapeuticDomain,
       description: validatedData.description,
       organizationId: user.organizationId,
       createdBy: user.dbUserId,
-      inSessionQuestions: validatedData.inSessionQuestions,
+
       reflectionQuestions: validatedData.reflectionQuestions,
-      reflectionTemplateId: validatedData.reflectionTemplateId || null,
-      surveyTemplateId: validatedData.surveyTemplateId || null,
+      reflectionTemplateId,
+      surveyTemplateId,
       aiPromptText: validatedData.aiPromptText,
       aiPromptMetadata: validatedData.aiPromptMetadata,
     });

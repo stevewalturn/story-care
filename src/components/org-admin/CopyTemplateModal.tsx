@@ -87,15 +87,6 @@ export function CopyTemplateModal({ template, onClose, onCopied }: CopyTemplateM
             </div>
             <h3 className="mb-1 text-lg font-semibold text-gray-900">{template.name}</h3>
             <p className="text-sm text-gray-600">{template.description}</p>
-            {(template.inSessionQuestions as any[]) && (template.inSessionQuestions as any[]).length > 0 && (
-              <div className="mt-3 border-t border-blue-200 pt-3">
-                <p className="text-xs font-medium text-gray-700">
-                  {(template.inSessionQuestions as any[]).length}
-                  {' '}
-                  in-session questions included
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Custom Name Input */}

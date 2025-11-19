@@ -143,7 +143,7 @@ export async function PUT(
     const updatedModule = await updateModule(resolvedParams.id, {
       name: validatedData.name,
       description: validatedData.description,
-      inSessionQuestions: validatedData.inSessionQuestions,
+
       reflectionTemplateId: validatedData.reflectionTemplateId || null,
       surveyTemplateId: validatedData.surveyTemplateId || null,
       aiPromptText: validatedData.aiPromptText,

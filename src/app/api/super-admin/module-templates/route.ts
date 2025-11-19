@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       domain: validatedData.domain as TherapeuticDomain,
       description: validatedData.description,
       createdBy: user.dbUserId,
-      inSessionQuestions: validatedData.inSessionQuestions,
+
       reflectionQuestions: validatedData.reflectionQuestions,
       reflectionTemplateId: validatedData.reflectionTemplateId || null,
       surveyTemplateId: validatedData.surveyTemplateId || null,
