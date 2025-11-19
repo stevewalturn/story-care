@@ -1,6 +1,17 @@
 'use client';
 
-import { Image as ImageIcon, Pause, Play, Plus, Trash2, Volume2 } from 'lucide-react';
+import {
+  DndContext,
+  type DragEndEvent,
+  type DragStartEvent,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical, Image as ImageIcon, Pause, Play, Plus, Trash2, Volume2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 
@@ -22,6 +33,81 @@ type SceneTimelineProps = {
   onAddClip: () => void;
 };
 
+// Sortable clip item component
+function SortableClipItem({
+  clip,
+  isSelected,
+  onClick,
+  onDelete,
+  formatTime,
+}: {
+  clip: Clip;
+  isSelected: boolean;
+  onClick: () => void;
+  onDelete: () => void;
+  formatTime: (seconds: number) => string;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: clip.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      onClick={onClick}
+      className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 p-3 transition-all ${
+        isSelected
+          ? 'border-indigo-500 bg-indigo-50'
+          : 'border-gray-200 bg-white hover:border-gray-300'
+      }`}
+    >
+      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+        <GripVertical className="h-5 w-5 text-gray-400" />
+      </div>
+
+      <div className="h-16 w-28 flex-shrink-0 overflow-hidden rounded">
+        <img src={clip.thumbnailUrl} alt={clip.title} className="h-full w-full object-cover" />
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <h4 className="truncate font-medium text-gray-900">{clip.title}</h4>
+        <div className="mt-1 flex items-center gap-3 text-xs text-gray-600">
+          <span className="flex items-center gap-1">
+            {clip.type === 'image' ? (
+              <ImageIcon className="h-3 w-3" />
+            ) : (
+              <Play className="h-3 w-3" />
+            )}
+            {clip.type}
+          </span>
+          <span className="font-mono">{formatTime(clip.duration)}</span>
+          {clip.audioTrack && (
+            <span className="flex items-center gap-1">
+              <Volume2 className="h-3 w-3" />
+              Audio
+            </span>
+          )}
+        </div>
+      </div>
+
+      <Button variant="ghost" size="sm" onClick={(e) => {
+        e.stopPropagation();
+        onDelete();
+      }}
+      >
+        <Trash2 className="h-4 w-4 text-red-600" />
+      </Button>
+    </div>
+  );
+}
+
 export function SceneTimeline({
   clips,
   totalDuration,
@@ -31,8 +117,15 @@ export function SceneTimeline({
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
-  const [_draggingClipId, _setDraggingClipId] = useState<string | null>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+  );
 
   // Handle playback
   useEffect(() => {
@@ -68,10 +161,53 @@ export function SceneTimeline({
 
   const handleDeleteClip = (clipId: string) => {
     const updatedClips = clips.filter(c => c.id !== clipId);
-    onClipsChange(updatedClips);
+    // Recalculate start times after deletion
+    let currentStartTime = 0;
+    const recalculatedClips = updatedClips.map((clip) => {
+      const updatedClip = { ...clip, startTime: currentStartTime };
+      currentStartTime += clip.duration;
+      return updatedClip;
+    });
+    onClipsChange(recalculatedClips);
     if (selectedClipId === clipId) {
       setSelectedClipId(null);
     }
+  };
+
+  const handleDragStart = (_event: DragStartEvent) => {
+    // Can add visual feedback here if needed
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const oldIndex = clips.findIndex(clip => clip.id === active.id);
+    const newIndex = clips.findIndex(clip => clip.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) {
+      return;
+    }
+
+    // Reorder clips array
+    const reorderedClips = [...clips];
+    const [movedClip] = reorderedClips.splice(oldIndex, 1);
+    if (movedClip) {
+      reorderedClips.splice(newIndex, 0, movedClip);
+    }
+
+    // Recalculate start times based on new order
+    let currentStartTime = 0;
+    const updatedClips = reorderedClips.map((clip) => {
+      const updatedClip = { ...clip, startTime: currentStartTime };
+      currentStartTime += clip.duration;
+      return updatedClip;
+    });
+
+    onClipsChange(updatedClips);
   };
 
   const formatTime = (seconds: number) => {
@@ -90,7 +226,57 @@ export function SceneTimeline({
   const selectedClip = clips.find(c => c.id === selectedClipId);
 
   return (
-    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+    <div className="grid h-full grid-cols-2 gap-4">
+      {/* Clip List (Left) - Sortable */}
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+        <div className="border-b border-gray-200 bg-gray-50 p-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium text-gray-900">Clips ({clips.length})</h3>
+            <Button variant="secondary" size="sm" onClick={onAddClip}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Clip
+            </Button>
+          </div>
+          <p className="mt-1 text-xs text-gray-600">Drag to reorder clips</p>
+        </div>
+
+        <div className="max-h-[500px] space-y-2 overflow-y-auto p-4">
+          {clips.length === 0 ? (
+            <div className="flex h-40 items-center justify-center text-center">
+              <div>
+                <p className="mb-2 text-sm text-gray-500">No clips added yet</p>
+                <Button variant="secondary" size="sm" onClick={onAddClip}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add First Clip
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={clips.map(c => c.id)} strategy={verticalListSortingStrategy}>
+                {clips.map(clip => (
+                  <SortableClipItem
+                    key={clip.id}
+                    clip={clip}
+                    isSelected={selectedClipId === clip.id}
+                    onClick={() => setSelectedClipId(clip.id)}
+                    onDelete={() => handleDeleteClip(clip.id)}
+                    formatTime={formatTime}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          )}
+        </div>
+      </div>
+
+      {/* Timeline Visualization (Right) */}
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
       {/* Controls */}
       <div className="border-b border-gray-200 bg-gray-50 p-4">
         <div className="flex items-center gap-4">
@@ -111,10 +297,6 @@ export function SceneTimeline({
               {formatTime(totalDuration)}
             </div>
           </div>
-          <Button variant="secondary" size="sm" onClick={onAddClip}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Clip
-          </Button>
         </div>
       </div>
 
@@ -255,6 +437,7 @@ export function SceneTimeline({
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }
