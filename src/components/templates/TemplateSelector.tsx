@@ -2,7 +2,7 @@
 
 /**
  * Template Selector Component
- * Single-select component for choosing reflection or survey templates
+ * Multi-select component for choosing reflection or survey templates
  */
 
 import { FileText, Search } from 'lucide-react';
@@ -22,13 +22,12 @@ type Template = {
 };
 
 type TemplateSelectorProps = {
-  selectedTemplateId: string | null;
-  onChange: (templateId: string | null) => void;
+  selectedTemplateIds: string[];
+  onChange: (templateIds: string[]) => void;
   templateType: 'reflection' | 'survey';
   apiEndpoint?: string;
   label?: string;
   description?: string;
-  allowNone?: boolean;
 };
 
 const categoryLabels: Record<string, string> = {
@@ -52,13 +51,12 @@ const categoryColors: Record<string, string> = {
 };
 
 export function TemplateSelector({
-  selectedTemplateId,
+  selectedTemplateIds,
   onChange,
   templateType,
   apiEndpoint,
   label,
   description,
-  allowNone = true,
 }: TemplateSelectorProps) {
   const { user } = useAuth();
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -107,8 +105,12 @@ export function TemplateSelector({
     }
   };
 
-  const handleSelectTemplate = (templateId: string | null) => {
-    onChange(templateId);
+  const handleToggleTemplate = (templateId: string) => {
+    if (selectedTemplateIds.includes(templateId)) {
+      onChange(selectedTemplateIds.filter(id => id !== templateId));
+    } else {
+      onChange([...selectedTemplateIds, templateId]);
+    }
   };
 
   // Filter templates
@@ -184,46 +186,8 @@ export function TemplateSelector({
           </div>
         ) : (
           <>
-            {allowNone && (
-              <label
-                className={`flex cursor-pointer items-start gap-3 rounded-lg border-2 p-3 transition-all ${
-                  selectedTemplateId === null
-                    ? 'border-indigo-500 bg-indigo-50'
-                    : 'border-transparent bg-white hover:border-gray-300'
-                }`}
-              >
-                <div className="flex h-5 items-center">
-                  <div className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all ${
-                    selectedTemplateId === null
-                      ? 'border-indigo-600 bg-indigo-600'
-                      : 'border-gray-300 bg-white'
-                  }`}
-                  >
-                    {selectedTemplateId === null && (
-                      <div className="h-2 w-2 rounded-full bg-white" />
-                    )}
-                  </div>
-                  <input
-                    type="radio"
-                    checked={selectedTemplateId === null}
-                    onChange={() => handleSelectTemplate(null)}
-                    className="sr-only"
-                  />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <span className="text-sm font-medium text-gray-900">
-                    No template (custom questions)
-                  </span>
-                  <p className="text-xs text-gray-600">
-                    I'll create custom questions for this module
-                  </p>
-                </div>
-              </label>
-            )}
-
             {filteredTemplates.map((template) => {
-              const isSelected = selectedTemplateId === template.id;
+              const isSelected = selectedTemplateIds.includes(template.id);
 
               return (
                 <label
@@ -235,21 +199,11 @@ export function TemplateSelector({
                   }`}
                 >
                   <div className="flex h-5 items-center">
-                    <div className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all ${
-                      isSelected
-                        ? 'border-indigo-600 bg-indigo-600'
-                        : 'border-gray-300 bg-white'
-                    }`}
-                    >
-                      {isSelected && (
-                        <div className="h-2 w-2 rounded-full bg-white" />
-                      )}
-                    </div>
                     <input
-                      type="radio"
+                      type="checkbox"
                       checked={isSelected}
-                      onChange={() => handleSelectTemplate(template.id)}
-                      className="sr-only"
+                      onChange={() => handleToggleTemplate(template.id)}
+                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/20"
                     />
                   </div>
 
@@ -299,13 +253,20 @@ export function TemplateSelector({
       </div>
 
       {/* Selected info */}
-      {selectedTemplateId && (
+      {selectedTemplateIds.length > 0 && (
         <div className="mt-2 text-xs text-gray-600">
-          Template selected
+          {selectedTemplateIds.length}
           {' '}
-          {templates.find(t => t.id === selectedTemplateId)?.questions?.length || 0}
+          template
+          {selectedTemplateIds.length !== 1 ? 's' : ''}
           {' '}
-          questions)
+          selected (
+          {selectedTemplateIds.reduce((total, id) => {
+            const template = templates.find(t => t.id === id);
+            return total + (template?.questions?.length || 0);
+          }, 0)}
+          {' '}
+          total questions)
         </div>
       )}
     </div>

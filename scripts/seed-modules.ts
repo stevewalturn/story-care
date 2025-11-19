@@ -341,7 +341,7 @@ export async function seedModules() {
 
       // 3. Create treatment module
       console.log('  🎯 Creating treatment module...');
-      const [module] = await db
+      const [newModule] = await db
         .insert(treatmentModulesSchema)
         .values({
           name: moduleData.name,
@@ -350,11 +350,8 @@ export async function seedModules() {
           scope: 'system',
           createdBy: SYSTEM_USER_ID,
           organizationId: null,
-          reflectionQuestions: moduleData.reflectionQuestions.map(q => q.text),
-          reflectionTemplateId: reflectionTemplate.id,
-          useReflectionTemplate: true, // Use template for reflections
-          surveyTemplateId: surveyTemplate.id,
-          useSurveyTemplate: true, // Use template for surveys
+          reflectionTemplateIds: [reflectionTemplate.id],
+          surveyTemplateIds: [surveyTemplate.id],
           aiPromptText: moduleData.aiPrompt,
           aiPromptMetadata: {
             output_format: 'structured',
@@ -374,11 +371,11 @@ export async function seedModules() {
         })
         .returning();
 
-      if (!module) {
+      if (!newModule) {
         throw new Error('Failed to create treatment module');
       }
 
-      console.log(`  ✅ Module created: ${module.id}`);
+      console.log(`  ✅ Module created: ${newModule.id}`);
       console.log(`  🎉 Successfully seeded: ${moduleData.name}`);
       successCount++;
     } catch (error) {

@@ -71,13 +71,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const module = await createModule({
+    const newModule = await createModule({
       ...validated,
       createdBy: user.dbUserId,
       organizationId: validated.scope === 'private' ? null : user.organizationId,
     });
 
-    return NextResponse.json({ module }, { status: 201 });
+    return NextResponse.json({ module: newModule }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message.includes('validation')) {
       return NextResponse.json({ error: error.message }, { status: 400 });

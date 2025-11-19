@@ -659,15 +659,9 @@ export const treatmentModulesSchema = pgTable('treatment_modules', {
     .references(() => usersSchema.id)
     .notNull(),
 
-  // Module Components (JSONB for flexibility)
-  reflectionQuestions: jsonb('reflection_questions'), // Post-session reflection questions for patients in story pages (used if useReflectionTemplate = false)
-  reflectionTemplateId: uuid('reflection_template_id').references(
-    () => reflectionTemplatesSchema.id,
-  ),
-  useReflectionTemplate: boolean('use_reflection_template').default(false), // If true, use reflectionTemplateId; if false, use reflectionQuestions array
-
-  surveyTemplateId: uuid('survey_template_id').references(() => surveyTemplatesSchema.id),
-  useSurveyTemplate: boolean('use_survey_template').default(false), // If true, use surveyTemplateId; if false, use custom survey questions
+  // Module Components - Template References (Multi-select)
+  reflectionTemplateIds: uuid('reflection_template_ids').array().default([]).notNull(), // Array of reflection template IDs
+  surveyTemplateIds: uuid('survey_template_ids').array().default([]).notNull(), // Array of survey template IDs
 
   // AI Prompts
   aiPromptText: text('ai_prompt_text').notNull(),

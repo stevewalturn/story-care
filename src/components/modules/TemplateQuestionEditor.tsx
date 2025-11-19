@@ -43,7 +43,7 @@ export function TemplateQuestionEditor({
 
   const updateQuestion = (id: string, updates: Partial<TemplateQuestion>) => {
     onChange(
-      questions.map((q) =>
+      questions.map(q =>
         q.id === id ? { ...q, ...updates } : q,
       ),
     );
@@ -200,7 +200,10 @@ export function TemplateQuestionEditor({
                       <div className="space-y-2">
                         {(question.options || []).map((option, optIndex) => (
                           <div key={optIndex} className="flex items-center gap-2">
-                            <span className="text-xs text-gray-500">{optIndex + 1}.</span>
+                            <span className="text-xs text-gray-500">
+                              {optIndex + 1}
+                              .
+                            </span>
                             <Input
                               value={option}
                               onChange={e => updateOption(question.id, optIndex, e.target.value)}
@@ -233,8 +236,7 @@ export function TemplateQuestionEditor({
                           onChange={e =>
                             updateQuestion(question.id, {
                               scaleMin: Number.parseInt(e.target.value),
-                            })
-                          }
+                            })}
                         />
                       </div>
                       <div>
@@ -247,8 +249,7 @@ export function TemplateQuestionEditor({
                           onChange={e =>
                             updateQuestion(question.id, {
                               scaleMax: Number.parseInt(e.target.value),
-                            })
-                          }
+                            })}
                         />
                       </div>
                       <div>
@@ -258,8 +259,7 @@ export function TemplateQuestionEditor({
                         <Input
                           value={question.scaleMinLabel || ''}
                           onChange={e =>
-                            updateQuestion(question.id, { scaleMinLabel: e.target.value })
-                          }
+                            updateQuestion(question.id, { scaleMinLabel: e.target.value })}
                           placeholder="e.g., Not at all"
                         />
                       </div>
@@ -270,8 +270,7 @@ export function TemplateQuestionEditor({
                         <Input
                           value={question.scaleMaxLabel || ''}
                           onChange={e =>
-                            updateQuestion(question.id, { scaleMaxLabel: e.target.value })
-                          }
+                            updateQuestion(question.id, { scaleMaxLabel: e.target.value })}
                           placeholder="e.g., Extremely"
                         />
                       </div>
@@ -294,7 +293,15 @@ export function TemplateQuestionEditor({
 
       {questions.length > 0 && (
         <p className="text-xs text-gray-500">
-          {questions.length} question{questions.length !== 1 ? 's' : ''} in this {templateType} set
+          {questions.length}
+          {' '}
+          question
+          {questions.length !== 1 ? 's' : ''}
+          {' '}
+          in this
+          {templateType}
+          {' '}
+          set
         </p>
       )}
     </div>

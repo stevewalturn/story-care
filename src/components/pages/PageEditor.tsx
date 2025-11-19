@@ -81,8 +81,8 @@ type SessionWithModule = {
     name: string;
     domain: string;
     description: string;
-    reflectionTemplateId: string | null;
-    surveyTemplateId: string | null;
+    reflectionTemplateIds: string[];
+    surveyTemplateIds: string[];
   } | null;
 };
 

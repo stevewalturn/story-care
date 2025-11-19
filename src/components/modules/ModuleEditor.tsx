@@ -31,20 +31,12 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
   const [name, setName] = useState('');
   const [domain, setDomain] = useState<TherapeuticDomain>('self_strength');
   const [description, setDescription] = useState('');
-  // Template IDs - now using template library
-  const [reflectionTemplateId, setReflectionTemplateId] = useState<string | null>(null);
-  const [surveyTemplateId, setSurveyTemplateId] = useState<string | null>(null);
+  // Template IDs - multi-select arrays
+  const [reflectionTemplateIds, setReflectionTemplateIds] = useState<string[]>([]);
+  const [surveyTemplateIds, setSurveyTemplateIds] = useState<string[]>([]);
 
   // AI Prompts state - now uses prompt library
   const [selectedPromptIds, setSelectedPromptIds] = useState<string[]>([]);
-
-  // Survey Bundle state
-  const [surveyBundle, setSurveyBundle] = useState({
-    emotionalImpact: false,
-    resonance: false,
-    openFeedback: false,
-    primaryEmotion: false,
-  });
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,21 +48,14 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
       setDomain(module.domain as TherapeuticDomain);
       setDescription(module.description);
 
-      // Load template IDs
-      setReflectionTemplateId((module as any).reflectionTemplateId || null);
-      setSurveyTemplateId((module as any).surveyTemplateId || null);
+      // Load template IDs arrays
+      setReflectionTemplateIds((module as any).reflectionTemplateIds || []);
+      setSurveyTemplateIds((module as any).surveyTemplateIds || []);
 
       // Load AI prompts from module - now expects array of prompt IDs
       if (module.aiPromptMetadata) {
         const promptIds = (module.aiPromptMetadata as any)?.promptIds || [];
         setSelectedPromptIds(promptIds);
-
-        setSurveyBundle((module.aiPromptMetadata as any)?.surveyBundle || {
-          emotionalImpact: false,
-          resonance: false,
-          openFeedback: false,
-          primaryEmotion: false,
-        });
       }
     }
   }, [module]);
@@ -87,13 +72,12 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
         description,
         scope,
 
-        // Template IDs from library
-        reflectionTemplateId,
-        surveyTemplateId,
+        // Template ID arrays from library
+        reflectionTemplateIds,
+        surveyTemplateIds,
 
         aiPromptMetadata: {
           promptIds: selectedPromptIds,
-          surveyBundle,
         },
       };
 
@@ -192,8 +176,8 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
 
               {/* Reflection Questions Template */}
               <TemplateSelector
-                selectedTemplateId={reflectionTemplateId}
-                onChange={setReflectionTemplateId}
+                selectedTemplateIds={reflectionTemplateIds}
+                onChange={setReflectionTemplateIds}
                 templateType="reflection"
                 apiEndpoint={
                   scope === 'system'
@@ -204,7 +188,6 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                 }
                 label="Reflection Questions (Qualitative Data)"
                 description="Post-session questions for patients in Story Pages. These collect qualitative narrative responses."
-                allowNone={true}
               />
 
               {/* AI Prompts - Now using Prompt Library */}
@@ -222,65 +205,10 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                 description="Select AI prompts from the library to use for analyzing transcripts with this module"
               />
 
-              {/* Survey Bundle (Quantitative Data) */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-900">
-                  Survey Bundle (Quantitative Data)
-                </label>
-                <p className="mb-3 text-xs text-gray-500">
-                  Structured survey questions for patients in Story Pages. These collect quantitative outcome data.
-                </p>
-                <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-4">
-                  <label className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={surveyBundle.emotionalImpact}
-                      onChange={e => setSurveyBundle({ ...surveyBundle, emotionalImpact: e.target.checked })}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                    <span className="text-sm text-gray-900">
-                      Emotional Impact (1-5 scale, 1=no impact, 5=very strong)
-                    </span>
-                  </label>
-
-                  <label className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={surveyBundle.resonance}
-                      onChange={e => setSurveyBundle({ ...surveyBundle, resonance: e.target.checked })}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                    <span className="text-sm text-gray-900">
-                      Resonance (1-5 scale, 1=not at all, 5=completely)
-                    </span>
-                  </label>
-
-                  <label className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={surveyBundle.openFeedback}
-                      onChange={e => setSurveyBundle({ ...surveyBundle, openFeedback: e.target.checked })}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                    <span className="text-sm text-gray-900">Open Feedback</span>
-                  </label>
-
-                  <label className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={surveyBundle.primaryEmotion}
-                      onChange={e => setSurveyBundle({ ...surveyBundle, primaryEmotion: e.target.checked })}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                    <span className="text-sm text-gray-900">Primary Emotion</span>
-                  </label>
-                </div>
-              </div>
-
               {/* Survey Questions Template */}
               <TemplateSelector
-                selectedTemplateId={surveyTemplateId}
-                onChange={setSurveyTemplateId}
+                selectedTemplateIds={surveyTemplateIds}
+                onChange={setSurveyTemplateIds}
                 templateType="survey"
                 apiEndpoint={
                   scope === 'system'
@@ -289,9 +217,8 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                       ? '/api/org-admin/templates'
                       : '/api/therapist/templates'
                 }
-                label="Custom Survey Questions (Optional)"
-                description="Select a survey template with custom questions. Leave empty to use only the Survey Bundle above."
-                allowNone={true}
+                label="Survey Questions (Quantitative Data)"
+                description="Structured survey questions for patients in Story Pages. These collect quantitative outcome data."
               />
 
               {/* Error */}

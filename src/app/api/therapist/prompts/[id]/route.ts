@@ -5,11 +5,12 @@
  * DELETE: Delete own private prompt
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/libs/DB';
-import { moduleAiPromptsSchema } from '@/models/Schema';
+import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { db } from '@/libs/DB';
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
+import { moduleAiPromptsSchema } from '@/models/Schema';
 
 type RouteParams = {
   params: Promise<{ id: string }>;
@@ -69,7 +70,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (existingPrompt.scope !== 'private' || existingPrompt.createdBy !== userId) {
       return NextResponse.json(
         { error: 'You can only edit your own private prompts' },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -82,7 +83,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       if (!validCategories.includes(category)) {
         return NextResponse.json(
           { error: `Invalid category. Must be one of: ${validCategories.join(', ')}` },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -135,7 +136,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     if (existingPrompt.scope !== 'private' || existingPrompt.createdBy !== userId) {
       return NextResponse.json(
         { error: 'You can only delete your own private prompts' },
-        { status: 403 }
+        { status: 403 },
       );
     }
 

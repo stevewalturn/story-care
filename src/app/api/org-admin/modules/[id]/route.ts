@@ -46,14 +46,14 @@ export async function GET(
     }
 
     // 4. FETCH MODULE
-    const { module, reflectionTemplate, surveyTemplate } = await getModuleById(
+    const { module: orgModule, reflectionTemplates, surveyTemplates } = await getModuleById(
       resolvedParams.id,
     );
 
     // 5. VERIFY MODULE BELONGS TO ORG (or is system template)
     if (
-      module.scope === 'organization'
-      && module.organizationId !== user.organizationId
+      orgModule.scope === 'organization'
+      && orgModule.organizationId !== user.organizationId
     ) {
       return NextResponse.json(
         { error: 'Module not found or access denied' },
@@ -61,7 +61,7 @@ export async function GET(
       );
     }
 
-    if (module.scope === 'private') {
+    if (orgModule.scope === 'private') {
       return NextResponse.json(
         { error: 'Cannot access private modules' },
         { status: 403 },
@@ -69,9 +69,9 @@ export async function GET(
     }
 
     return NextResponse.json({
-      module,
-      reflectionTemplate,
-      surveyTemplate,
+      module: orgModule,
+      reflectionTemplates,
+      surveyTemplates,
     });
   } catch (error: any) {
     console.error('[Org Admin] Get module error:', error);
@@ -119,16 +119,16 @@ export async function PUT(
     }
 
     // 4. VERIFY MODULE EXISTS AND BELONGS TO ORG
-    const { module } = await getModuleById(resolvedParams.id);
+    const { module: orgModule } = await getModuleById(resolvedParams.id);
 
-    if (module.scope !== 'organization') {
+    if (orgModule.scope !== 'organization') {
       return NextResponse.json(
         { error: 'Can only update organization modules' },
         { status: 403 },
       );
     }
 
-    if (module.organizationId !== user.organizationId) {
+    if (orgModule.organizationId !== user.organizationId) {
       return NextResponse.json(
         { error: 'Module not found or access denied' },
         { status: 404 },
@@ -144,8 +144,8 @@ export async function PUT(
       name: validatedData.name,
       description: validatedData.description,
 
-      reflectionTemplateId: validatedData.reflectionTemplateId || null,
-      surveyTemplateId: validatedData.surveyTemplateId || null,
+      reflectionTemplateIds: validatedData.reflectionTemplateIds,
+      surveyTemplateIds: validatedData.surveyTemplateIds,
       aiPromptText: validatedData.aiPromptText,
       aiPromptMetadata: validatedData.aiPromptMetadata,
       status: validatedData.status,
@@ -208,16 +208,16 @@ export async function DELETE(
     }
 
     // 4. VERIFY MODULE EXISTS AND BELONGS TO ORG
-    const { module } = await getModuleById(resolvedParams.id);
+    const { module: orgModule } = await getModuleById(resolvedParams.id);
 
-    if (module.scope !== 'organization') {
+    if (orgModule.scope !== 'organization') {
       return NextResponse.json(
         { error: 'Can only archive organization modules' },
         { status: 403 },
       );
     }
 
-    if (module.organizationId !== user.organizationId) {
+    if (orgModule.organizationId !== user.organizationId) {
       return NextResponse.json(
         { error: 'Module not found or access denied' },
         { status: 404 },

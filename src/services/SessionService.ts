@@ -103,7 +103,7 @@ export async function getSessionWithModule(sessionId: string) {
 
   // Get module assignment if exists
   let sessionModule = null;
-  let module = null;
+  let treatmentModule = null;
 
   if (session.moduleId) {
     const [sm] = await db
@@ -121,14 +121,14 @@ export async function getSessionWithModule(sessionId: string) {
         .where(eq(treatmentModulesSchema.id, session.moduleId))
         .limit(1);
 
-      module = mod || null;
+      treatmentModule = mod || null;
     }
   }
 
   return {
     session,
     sessionModule,
-    module,
+    module: treatmentModule,
   };
 }
 

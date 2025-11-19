@@ -62,14 +62,14 @@ export async function generateSessionSummary(sessionId: string): Promise<string>
     group = grp || null;
   }
 
-  let module = null;
+  let treatmentModule = null;
   if (session.moduleId) {
     const [mod] = await db
       .select()
       .from(treatmentModulesSchema)
       .where(eq(treatmentModulesSchema.id, session.moduleId))
       .limit(1);
-    module = mod || null;
+    treatmentModule = mod || null;
   }
 
   // Fetch transcript
@@ -130,7 +130,7 @@ Be concise but comprehensive. Include specific quotes with timestamps when relev
 - Date: ${session.sessionDate}
 - Type: ${session.sessionType}
 - Patient: ${patientName}
-${module ? `- Module: ${module.name} (${module.domain})` : ''}
+${treatmentModule ? `- Module: ${treatmentModule.name} (${treatmentModule.domain})` : ''}
 - Duration: ${session.audioDurationSeconds ? `${Math.floor(session.audioDurationSeconds / 60)} minutes` : 'Unknown'}
 
 **Full Transcript:**
@@ -160,7 +160,7 @@ ${formattedTranscript}`;
   const finalSummary = `# Session: ${session.title}
 
 **Date:** ${session.sessionDate} | **Type:** ${session.sessionType} | **Patient:** ${patientName}
-${module ? `**Module:** ${module.name} (${module.domain})` : ''}
+${treatmentModule ? `**Module:** ${treatmentModule.name} (${treatmentModule.domain})` : ''}
 
 ---
 

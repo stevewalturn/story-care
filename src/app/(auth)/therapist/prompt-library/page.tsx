@@ -5,11 +5,11 @@
 
 'use client';
 
+import { FileText, MessageCircle, Plus, Search, Sparkles, Target } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Plus, Search, Sparkles, Target, FileText, MessageCircle } from 'lucide-react';
+import { CreatePromptModal } from '@/components/prompts/CreatePromptModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
-import { CreatePromptModal } from '@/components/prompts/CreatePromptModal';
 
 type Prompt = {
   id: string;
@@ -70,17 +70,17 @@ export default function PromptLibraryPage() {
   };
 
   const filteredPrompts = prompts.filter((prompt) => {
-    const matchesSearch = prompt.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      prompt.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = prompt.name.toLowerCase().includes(searchQuery.toLowerCase())
+      || prompt.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || prompt.category === categoryFilter;
     const matchesScope = scopeFilter === 'all' || prompt.scope === scopeFilter;
     return matchesSearch && matchesCategory && matchesScope;
   });
 
   const groupedPrompts = {
-    system: filteredPrompts.filter((p) => p.scope === 'system'),
-    organization: filteredPrompts.filter((p) => p.scope === 'organization'),
-    private: filteredPrompts.filter((p) => p.scope === 'private'),
+    system: filteredPrompts.filter(p => p.scope === 'system'),
+    organization: filteredPrompts.filter(p => p.scope === 'organization'),
+    private: filteredPrompts.filter(p => p.scope === 'private'),
   };
 
   if (loading) {
@@ -113,21 +113,21 @@ export default function PromptLibraryPage() {
         {/* Filters */}
         <div className="mb-6 flex flex-wrap gap-4">
           {/* Search */}
-          <div className="relative flex-1 min-w-[300px]">
-            <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+          <div className="relative min-w-[300px] flex-1">
+            <Search className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search prompts..."
-              className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 py-2.5 pr-4 pl-10 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
             />
           </div>
 
           {/* Category Filter */}
           <select
             value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
+            onChange={e => setCategoryFilter(e.target.value)}
             className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
           >
             <option value="all">All Categories</option>
@@ -140,7 +140,7 @@ export default function PromptLibraryPage() {
           {/* Scope Filter */}
           <select
             value={scopeFilter}
-            onChange={(e) => setScopeFilter(e.target.value)}
+            onChange={e => setScopeFilter(e.target.value)}
             className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
           >
             <option value="all">All Scopes</option>
@@ -154,10 +154,12 @@ export default function PromptLibraryPage() {
         {groupedPrompts.system.length > 0 && (
           <div className="mb-8">
             <h2 className="mb-4 text-lg font-semibold text-gray-900">
-              📚 System Prompts ({groupedPrompts.system.length})
+              📚 System Prompts (
+              {groupedPrompts.system.length}
+              )
             </h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {groupedPrompts.system.map((prompt) => (
+              {groupedPrompts.system.map(prompt => (
                 <PromptCard key={prompt.id} prompt={prompt} onUpdate={fetchPrompts} />
               ))}
             </div>
@@ -168,10 +170,12 @@ export default function PromptLibraryPage() {
         {groupedPrompts.organization.length > 0 && (
           <div className="mb-8">
             <h2 className="mb-4 text-lg font-semibold text-gray-900">
-              🏢 Organization Prompts ({groupedPrompts.organization.length})
+              🏢 Organization Prompts (
+              {groupedPrompts.organization.length}
+              )
             </h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {groupedPrompts.organization.map((prompt) => (
+              {groupedPrompts.organization.map(prompt => (
                 <PromptCard key={prompt.id} prompt={prompt} onUpdate={fetchPrompts} />
               ))}
             </div>
@@ -182,10 +186,12 @@ export default function PromptLibraryPage() {
         {groupedPrompts.private.length > 0 && (
           <div className="mb-8">
             <h2 className="mb-4 text-lg font-semibold text-gray-900">
-              🔒 My Private Prompts ({groupedPrompts.private.length})
+              🔒 My Private Prompts (
+              {groupedPrompts.private.length}
+              )
             </h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {groupedPrompts.private.map((prompt) => (
+              {groupedPrompts.private.map(prompt => (
                 <PromptCard key={prompt.id} prompt={prompt} onUpdate={fetchPrompts} editable />
               ))}
             </div>
@@ -227,7 +233,7 @@ function PromptCard({
   const IconComponent = categoryIcons[prompt.category];
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
       <div className="mb-3 flex items-start justify-between">
         <div className={`rounded-lg p-2 ${categoryColors[prompt.category]}`}>
           <IconComponent className="h-5 w-5" />
@@ -238,13 +244,18 @@ function PromptCard({
       </div>
 
       <h3 className="mb-2 font-semibold text-gray-900">{prompt.name}</h3>
-      <p className="mb-3 text-sm text-gray-600 line-clamp-2">
+      <p className="mb-3 line-clamp-2 text-sm text-gray-600">
         {prompt.description || 'No description provided'}
       </p>
 
       <div className="flex items-center justify-between text-xs text-gray-500">
         <span className="capitalize">{prompt.category}</span>
-        <span>Used {prompt.useCount} times</span>
+        <span>
+          Used
+          {prompt.useCount}
+          {' '}
+          times
+        </span>
       </div>
 
       {editable && (

@@ -31,21 +31,21 @@ export async function POST(
     }
 
     // Verify module exists and is accessible
-    const { module } = await getModuleById(id);
+    const { module: requestedModule } = await getModuleById(id);
 
-    if (!module) {
+    if (!requestedModule) {
       return NextResponse.json({ error: 'Module not found' }, { status: 404 });
     }
 
     // Check module access
-    if (module.scope === 'organization' && module.organizationId !== user.organizationId) {
+    if (requestedModule.scope === 'organization' && requestedModule.organizationId !== user.organizationId) {
       return NextResponse.json(
         { error: 'Forbidden: Module not accessible' },
         { status: 403 },
       );
     }
 
-    if (module.scope === 'private' && module.createdBy !== user.dbUserId) {
+    if (requestedModule.scope === 'private' && requestedModule.createdBy !== user.dbUserId) {
       return NextResponse.json(
         { error: 'Forbidden: Module not accessible' },
         { status: 403 },

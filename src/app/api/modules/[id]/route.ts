@@ -31,16 +31,16 @@ export async function GET(
     }
 
     // Check access permissions
-    const { module } = moduleData;
+    const { module: fetchedModule } = moduleData;
 
     // System modules: accessible to all
-    if (module.scope === 'system') {
+    if (fetchedModule.scope === 'system') {
       return NextResponse.json(moduleData);
     }
 
     // Organization modules: accessible to org members
-    if (module.scope === 'organization') {
-      if (module.organizationId !== user.organizationId) {
+    if (fetchedModule.scope === 'organization') {
+      if (fetchedModule.organizationId !== user.organizationId) {
         return NextResponse.json(
           { error: 'Forbidden: Module not accessible' },
           { status: 403 },
@@ -50,8 +50,8 @@ export async function GET(
     }
 
     // Private modules: accessible only to creator
-    if (module.scope === 'private') {
-      if (module.createdBy !== user.dbUserId) {
+    if (fetchedModule.scope === 'private') {
+      if (fetchedModule.createdBy !== user.dbUserId) {
         return NextResponse.json(
           { error: 'Forbidden: Module not accessible' },
           { status: 403 },

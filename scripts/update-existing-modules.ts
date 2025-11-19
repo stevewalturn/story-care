@@ -1,34 +1,20 @@
 /**
  * Update Existing Modules to Use Templates
- * Sets useReflectionTemplate and useSurveyTemplate flags for existing modules
+ * DEPRECATED: This script is no longer needed with the new array-based template schema
  */
 
-import { db } from '@/libs/DB';
-import { treatmentModulesSchema } from '@/models/Schema';
-import { isNotNull } from 'drizzle-orm';
 import 'dotenv/config';
 
 export async function updateExistingModules() {
   console.log('🔄 Updating existing modules to use templates...\n');
 
   try {
-    // Update modules that have reflectionTemplateId to use reflection templates
-    const reflectionUpdate = await db
-      .update(treatmentModulesSchema)
-      .set({ useReflectionTemplate: true })
-      .where(isNotNull(treatmentModulesSchema.reflectionTemplateId))
-      .returning();
-
-    console.log(`✅ Updated ${reflectionUpdate.length} modules to use reflection templates`);
-
-    // Update modules that have surveyTemplateId to use survey templates
-    const surveyUpdate = await db
-      .update(treatmentModulesSchema)
-      .set({ useSurveyTemplate: true })
-      .where(isNotNull(treatmentModulesSchema.surveyTemplateId))
-      .returning();
-
-    console.log(`✅ Updated ${surveyUpdate.length} modules to use survey templates`);
+    // This script is deprecated - the schema has changed to use template ID arrays
+    // instead of single template IDs with boolean flags
+    console.log('⚠️  This script is deprecated.');
+    console.log('    The schema now uses reflectionTemplateIds[] and surveyTemplateIds[] arrays');
+    console.log('    instead of reflectionTemplateId/useReflectionTemplate flags.');
+    console.log('    Please use seed-modules.ts to create new modules with the correct schema.');
 
     console.log('\n✨ Update completed successfully!');
   } catch (error) {

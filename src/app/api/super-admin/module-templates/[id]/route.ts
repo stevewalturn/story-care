@@ -38,12 +38,12 @@ export async function GET(
     }
 
     // 3. FETCH TEMPLATE
-    const { module, reflectionTemplate, surveyTemplate } = await getModuleById(
+    const { module: templateModule, reflectionTemplates, surveyTemplates } = await getModuleById(
       resolvedParams.id,
     );
 
     // 4. VERIFY IT'S A SYSTEM TEMPLATE
-    if (module.scope !== 'system') {
+    if (templateModule.scope !== 'system') {
       return NextResponse.json(
         { error: 'Template not found or not a system template' },
         { status: 404 },
@@ -51,9 +51,9 @@ export async function GET(
     }
 
     return NextResponse.json({
-      template: module,
-      reflectionTemplate,
-      surveyTemplate,
+      template: templateModule,
+      reflectionTemplates,
+      surveyTemplates,
     });
   } catch (error: any) {
     console.error('[Super Admin] Get template error:', error);
@@ -93,9 +93,9 @@ export async function PUT(
     }
 
     // 3. VERIFY TEMPLATE EXISTS AND IS SYSTEM SCOPE
-    const { module } = await getModuleById(resolvedParams.id);
+    const { module: templateModule } = await getModuleById(resolvedParams.id);
 
-    if (module.scope !== 'system') {
+    if (templateModule.scope !== 'system') {
       return NextResponse.json(
         { error: 'Can only update system templates' },
         { status: 403 },
@@ -111,8 +111,8 @@ export async function PUT(
       name: validatedData.name,
       description: validatedData.description,
 
-      reflectionTemplateId: validatedData.reflectionTemplateId || null,
-      surveyTemplateId: validatedData.surveyTemplateId || null,
+      reflectionTemplateIds: validatedData.reflectionTemplateIds,
+      surveyTemplateIds: validatedData.surveyTemplateIds,
       aiPromptText: validatedData.aiPromptText,
       aiPromptMetadata: validatedData.aiPromptMetadata,
       status: validatedData.status,
@@ -167,9 +167,9 @@ export async function DELETE(
     }
 
     // 3. VERIFY TEMPLATE EXISTS AND IS SYSTEM SCOPE
-    const { module } = await getModuleById(resolvedParams.id);
+    const { module: templateModule } = await getModuleById(resolvedParams.id);
 
-    if (module.scope !== 'system') {
+    if (templateModule.scope !== 'system') {
       return NextResponse.json(
         { error: 'Can only archive system templates' },
         { status: 403 },

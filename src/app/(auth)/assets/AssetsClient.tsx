@@ -288,7 +288,7 @@ export function AssetsClient() {
       const uploadResponse = await fetch('/api/media/upload', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: formData,
       });
@@ -1084,7 +1084,7 @@ export function AssetsClient() {
 
       {/* Upload Media Modal */}
       {showUploadModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black">
           <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
             <h2 className="mb-4 text-xl font-bold text-gray-900">Upload Media</h2>
 
@@ -1103,7 +1103,14 @@ export function AssetsClient() {
                 />
                 {uploadFile && (
                   <p className="mt-1 text-xs text-gray-500">
-                    Selected: {uploadFile.name} ({(uploadFile.size / 1024 / 1024).toFixed(2)} MB)
+                    Selected:
+                    {' '}
+                    {uploadFile.name}
+                    {' '}
+                    (
+                    {(uploadFile.size / 1024 / 1024).toFixed(2)}
+                    {' '}
+                    MB)
                   </p>
                 )}
               </div>
@@ -1116,7 +1123,7 @@ export function AssetsClient() {
                 <input
                   type="text"
                   value={uploadTitle}
-                  onChange={(e) => setUploadTitle(e.target.value)}
+                  onChange={e => setUploadTitle(e.target.value)}
                   placeholder="Enter media title"
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
                 />
@@ -1131,7 +1138,7 @@ export function AssetsClient() {
                 </label>
                 <textarea
                   value={uploadDescription}
-                  onChange={(e) => setUploadDescription(e.target.value)}
+                  onChange={e => setUploadDescription(e.target.value)}
                   placeholder="Add a description..."
                   rows={3}
                   className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"

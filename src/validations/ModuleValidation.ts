@@ -29,9 +29,8 @@ export const createModuleSchema = z.object({
   domain: therapeuticDomainSchema,
   description: z.string().min(10).max(5000),
   scope: templateScopeSchema.default('private'),
-  reflectionQuestions: z.array(z.string().min(5).max(500)).min(0).max(10).optional(),
-  reflectionTemplateId: z.string().uuid().optional().nullable(),
-  surveyTemplateId: z.string().uuid().optional().nullable(),
+  reflectionTemplateIds: z.array(z.string().uuid()).default([]),
+  surveyTemplateIds: z.array(z.string().uuid()).default([]),
   aiPromptText: z.string().min(50).max(10000),
   aiPromptMetadata: z.record(z.string(), z.any()).optional(),
 });
@@ -42,9 +41,8 @@ export const createModuleSchema = z.object({
 export const updateModuleSchema = z.object({
   name: z.string().min(3).max(255).optional(),
   description: z.string().min(10).max(5000).optional(),
-  reflectionQuestions: z.array(z.string().min(5).max(500)).min(0).max(10).optional(),
-  reflectionTemplateId: z.string().uuid().nullable().optional(),
-  surveyTemplateId: z.string().uuid().nullable().optional(),
+  reflectionTemplateIds: z.array(z.string().uuid()).optional(),
+  surveyTemplateIds: z.array(z.string().uuid()).optional(),
   aiPromptText: z.string().min(50).max(10000).optional(),
   aiPromptMetadata: z.record(z.string(), z.any()).optional(),
   status: moduleStatusSchema.optional(),

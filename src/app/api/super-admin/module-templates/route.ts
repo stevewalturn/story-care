@@ -88,9 +88,8 @@ export async function POST(request: NextRequest) {
       description: validatedData.description,
       createdBy: user.dbUserId,
 
-      reflectionQuestions: validatedData.reflectionQuestions,
-      reflectionTemplateId: validatedData.reflectionTemplateId || null,
-      surveyTemplateId: validatedData.surveyTemplateId || null,
+      reflectionTemplateIds: validatedData.reflectionTemplateIds,
+      surveyTemplateIds: validatedData.surveyTemplateIds,
       aiPromptText: validatedData.aiPromptText,
       aiPromptMetadata: validatedData.aiPromptMetadata,
     });

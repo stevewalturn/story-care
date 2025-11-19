@@ -44,8 +44,8 @@ export function ModulePicker({
   // Update selected module when selectedModuleId changes
   useEffect(() => {
     if (selectedModuleId && modules.length > 0) {
-      const module = modules.find(m => m.id === selectedModuleId);
-      setSelectedModule(module || null);
+      const foundModule = modules.find(m => m.id === selectedModuleId);
+      setSelectedModule(foundModule || null);
     } else {
       setSelectedModule(null);
     }
@@ -216,7 +216,6 @@ export function ModulePicker({
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Search modules..."
                   className="w-full rounded-md border border-gray-300 py-2 pr-3 pl-9 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
-                  autoFocus
                 />
               </div>
             </div>

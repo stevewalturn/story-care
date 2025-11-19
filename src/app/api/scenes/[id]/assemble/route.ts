@@ -116,8 +116,8 @@ export async function POST(
 
     // Upload to GCS and generate thumbnail
     console.error(`Uploading assembled video to GCS for scene ${sceneId}`);
-    const { videoUrl, thumbnailUrl, videoPath: gcsVideoPath, thumbnailPath: gcsThumbnailPath } =
-      await VideoService.uploadToGCS(outputPath, sceneId);
+    const { videoUrl, thumbnailUrl, videoPath: gcsVideoPath, thumbnailPath: gcsThumbnailPath }
+      = await VideoService.uploadToGCS(outputPath, sceneId);
 
     // Cleanup local temp files
     VideoService.cleanupTempFiles();

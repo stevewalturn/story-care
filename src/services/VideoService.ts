@@ -2,7 +2,7 @@ import { exec } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { uploadFile, deleteFile, listFiles } from '@/libs/GCS';
+import { deleteFile, listFiles, uploadFile } from '@/libs/GCS';
 
 const execAsync = promisify(exec);
 

@@ -30,9 +30,9 @@ export async function generateStoryPageFromModule(params: {
   customMessage?: string;
 }) {
   // 1. Fetch module with templates
-  const { module, reflectionTemplate, surveyTemplate } = await getModuleById(params.moduleId);
+  const { module: treatmentModule, reflectionTemplates, surveyTemplates } = await getModuleById(params.moduleId);
 
-  if (!module) {
+  if (!treatmentModule) {
     throw new Error('Module not found');
   }
 
@@ -46,7 +46,7 @@ export async function generateStoryPageFromModule(params: {
   // 3. Generate page title
   const pageTitle
     = params.customTitle
-      || generatePageTitle(module.name, sessionModule.aiAnalysisResult);
+      || generatePageTitle(treatmentModule.name, sessionModule.aiAnalysisResult);
 
   // 4. Create story page
   const [storyPage] = await db
@@ -55,7 +55,7 @@ export async function generateStoryPageFromModule(params: {
       patientId: params.patientId,
       createdByTherapistId: params.therapistId,
       title: pageTitle,
-      description: module.description,
+      description: treatmentModule.description,
       status: 'draft', // Start as draft, therapist can review before publishing
       visibility: 'private',
       moduleId: params.moduleId,
@@ -79,8 +79,8 @@ export async function generateStoryPageFromModule(params: {
     aiAnalysisResult: sessionModule.aiAnalysisResult,
   });
 
-  // 6. Add reflection questions block (if template exists)
-  if (reflectionTemplate) {
+  // 6. Add reflection questions blocks (for each template)
+  for (const reflectionTemplate of reflectionTemplates) {
     const reflectionBlock = await createReflectionBlock({
       pageId: storyPage.id,
       reflectionTemplate,
@@ -89,8 +89,8 @@ export async function generateStoryPageFromModule(params: {
     blocks.push(reflectionBlock);
   }
 
-  // 7. Add survey questions block (if template exists)
-  if (surveyTemplate) {
+  // 7. Add survey questions blocks (for each template)
+  for (const surveyTemplate of surveyTemplates) {
     const surveyBlock = await createSurveyBlock({
       pageId: storyPage.id,
       surveyTemplate,
@@ -123,7 +123,7 @@ export async function generateStoryPageFromModule(params: {
         patientName: patient.name,
         therapistName: therapist.name,
         storyPageId: storyPage.id,
-        storyPageTitle: params.customTitle || module.name,
+        storyPageTitle: params.customTitle || treatmentModule.name,
         storyPageUrl,
         customMessage: params.customMessage,
       });

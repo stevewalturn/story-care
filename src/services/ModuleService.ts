@@ -4,7 +4,7 @@
  */
 
 import type { TemplateScope } from '@/types/Organization';
-import { and, desc, eq, or, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import {
   moduleAiPromptsSchema,
@@ -32,9 +32,8 @@ export async function createModule(data: {
   scope: TemplateScope;
   createdBy: string;
   organizationId?: string | null;
-  reflectionQuestions?: string[];
-  reflectionTemplateId?: string | null;
-  surveyTemplateId?: string | null;
+  reflectionTemplateIds?: string[];
+  surveyTemplateIds?: string[];
   aiPromptText: string;
   aiPromptMetadata?: any;
 }) {
@@ -47,9 +46,8 @@ export async function createModule(data: {
       scope: data.scope,
       createdBy: data.createdBy,
       organizationId: data.organizationId || null,
-      reflectionQuestions: data.reflectionQuestions || [],
-      reflectionTemplateId: data.reflectionTemplateId || null,
-      surveyTemplateId: data.surveyTemplateId || null,
+      reflectionTemplateIds: data.reflectionTemplateIds || [],
+      surveyTemplateIds: data.surveyTemplateIds || [],
       aiPromptText: data.aiPromptText,
       aiPromptMetadata: data.aiPromptMetadata || null,
       status: 'active',
@@ -130,32 +128,30 @@ export async function getModuleById(moduleId: string) {
     throw new Error('Module not found');
   }
 
-  // Fetch linked templates
-  let reflectionTemplate = null;
-  let surveyTemplate = null;
+  // Fetch linked templates (arrays now)
+  const reflectionTemplates = [];
+  const surveyTemplates = [];
 
-  if (module.reflectionTemplateId) {
-    const [reflection] = await db
+  if (module.reflectionTemplateIds && module.reflectionTemplateIds.length > 0) {
+    const reflections = await db
       .select()
       .from(reflectionTemplatesSchema)
-      .where(eq(reflectionTemplatesSchema.id, module.reflectionTemplateId))
-      .limit(1);
-    reflectionTemplate = reflection || null;
+      .where(inArray(reflectionTemplatesSchema.id, module.reflectionTemplateIds));
+    reflectionTemplates.push(...reflections);
   }
 
-  if (module.surveyTemplateId) {
-    const [survey] = await db
+  if (module.surveyTemplateIds && module.surveyTemplateIds.length > 0) {
+    const surveys = await db
       .select()
       .from(surveyTemplatesSchema)
-      .where(eq(surveyTemplatesSchema.id, module.surveyTemplateId))
-      .limit(1);
-    surveyTemplate = survey || null;
+      .where(inArray(surveyTemplatesSchema.id, module.surveyTemplateIds));
+    surveyTemplates.push(...surveys);
   }
 
   return {
     module,
-    reflectionTemplate,
-    surveyTemplate,
+    reflectionTemplates,
+    surveyTemplates,
   };
 }
 
@@ -167,10 +163,8 @@ export async function updateModule(
   updates: {
     name?: string;
     description?: string;
-    inSessionQuestions?: string[];
-    reflectionQuestions?: string[];
-    reflectionTemplateId?: string | null;
-    surveyTemplateId?: string | null;
+    reflectionTemplateIds?: string[];
+    surveyTemplateIds?: string[];
     aiPromptText?: string;
     aiPromptMetadata?: any;
     status?: ModuleStatus;
@@ -387,9 +381,8 @@ export async function createTemplate(data: {
   description: string;
   createdBy: string;
 
-  reflectionQuestions?: string[];
-  reflectionTemplateId?: string | null;
-  surveyTemplateId?: string | null;
+  reflectionTemplateIds?: string[];
+  surveyTemplateIds?: string[];
   aiPromptText: string;
   aiPromptMetadata?: any;
 }) {
@@ -475,9 +468,8 @@ export async function createOrgModule(data: {
   organizationId: string;
   createdBy: string;
 
-  reflectionQuestions?: string[];
-  reflectionTemplateId?: string | null;
-  surveyTemplateId?: string | null;
+  reflectionTemplateIds?: string[];
+  surveyTemplateIds?: string[];
   aiPromptText: string;
   aiPromptMetadata?: any;
 }) {
@@ -498,7 +490,7 @@ export async function copyTemplateToOrg(
   customName?: string,
 ) {
   // Fetch the template
-  const { module: template, reflectionTemplate: _reflectionTemplate, surveyTemplate: _surveyTemplate }
+  const { module: template }
     = await getModuleById(templateId);
 
   // Verify it's a system template
@@ -514,9 +506,8 @@ export async function copyTemplateToOrg(
     organizationId,
     createdBy: userId,
 
-    reflectionQuestions: template.reflectionQuestions as string[],
-    reflectionTemplateId: template.reflectionTemplateId,
-    surveyTemplateId: template.surveyTemplateId,
+    reflectionTemplateIds: template.reflectionTemplateIds,
+    surveyTemplateIds: template.surveyTemplateIds,
     aiPromptText: template.aiPromptText,
     aiPromptMetadata: template.aiPromptMetadata,
   });
@@ -601,9 +592,8 @@ export async function createTherapistModule(data: {
   description: string;
   createdBy: string;
 
-  reflectionQuestions?: string[];
-  reflectionTemplateId?: string | null;
-  surveyTemplateId?: string | null;
+  reflectionTemplateIds?: string[];
+  surveyTemplateIds?: string[];
   aiPromptText: string;
   aiPromptMetadata?: any;
 }) {

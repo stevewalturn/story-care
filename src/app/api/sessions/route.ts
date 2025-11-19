@@ -56,8 +56,8 @@ export async function GET(request: NextRequest) {
           name: treatmentModules.name,
           domain: treatmentModules.domain,
           description: treatmentModules.description,
-          reflectionTemplateId: treatmentModules.reflectionTemplateId,
-          surveyTemplateId: treatmentModules.surveyTemplateId,
+          reflectionTemplateIds: treatmentModules.reflectionTemplateIds,
+          surveyTemplateIds: treatmentModules.surveyTemplateIds,
         },
       })
       .from(sessions)

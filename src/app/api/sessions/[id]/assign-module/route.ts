@@ -34,21 +34,21 @@ export async function POST(
     const validated = assignModuleToSessionSchema.parse(body);
 
     // Verify module exists and is accessible
-    const { module } = await getModuleById(validated.moduleId);
+    const { module: assignedModule } = await getModuleById(validated.moduleId);
 
-    if (!module) {
+    if (!assignedModule) {
       return NextResponse.json({ error: 'Module not found' }, { status: 404 });
     }
 
     // Check module access
-    if (module.scope === 'organization' && module.organizationId !== user.organizationId) {
+    if (assignedModule.scope === 'organization' && assignedModule.organizationId !== user.organizationId) {
       return NextResponse.json(
         { error: 'Forbidden: Module not accessible' },
         { status: 403 },
       );
     }
 
-    if (module.scope === 'private' && module.createdBy !== user.dbUserId) {
+    if (assignedModule.scope === 'private' && assignedModule.createdBy !== user.dbUserId) {
       return NextResponse.json(
         { error: 'Forbidden: Module not accessible' },
         { status: 403 },
@@ -70,7 +70,7 @@ export async function POST(
       {
         message: 'Module assigned to session successfully',
         sessionModule,
-        module,
+        module: assignedModule,
       },
       { status: 201 },
     );

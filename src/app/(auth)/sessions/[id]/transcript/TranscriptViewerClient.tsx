@@ -157,7 +157,7 @@ export function TranscriptViewerClient({
           // Filter out prompts that are already in module prompts to avoid duplicates
           const modulePromptIds = new Set(modulePrompts.map(p => p.id));
           const filteredLibraryPrompts = allLibraryPrompts.filter(
-            (p: AIPromptOption) => !modulePromptIds.has(p.id)
+            (p: AIPromptOption) => !modulePromptIds.has(p.id),
           );
 
           setLibraryPrompts(filteredLibraryPrompts);

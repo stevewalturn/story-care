@@ -11,10 +11,7 @@ import {
   getModuleById,
   updateModule,
 } from '@/services/ModuleService';
-import {
-  createReflectionTemplate,
-  createSurveyTemplate,
-} from '@/services/TemplateService';
+
 import { requireAuth } from '@/utils/AuthHelpers';
 import { updateModuleSchema } from '@/validations/ModuleValidation';
 
@@ -42,19 +39,19 @@ export async function GET(
     }
 
     // 3. FETCH MODULE
-    const { module, reflectionTemplate, surveyTemplate } = await getModuleById(
+    const { module: therapistModule, reflectionTemplates, surveyTemplates } = await getModuleById(
       resolvedParams.id,
     );
 
     // 4. VERIFY MODULE IS PRIVATE AND BELONGS TO THERAPIST
-    if (module.scope !== 'private') {
+    if (therapistModule.scope !== 'private') {
       return NextResponse.json(
         { error: 'Can only access private modules' },
         { status: 403 },
       );
     }
 
-    if (module.createdBy !== user.dbUserId) {
+    if (therapistModule.createdBy !== user.dbUserId) {
       return NextResponse.json(
         { error: 'Module not found or access denied' },
         { status: 404 },
@@ -62,9 +59,9 @@ export async function GET(
     }
 
     return NextResponse.json({
-      module,
-      reflectionTemplate,
-      surveyTemplate,
+      module: therapistModule,
+      reflectionTemplates,
+      surveyTemplates,
     });
   } catch (error: any) {
     console.error('[Therapist] Get module error:', error);
@@ -104,16 +101,16 @@ export async function PUT(
     }
 
     // 3. VERIFY MODULE EXISTS AND BELONGS TO THERAPIST
-    const { module } = await getModuleById(resolvedParams.id);
+    const { module: therapistModule } = await getModuleById(resolvedParams.id);
 
-    if (module.scope !== 'private') {
+    if (therapistModule.scope !== 'private') {
       return NextResponse.json(
         { error: 'Can only update private modules' },
         { status: 403 },
       );
     }
 
-    if (module.createdBy !== user.dbUserId) {
+    if (therapistModule.createdBy !== user.dbUserId) {
       return NextResponse.json(
         { error: 'Module not found or access denied' },
         { status: 404 },
@@ -124,46 +121,12 @@ export async function PUT(
     const body = await request.json();
     const validatedData = updateModuleSchema.parse(body);
 
-    // 5. CREATE TEMPLATES IF NEEDED
-    let reflectionTemplateId = validatedData.reflectionTemplateId || null;
-    let surveyTemplateId = validatedData.surveyTemplateId || null;
-
-    // Create reflection template if using template mode and questions provided
-    // Only create if no existing templateId (don't duplicate on edits)
-    if (body.useReflectionTemplate && body.reflectionTemplateQuestions && !module.reflectionTemplateId) {
-      const reflectionTemplate = await createReflectionTemplate({
-        title: body.reflectionTemplateTitle || `${validatedData.name} - Reflections`,
-        description: body.reflectionTemplateDescription || null,
-        category: 'custom',
-        questions: body.reflectionTemplateQuestions,
-        scope: 'private',
-        createdBy: user.dbUserId,
-        organizationId: null,
-      });
-      reflectionTemplateId = reflectionTemplate!.id;
-    }
-
-    // Create survey template if using template mode and questions provided
-    if (body.useSurveyTemplate && body.surveyTemplateQuestions && !module.surveyTemplateId) {
-      const surveyTemplate = await createSurveyTemplate({
-        title: body.surveyTemplateTitle || `${validatedData.name} - Survey`,
-        description: body.surveyTemplateDescription || null,
-        category: 'custom',
-        questions: body.surveyTemplateQuestions,
-        scope: 'private',
-        createdBy: user.dbUserId,
-        organizationId: null,
-      });
-      surveyTemplateId = surveyTemplate!.id;
-    }
-
-    // 6. UPDATE MODULE
+    // 5. UPDATE MODULE (template IDs are now arrays)
     const updatedModule = await updateModule(resolvedParams.id, {
       name: validatedData.name,
       description: validatedData.description,
-      reflectionQuestions: validatedData.reflectionQuestions,
-      reflectionTemplateId,
-      surveyTemplateId,
+      reflectionTemplateIds: validatedData.reflectionTemplateIds,
+      surveyTemplateIds: validatedData.surveyTemplateIds,
       aiPromptText: validatedData.aiPromptText,
       aiPromptMetadata: validatedData.aiPromptMetadata,
       status: validatedData.status,
@@ -218,16 +181,16 @@ export async function DELETE(
     }
 
     // 3. VERIFY MODULE EXISTS AND BELONGS TO THERAPIST
-    const { module } = await getModuleById(resolvedParams.id);
+    const { module: therapistModule } = await getModuleById(resolvedParams.id);
 
-    if (module.scope !== 'private') {
+    if (therapistModule.scope !== 'private') {
       return NextResponse.json(
         { error: 'Can only archive private modules' },
         { status: 403 },
       );
     }
 
-    if (module.createdBy !== user.dbUserId) {
+    if (therapistModule.createdBy !== user.dbUserId) {
       return NextResponse.json(
         { error: 'Module not found or access denied' },
         { status: 404 },
