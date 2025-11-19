@@ -6,8 +6,10 @@
  */
 
 import type { TreatmentModuleWithPrompts } from '@/models/Schema';
-import { Pencil, Sparkles, TrendingUp, X } from 'lucide-react';
-import { useState } from 'react';
+import { FileText, Pencil, Sparkles, TrendingUp, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type ModuleDetailsModalProps = {
   module: TreatmentModuleWithPrompts;
@@ -18,10 +20,66 @@ type ModuleDetailsModalProps = {
 
 type Tab = 'overview' | 'questions' | 'prompts';
 
+type Template = {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string;
+  questions: any[];
+  scope: string;
+};
+
 export function ModuleDetailsModal({ module, onClose, onEdit, onCopy }: ModuleDetailsModalProps) {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [reflectionTemplate, setReflectionTemplate] = useState<Template | null>(null);
+  const [surveyTemplate, setSurveyTemplate] = useState<Template | null>(null);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   const domainInfo = getDomainInfo(module.domain);
+
+  // Fetch templates if IDs are present
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      const reflectionId = (module as any).reflectionTemplateId;
+      const surveyId = (module as any).surveyTemplateId;
+
+      if (!reflectionId && !surveyId) return;
+
+      setLoadingTemplates(true);
+      try {
+        // Fetch reflection template
+        if (reflectionId) {
+          const response = await authenticatedFetch(
+            `/api/therapist/templates/${reflectionId}`,
+            user,
+          );
+          if (response.ok) {
+            const data = await response.json();
+            setReflectionTemplate(data.template);
+          }
+        }
+
+        // Fetch survey template
+        if (surveyId) {
+          const response = await authenticatedFetch(
+            `/api/therapist/templates/${surveyId}`,
+            user,
+          );
+          if (response.ok) {
+            const data = await response.json();
+            setSurveyTemplate(data.template);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching templates:', error);
+      } finally {
+        setLoadingTemplates(false);
+      }
+    };
+
+    fetchTemplates();
+  }, [module, user]);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -161,27 +219,170 @@ export function ModuleDetailsModal({ module, onClose, onEdit, onCopy }: ModuleDe
             {/* Questions Tab */}
             {activeTab === 'questions' && (
               <div className="space-y-6">
-                {/* Reflection Questions (Post-Session) */}
-                <div>
-                  <h3 className="mb-3 text-sm font-semibold text-gray-900">
-                    Reflection Questions (Post-Session)
-                  </h3>
-                  <p className="mb-4 text-sm text-gray-600">
-                    Questions for patients to answer in story pages after the session.
-                  </p>
-                  <ol className="space-y-3">
-                    {(module.reflectionQuestions as string[])?.map((question, index) => (
-                      <li key={index} className="flex gap-3 rounded-lg border border-green-200 bg-green-50 p-4">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-100 text-sm font-semibold text-green-700">
-                          {index + 1}
-                        </span>
-                        <p className="flex-1 text-gray-700">{question}</p>
-                      </li>
-                    )) || (
-                      <p className="text-sm text-gray-500">No reflection questions defined</p>
-                    )}
-                  </ol>
-                </div>
+                {loadingTemplates ? (
+                  <div className="py-8 text-center">
+                    <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                    <p className="mt-2 text-sm text-gray-600">Loading templates...</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Reflection Questions Template */}
+                    <div>
+                      <h3 className="mb-3 text-sm font-semibold text-gray-900">
+                        Reflection Questions (Post-Session)
+                      </h3>
+                      <p className="mb-4 text-sm text-gray-600">
+                        Questions for patients to answer in story pages after the session.
+                      </p>
+
+                      {reflectionTemplate ? (
+                        <div className="rounded-lg border border-gray-200 bg-white p-4">
+                          <div className="mb-4 flex items-start justify-between">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-5 w-5 text-indigo-600" />
+                                <h4 className="font-semibold text-gray-900">{reflectionTemplate.title}</h4>
+                              </div>
+                              {reflectionTemplate.description && (
+                                <p className="mt-1 text-sm text-gray-600">{reflectionTemplate.description}</p>
+                              )}
+                              <div className="mt-2 flex items-center gap-2">
+                                <span className="rounded bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
+                                  {reflectionTemplate.category}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {reflectionTemplate.scope === 'system' ? 'System Template' : reflectionTemplate.scope === 'organization' ? 'Organization Template' : 'Private Template'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            {reflectionTemplate.questions?.map((question: any, index: number) => (
+                              <div key={index} className="rounded-lg border border-green-200 bg-green-50 p-4">
+                                <div className="mb-2 flex items-start gap-3">
+                                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-100 text-sm font-semibold text-green-700">
+                                    {index + 1}
+                                  </span>
+                                  <div className="flex-1">
+                                    <p className="font-medium text-gray-900">{question.questionText}</p>
+                                    <span className="mt-1 inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                                      {question.questionType}
+                                    </span>
+                                  </div>
+                                </div>
+                                {question.questionType === 'multiple_choice' && question.options && (
+                                  <div className="mt-2 ml-9 text-sm text-gray-600">
+                                    Options:
+                                    {' '}
+                                    {question.options.join(', ')}
+                                  </div>
+                                )}
+                                {question.questionType === 'scale' && (
+                                  <div className="mt-2 ml-9 text-sm text-gray-600">
+                                    Scale:
+                                    {' '}
+                                    {question.scaleMin}
+                                    {' '}
+                                    (
+                                    {question.scaleMinLabel}
+                                    ) to
+                                    {' '}
+                                    {question.scaleMax}
+                                    {' '}
+                                    (
+                                    {question.scaleMaxLabel}
+                                    )
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">No reflection template selected</p>
+                      )}
+                    </div>
+
+                    {/* Survey Questions Template */}
+                    <div>
+                      <h3 className="mb-3 text-sm font-semibold text-gray-900">
+                        Survey Questions
+                      </h3>
+                      <p className="mb-4 text-sm text-gray-600">
+                        Structured survey questions for quantitative data collection.
+                      </p>
+
+                      {surveyTemplate ? (
+                        <div className="rounded-lg border border-gray-200 bg-white p-4">
+                          <div className="mb-4 flex items-start justify-between">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-5 w-5 text-indigo-600" />
+                                <h4 className="font-semibold text-gray-900">{surveyTemplate.title}</h4>
+                              </div>
+                              {surveyTemplate.description && (
+                                <p className="mt-1 text-sm text-gray-600">{surveyTemplate.description}</p>
+                              )}
+                              <div className="mt-2 flex items-center gap-2">
+                                <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                                  {surveyTemplate.category}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {surveyTemplate.scope === 'system' ? 'System Template' : surveyTemplate.scope === 'organization' ? 'Organization Template' : 'Private Template'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            {surveyTemplate.questions?.map((question: any, index: number) => (
+                              <div key={index} className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                                <div className="mb-2 flex items-start gap-3">
+                                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
+                                    {index + 1}
+                                  </span>
+                                  <div className="flex-1">
+                                    <p className="font-medium text-gray-900">{question.questionText}</p>
+                                    <span className="mt-1 inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                                      {question.questionType}
+                                    </span>
+                                  </div>
+                                </div>
+                                {question.questionType === 'multiple_choice' && question.options && (
+                                  <div className="mt-2 ml-9 text-sm text-gray-600">
+                                    Options:
+                                    {' '}
+                                    {question.options.join(', ')}
+                                  </div>
+                                )}
+                                {question.questionType === 'scale' && (
+                                  <div className="mt-2 ml-9 text-sm text-gray-600">
+                                    Scale:
+                                    {' '}
+                                    {question.scaleMin}
+                                    {' '}
+                                    (
+                                    {question.scaleMinLabel}
+                                    ) to
+                                    {' '}
+                                    {question.scaleMax}
+                                    {' '}
+                                    (
+                                    {question.scaleMaxLabel}
+                                    )
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">No survey template selected</p>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -207,7 +408,7 @@ export function ModuleDetailsModal({ module, onClose, onEdit, onCopy }: ModuleDe
                         return (
                           <div
                             key={prompt.id}
-                            className="rounded-lg border border-gray-200 bg-white p-4 hover:shadow-md transition-shadow"
+                            className="rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
                           >
                             <div className="mb-2 flex items-start justify-between">
                               <div className="flex-1">
