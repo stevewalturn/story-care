@@ -2,6 +2,7 @@ import { exec } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { uploadFile, deleteFile, listFiles } from '@/libs/GCS';
 
 const execAsync = promisify(exec);
 
@@ -234,5 +235,78 @@ export class VideoService {
     const command = `ffprobe -v quiet -print_format json -show_format -show_streams "${videoPath}"`;
     const { stdout } = await execAsync(command);
     return JSON.parse(stdout);
+  }
+
+  /**
+   * Generate thumbnail from video at specified timestamp
+   */
+  static async generateThumbnail(
+    videoPath: string,
+    outputPath: string,
+    timestamp: number = 1,
+  ): Promise<string> {
+    const command = `ffmpeg -i "${videoPath}" -ss ${timestamp} -vframes 1 -q:v 2 "${outputPath}" -y`;
+    await execAsync(command);
+    return outputPath;
+  }
+
+  /**
+   * Upload assembled video and thumbnail to GCS
+   */
+  static async uploadToGCS(
+    videoPath: string,
+    sceneId: string,
+  ): Promise<{ videoUrl: string; thumbnailUrl: string; videoPath: string; thumbnailPath: string }> {
+    const timestamp = Date.now();
+    const videoFilename = `scene-${sceneId}-${timestamp}.mp4`;
+    const thumbnailFilename = `scene-${sceneId}-${timestamp}-thumb.jpg`;
+
+    // Generate thumbnail
+    const thumbnailPath = path.join(this.tempDir, thumbnailFilename);
+    await this.generateThumbnail(videoPath, thumbnailPath, 1);
+
+    // Read files as buffers
+    const videoBuffer = fs.readFileSync(videoPath);
+    const thumbnailBuffer = fs.readFileSync(thumbnailPath);
+
+    // Upload video to GCS
+    const videoResult = await uploadFile(videoBuffer, videoFilename, {
+      folder: `scenes/${sceneId}`,
+      contentType: 'video/mp4',
+      makePublic: false,
+    });
+
+    // Upload thumbnail to GCS
+    const thumbnailResult = await uploadFile(thumbnailBuffer, thumbnailFilename, {
+      folder: `scenes/${sceneId}`,
+      contentType: 'image/jpeg',
+      makePublic: false,
+    });
+
+    return {
+      videoUrl: videoResult.url,
+      thumbnailUrl: thumbnailResult.url,
+      videoPath: videoResult.path,
+      thumbnailPath: thumbnailResult.path,
+    };
+  }
+
+  /**
+   * Delete scene files from GCS
+   */
+  static async deleteFromGCS(sceneId: string): Promise<void> {
+    try {
+      // Delete all files in the scene folder
+      const prefix = `scenes/${sceneId}/`;
+      const files = await listFiles(prefix);
+
+      // Delete all files with this prefix
+      await Promise.all(files.map(file => deleteFile(file)));
+
+      console.log(`Deleted ${files.length} files for scene ${sceneId}`);
+    } catch (error) {
+      console.error('Error deleting scene files from GCS:', error);
+      throw error;
+    }
   }
 }

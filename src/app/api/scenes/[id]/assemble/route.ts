@@ -3,6 +3,7 @@ import path from 'node:path';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
+import { generatePresignedUrl } from '@/libs/GCS';
 import { mediaLibrary, sceneClips, scenes } from '@/models/Schema';
 import { VideoService } from '@/services/VideoService';
 
@@ -77,15 +78,24 @@ export async function POST(
       };
     });
 
-    // Define output path (in production, this would be in a proper storage location)
-    const outputFilename = `scene-${sceneId}-${Date.now()}.mp4`;
-    const outputPath = path.join(process.cwd(), 'public', 'assembled-scenes', outputFilename);
+    // Update scene status to processing
+    await db
+      .update(scenes)
+      .set({
+        status: 'processing',
+        updatedAt: new Date(),
+      })
+      .where(eq(scenes.id, sceneId));
 
-    // Ensure output directory exists
+    // Define output path (temp location, will be uploaded to GCS)
+    const outputFilename = `scene-${sceneId}-${Date.now()}.mp4`;
+    const tempDir = '/tmp/video-assembly';
+    const outputPath = path.join(tempDir, outputFilename);
+
+    // Ensure temp directory exists
     const fs = require('node:fs');
-    const outputDir = path.dirname(outputPath);
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
     }
 
     // Get audio track if specified in request body
@@ -104,14 +114,20 @@ export async function POST(
     // Calculate total duration
     const totalDuration = videoClips.reduce((sum, clip) => sum + clip.duration, 0);
 
-    // Generate public URL (adjust based on your deployment)
-    const assembledVideoUrl = `/assembled-scenes/${outputFilename}`;
+    // Upload to GCS and generate thumbnail
+    console.error(`Uploading assembled video to GCS for scene ${sceneId}`);
+    const { videoUrl, thumbnailUrl, videoPath: gcsVideoPath, thumbnailPath: gcsThumbnailPath } =
+      await VideoService.uploadToGCS(outputPath, sceneId);
 
-    // Update scene with assembled video URL
+    // Cleanup local temp files
+    VideoService.cleanupTempFiles();
+
+    // Update scene with GCS URLs
     await db
       .update(scenes)
       .set({
-        assembledVideoUrl,
+        assembledVideoUrl: gcsVideoPath, // Store GCS path for future reference
+        thumbnailUrl: gcsThumbnailPath,
         durationSeconds: totalDuration.toString(),
         status: 'completed',
         updatedAt: new Date(),
@@ -121,7 +137,8 @@ export async function POST(
     return NextResponse.json({
       success: true,
       sceneId,
-      assembledVideoUrl,
+      assembledVideoUrl: videoUrl, // Return signed URL for immediate access
+      thumbnailUrl,
       durationSeconds: totalDuration,
       clipCount: videoClips.length,
       message: 'Scene assembled successfully',
@@ -167,6 +184,7 @@ export async function GET(
         title: scenes.title,
         status: scenes.status,
         assembledVideoUrl: scenes.assembledVideoUrl,
+        thumbnailUrl: scenes.thumbnailUrl,
         durationSeconds: scenes.durationSeconds,
       })
       .from(scenes)
@@ -180,11 +198,20 @@ export async function GET(
       );
     }
 
+    // Generate presigned URLs for GCS paths
+    const assembledVideoUrl = scene.assembledVideoUrl
+      ? await generatePresignedUrl(scene.assembledVideoUrl, 1)
+      : null;
+    const thumbnailUrl = scene.thumbnailUrl
+      ? await generatePresignedUrl(scene.thumbnailUrl, 1)
+      : null;
+
     return NextResponse.json({
       sceneId: scene.id,
       title: scene.title,
       status: scene.status,
-      assembledVideoUrl: scene.assembledVideoUrl,
+      assembledVideoUrl,
+      thumbnailUrl,
       durationSeconds: scene.durationSeconds,
       isAssembled: !!scene.assembledVideoUrl,
     });
