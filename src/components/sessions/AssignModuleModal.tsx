@@ -6,7 +6,7 @@
  */
 
 import type { TreatmentModule } from '@/models/Schema';
-import { CheckCircle, FileText, Lightbulb, MessageSquare, X } from 'lucide-react';
+import { CheckCircle, FileText, Lightbulb, X } from 'lucide-react';
 import { useState } from 'react';
 import { ModuleBadge } from '@/components/modules/ModuleBadge';
 import { ModulePicker } from '@/components/modules/ModulePicker';
@@ -133,35 +133,6 @@ export function AssignModuleModal({
                       </h4>
                       <p className="text-sm text-gray-700">{selectedModule.description}</p>
                     </div>
-
-                    {/* In-Session Questions Preview */}
-                    {(selectedModule.inSessionQuestions as string[])?.length > 0 && (
-                      <div>
-                        <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900">
-                          <MessageSquare className="h-4 w-4 text-indigo-600" />
-                          Opening Questions
-                        </h4>
-                        <ul className="space-y-1 text-sm text-gray-700">
-                          {(selectedModule.inSessionQuestions as string[])
-                            .slice(0, 3)
-                            .map((question, index) => (
-                              <li key={index} className="flex gap-2">
-                                <span className="text-gray-400">•</span>
-                                <span>{question}</span>
-                              </li>
-                            ))}
-                          {(selectedModule.inSessionQuestions as string[]).length > 3 && (
-                            <li className="text-gray-500">
-                              +
-                              {(selectedModule.inSessionQuestions as string[]).length - 3}
-                              {' '}
-                              more
-                              questions
-                            </li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
 
                     {/* Features */}
                     <div className="flex flex-wrap gap-3 pt-2">

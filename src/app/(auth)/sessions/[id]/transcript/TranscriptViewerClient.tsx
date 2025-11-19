@@ -50,7 +50,8 @@ export function TranscriptViewerClient({
   const [error, setError] = useState<string | null>(null);
 
   // AI Prompts state
-  const [aiPrompts, setAiPrompts] = useState<AIPromptOption[]>([]);
+  const [aiPrompts, setAiPrompts] = useState<AIPromptOption[]>([]); // Module prompts
+  const [libraryPrompts, setLibraryPrompts] = useState<AIPromptOption[]>([]); // All available prompts
   const [_isLoadingPrompts, setIsLoadingPrompts] = useState(false);
 
   // Modal states
@@ -137,15 +138,30 @@ export function TranscriptViewerClient({
 
       try {
         setIsLoadingPrompts(true);
-        const response = await authenticatedFetch(`/api/sessions/${sessionId}/ai-prompts`, user);
 
-        if (!response.ok) {
-          console.error('Failed to fetch AI prompts');
-          return;
+        // Fetch module prompts
+        const moduleResponse = await authenticatedFetch(`/api/sessions/${sessionId}/ai-prompts`, user);
+        let modulePrompts: AIPromptOption[] = [];
+        if (moduleResponse.ok) {
+          const moduleData = await moduleResponse.json();
+          modulePrompts = moduleData.prompts || [];
+          setAiPrompts(modulePrompts);
         }
 
-        const data = await response.json();
-        setAiPrompts(data.prompts || []);
+        // Fetch all available library prompts (system + organization + private)
+        const libraryResponse = await authenticatedFetch('/api/therapist/prompts', user);
+        if (libraryResponse.ok) {
+          const libraryData = await libraryResponse.json();
+          const allLibraryPrompts = libraryData.prompts || [];
+
+          // Filter out prompts that are already in module prompts to avoid duplicates
+          const modulePromptIds = new Set(modulePrompts.map(p => p.id));
+          const filteredLibraryPrompts = allLibraryPrompts.filter(
+            (p: AIPromptOption) => !modulePromptIds.has(p.id)
+          );
+
+          setLibraryPrompts(filteredLibraryPrompts);
+        }
       } catch (err) {
         console.error('Error fetching AI prompts:', err);
         // Non-critical error - don't show to user, just log it
@@ -173,7 +189,8 @@ export function TranscriptViewerClient({
     console.log('Analyzing with prompt:', promptId, text.substring(0, 50));
 
     // Check if this is a creative prompt (image/video generation)
-    const prompt = aiPrompts.find(p => p.id === promptId);
+    // Look in both module prompts and library prompts
+    const prompt = aiPrompts.find(p => p.id === promptId) || libraryPrompts.find(p => p.id === promptId);
 
     if (prompt?.category === 'creative') {
       // For creative prompts, open the image modal
@@ -450,6 +467,7 @@ export function TranscriptViewerClient({
         selectedText={selectedText}
         onAnalyze={handleAnalyze}
         aiPrompts={aiPrompts}
+        libraryPrompts={libraryPrompts}
         assignedModule={assignedModule}
         onAssignModule={() => setIsAssignModuleModalOpen(true)}
       />

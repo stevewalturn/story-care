@@ -30,7 +30,8 @@ type AnalyzeSelectionModalProps = {
   onClose: () => void;
   selectedText: string;
   onAnalyze: (promptId: string, promptText: string, selectedText: string) => void;
-  aiPrompts: AIPromptOption[];
+  aiPrompts: AIPromptOption[]; // Module prompts (shown first)
+  libraryPrompts: AIPromptOption[]; // All other available prompts
   assignedModule?: TreatmentModule | null;
   onAssignModule: () => void;
 };
@@ -79,6 +80,7 @@ export function AnalyzeSelectionModal({
   selectedText,
   onAnalyze,
   aiPrompts,
+  libraryPrompts,
   assignedModule,
   onAssignModule,
 }: AnalyzeSelectionModalProps) {
@@ -93,8 +95,8 @@ export function AnalyzeSelectionModal({
     onClose();
   };
 
-  // Auto-open Assign Module modal if no prompts available
-  if (aiPrompts.length === 0) {
+  // Auto-open Assign Module modal if no module AND no library prompts available
+  if (aiPrompts.length === 0 && libraryPrompts.length === 0) {
     // Trigger the Assign Module modal and close this one
     onAssignModule();
     onClose();
@@ -130,76 +132,145 @@ export function AnalyzeSelectionModal({
         </div>
 
         {/* Options */}
-        <div className="max-h-[60vh] space-y-3 overflow-y-auto p-6">
-          {/* Module Header (if module assigned) */}
-          {assignedModule && (
-            <div className="mb-4 flex items-center gap-2">
-              <Target className="h-4 w-4 text-indigo-600" />
-              <span className="text-sm font-semibold text-gray-900">
-                {assignedModule.name}
-                {' '}
-                AI Prompts
-              </span>
-              <ModuleBadge
-                moduleName={assignedModule.name}
-                domain={assignedModule.domain as any}
-                size="sm"
-                showIcon={false}
-              />
+        <div className="max-h-[60vh] space-y-4 overflow-y-auto p-6">
+          {/* Module Prompts Section */}
+          {aiPrompts.length > 0 && (
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <Target className="h-4 w-4 text-indigo-600" />
+                <span className="text-sm font-semibold text-gray-900">
+                  {assignedModule?.name || 'Module'}
+                  {' '}
+                  Prompts
+                </span>
+                {assignedModule && (
+                  <ModuleBadge
+                    moduleName={assignedModule.name}
+                    domain={assignedModule.domain as any}
+                    size="sm"
+                    showIcon={false}
+                  />
+                )}
+              </div>
+              <div className="space-y-3">
+                {aiPrompts.map((prompt) => {
+                  const IconComponent = getIconComponent(prompt.icon);
+                  const iconColorClass = getIconColor(prompt.category);
+                  const badgeColorClass = getBadgeColor(prompt.category);
+
+                  return (
+                    <button
+                      key={prompt.id}
+                      onClick={() => handleAnalyze(prompt.id, prompt.promptText)}
+                      onMouseEnter={() => setSelectedOption(prompt.id)}
+                      onMouseLeave={() => setSelectedOption(null)}
+                      className={`w-full rounded-lg border-2 text-left transition-all ${
+                        selectedOption === prompt.id
+                          ? 'border-indigo-500 bg-indigo-50'
+                          : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50'
+                      }`}
+                    >
+                      <div className="p-4">
+                        <div className="flex items-start gap-3">
+                          {/* Icon */}
+                          <div className={`mt-0.5 flex-shrink-0 ${iconColorClass}`}>
+                            <IconComponent className="h-5 w-5" />
+                          </div>
+
+                          {/* Content */}
+                          <div className="min-w-0 flex-1">
+                            <div className="mb-1 flex flex-wrap items-center gap-2">
+                              <h3 className="text-sm font-semibold text-gray-900">{prompt.name}</h3>
+                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${badgeColorClass}`}>
+                                {prompt.category}
+                              </span>
+                            </div>
+                            {prompt.description && (
+                              <p className="text-xs leading-relaxed text-gray-600">
+                                {prompt.description}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Arrow */}
+                          <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 
-          {/* AI Prompts */}
-          {aiPrompts.map((prompt) => {
-            const IconComponent = getIconComponent(prompt.icon);
-            const iconColorClass = getIconColor(prompt.category);
-            const badgeColorClass = getBadgeColor(prompt.category);
+          {/* Divider between module and library prompts */}
+          {aiPrompts.length > 0 && libraryPrompts.length > 0 && (
+            <div className="flex items-center gap-3 py-2">
+              <div className="h-px flex-1 bg-gray-200" />
+              <span className="text-xs font-medium text-gray-500 uppercase">All Available Prompts</span>
+              <div className="h-px flex-1 bg-gray-200" />
+            </div>
+          )}
 
-            return (
-              <button
-                key={prompt.id}
-                onClick={() => handleAnalyze(prompt.id, prompt.promptText)}
-                onMouseEnter={() => setSelectedOption(prompt.id)}
-                onMouseLeave={() => setSelectedOption(null)}
-                className={`w-full rounded-lg border-2 text-left transition-all ${
-                  selectedOption === prompt.id
-                    ? 'border-indigo-500 bg-indigo-50'
-                    : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50'
-                }`}
-              >
-                <div className="p-4">
-                  <div className="flex items-start gap-3">
-                    {/* Icon */}
-                    <div className={`mt-0.5 flex-shrink-0 ${iconColorClass}`}>
-                      <IconComponent className="h-5 w-5" />
-                    </div>
+          {/* Library Prompts Section */}
+          {libraryPrompts.length > 0 && (
+            <div className="space-y-3">
+              {libraryPrompts.map((prompt) => {
+                const IconComponent = getIconComponent(prompt.icon);
+                const iconColorClass = getIconColor(prompt.category);
+                const badgeColorClass = getBadgeColor(prompt.category);
 
-                    {/* Content */}
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-1 flex flex-wrap items-center gap-2">
-                        <h3 className="text-sm font-semibold text-gray-900">{prompt.name}</h3>
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${badgeColorClass}`}>
-                          {prompt.category}
-                        </span>
+                return (
+                  <button
+                    key={prompt.id}
+                    onClick={() => handleAnalyze(prompt.id, prompt.promptText)}
+                    onMouseEnter={() => setSelectedOption(prompt.id)}
+                    onMouseLeave={() => setSelectedOption(null)}
+                    className={`w-full rounded-lg border-2 text-left transition-all ${
+                      selectedOption === prompt.id
+                        ? 'border-indigo-500 bg-indigo-50'
+                        : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50'
+                    }`}
+                  >
+                    <div className="p-4">
+                      <div className="flex items-start gap-3">
+                        {/* Icon */}
+                        <div className={`mt-0.5 flex-shrink-0 ${iconColorClass}`}>
+                          <IconComponent className="h-5 w-5" />
+                        </div>
+
+                        {/* Content */}
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1 flex flex-wrap items-center gap-2">
+                            <h3 className="text-sm font-semibold text-gray-900">{prompt.name}</h3>
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${badgeColorClass}`}>
+                              {prompt.category}
+                            </span>
+                          </div>
+                          {prompt.description && (
+                            <p className="text-xs leading-relaxed text-gray-600">
+                              {prompt.description}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Arrow */}
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
                       </div>
-                      {prompt.description && (
-                        <p className="text-xs leading-relaxed text-gray-600">
-                          {prompt.description}
-                        </p>
-                      )}
                     </div>
-
-                    {/* Arrow */}
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Footer */}

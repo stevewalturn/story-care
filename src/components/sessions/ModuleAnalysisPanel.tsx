@@ -6,7 +6,7 @@
  */
 
 import type { TreatmentModule } from '@/models/Schema';
-import { ChevronDown, ChevronUp, Lightbulb, MessageSquare, Target } from 'lucide-react';
+import { ChevronDown, ChevronUp, Lightbulb, Target } from 'lucide-react';
 import { useState } from 'react';
 import { ModuleBadge } from '@/components/modules/ModuleBadge';
 
@@ -59,26 +59,6 @@ export function ModuleAnalysisPanel({ module, onAnalyzeWithModule }: ModuleAnaly
             </h4>
             <p className="text-sm text-gray-700">{module.description}</p>
           </div>
-
-          {/* In-Session Questions */}
-          {(module.inSessionQuestions as string[])?.length > 0 && (
-            <div>
-              <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900">
-                <MessageSquare className="h-4 w-4 text-indigo-600" />
-                Opening Questions
-              </h4>
-              <ul className="space-y-2">
-                {(module.inSessionQuestions as string[]).map((question, index) => (
-                  <li key={index} className="flex gap-2 text-sm text-gray-700">
-                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700">
-                      {index + 1}
-                    </span>
-                    <span className="flex-1">{question}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
 
           {/* Action Button */}
           {onAnalyzeWithModule && (
