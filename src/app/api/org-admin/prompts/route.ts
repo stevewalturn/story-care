@@ -1,0 +1,126 @@
+/**
+ * API Route: Org Admin Prompts
+ * GET: List all accessible prompts (system + org)
+ * POST: Create new organization prompt
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/libs/DB';
+import { moduleAiPromptsSchema, usersSchema } from '@/models/Schema';
+import { eq, and, or } from 'drizzle-orm';
+import { adminAuth } from '@/libs/FirebaseAdmin';
+
+export async function GET(request: NextRequest) {
+  try {
+    // Get auth token
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    const decodedToken = await adminAuth.verifyIdToken(token);
+    const userId = decodedToken.uid;
+
+    // Get user's organization ID and verify role
+    const user = await db.query.usersSchema.findFirst({
+      where: eq(usersSchema.id, userId),
+    });
+
+    if (!user || user.role !== 'org_admin') {
+      return NextResponse.json({ error: 'Forbidden: Org admin access required' }, { status: 403 });
+    }
+
+    // Fetch system prompts + org prompts for this organization
+    const prompts = await db
+      .select()
+      .from(moduleAiPromptsSchema)
+      .where(
+        and(
+          eq(moduleAiPromptsSchema.isActive, true),
+          or(
+            eq(moduleAiPromptsSchema.scope, 'system'),
+            and(
+              eq(moduleAiPromptsSchema.scope, 'organization'),
+              eq(moduleAiPromptsSchema.organizationId, user.organizationId!)
+            )
+          )
+        )
+      )
+      .orderBy(moduleAiPromptsSchema.scope, moduleAiPromptsSchema.category, moduleAiPromptsSchema.name);
+
+    return NextResponse.json({ prompts });
+  } catch (error) {
+    console.error('Error fetching prompts:', error);
+    return NextResponse.json({ error: 'Failed to fetch prompts' }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    // Get auth token
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    const decodedToken = await adminAuth.verifyIdToken(token);
+    const userId = decodedToken.uid;
+
+    // Get user's organization ID and verify role
+    const user = await db.query.usersSchema.findFirst({
+      where: eq(usersSchema.id, userId),
+    });
+
+    if (!user || user.role !== 'org_admin') {
+      return NextResponse.json({ error: 'Forbidden: Org admin access required' }, { status: 403 });
+    }
+
+    if (!user.organizationId) {
+      return NextResponse.json({ error: 'User not associated with an organization' }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const { name, promptText, description, category, icon } = body;
+
+    // Validate required fields
+    if (!name || !promptText || !category) {
+      return NextResponse.json(
+        { error: 'Missing required fields: name, promptText, category' },
+        { status: 400 }
+      );
+    }
+
+    // Validate category
+    const validCategories = ['analysis', 'creative', 'extraction', 'reflection'];
+    if (!validCategories.includes(category)) {
+      return NextResponse.json(
+        { error: `Invalid category. Must be one of: ${validCategories.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
+    // Create new organization prompt
+    const [newPrompt] = await db
+      .insert(moduleAiPromptsSchema)
+      .values({
+        name,
+        promptText,
+        description: description || null,
+        category,
+        icon: icon || 'sparkles',
+        scope: 'organization',
+        organizationId: user.organizationId,
+        createdBy: userId,
+        isActive: true,
+        useCount: 0,
+      })
+      .returning();
+
+    return NextResponse.json({ prompt: newPrompt }, { status: 201 });
+  } catch (error) {
+    console.error('Error creating prompt:', error);
+    return NextResponse.json({ error: 'Failed to create prompt' }, { status: 500 });
+  }
+}
