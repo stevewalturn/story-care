@@ -5,15 +5,16 @@
 
 // Load environment variables FIRST
 import * as dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
-dotenv.config({ path: '.env' });
 
+import { eq } from 'drizzle-orm';
 // Import drizzle and pg directly to bypass Env validation
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { moduleAiPromptsSchema, usersSchema } from '../src/models/Schema';
-import { eq } from 'drizzle-orm';
 import * as schema from '../src/models/Schema';
+
+dotenv.config({ path: '.env.local' });
+dotenv.config({ path: '.env' });
 
 // Create database connection directly
 const pool = new Pool({
@@ -37,6 +38,7 @@ Extract 2-3 meaningful quotes that show resilience. Summarize therapeutic themes
     description: 'Analyze for moments of personal agency, strength, and alternative narratives',
     category: 'analysis',
     icon: 'target',
+    outputType: 'text',
   },
   {
     name: 'Create A Scene',
@@ -53,6 +55,7 @@ Format as a detailed DALL-E prompt that could generate an image representing thi
     description: 'Generate therapeutic scene visualization from transcript moments',
     category: 'creative',
     icon: 'sparkles',
+    outputType: 'scene',
   },
   {
     name: 'Extract Meaningful Quotes',
@@ -75,6 +78,7 @@ Format each quote with attribution (timestamp or session date).`,
     description: 'AI extracts therapeutically meaningful quotes with context',
     category: 'extraction',
     icon: 'quote',
+    outputType: 'text',
   },
   {
     name: 'Potential Images',
@@ -97,6 +101,7 @@ Focus on images that empower, heal, or reframe the patient's story.`,
     description: 'Generate image suggestions based on transcript themes and metaphors',
     category: 'creative',
     icon: 'image',
+    outputType: 'image',
   },
   {
     name: 'Grounding & Regulation Analysis',
@@ -119,6 +124,7 @@ Provide therapeutic insights for helping the patient build regulation capacity.`
     description: 'Identify dysregulation patterns and coping mechanisms',
     category: 'analysis',
     icon: 'activity',
+    outputType: 'text',
   },
   {
     name: 'Relational Healing & Integration Analysis',
@@ -141,6 +147,7 @@ Suggest how to support relational healing in future sessions.`,
     description: 'Analyze attachment patterns and relational healing opportunities',
     category: 'analysis',
     icon: 'users',
+    outputType: 'text',
   },
   {
     name: 'Generate Reflection Questions',
@@ -162,6 +169,7 @@ Questions should feel personal, not generic - use language and themes from the p
     description: 'Generate personalized reflection questions for story pages',
     category: 'reflection',
     icon: 'message-circle',
+    outputType: 'text',
   },
   {
     name: 'Identify Metaphors & Symbols',
@@ -184,6 +192,7 @@ These metaphors can become powerful elements in story pages and therapeutic conv
     description: 'Extract patient\'s natural metaphors and symbolic language',
     category: 'extraction',
     icon: 'eye',
+    outputType: 'text',
   },
 ];
 

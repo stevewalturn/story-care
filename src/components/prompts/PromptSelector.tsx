@@ -180,6 +180,13 @@ export function PromptSelector({
                     >
                       {categoryLabels[prompt.category] || prompt.category}
                     </span>
+                    {prompt.outputType && (
+                      <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                        {prompt.outputType === 'text' && '📝 Text'}
+                        {prompt.outputType === 'image' && '🖼️ Image'}
+                        {prompt.outputType === 'scene' && '🎬 Scene'}
+                      </span>
+                    )}
                     {prompt.scope === 'system' && (
                       <span className="rounded bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
                         System

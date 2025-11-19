@@ -59,6 +59,7 @@ export function ViewEditPromptModal({
   const [description, setDescription] = useState(prompt.description || '');
   const [category, setCategory] = useState(prompt.category);
   const [icon, setIcon] = useState(prompt.icon || 'sparkles');
+  const [outputType, setOutputType] = useState(prompt.outputType || 'text');
 
   const handleSave = async () => {
     if (!name.trim() || !promptText.trim() || !category) {
@@ -79,6 +80,7 @@ export function ViewEditPromptModal({
           description: description.trim() || null,
           category,
           icon,
+          outputType,
         },
       );
 
@@ -227,6 +229,25 @@ export function ViewEditPromptModal({
                 </div>
               </div>
 
+              {/* Output Type */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-900">
+                  Output Type
+                  {' '}
+                  <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={outputType}
+                  onChange={e => setOutputType(e.target.value)}
+                  disabled={!isEditing}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none disabled:bg-gray-50 disabled:text-gray-600"
+                >
+                  <option value="text">📝 Text - Returns formatted text response</option>
+                  <option value="image">🖼️ Image - Generates image description/prompt</option>
+                  <option value="scene">🎬 Scene - Generates scene visualization/video prompt</option>
+                </select>
+              </div>
+
               {/* Description */}
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-900">
@@ -328,6 +349,7 @@ export function ViewEditPromptModal({
                       setDescription(prompt.description || '');
                       setCategory(prompt.category);
                       setIcon(prompt.icon || 'sparkles');
+                      setOutputType(prompt.outputType || 'text');
                     }}
                   >
                     Cancel

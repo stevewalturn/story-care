@@ -697,6 +697,7 @@ export const moduleAiPromptsSchema = pgTable('module_ai_prompts', {
   // Classification
   category: varchar('category', { length: 100 }).notNull(), // 'analysis', 'creative', 'extraction', 'reflection'
   icon: varchar('icon', { length: 50 }).default('sparkles'), // Icon name for UI (e.g., 'sparkles', 'target', 'lightbulb')
+  outputType: varchar('output_type', { length: 50 }).default('text'), // 'text', 'image', 'video', 'scene', 'quote', 'mixed'
 
   // Scope & Ownership (same as treatment_modules)
   scope: templateScopeEnum('scope').default('system').notNull(),

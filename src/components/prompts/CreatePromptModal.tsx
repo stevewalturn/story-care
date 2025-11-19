@@ -12,7 +12,7 @@ import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type PromptScope = 'system' | 'organization' | 'private';
 type PromptCategory = 'analysis' | 'creative' | 'extraction' | 'reflection';
-type OutputType = 'text' | 'image';
+type OutputType = 'text' | 'image' | 'scene';
 
 type CreatePromptModalProps = {
   scope: PromptScope;
@@ -83,6 +83,7 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
           description: description.trim() || undefined,
           category,
           icon: 'sparkles', // Default icon
+          outputType,
         }),
       });
 
@@ -192,6 +193,7 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
                 >
                   <option value="text">📝 Text - Returns formatted text response</option>
                   <option value="image">🖼️ Image - Generates image description/prompt</option>
+                  <option value="scene">🎬 Scene - Generates scene visualization/video prompt</option>
                 </select>
                 <p className="mt-1 text-xs text-gray-500">
                   Determines how the AI response is displayed (text output vs image generation)

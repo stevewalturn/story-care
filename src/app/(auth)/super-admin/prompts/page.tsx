@@ -253,6 +253,15 @@ function SystemPromptCard({ prompt, onView, onDelete }: SystemPromptCardProps) {
                 {prompt.category}
               </span>
             )}
+            {prompt.outputType && (
+              <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                {prompt.outputType === 'text' && '📝'}
+                {prompt.outputType === 'image' && '🖼️'}
+                {prompt.outputType === 'scene' && '🎬'}
+                {' '}
+                {prompt.outputType}
+              </span>
+            )}
             <span className="text-xs text-gray-500">System</span>
           </div>
         </div>
