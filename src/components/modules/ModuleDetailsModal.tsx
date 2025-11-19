@@ -5,18 +5,18 @@
  * Read-only view of module with tabbed interface
  */
 
-import type { TreatmentModule } from '@/models/Schema';
-import { Pencil, TrendingUp, X } from 'lucide-react';
+import type { TreatmentModuleWithPrompts } from '@/models/Schema';
+import { Pencil, Sparkles, TrendingUp, X } from 'lucide-react';
 import { useState } from 'react';
 
 type ModuleDetailsModalProps = {
-  module: TreatmentModule;
+  module: TreatmentModuleWithPrompts;
   onClose: () => void;
   onEdit?: () => void; // Optional - only provided for editable modules
   onCopy?: () => void; // Optional - only provided for system modules
 };
 
-type Tab = 'overview' | 'questions' | 'prompt';
+type Tab = 'overview' | 'questions' | 'prompts';
 
 export function ModuleDetailsModal({ module, onClose, onEdit, onCopy }: ModuleDetailsModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -95,15 +95,21 @@ export function ModuleDetailsModal({ module, onClose, onEdit, onCopy }: ModuleDe
                   Questions
                 </button>
                 <button
-                  onClick={() => setActiveTab('prompt')}
+                  onClick={() => setActiveTab('prompts')}
                   className={`pb-3 text-sm font-medium transition-colors ${
-                    activeTab === 'prompt'
+                    activeTab === 'prompts'
                       ? 'border-b-2 border-indigo-600 text-indigo-600'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                   type="button"
                 >
-                  AI Prompt
+                  AI Prompts
+                  {' '}
+                  {module.linkedPrompts && module.linkedPrompts.length > 0 && (
+                    <span className="ml-1 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-600">
+                      {module.linkedPrompts.length}
+                    </span>
+                  )}
                 </button>
               </div>
             </div>
@@ -179,31 +185,72 @@ export function ModuleDetailsModal({ module, onClose, onEdit, onCopy }: ModuleDe
               </div>
             )}
 
-            {/* AI Prompt Tab */}
-            {activeTab === 'prompt' && (
+            {/* AI Prompts Tab */}
+            {activeTab === 'prompts' && (
               <div className="space-y-4">
                 <div>
-                  <h3 className="mb-2 text-sm font-semibold text-gray-900">AI Analysis Instructions</h3>
+                  <h3 className="mb-2 text-sm font-semibold text-gray-900">Linked AI Prompts</h3>
                   <p className="mb-4 text-sm text-gray-600">
-                    This prompt guides AI to extract module-specific insights from transcripts.
+                    These prompts are used to analyze transcripts for this module.
                   </p>
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                    <pre className="font-mono text-sm whitespace-pre-wrap text-gray-700">
-                      {module.aiPromptText}
-                    </pre>
-                  </div>
-                </div>
 
-                {module.aiPromptMetadata && (module.aiPromptMetadata as any) && (
-                  <div>
-                    <h3 className="mb-2 text-sm font-semibold text-gray-900">Expected Output Format</h3>
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                      <pre className="font-mono text-xs whitespace-pre-wrap text-gray-700">
-                        {JSON.stringify(module.aiPromptMetadata || {}, null, 2)}
-                      </pre>
+                  {module.linkedPrompts && module.linkedPrompts.length > 0 ? (
+                    <div className="space-y-3">
+                      {module.linkedPrompts.map((prompt) => {
+                        const categoryColors = {
+                          analysis: 'bg-blue-100 text-blue-700',
+                          creative: 'bg-purple-100 text-purple-700',
+                          extraction: 'bg-green-100 text-green-700',
+                          reflection: 'bg-orange-100 text-orange-700',
+                        };
+
+                        return (
+                          <div
+                            key={prompt.id}
+                            className="rounded-lg border border-gray-200 bg-white p-4 hover:shadow-md transition-shadow"
+                          >
+                            <div className="mb-2 flex items-start justify-between">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-gray-900">{prompt.name}</h4>
+                                <div className="mt-1 flex items-center gap-2">
+                                  {prompt.category && (
+                                    <span
+                                      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${categoryColors[prompt.category as keyof typeof categoryColors]}`}
+                                    >
+                                      {prompt.category}
+                                    </span>
+                                  )}
+                                  <span className="flex items-center gap-1 text-xs text-gray-500">
+                                    <Sparkles className="h-3 w-3" />
+                                    {prompt.icon || 'sparkles'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {prompt.description && (
+                              <p className="mb-3 text-sm text-gray-600">{prompt.description}</p>
+                            )}
+
+                            <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                              <pre className="font-mono text-xs whitespace-pre-wrap text-gray-700">
+                                {prompt.promptText}
+                              </pre>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
+                      <Sparkles className="mx-auto mb-3 h-12 w-12 text-gray-400" />
+                      <h3 className="mb-1 text-lg font-semibold text-gray-900">No AI Prompts Linked</h3>
+                      <p className="text-sm text-gray-600">
+                        This module doesn't have any AI prompts attached yet.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

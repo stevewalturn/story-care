@@ -5,7 +5,7 @@
 
 'use client';
 
-import type { TreatmentModule } from '@/models/Schema';
+import type { TreatmentModuleWithPrompts } from '@/models/Schema';
 import { Layers, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ModuleCard } from '@/components/modules/ModuleCard';
@@ -16,17 +16,17 @@ import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 export default function TherapistModulesPage() {
   const { user } = useAuth();
-  const [privateModules, setPrivateModules] = useState<TreatmentModule[]>([]);
-  const [templates, setTemplates] = useState<TreatmentModule[]>([]);
-  const [orgModules, setOrgModules] = useState<TreatmentModule[]>([]);
+  const [privateModules, setPrivateModules] = useState<TreatmentModuleWithPrompts[]>([]);
+  const [templates, setTemplates] = useState<TreatmentModuleWithPrompts[]>([]);
+  const [orgModules, setOrgModules] = useState<TreatmentModuleWithPrompts[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Modals
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [selectedModule, setSelectedModule] = useState<TreatmentModule | null>(null);
-  const [editableModule, setEditableModule] = useState<TreatmentModule | null>(null);
+  const [selectedModule, setSelectedModule] = useState<TreatmentModuleWithPrompts | null>(null);
+  const [editableModule, setEditableModule] = useState<TreatmentModuleWithPrompts | null>(null);
 
   // Fetch modules
   useEffect(() => {

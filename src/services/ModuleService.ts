@@ -7,6 +7,8 @@ import type { TemplateScope } from '@/types/Organization';
 import { and, desc, eq, or, sql } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import {
+  moduleAiPromptsSchema,
+  modulePromptLinksSchema,
   reflectionTemplatesSchema,
   surveyTemplatesSchema,
   treatmentModulesSchema,
@@ -343,7 +345,36 @@ export async function listTemplates(params?: {
     .where(and(...conditions))
     .orderBy(desc(treatmentModulesSchema.createdAt));
 
-  return templates;
+  // Fetch linked prompts for all templates
+  const templatesWithPrompts = await Promise.all(
+    templates.map(async (template) => {
+      const linkedPrompts = await db
+        .select({
+          id: moduleAiPromptsSchema.id,
+          name: moduleAiPromptsSchema.name,
+          promptText: moduleAiPromptsSchema.promptText,
+          description: moduleAiPromptsSchema.description,
+          category: moduleAiPromptsSchema.category,
+          icon: moduleAiPromptsSchema.icon,
+          isActive: moduleAiPromptsSchema.isActive,
+          sortOrder: modulePromptLinksSchema.sortOrder,
+        })
+        .from(modulePromptLinksSchema)
+        .innerJoin(
+          moduleAiPromptsSchema,
+          eq(modulePromptLinksSchema.promptId, moduleAiPromptsSchema.id),
+        )
+        .where(eq(modulePromptLinksSchema.moduleId, template.id))
+        .orderBy(modulePromptLinksSchema.sortOrder);
+
+      return {
+        ...template,
+        linkedPrompts: linkedPrompts.filter(p => p.isActive),
+      };
+    }),
+  );
+
+  return templatesWithPrompts;
 }
 
 /**
@@ -401,7 +432,36 @@ export async function listOrgModules(
     .where(and(...conditions))
     .orderBy(desc(treatmentModulesSchema.createdAt));
 
-  return modules;
+  // Fetch linked prompts for all organization modules
+  const modulesWithPrompts = await Promise.all(
+    modules.map(async (module) => {
+      const linkedPrompts = await db
+        .select({
+          id: moduleAiPromptsSchema.id,
+          name: moduleAiPromptsSchema.name,
+          promptText: moduleAiPromptsSchema.promptText,
+          description: moduleAiPromptsSchema.description,
+          category: moduleAiPromptsSchema.category,
+          icon: moduleAiPromptsSchema.icon,
+          isActive: moduleAiPromptsSchema.isActive,
+          sortOrder: modulePromptLinksSchema.sortOrder,
+        })
+        .from(modulePromptLinksSchema)
+        .innerJoin(
+          moduleAiPromptsSchema,
+          eq(modulePromptLinksSchema.promptId, moduleAiPromptsSchema.id),
+        )
+        .where(eq(modulePromptLinksSchema.moduleId, module.id))
+        .orderBy(modulePromptLinksSchema.sortOrder);
+
+      return {
+        ...module,
+        linkedPrompts: linkedPrompts.filter(p => p.isActive),
+      };
+    }),
+  );
+
+  return modulesWithPrompts;
 }
 
 /**
@@ -499,7 +559,36 @@ export async function listTherapistModules(
     .where(and(...conditions))
     .orderBy(desc(treatmentModulesSchema.createdAt));
 
-  return modules;
+  // Fetch linked prompts for all therapist modules
+  const modulesWithPrompts = await Promise.all(
+    modules.map(async (module) => {
+      const linkedPrompts = await db
+        .select({
+          id: moduleAiPromptsSchema.id,
+          name: moduleAiPromptsSchema.name,
+          promptText: moduleAiPromptsSchema.promptText,
+          description: moduleAiPromptsSchema.description,
+          category: moduleAiPromptsSchema.category,
+          icon: moduleAiPromptsSchema.icon,
+          isActive: moduleAiPromptsSchema.isActive,
+          sortOrder: modulePromptLinksSchema.sortOrder,
+        })
+        .from(modulePromptLinksSchema)
+        .innerJoin(
+          moduleAiPromptsSchema,
+          eq(modulePromptLinksSchema.promptId, moduleAiPromptsSchema.id),
+        )
+        .where(eq(modulePromptLinksSchema.moduleId, module.id))
+        .orderBy(modulePromptLinksSchema.sortOrder);
+
+      return {
+        ...module,
+        linkedPrompts: linkedPrompts.filter(p => p.isActive),
+      };
+    }),
+  );
+
+  return modulesWithPrompts;
 }
 
 /**

@@ -6,18 +6,18 @@
  * Supports different action sets based on context (template vs module)
  */
 
-import type { TreatmentModule } from '@/models/Schema';
-import { Archive, Copy, Eye, MoreVertical, Pencil, TrendingUp } from 'lucide-react';
+import type { TreatmentModuleWithPrompts } from '@/models/Schema';
+import { Archive, Copy, Eye, MoreVertical, Pencil, Sparkles, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type ModuleCardProps = {
-  module: TreatmentModule;
-  onView?: (module: TreatmentModule) => void;
-  onViewDetails?: (module: TreatmentModule) => void;
-  onEdit?: (module: TreatmentModule) => void;
-  onCopy?: (module: TreatmentModule) => void;
+  module: TreatmentModuleWithPrompts;
+  onView?: (module: TreatmentModuleWithPrompts) => void;
+  onViewDetails?: (module: TreatmentModuleWithPrompts) => void;
+  onEdit?: (module: TreatmentModuleWithPrompts) => void;
+  onCopy?: (module: TreatmentModuleWithPrompts) => void;
   onArchived?: () => void;
   onRefresh?: () => void;
   isTemplate?: boolean;
@@ -196,11 +196,23 @@ export function ModuleCard({
             <TrendingUp className="h-3.5 w-3.5" />
             <span>
               Used
+              {' '}
               {module.useCount}
               {' '}
               times
             </span>
           </div>
+          {module.linkedPrompts && module.linkedPrompts.length > 0 && (
+            <div className="flex items-center gap-1">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>
+                {module.linkedPrompts.length}
+                {' '}
+                AI Prompt
+                {module.linkedPrompts.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
         </div>
       </button>
 

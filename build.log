@@ -1,0 +1,162 @@
+
+> build
+> run-s db:migrate build:next
+
+
+> db:migrate
+> drizzle-kit migrate
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/Users/lpt-799/Code/walturn/story-care/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] applying migrations...[2K[1G[⣯] applying migrations...[2K[1G[⣟] applying migrations...[2K[1G[⡿] applying migrations...[2K[1G[⢿] applying migrations...[2K[1G[⣻] applying migrations...[2K[1G[⣽] applying migrations...[2K[1G[⣷] applying migrations...[2K[1G[⣯] applying migrations...[2K[1G[⣟] applying migrations...[2K[1G[⡿] applying migrations...[2K[1G[⢿] applying migrations...[2K[1G[⣻] applying migrations...[2K[1G[⣽] applying migrations...[2K[1G[⣷] applying migrations...[2K[1G[⣯] applying migrations...[2K[1G[⣟] applying migrations...[2K[1G[⡿] applying migrations...[2K[1G[⢿] applying migrations...[2K[1G[⣻] applying migrations...[2K[1G[⣽] applying migrations...[2K[1G[⣷] applying migrations...[2K[1G[⣯] applying migrations...[2K[1G[⣟] applying migrations...[2K[1G[⡿] applying migrations...[2K[1G[⢿] applying migrations...[2K[1G[⣻] applying migrations...[2K[1G[⣽] applying migrations...[2K[1G[⣷] applying migrations...[2K[1G[⣯] applying migrations...[2K[1G[⣟] applying migrations...[2K[1G[⡿] applying migrations...[2K[1G[⢿] applying migrations...[2K[1G[⣻] applying migrations...[2K[1G[⣽] applying migrations...[2K[1G[✓] migrations applied successfully!
+> build:next
+> next build --webpack
+
+   ▲ Next.js 16.0.1 (webpack)
+   - Environments: .env.local, .env.production, .env
+   - Experiments (use with caution):
+     · proxyClientMaxBodySize: 524288000
+
+ ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 7.2s
+   Running TypeScript ...
+   Collecting page data ...
+   Generating static pages (0/80) ...
+   Generating static pages (20/80) 
+   Generating static pages (40/80) 
+   Generating static pages (60/80) 
+ ✓ Generating static pages (80/80) in 927.0ms
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /admin
+├ ○ /admin/modules
+├ ƒ /api/ai/chat
+├ ƒ /api/ai/generate-image
+├ ƒ /api/auth/check-invitation
+├ ƒ /api/auth/me
+├ ƒ /api/auth/session
+├ ƒ /api/auth/signup
+├ ƒ /api/dashboard/patient-engagement
+├ ƒ /api/dashboard/recent-responses
+├ ƒ /api/dashboard/stats
+├ ƒ /api/groups
+├ ƒ /api/groups/[id]
+├ ƒ /api/groups/[id]/members
+├ ƒ /api/media
+├ ƒ /api/media/[id]
+├ ƒ /api/media/upload
+├ ƒ /api/modules
+├ ƒ /api/modules/[id]
+├ ƒ /api/modules/[id]/generate-story-page
+├ ƒ /api/notes
+├ ƒ /api/notes/[id]
+├ ƒ /api/notifications
+├ ƒ /api/org-admin/metrics
+├ ƒ /api/org-admin/modules
+├ ƒ /api/org-admin/modules/[id]
+├ ƒ /api/org-admin/organization
+├ ƒ /api/org-admin/prompts
+├ ƒ /api/org-admin/prompts/[id]
+├ ƒ /api/organizations
+├ ƒ /api/organizations/[id]
+├ ƒ /api/pages
+├ ƒ /api/pages/[id]
+├ ƒ /api/pages/[id]/share
+├ ƒ /api/patients
+├ ƒ /api/patients/[id]
+├ ƒ /api/patients/upload-image
+├ ƒ /api/prompts
+├ ƒ /api/prompts/[id]
+├ ƒ /api/questions/reflection
+├ ƒ /api/questions/survey
+├ ƒ /api/quotes
+├ ƒ /api/quotes/[id]
+├ ƒ /api/responses/reflection
+├ ƒ /api/responses/survey
+├ ƒ /api/scenes
+├ ƒ /api/scenes/[id]
+├ ƒ /api/scenes/[id]/assemble
+├ ƒ /api/scenes/[id]/clips
+├ ƒ /api/scenes/[id]/clips/[clipId]
+├ ƒ /api/sessions
+├ ƒ /api/sessions/[id]
+├ ƒ /api/sessions/[id]/ai-prompts
+├ ƒ /api/sessions/[id]/analyze-with-module
+├ ƒ /api/sessions/[id]/assign-module
+├ ƒ /api/sessions/[id]/chat
+├ ƒ /api/sessions/[id]/speakers
+├ ƒ /api/sessions/[id]/speakers/[speakerId]/audio
+├ ƒ /api/sessions/[id]/summary
+├ ƒ /api/sessions/[id]/transcribe
+├ ƒ /api/sessions/[id]/transcript
+├ ƒ /api/sessions/upload
+├ ƒ /api/super-admin/audit
+├ ƒ /api/super-admin/metrics
+├ ƒ /api/super-admin/module-templates
+├ ƒ /api/super-admin/module-templates/[id]
+├ ƒ /api/super-admin/prompts
+├ ƒ /api/super-admin/prompts/[id]
+├ ƒ /api/super-admin/settings
+├ ƒ /api/super-admin/users
+├ ƒ /api/templates/[type]/[id]/approve
+├ ƒ /api/templates/[type]/[id]/reject
+├ ƒ /api/templates/pending
+├ ƒ /api/templates/reflections
+├ ƒ /api/templates/surveys
+├ ƒ /api/therapist/modules
+├ ƒ /api/therapist/modules/[id]
+├ ƒ /api/therapist/prompts
+├ ƒ /api/therapist/prompts/[id]
+├ ƒ /api/therapist/responses
+├ ƒ /api/therapist/responses/[patientId]
+├ ƒ /api/therapists
+├ ƒ /api/users/[id]/change-role
+├ ○ /assets
+├ ○ /dashboard
+├ ƒ /dashboard/user-profile/[[...user-profile]]
+├ ○ /org-admin/dashboard
+├ ○ /org-admin/modules
+├ ○ /org-admin/prompts
+├ ○ /org-admin/settings
+├ ○ /org-admin/templates
+├ ○ /org-admin/therapists
+├ ○ /pages
+├ ƒ /pages/[id]
+├ ○ /patient/messages
+├ ○ /patient/sessions
+├ ○ /patient/story
+├ ○ /patients
+├ ○ /robots.txt
+├ ○ /scenes
+├ ○ /sessions
+├ ƒ /sessions/[id]/speakers
+├ ƒ /sessions/[id]/transcript
+├ ○ /setup-account
+├ ƒ /share/[token]
+├ ○ /sign-in
+├ ○ /sign-up
+├ ○ /sitemap.xml
+├ ƒ /story/[storyId]
+├ ○ /super-admin/audit
+├ ○ /super-admin/dashboard
+├ ○ /super-admin/module-templates
+├ ○ /super-admin/organizations
+├ ƒ /super-admin/organizations/[id]
+├ ○ /super-admin/prompts
+├ ○ /super-admin/settings
+├ ○ /super-admin/users
+├ ○ /therapist/modules
+├ ○ /therapist/prompt-library
+├ ○ /therapist/responses
+└ ƒ /therapist/responses/[patientId]
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

@@ -5,12 +5,14 @@
  * Create/Edit treatment module modal matching design spec
  */
 
+import type { TemplateQuestion } from './TemplateQuestionEditor';
 import type { TreatmentModule } from '@/models/Schema';
 import { Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
-import { TemplateQuestionEditor, type TemplateQuestion } from './TemplateQuestionEditor';
+import { PromptSelector } from '../prompts/PromptSelector';
+import { TemplateQuestionEditor } from './TemplateQuestionEditor';
 
 type ModuleEditorProps = {
   module: TreatmentModule | null;
@@ -49,13 +51,8 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
     questions: TemplateQuestion[];
   } | null>(null);
 
-  // AI Prompts state
-  const [aiPrompts, setAiPrompts] = useState({
-    createScene: false,
-    selfResilience: false,
-    groundingRegulation: false,
-    relationalHealing: false,
-  });
+  // AI Prompts state - now uses prompt library
+  const [selectedPromptIds, setSelectedPromptIds] = useState<string[]>([]);
 
   // Survey Bundle state
   const [surveyBundle, setSurveyBundle] = useState({
@@ -83,14 +80,11 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
       // TODO: Load template data if templateId exists
       // This would require fetching the template from the API
 
-      // Load AI prompts from metadata
+      // Load AI prompts from module - now expects array of prompt IDs
       if (module.aiPromptMetadata) {
-        setAiPrompts((module.aiPromptMetadata as any)?.prompts || {
-          createScene: false,
-          selfResilience: false,
-          groundingRegulation: false,
-          relationalHealing: false,
-        });
+        const promptIds = (module.aiPromptMetadata as any)?.promptIds || [];
+        setSelectedPromptIds(promptIds);
+
         setSurveyBundle((module.aiPromptMetadata as any)?.surveyBundle || {
           emotionalImpact: false,
           resonance: false,
@@ -127,16 +121,8 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
       // Filter out empty questions
       const filteredReflectionQuestions = reflectionQuestions.filter(q => q.trim());
 
-      // Build AI prompt text from selected options
-      const selectedPrompts = [];
-      if (aiPrompts.createScene) selectedPrompts.push('Create therapeutic scene visualization');
-      if (aiPrompts.selfResilience) selectedPrompts.push('Analyze self-resilience and re-authoring themes');
-      if (aiPrompts.groundingRegulation) selectedPrompts.push('Identify grounding and emotional regulation opportunities');
-      if (aiPrompts.relationalHealing) selectedPrompts.push('Examine relational healing and integration patterns');
-
-      const aiPromptText = selectedPrompts.length > 0
-        ? `Analyze the transcript with focus on: ${selectedPrompts.join('; ')}. Extract key quotes, identify metaphors and sensory language, summarize therapeutic themes in 2-3 sentences, and suggest visual scenes that convey the emotional core.`
-        : 'Analyze this transcript for therapeutic insights. Extract meaningful quotes, identify emotional themes and metaphors, summarize the narrative arc in 2-3 sentences, and suggest visual scenes that capture the therapeutic moment.';
+      // AI prompts are now stored as IDs, no need to build text here
+      // The actual prompts will be fetched and used when analyzing transcripts
 
       const payload = {
         name,
@@ -182,9 +168,8 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
             }
           : {}),
 
-        aiPromptText,
         aiPromptMetadata: {
-          prompts: aiPrompts,
+          promptIds: selectedPromptIds,
           surveyBundle,
         },
       };
@@ -297,7 +282,7 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                     <input
                       type="checkbox"
                       checked={useReflectionTemplate}
-                      onChange={e => {
+                      onChange={(e) => {
                         const checked = e.target.checked;
                         setUseReflectionTemplate(checked);
                         if (checked && !reflectionTemplate) {
@@ -329,8 +314,7 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                             title: e.target.value,
                             description: reflectionTemplate?.description || '',
                             questions: reflectionTemplate?.questions || [],
-                          })
-                        }
+                          })}
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
                         placeholder="e.g., Self-Resilience Reflection Set"
                         required={useReflectionTemplate}
@@ -348,8 +332,7 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                             title: reflectionTemplate?.title || '',
                             description: e.target.value,
                             questions: reflectionTemplate?.questions || [],
-                          })
-                        }
+                          })}
                         rows={2}
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
                         placeholder="Describe this reflection set..."
@@ -363,8 +346,7 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                           title: reflectionTemplate?.title || '',
                           description: reflectionTemplate?.description || '',
                           questions,
-                        })
-                      }
+                        })}
                       templateType="reflection"
                     />
                   </div>
@@ -403,76 +385,20 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                 )}
               </div>
 
-              {/* AI Prompts */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-900">
-                  AI Prompts
-                </label>
-                <p className="mb-3 text-xs text-gray-500">
-                  Link AI analysis prompts relevant to this therapeutic approach
-                </p>
-                <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-4">
-                  <label className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={aiPrompts.createScene}
-                        onChange={e => setAiPrompts({ ...aiPrompts, createScene: e.target.checked })}
-                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/20"
-                      />
-                      <span className="text-sm text-gray-900">Create A Scene</span>
-                    </div>
-                    <span className="rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
-                      therapeutic_card
-                    </span>
-                  </label>
-
-                  <label className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={aiPrompts.selfResilience}
-                        onChange={e => setAiPrompts({ ...aiPrompts, selfResilience: e.target.checked })}
-                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/20"
-                      />
-                      <span className="text-sm text-gray-900">Self-Resilience & Re-Authoring Analysis</span>
-                    </div>
-                    <span className="rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
-                      analysis
-                    </span>
-                  </label>
-
-                  <label className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={aiPrompts.groundingRegulation}
-                        onChange={e => setAiPrompts({ ...aiPrompts, groundingRegulation: e.target.checked })}
-                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/20"
-                      />
-                      <span className="text-sm text-gray-900">Grounding & Regulation Analysis</span>
-                    </div>
-                    <span className="rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
-                      analysis
-                    </span>
-                  </label>
-
-                  <label className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={aiPrompts.relationalHealing}
-                        onChange={e => setAiPrompts({ ...aiPrompts, relationalHealing: e.target.checked })}
-                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/20"
-                      />
-                      <span className="text-sm text-gray-900">Relational Healing & Integration Analysis</span>
-                    </div>
-                    <span className="rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
-                      analysis
-                    </span>
-                  </label>
-                </div>
-              </div>
+              {/* AI Prompts - Now using Prompt Library */}
+              <PromptSelector
+                selectedPromptIds={selectedPromptIds}
+                onChange={setSelectedPromptIds}
+                apiEndpoint={
+                  scope === 'system'
+                    ? '/api/super-admin/prompts'
+                    : scope === 'organization'
+                      ? '/api/org-admin/prompts'
+                      : '/api/therapist/prompts'
+                }
+                label="AI Analysis Prompts"
+                description="Select AI prompts from the library to use for analyzing transcripts with this module"
+              />
 
               {/* Survey Bundle (Quantitative Data) */}
               <div>
@@ -544,7 +470,7 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                     <input
                       type="checkbox"
                       checked={useSurveyTemplate}
-                      onChange={e => {
+                      onChange={(e) => {
                         const checked = e.target.checked;
                         setUseSurveyTemplate(checked);
                         if (checked && !surveyTemplate) {
@@ -576,8 +502,7 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                             title: e.target.value,
                             description: surveyTemplate?.description || '',
                             questions: surveyTemplate?.questions || [],
-                          })
-                        }
+                          })}
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
                         placeholder="e.g., Post-Session Outcome Survey"
                         required={useSurveyTemplate}
@@ -595,8 +520,7 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                             title: surveyTemplate?.title || '',
                             description: e.target.value,
                             questions: surveyTemplate?.questions || [],
-                          })
-                        }
+                          })}
                         rows={2}
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
                         placeholder="Describe this survey template..."
@@ -610,8 +534,7 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                           title: surveyTemplate?.title || '',
                           description: surveyTemplate?.description || '',
                           questions,
-                        })
-                      }
+                        })}
                       templateType="survey"
                     />
                   </div>

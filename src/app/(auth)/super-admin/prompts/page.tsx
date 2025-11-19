@@ -5,12 +5,13 @@
  * Category-based tab interface for managing system-wide prompt templates
  */
 
-import { AlertCircle, Edit, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
 import type { PromptTemplate } from '@/models/Schema';
+import { AlertCircle, Edit, Eye, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { CreatePromptModal } from '@/components/prompts/CreatePromptModal';
+import { ViewEditPromptModal } from '@/components/prompts/ViewEditPromptModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
-import { CreatePromptModal } from '@/components/prompts/CreatePromptModal';
 
 type Category = 'all' | 'analysis' | 'creative' | 'extraction' | 'reflection';
 
@@ -22,6 +23,7 @@ export default function SuperAdminPromptsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedPrompt, setSelectedPrompt] = useState<PromptTemplate | null>(null);
 
   // Fetch prompts
   const fetchPrompts = async () => {
@@ -119,12 +121,12 @@ export default function SuperAdminPromptsPage() {
         </div>
 
         {/* Category Tabs */}
-        <div className="mb-6 flex gap-2 border-b border-gray-200 overflow-x-auto">
+        <div className="mb-6 flex gap-2 overflow-x-auto border-b border-gray-200">
           {categories.map(cat => (
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
+              className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
                 activeCategory === cat.id
                   ? 'border-indigo-600 text-indigo-600'
                   : 'border-transparent text-gray-600 hover:text-gray-900'
@@ -148,13 +150,13 @@ export default function SuperAdminPromptsPage() {
         {/* Search */}
         <div className="mb-6">
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="Search prompts..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-9 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
             />
           </div>
         </div>
@@ -187,6 +189,7 @@ export default function SuperAdminPromptsPage() {
               <SystemPromptCard
                 key={prompt.id}
                 prompt={prompt}
+                onView={() => setSelectedPrompt(prompt)}
                 onDelete={handleDeletePrompt}
               />
             ))}
@@ -205,6 +208,25 @@ export default function SuperAdminPromptsPage() {
           }}
         />
       )}
+
+      {/* View/Edit Prompt Modal */}
+      {selectedPrompt && (
+        <ViewEditPromptModal
+          prompt={selectedPrompt}
+          onClose={() => setSelectedPrompt(null)}
+          onSaved={() => {
+            fetchPrompts();
+            setSelectedPrompt(null);
+          }}
+          onDeleted={() => {
+            fetchPrompts();
+            setSelectedPrompt(null);
+          }}
+          apiEndpoint="/api/super-admin/prompts"
+          canEdit={true}
+          canDelete={true}
+        />
+      )}
     </div>
   );
 }
@@ -214,12 +236,13 @@ export default function SuperAdminPromptsPage() {
  */
 type SystemPromptCardProps = {
   prompt: PromptTemplate;
+  onView: () => void;
   onDelete: (id: string) => void;
 };
 
-function SystemPromptCard({ prompt, onDelete }: SystemPromptCardProps) {
+function SystemPromptCard({ prompt, onView, onDelete }: SystemPromptCardProps) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
       {/* Header */}
       <div className="mb-3 flex items-start justify-between">
         <div className="flex-1">
@@ -236,27 +259,38 @@ function SystemPromptCard({ prompt, onDelete }: SystemPromptCardProps) {
       </div>
 
       {/* Content Preview */}
-      <p className="mb-4 text-sm text-gray-600 line-clamp-3">
+      <p className="mb-4 line-clamp-3 text-sm text-gray-600">
         {prompt.promptText}
       </p>
 
       {/* Metadata */}
       <div className="mb-4 space-y-1 text-xs text-gray-500">
         {prompt.createdAt && (
-          <div>Created: {new Date(prompt.createdAt).toLocaleDateString()}</div>
+          <div>
+            Created:
+            {new Date(prompt.createdAt).toLocaleDateString()}
+          </div>
         )}
         {prompt.updatedAt && prompt.updatedAt !== prompt.createdAt && (
-          <div>Updated: {new Date(prompt.updatedAt).toLocaleDateString()}</div>
+          <div>
+            Updated:
+            {new Date(prompt.updatedAt).toLocaleDateString()}
+          </div>
         )}
       </div>
 
       {/* Actions */}
       <div className="flex gap-2">
         <button
-          onClick={() => {
-            // TODO: Open edit modal
-            alert('Edit system prompt modal not yet implemented');
-          }}
+          onClick={onView}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+          type="button"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          View
+        </button>
+        <button
+          onClick={onView}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
           type="button"
         >

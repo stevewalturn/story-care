@@ -1210,6 +1210,11 @@ export type NewModuleAiPrompt = typeof moduleAiPromptsSchema.$inferInsert;
 // Alias for consistency with documentation
 export type PromptTemplate = ModuleAiPrompt;
 
+// Treatment module with linked AI prompts (for frontend display)
+export type TreatmentModuleWithPrompts = TreatmentModule & {
+  linkedPrompts?: Array<ModuleAiPrompt & { sortOrder: number }>;
+};
+
 export type ModulePromptLink = typeof modulePromptLinksSchema.$inferSelect;
 export type NewModulePromptLink = typeof modulePromptLinksSchema.$inferInsert;
 
