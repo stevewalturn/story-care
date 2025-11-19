@@ -660,12 +660,14 @@ export const treatmentModulesSchema = pgTable('treatment_modules', {
     .notNull(),
 
   // Module Components (JSONB for flexibility)
-  inSessionQuestions: jsonb('in_session_questions').notNull(), // Opening questions for therapists during live sessions
-  reflectionQuestions: jsonb('reflection_questions'), // Post-session reflection questions for patients in story pages
+  reflectionQuestions: jsonb('reflection_questions'), // Post-session reflection questions for patients in story pages (used if useReflectionTemplate = false)
   reflectionTemplateId: uuid('reflection_template_id').references(
     () => reflectionTemplatesSchema.id,
   ),
+  useReflectionTemplate: boolean('use_reflection_template').default(false), // If true, use reflectionTemplateId; if false, use reflectionQuestions array
+
   surveyTemplateId: uuid('survey_template_id').references(() => surveyTemplatesSchema.id),
+  useSurveyTemplate: boolean('use_survey_template').default(false), // If true, use surveyTemplateId; if false, use custom survey questions
 
   // AI Prompts
   aiPromptText: text('ai_prompt_text').notNull(),
@@ -695,6 +697,18 @@ export const moduleAiPromptsSchema = pgTable('module_ai_prompts', {
   // Classification
   category: varchar('category', { length: 100 }).notNull(), // 'analysis', 'creative', 'extraction', 'reflection'
   icon: varchar('icon', { length: 50 }).default('sparkles'), // Icon name for UI (e.g., 'sparkles', 'target', 'lightbulb')
+
+  // Scope & Ownership (same as treatment_modules)
+  scope: templateScopeEnum('scope').default('system').notNull(),
+  organizationId: uuid('organization_id').references(() => organizationsSchema.id, {
+    onDelete: 'cascade',
+  }),
+  createdBy: uuid('created_by')
+    .references(() => usersSchema.id)
+    .notNull(),
+
+  // Usage Tracking
+  useCount: integer('use_count').default(0).notNull(),
 
   // Status
   isActive: boolean('is_active').default(true).notNull(),
@@ -1192,6 +1206,9 @@ export type NewTreatmentModule = typeof treatmentModulesSchema.$inferInsert;
 
 export type ModuleAiPrompt = typeof moduleAiPromptsSchema.$inferSelect;
 export type NewModuleAiPrompt = typeof moduleAiPromptsSchema.$inferInsert;
+
+// Alias for consistency with documentation
+export type PromptTemplate = ModuleAiPrompt;
 
 export type ModulePromptLink = typeof modulePromptLinksSchema.$inferSelect;
 export type NewModulePromptLink = typeof modulePromptLinksSchema.$inferInsert;
