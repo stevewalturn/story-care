@@ -8,6 +8,7 @@
 import { FileText, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { CreateTemplateModal } from '@/components/templates/CreateTemplateModal';
+import { ViewTemplateDetailsModal } from '@/components/templates/ViewTemplateDetailsModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -36,6 +37,7 @@ export default function SuperAdminTemplatesPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [viewingTemplate, setViewingTemplate] = useState<Template | null>(null);
 
   useEffect(() => {
     fetchTemplates();
@@ -218,9 +220,7 @@ export default function SuperAdminTemplatesPage() {
               <TemplateCard
                 key={template.id}
                 template={template}
-                onView={() => {
-                  // TODO: Open view modal
-                }}
+                onView={() => setViewingTemplate(template)}
               />
             ))}
           </div>
@@ -236,6 +236,15 @@ export default function SuperAdminTemplatesPage() {
             setShowCreateModal(false);
             fetchTemplates();
           }}
+        />
+      )}
+
+      {/* View Template Details Modal */}
+      {viewingTemplate && (
+        <ViewTemplateDetailsModal
+          template={viewingTemplate}
+          scopeLabel="System"
+          onClose={() => setViewingTemplate(null)}
         />
       )}
     </div>

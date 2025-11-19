@@ -5,9 +5,11 @@
  * Manage private templates + view organization and system templates
  */
 
-import { Building, Copy, FileText, Plus, Search } from 'lucide-react';
+import { Building, Copy, FileText, Filter, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { CopyTemplateModal } from '@/components/templates/CopyTemplateModal';
 import { CreateTemplateModal } from '@/components/templates/CreateTemplateModal';
+import { ViewTemplateDetailsModal } from '@/components/templates/ViewTemplateDetailsModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -40,6 +42,8 @@ export default function TherapistTemplatesPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [viewingTemplate, setViewingTemplate] = useState<Template | null>(null);
+  const [copyingTemplate, setCopyingTemplate] = useState<Template | null>(null);
 
   useEffect(() => {
     fetchTemplates();
@@ -145,124 +149,113 @@ export default function TherapistTemplatesPage() {
           </div>
         </div>
 
-        {/* View Mode Tabs */}
-        <div className="mb-6 flex gap-2 overflow-x-auto border-b border-gray-200">
-          <button
-            onClick={() => setViewMode('my_templates')}
-            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
-              viewMode === 'my_templates'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-            type="button"
-          >
-            My Templates
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs ${
-                viewMode === 'my_templates'
-                  ? 'bg-indigo-100 text-indigo-600'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              {myTemplates.length}
-            </span>
-          </button>
-          <button
-            onClick={() => setViewMode('org_templates')}
-            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
-              viewMode === 'org_templates'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-            type="button"
-          >
-            <Building className="h-4 w-4" />
-            Organization Templates
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs ${
-                viewMode === 'org_templates'
-                  ? 'bg-indigo-100 text-indigo-600'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              {orgTemplates.length}
-            </span>
-          </button>
-          <button
-            onClick={() => setViewMode('system_templates')}
-            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
-              viewMode === 'system_templates'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-            type="button"
-          >
-            <Copy className="h-4 w-4" />
-            System Templates
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs ${
-                viewMode === 'system_templates'
-                  ? 'bg-indigo-100 text-indigo-600'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              {systemTemplates.length}
-            </span>
-          </button>
-        </div>
-
-        {/* Type Tabs */}
-        <div className="mb-6 flex gap-2 overflow-x-auto border-b border-gray-200">
-          {typeOptions.map(type => (
+        {/* View Mode Tabs + Filters Row */}
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          {/* View Mode Tabs */}
+          <div className="flex gap-2 overflow-x-auto border-b border-gray-200">
             <button
-              key={type.id}
-              onClick={() => setActiveType(type.id)}
+              onClick={() => setViewMode('my_templates')}
               className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
-                activeType === type.id
+                viewMode === 'my_templates'
                   ? 'border-indigo-600 text-indigo-600'
                   : 'border-transparent text-gray-600 hover:text-gray-900'
               }`}
               type="button"
             >
-              {type.label}
+              My Templates
               <span
                 className={`rounded-full px-2 py-0.5 text-xs ${
-                  activeType === type.id
+                  viewMode === 'my_templates'
                     ? 'bg-indigo-100 text-indigo-600'
                     : 'bg-gray-100 text-gray-600'
                 }`}
               >
-                {getTypeCount(type.id)}
+                {myTemplates.length}
               </span>
             </button>
-          ))}
-        </div>
-
-        {/* Category Tabs */}
-        <div className="mb-6 flex gap-2 overflow-x-auto border-b border-gray-200">
-          {categoryOptions.map(cat => (
             <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
+              onClick={() => setViewMode('org_templates')}
               className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
-                activeCategory === cat.id
-                  ? 'border-purple-600 text-purple-600'
+                viewMode === 'org_templates'
+                  ? 'border-indigo-600 text-indigo-600'
                   : 'border-transparent text-gray-600 hover:text-gray-900'
               }`}
               type="button"
             >
-              {cat.label}
+              <Building className="h-4 w-4" />
+              Organization
               <span
                 className={`rounded-full px-2 py-0.5 text-xs ${
-                  activeCategory === cat.id
-                    ? 'bg-purple-100 text-purple-600'
+                  viewMode === 'org_templates'
+                    ? 'bg-indigo-100 text-indigo-600'
                     : 'bg-gray-100 text-gray-600'
                 }`}
               >
-                {getCategoryCount(cat.id)}
+                {orgTemplates.length}
               </span>
             </button>
-          ))}
+            <button
+              onClick={() => setViewMode('system_templates')}
+              className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
+                viewMode === 'system_templates'
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+              type="button"
+            >
+              <Copy className="h-4 w-4" />
+              System
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs ${
+                  viewMode === 'system_templates'
+                    ? 'bg-indigo-100 text-indigo-600'
+                    : 'bg-gray-100 text-gray-600'
+                }`}
+              >
+                {systemTemplates.length}
+              </span>
+            </button>
+          </div>
+
+          {/* Filters */}
+          <div className="flex gap-2">
+            {/* Type Filter */}
+            <div className="relative">
+              <Filter className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <select
+                value={activeType}
+                onChange={e => setActiveType(e.target.value as TemplateType)}
+                className="appearance-none rounded-lg border border-gray-300 py-2 pr-8 pl-9 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+              >
+                {typeOptions.map(type => (
+                  <option key={type.id} value={type.id}>
+                    {type.label}
+                    {' '}
+                    (
+                    {getTypeCount(type.id)}
+                    )
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Category Filter */}
+            <select
+              value={activeCategory}
+              onChange={e => setActiveCategory(e.target.value as TemplateCategory)}
+              className="appearance-none rounded-lg border border-gray-300 py-2 pr-8 pl-3 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+            >
+              {categoryOptions.map(cat => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.label}
+                  {' '}
+                  (
+                  {getCategoryCount(cat.id)}
+                  )
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Search */}
@@ -312,15 +305,12 @@ export default function TherapistTemplatesPage() {
               <TemplateCard
                 key={template.id}
                 template={template}
-                onView={() => {
-                  // View modal
-                }}
+                onView={() => setViewingTemplate(template)}
                 onEdit={viewMode === 'my_templates' ? () => {
-                  // Edit modal
+                  // TODO: Edit modal
+                  console.log('Edit template:', template.id);
                 } : undefined}
-                onCopy={viewMode !== 'my_templates' ? () => {
-                  // Copy modal
-                } : undefined}
+                onCopy={viewMode !== 'my_templates' ? () => setCopyingTemplate(template) : undefined}
                 scope={
                   viewMode === 'my_templates'
                     ? 'Private'
@@ -341,6 +331,33 @@ export default function TherapistTemplatesPage() {
           onClose={() => setShowCreateModal(false)}
           onCreated={() => {
             setShowCreateModal(false);
+            fetchTemplates();
+          }}
+        />
+      )}
+
+      {/* View Template Details Modal */}
+      {viewingTemplate && (
+        <ViewTemplateDetailsModal
+          template={viewingTemplate}
+          scopeLabel={
+            viewingTemplate.scope === 'private'
+              ? 'Private'
+              : viewingTemplate.scope === 'organization'
+                ? 'Organization'
+                : 'System'
+          }
+          onClose={() => setViewingTemplate(null)}
+        />
+      )}
+
+      {/* Copy Template Modal */}
+      {copyingTemplate && (
+        <CopyTemplateModal
+          template={copyingTemplate}
+          onClose={() => setCopyingTemplate(null)}
+          onCopied={() => {
+            setCopyingTemplate(null);
             fetchTemplates();
           }}
         />

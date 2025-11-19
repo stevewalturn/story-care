@@ -7,7 +7,9 @@
 
 import { Copy, FileText, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { CopyTemplateModal } from '@/components/templates/CopyTemplateModal';
 import { CreateTemplateModal } from '@/components/templates/CreateTemplateModal';
+import { ViewTemplateDetailsModal } from '@/components/templates/ViewTemplateDetailsModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -39,6 +41,8 @@ export default function OrgAdminTemplatesPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [viewingTemplate, setViewingTemplate] = useState<Template | null>(null);
+  const [copyingTemplate, setCopyingTemplate] = useState<Template | null>(null);
 
   useEffect(() => {
     fetchTemplates();
@@ -278,15 +282,12 @@ export default function OrgAdminTemplatesPage() {
               <TemplateCard
                 key={template.id}
                 template={template}
-                onView={() => {
-                  // View modal
-                }}
+                onView={() => setViewingTemplate(template)}
                 onEdit={viewMode === 'my_templates' ? () => {
-                  // Edit modal
+                  // TODO: Edit modal
+                  console.log('Edit template:', template.id);
                 } : undefined}
-                onCopy={viewMode === 'system_templates' ? () => {
-                  // Copy modal
-                } : undefined}
+                onCopy={viewMode === 'system_templates' ? () => setCopyingTemplate(template) : undefined}
                 isSystemTemplate={viewMode === 'system_templates'}
               />
             ))}
@@ -301,6 +302,31 @@ export default function OrgAdminTemplatesPage() {
           onClose={() => setShowCreateModal(false)}
           onCreated={() => {
             setShowCreateModal(false);
+            fetchTemplates();
+          }}
+        />
+      )}
+
+      {/* View Template Details Modal */}
+      {viewingTemplate && (
+        <ViewTemplateDetailsModal
+          template={viewingTemplate}
+          scopeLabel={
+            viewingTemplate.scope === 'organization'
+              ? 'Organization'
+              : 'System'
+          }
+          onClose={() => setViewingTemplate(null)}
+        />
+      )}
+
+      {/* Copy Template Modal */}
+      {copyingTemplate && (
+        <CopyTemplateModal
+          template={copyingTemplate}
+          onClose={() => setCopyingTemplate(null)}
+          onCopied={() => {
+            setCopyingTemplate(null);
             fetchTemplates();
           }}
         />

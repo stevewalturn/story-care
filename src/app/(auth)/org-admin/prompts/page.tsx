@@ -6,7 +6,7 @@
  */
 
 import type { PromptTemplate } from '@/models/Schema';
-import { AlertCircle, Copy, Edit, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
+import { AlertCircle, Edit, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { CreatePromptModal } from '@/components/prompts/CreatePromptModal';
 import { useAuth } from '@/contexts/AuthContext';
@@ -66,25 +66,6 @@ export default function OrgAdminPromptsPage() {
 
   // Get unique categories
   const categories = ['all', ...new Set(prompts.map(p => p.category).filter(Boolean))];
-
-  async function handleCloneToOrg(promptId: string) {
-    try {
-      const response = await authenticatedFetch('/api/org-admin/prompts', user, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cloneFromSystemId: promptId }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to clone prompt');
-      }
-
-      // Refresh organization prompts
-      setActiveTab('organization');
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to clone prompt');
-    }
-  }
 
   async function handleDeletePrompt(promptId: string) {
     if (!confirm('Are you sure you want to delete this prompt?')) return;
@@ -229,7 +210,6 @@ export default function OrgAdminPromptsPage() {
                 key={prompt.id}
                 prompt={prompt}
                 activeTab={activeTab}
-                onClone={handleCloneToOrg}
                 onDelete={handleDeletePrompt}
               />
             ))}
@@ -258,11 +238,10 @@ export default function OrgAdminPromptsPage() {
 type PromptCardProps = {
   prompt: PromptWithUsage;
   activeTab: TabType;
-  onClone: (id: string) => void;
   onDelete: (id: string) => void;
 };
 
-function PromptCard({ prompt, activeTab, onClone, onDelete }: PromptCardProps) {
+function PromptCard({ prompt, activeTab, onDelete }: PromptCardProps) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
       {/* Header */}
@@ -311,17 +290,6 @@ function PromptCard({ prompt, activeTab, onClone, onDelete }: PromptCardProps) {
 
       {/* Actions */}
       <div className="flex gap-2">
-        {activeTab === 'system' && (
-          <button
-            onClick={() => onClone(prompt.id)}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-indigo-600 px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
-            type="button"
-          >
-            <Copy className="h-3.5 w-3.5" />
-            Clone to Org
-          </button>
-        )}
-
         {activeTab === 'organization' && (
           <>
             <button
