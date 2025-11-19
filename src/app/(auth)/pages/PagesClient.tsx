@@ -104,16 +104,95 @@ export function PagesClient() {
       const data = await response.json();
       const { page, blocks: dbBlocks } = data;
 
+      // Get reflection block IDs
+      const reflectionBlockIds = dbBlocks
+        .filter((b: any) => b.blockType === 'reflection')
+        .map((b: any) => b.id);
+
+      // Get survey block IDs
+      const surveyBlockIds = dbBlocks
+        .filter((b: any) => b.blockType === 'survey')
+        .map((b: any) => b.id);
+
+      // Fetch reflection questions if any reflection blocks exist
+      let reflectionQuestionsData: any[] = [];
+      if (reflectionBlockIds.length > 0) {
+        const questionsResponse = await authenticatedFetch(
+          `/api/questions/reflection?blockIds=${reflectionBlockIds.join(',')}`,
+          user,
+        );
+        if (questionsResponse.ok) {
+          const questionsJson = await questionsResponse.json();
+          reflectionQuestionsData = questionsJson.questions || [];
+        }
+      }
+
+      // Fetch survey questions if any survey blocks exist
+      let surveyQuestionsData: any[] = [];
+      if (surveyBlockIds.length > 0) {
+        const questionsResponse = await authenticatedFetch(
+          `/api/questions/survey?blockIds=${surveyBlockIds.join(',')}`,
+          user,
+        );
+        if (questionsResponse.ok) {
+          const questionsJson = await questionsResponse.json();
+          surveyQuestionsData = questionsJson.questions || [];
+        }
+      }
+
       // Transform database blocks to PageEditor format
-      const transformedBlocks: ContentBlock[] = dbBlocks.map((block: any) => ({
-        id: block.id,
-        type: block.blockType,
-        order: block.sequenceNumber,
-        content: {
-          text: block.textContent || undefined,
-          ...(block.settings || {}),
-        },
-      }));
+      const transformedBlocks: ContentBlock[] = dbBlocks.map((block: any) => {
+        const baseBlock = {
+          id: block.id,
+          type: block.blockType,
+          order: block.sequenceNumber,
+          content: {
+            text: block.textContent || undefined,
+            ...(block.settings || {}),
+          },
+        };
+
+        // Add reflection questions if this is a reflection block
+        if (block.blockType === 'reflection') {
+          const blockQuestions = reflectionQuestionsData
+            .filter(q => q.blockId === block.id)
+            .sort((a, b) => a.sequenceNumber - b.sequenceNumber)
+            .map(q => ({
+              id: q.id,
+              text: q.questionText,
+              type: q.questionType,
+              sequenceNumber: q.sequenceNumber,
+            }));
+
+          baseBlock.content.questions = blockQuestions.length > 0
+            ? blockQuestions
+            : [{ id: `q-default`, text: '', type: 'open_text', sequenceNumber: 0 }];
+        }
+
+        // Add survey questions if this is a survey block
+        if (block.blockType === 'survey') {
+          const blockQuestions = surveyQuestionsData
+            .filter(q => q.blockId === block.id)
+            .sort((a, b) => a.sequenceNumber - b.sequenceNumber)
+            .map(q => ({
+              id: q.id,
+              text: q.questionText,
+              type: q.questionType,
+              sequenceNumber: q.sequenceNumber,
+              scaleMin: q.scaleMin,
+              scaleMax: q.scaleMax,
+              scaleMinLabel: q.scaleMinLabel,
+              scaleMaxLabel: q.scaleMaxLabel,
+              options: q.options ? JSON.parse(q.options) : undefined,
+            }));
+
+          baseBlock.content.surveyQuestions = blockQuestions.length > 0
+            ? blockQuestions
+            : [{ id: `sq-default`, text: '', type: 'open_text', sequenceNumber: 0 }];
+        }
+
+        return baseBlock;
+      });
 
       setEditingPageId(pageId);
       setEditingPageData({

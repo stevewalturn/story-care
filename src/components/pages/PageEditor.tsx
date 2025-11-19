@@ -14,6 +14,27 @@ type BlockType = 'text' | 'image' | 'video' | 'quote' | 'reflection' | 'survey';
 
 type QuestionType = 'open_text' | 'scale' | 'multiple_choice' | 'yes_no';
 
+type ReflectionQuestion = {
+  id?: string;
+  text: string;
+  type: QuestionType;
+  sequenceNumber: number;
+};
+
+type SurveyQuestion = {
+  id?: string;
+  text: string;
+  type: QuestionType;
+  sequenceNumber: number;
+  // For scale questions
+  scaleMin?: number;
+  scaleMax?: number;
+  scaleMinLabel?: string;
+  scaleMaxLabel?: string;
+  // For multiple choice questions
+  options?: string[];
+};
+
 type ContentBlock = {
   id: string;
   type: BlockType;
@@ -21,13 +42,8 @@ type ContentBlock = {
   content: {
     text?: string;
     mediaUrl?: string;
-    question?: string;
-    questionType?: QuestionType;
-    scaleMin?: number;
-    scaleMax?: number;
-    scaleMinLabel?: string;
-    scaleMaxLabel?: string;
-    options?: string[];
+    questions?: ReflectionQuestion[]; // For reflection blocks
+    surveyQuestions?: SurveyQuestion[]; // For survey blocks
     templateId?: string;
   };
 };
@@ -212,7 +228,29 @@ export function PageEditor({
       order: blocks.length,
       content: {
         templateId: templateId || undefined,
-        question: template?.title || '',
+        // For reflection blocks, copy all template questions
+        questions: templateType === 'reflection'
+          ? (template?.questions || []).map((q: any, i: number) => ({
+              id: `q-${Date.now()}-${i}`,
+              text: q.questionText || q.text || '',
+              type: (q.questionType || 'open_text') as QuestionType,
+              sequenceNumber: i,
+            }))
+          : undefined,
+        // For survey blocks, copy all template questions
+        surveyQuestions: templateType === 'survey'
+          ? (template?.questions || []).map((q: any, i: number) => ({
+              id: `sq-${Date.now()}-${i}`,
+              text: q.questionText || q.text || '',
+              type: (q.questionType || 'open_text') as QuestionType,
+              sequenceNumber: i,
+              scaleMin: q.scaleMin,
+              scaleMax: q.scaleMax,
+              scaleMinLabel: q.scaleMinLabel,
+              scaleMaxLabel: q.scaleMaxLabel,
+              options: q.options,
+            }))
+          : undefined,
       },
     };
 
@@ -424,128 +462,223 @@ export function PageEditor({
         );
       case 'reflection':
         return (
-          <Input
-            value={block.content.question || ''}
-            onChange={e => updateBlockContent(block.id, { question: e.target.value })}
-            placeholder="What question would you like to ask the patient?"
-          />
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-gray-700">Reflection Questions</label>
+            {(block.content.questions || [{ id: `q-default`, text: '', type: 'open_text' as QuestionType, sequenceNumber: 0 }]).map((question, index) => (
+              <div key={question.id || index} className="flex gap-2">
+                <Input
+                  value={question.text}
+                  onChange={(e) => {
+                    const newQuestions = [...(block.content.questions || [])];
+                    newQuestions[index] = { ...question, text: e.target.value };
+                    updateBlockContent(block.id, { questions: newQuestions });
+                  }}
+                  placeholder={`Reflection question ${index + 1}`}
+                />
+                {(block.content.questions?.length || 0) > 1 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const newQuestions = (block.content.questions || []).filter((_, i) => i !== index);
+                      // Update sequence numbers
+                      const resequenced = newQuestions.map((q, i) => ({ ...q, sequenceNumber: i }));
+                      updateBlockContent(block.id, { questions: resequenced });
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const currentQuestions = block.content.questions || [];
+                const newQuestions = [
+                  ...currentQuestions,
+                  { id: `q-${Date.now()}`, text: '', type: 'open_text' as QuestionType, sequenceNumber: currentQuestions.length },
+                ];
+                updateBlockContent(block.id, { questions: newQuestions });
+              }}
+              className="w-full"
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              Add Question
+            </Button>
+          </div>
         );
       case 'survey':
         return (
-          <div className="space-y-4">
-            <Input
-              value={block.content.question || ''}
-              onChange={e => updateBlockContent(block.id, { question: e.target.value })}
-              placeholder="Survey question..."
-            />
-
-            {/* Question Type Selector */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Question Type</label>
-              <select
-                value={block.content.questionType || 'open_text'}
-                onChange={e => updateBlockContent(block.id, {
-                  questionType: e.target.value as QuestionType,
-                  // Reset type-specific fields
-                  scaleMin: e.target.value === 'scale' ? 1 : undefined,
-                  scaleMax: e.target.value === 'scale' ? 5 : undefined,
-                  options: e.target.value === 'multiple_choice' ? [''] : undefined,
-                })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-              >
-                <option value="open_text">Open Text</option>
-                <option value="scale">Rating Scale</option>
-                <option value="multiple_choice">Multiple Choice</option>
-                <option value="yes_no">Yes/No</option>
-              </select>
-            </div>
-
-            {/* Scale Configuration */}
-            {block.content.questionType === 'scale' && (
-              <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-700">Min Value</label>
-                    <Input
-                      type="number"
-                      value={block.content.scaleMin || 1}
-                      onChange={e => updateBlockContent(block.id, { scaleMin: parseInt(e.target.value) })}
-                      min={0}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-700">Max Value</label>
-                    <Input
-                      type="number"
-                      value={block.content.scaleMax || 5}
-                      onChange={e => updateBlockContent(block.id, { scaleMax: parseInt(e.target.value) })}
-                      min={block.content.scaleMin || 1}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-700">Min Label (optional)</label>
-                    <Input
-                      value={block.content.scaleMinLabel || ''}
-                      onChange={e => updateBlockContent(block.id, { scaleMinLabel: e.target.value })}
-                      placeholder="e.g., Not at all"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-700">Max Label (optional)</label>
-                    <Input
-                      value={block.content.scaleMaxLabel || ''}
-                      onChange={e => updateBlockContent(block.id, { scaleMaxLabel: e.target.value })}
-                      placeholder="e.g., Very much"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Multiple Choice Configuration */}
-            {block.content.questionType === 'multiple_choice' && (
-              <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <label className="text-xs font-medium text-gray-700">Answer Options</label>
-                {(block.content.options || ['']).map((option, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input
-                      value={option}
-                      onChange={(e) => {
-                        const newOptions = [...(block.content.options || [''])];
-                        newOptions[index] = e.target.value;
-                        updateBlockContent(block.id, { options: newOptions });
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-gray-700">Survey Questions</label>
+            {(block.content.surveyQuestions || [{ id: `sq-default`, text: '', type: 'open_text' as QuestionType, sequenceNumber: 0 }]).map((question, index) => (
+              <div key={question.id || index} className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                {/* Question Text and Type */}
+                <div className="flex gap-2">
+                  <Input
+                    value={question.text}
+                    onChange={(e) => {
+                      const newQuestions = [...(block.content.surveyQuestions || [])];
+                      newQuestions[index] = { ...question, text: e.target.value };
+                      updateBlockContent(block.id, { surveyQuestions: newQuestions });
+                    }}
+                    placeholder={`Survey question ${index + 1}`}
+                    className="flex-1"
+                  />
+                  {(block.content.surveyQuestions?.length || 0) > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const newQuestions = (block.content.surveyQuestions || []).filter((_, i) => i !== index);
+                        const resequenced = newQuestions.map((q, i) => ({ ...q, sequenceNumber: i }));
+                        updateBlockContent(block.id, { surveyQuestions: resequenced });
                       }}
-                      placeholder={`Option ${index + 1}`}
-                    />
-                    {index > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          const newOptions = (block.content.options || ['']).filter((_, i) => i !== index);
-                          updateBlockContent(block.id, { options: newOptions });
-                        }}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    const newOptions = [...(block.content.options || ['']), ''];
-                    updateBlockContent(block.id, { options: newOptions });
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+
+                {/* Question Type Selector */}
+                <select
+                  value={question.type || 'open_text'}
+                  onChange={(e) => {
+                    const newQuestions = [...(block.content.surveyQuestions || [])];
+                    const newType = e.target.value as QuestionType;
+                    newQuestions[index] = {
+                      ...question,
+                      type: newType,
+                      scaleMin: newType === 'scale' ? 1 : undefined,
+                      scaleMax: newType === 'scale' ? 5 : undefined,
+                      options: newType === 'multiple_choice' ? [''] : undefined,
+                    };
+                    updateBlockContent(block.id, { surveyQuestions: newQuestions });
                   }}
-                  className="w-full"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
                 >
-                  + Add Option
-                </Button>
+                  <option value="open_text">Open Text</option>
+                  <option value="scale">Rating Scale</option>
+                  <option value="multiple_choice">Multiple Choice</option>
+                  <option value="yes_no">Yes/No</option>
+                </select>
+
+                {/* Scale Configuration */}
+                {question.type === 'scale' && (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        type="number"
+                        value={question.scaleMin || 1}
+                        onChange={(e) => {
+                          const newQuestions = [...(block.content.surveyQuestions || [])];
+                          newQuestions[index] = { ...question, scaleMin: parseInt(e.target.value) };
+                          updateBlockContent(block.id, { surveyQuestions: newQuestions });
+                        }}
+                        placeholder="Min (e.g., 1)"
+                      />
+                      <Input
+                        type="number"
+                        value={question.scaleMax || 5}
+                        onChange={(e) => {
+                          const newQuestions = [...(block.content.surveyQuestions || [])];
+                          newQuestions[index] = { ...question, scaleMax: parseInt(e.target.value) };
+                          updateBlockContent(block.id, { surveyQuestions: newQuestions });
+                        }}
+                        placeholder="Max (e.g., 5)"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        value={question.scaleMinLabel || ''}
+                        onChange={(e) => {
+                          const newQuestions = [...(block.content.surveyQuestions || [])];
+                          newQuestions[index] = { ...question, scaleMinLabel: e.target.value };
+                          updateBlockContent(block.id, { surveyQuestions: newQuestions });
+                        }}
+                        placeholder="Min label (optional)"
+                      />
+                      <Input
+                        value={question.scaleMaxLabel || ''}
+                        onChange={(e) => {
+                          const newQuestions = [...(block.content.surveyQuestions || [])];
+                          newQuestions[index] = { ...question, scaleMaxLabel: e.target.value };
+                          updateBlockContent(block.id, { surveyQuestions: newQuestions });
+                        }}
+                        placeholder="Max label (optional)"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Multiple Choice Options */}
+                {question.type === 'multiple_choice' && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-600">Answer Options</label>
+                    {(question.options || ['']).map((option, optIndex) => (
+                      <div key={optIndex} className="flex gap-2">
+                        <Input
+                          value={option}
+                          onChange={(e) => {
+                            const newQuestions = [...(block.content.surveyQuestions || [])];
+                            const newOptions = [...(question.options || [''])];
+                            newOptions[optIndex] = e.target.value;
+                            newQuestions[index] = { ...question, options: newOptions };
+                            updateBlockContent(block.id, { surveyQuestions: newQuestions });
+                          }}
+                          placeholder={`Option ${optIndex + 1}`}
+                        />
+                        {optIndex > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const newQuestions = [...(block.content.surveyQuestions || [])];
+                              const newOptions = (question.options || ['']).filter((_, i) => i !== optIndex);
+                              newQuestions[index] = { ...question, options: newOptions };
+                              updateBlockContent(block.id, { surveyQuestions: newQuestions });
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const newQuestions = [...(block.content.surveyQuestions || [])];
+                        const newOptions = [...(question.options || ['']), ''];
+                        newQuestions[index] = { ...question, options: newOptions };
+                        updateBlockContent(block.id, { surveyQuestions: newQuestions });
+                      }}
+                      className="w-full text-xs"
+                    >
+                      + Add Option
+                    </Button>
+                  </div>
+                )}
               </div>
-            )}
+            ))}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const currentQuestions = block.content.surveyQuestions || [];
+                const newQuestions = [
+                  ...currentQuestions,
+                  { id: `sq-${Date.now()}`, text: '', type: 'open_text' as QuestionType, sequenceNumber: currentQuestions.length },
+                ];
+                updateBlockContent(block.id, { surveyQuestions: newQuestions });
+              }}
+              className="w-full"
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              Add Question
+            </Button>
           </div>
         );
       default:
@@ -727,8 +860,19 @@ export function PageEditor({
                     {block.content.text && (
                       <p className="line-clamp-2">{block.content.text}</p>
                     )}
-                    {block.content.question && (
-                      <p className="line-clamp-1">{block.content.question}</p>
+                    {block.content.questions && block.content.questions.length > 0 && (
+                      <p className="line-clamp-1 text-xs text-gray-600">
+                        {block.content.questions.length}
+                        {' '}
+                        reflection question(s)
+                      </p>
+                    )}
+                    {block.content.surveyQuestions && block.content.surveyQuestions.length > 0 && (
+                      <p className="line-clamp-1 text-xs text-gray-600">
+                        {block.content.surveyQuestions.length}
+                        {' '}
+                        survey question(s)
+                      </p>
                     )}
                     {block.content.mediaUrl && (
                       <p className="text-xs">
@@ -736,7 +880,7 @@ export function PageEditor({
                         {block.content.mediaUrl}
                       </p>
                     )}
-                    {!block.content.text && !block.content.question && !block.content.mediaUrl && (
+                    {!block.content.text && !block.content.questions && !block.content.surveyQuestions && !block.content.mediaUrl && (
                       <p className="text-gray-400 italic">Empty block - click to edit</p>
                     )}
                   </div>
@@ -801,30 +945,83 @@ export function PageEditor({
                       "
                     </blockquote>
                   )}
-                  {block.type === 'reflection' && block.content.question && (
+                  {block.type === 'reflection' && block.content.questions && block.content.questions.length > 0 && (
                     <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
-                      <p className="mb-2 font-medium text-indigo-900">Reflection</p>
-                      <p className="mb-3 text-gray-700">{block.content.question}</p>
-                      <textarea
-                        placeholder="Your response..."
-                        className="h-24 w-full resize-none rounded border border-gray-300 px-3 py-2"
-                        disabled
-                      />
+                      <p className="mb-3 font-medium text-indigo-900">Reflection Questions</p>
+                      <div className="space-y-4">
+                        {block.content.questions.map((q, i) => (
+                          <div key={q.id || i}>
+                            <p className="mb-2 text-sm font-medium text-gray-700">
+                              {i + 1}
+                              .
+                              {' '}
+                              {q.text}
+                            </p>
+                            <textarea
+                              placeholder="Your response..."
+                              className="h-20 w-full resize-none rounded border border-gray-300 px-3 py-2 text-sm"
+                              disabled
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
-                  {block.type === 'survey' && block.content.question && (
+                  {block.type === 'survey' && block.content.surveyQuestions && block.content.surveyQuestions.length > 0 && (
                     <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-                      <p className="mb-2 font-medium text-green-900">Survey</p>
-                      <p className="mb-3 text-gray-700">{block.content.question}</p>
-                      <div className="space-y-2">
-                        {[1, 2, 3, 4, 5].map(i => (
-                          <label key={i} className="flex items-center gap-2">
-                            <input type="radio" name="survey" disabled />
-                            <span className="text-sm text-gray-600">
-                              Option
-                              {i}
-                            </span>
-                          </label>
+                      <p className="mb-3 font-medium text-green-900">Survey Questions</p>
+                      <div className="space-y-4">
+                        {block.content.surveyQuestions.map((q, i) => (
+                          <div key={q.id || i}>
+                            <p className="mb-2 text-sm font-medium text-gray-700">
+                              {i + 1}
+                              .
+                              {' '}
+                              {q.text}
+                              {' '}
+                              <span className="text-xs text-gray-500">
+                                (
+                                {q.type}
+                                )
+                              </span>
+                            </p>
+                            {q.type === 'open_text' && (
+                              <textarea
+                                placeholder="Your answer..."
+                                className="h-16 w-full resize-none rounded border border-gray-300 px-3 py-2 text-sm"
+                                disabled
+                              />
+                            )}
+                            {q.type === 'scale' && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-600">{q.scaleMinLabel || q.scaleMin || 1}</span>
+                                <input type="range" min={q.scaleMin || 1} max={q.scaleMax || 5} className="flex-1" disabled />
+                                <span className="text-xs text-gray-600">{q.scaleMaxLabel || q.scaleMax || 5}</span>
+                              </div>
+                            )}
+                            {q.type === 'multiple_choice' && (
+                              <div className="space-y-1">
+                                {(q.options || []).map((opt, optIdx) => (
+                                  <label key={optIdx} className="flex items-center gap-2">
+                                    <input type="radio" disabled />
+                                    <span className="text-sm text-gray-600">{opt}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                            {q.type === 'yes_no' && (
+                              <div className="flex gap-4">
+                                <label className="flex items-center gap-2">
+                                  <input type="radio" disabled />
+                                  <span className="text-sm text-gray-600">Yes</span>
+                                </label>
+                                <label className="flex items-center gap-2">
+                                  <input type="radio" disabled />
+                                  <span className="text-sm text-gray-600">No</span>
+                                </label>
+                              </div>
+                            )}
+                          </div>
                         ))}
                       </div>
                     </div>
