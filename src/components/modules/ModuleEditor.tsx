@@ -5,14 +5,13 @@
  * Create/Edit treatment module modal matching design spec
  */
 
-import type { TemplateQuestion } from './TemplateQuestionEditor';
 import type { TreatmentModule } from '@/models/Schema';
-import { Plus, Trash2, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { PromptSelector } from '../prompts/PromptSelector';
-import { TemplateQuestionEditor } from './TemplateQuestionEditor';
+import { TemplateSelector } from '../templates/TemplateSelector';
 
 type ModuleEditorProps = {
   module: TreatmentModule | null;
@@ -32,24 +31,9 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
   const [name, setName] = useState('');
   const [domain, setDomain] = useState<TherapeuticDomain>('self_strength');
   const [description, setDescription] = useState('');
-  const [reflectionQuestions, setReflectionQuestions] = useState<string[]>(['']);
-
-  // Template toggle state
-  const [useReflectionTemplate, setUseReflectionTemplate] = useState(false);
-  const [useSurveyTemplate, setUseSurveyTemplate] = useState(false);
-
-  // Template data state
-  const [reflectionTemplate, setReflectionTemplate] = useState<{
-    title: string;
-    description?: string;
-    questions: TemplateQuestion[];
-  } | null>(null);
-
-  const [surveyTemplate, setSurveyTemplate] = useState<{
-    title: string;
-    description?: string;
-    questions: TemplateQuestion[];
-  } | null>(null);
+  // Template IDs - now using template library
+  const [reflectionTemplateId, setReflectionTemplateId] = useState<string | null>(null);
+  const [surveyTemplateId, setSurveyTemplateId] = useState<string | null>(null);
 
   // AI Prompts state - now uses prompt library
   const [selectedPromptIds, setSelectedPromptIds] = useState<string[]>([]);
@@ -71,14 +55,10 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
       setName(module.name);
       setDomain(module.domain as TherapeuticDomain);
       setDescription(module.description);
-      setReflectionQuestions((module.reflectionQuestions as string[]) || ['']);
 
-      // Load template toggles
-      setUseReflectionTemplate(module.useReflectionTemplate || false);
-      setUseSurveyTemplate(module.useSurveyTemplate || false);
-
-      // TODO: Load template data if templateId exists
-      // This would require fetching the template from the API
+      // Load template IDs
+      setReflectionTemplateId((module as any).reflectionTemplateId || null);
+      setSurveyTemplateId((module as any).surveyTemplateId || null);
 
       // Load AI prompts from module - now expects array of prompt IDs
       if (module.aiPromptMetadata) {
@@ -95,78 +75,21 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
     }
   }, [module]);
 
-  // Reflection Questions handlers
-  const handleAddReflectionQuestion = () => {
-    setReflectionQuestions([...reflectionQuestions, '']);
-  };
-
-  const handleRemoveReflectionQuestion = (index: number) => {
-    if (reflectionQuestions.length > 1) {
-      setReflectionQuestions(reflectionQuestions.filter((_, i) => i !== index));
-    }
-  };
-
-  const handleReflectionQuestionChange = (index: number, value: string) => {
-    const updated = [...reflectionQuestions];
-    updated[index] = value;
-    setReflectionQuestions(updated);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSaving(true);
 
     try {
-      // Filter out empty questions
-      const filteredReflectionQuestions = reflectionQuestions.filter(q => q.trim());
-
-      // AI prompts are now stored as IDs, no need to build text here
-      // The actual prompts will be fetched and used when analyzing transcripts
-
       const payload = {
         name,
         domain,
         description,
         scope,
 
-        // Reflection handling
-        useReflectionTemplate,
-        ...(useReflectionTemplate && reflectionTemplate
-          ? {
-              reflectionTemplateTitle: reflectionTemplate.title,
-              reflectionTemplateDescription: reflectionTemplate.description,
-              reflectionTemplateQuestions: reflectionTemplate.questions.map(q => ({
-                text: q.questionText,
-                type: q.questionType,
-                options: q.options,
-                scaleMin: q.scaleMin,
-                scaleMax: q.scaleMax,
-                scaleMinLabel: q.scaleMinLabel,
-                scaleMaxLabel: q.scaleMaxLabel,
-              })),
-            }
-          : {
-              reflectionQuestions: filteredReflectionQuestions,
-            }),
-
-        // Survey handling
-        useSurveyTemplate,
-        ...(useSurveyTemplate && surveyTemplate
-          ? {
-              surveyTemplateTitle: surveyTemplate.title,
-              surveyTemplateDescription: surveyTemplate.description,
-              surveyTemplateQuestions: surveyTemplate.questions.map(q => ({
-                text: q.questionText,
-                type: q.questionType,
-                options: q.options,
-                scaleMin: q.scaleMin,
-                scaleMax: q.scaleMax,
-                scaleMinLabel: q.scaleMinLabel,
-                scaleMaxLabel: q.scaleMaxLabel,
-              })),
-            }
-          : {}),
+        // Template IDs from library
+        reflectionTemplateId,
+        surveyTemplateId,
 
         aiPromptMetadata: {
           promptIds: selectedPromptIds,
@@ -267,123 +190,22 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                 />
               </div>
 
-              {/* Reflection Questions (Qualitative Data) */}
-              <div>
-                <div className="mb-3 flex items-center justify-between">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900">
-                      Reflection Questions (Qualitative Data)
-                    </label>
-                    <p className="text-xs text-gray-500">
-                      Post-session questions for patients in Story Pages. These collect qualitative narrative responses.
-                    </p>
-                  </div>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={useReflectionTemplate}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        setUseReflectionTemplate(checked);
-                        if (checked && !reflectionTemplate) {
-                          // Initialize template with empty data
-                          setReflectionTemplate({
-                            title: '',
-                            description: '',
-                            questions: [],
-                          });
-                        }
-                      }}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                    <span className="text-sm text-gray-700">Use Template</span>
-                  </label>
-                </div>
-
-                {useReflectionTemplate ? (
-                  <div className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-gray-700">
-                        Template Title
-                      </label>
-                      <input
-                        type="text"
-                        value={reflectionTemplate?.title || ''}
-                        onChange={e =>
-                          setReflectionTemplate({
-                            title: e.target.value,
-                            description: reflectionTemplate?.description || '',
-                            questions: reflectionTemplate?.questions || [],
-                          })}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
-                        placeholder="e.g., Self-Resilience Reflection Set"
-                        required={useReflectionTemplate}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-gray-700">
-                        Template Description (optional)
-                      </label>
-                      <textarea
-                        value={reflectionTemplate?.description || ''}
-                        onChange={e =>
-                          setReflectionTemplate({
-                            title: reflectionTemplate?.title || '',
-                            description: e.target.value,
-                            questions: reflectionTemplate?.questions || [],
-                          })}
-                        rows={2}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
-                        placeholder="Describe this reflection set..."
-                      />
-                    </div>
-
-                    <TemplateQuestionEditor
-                      questions={reflectionTemplate?.questions || []}
-                      onChange={questions =>
-                        setReflectionTemplate({
-                          title: reflectionTemplate?.title || '',
-                          description: reflectionTemplate?.description || '',
-                          questions,
-                        })}
-                      templateType="reflection"
-                    />
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="mb-2 flex items-center justify-end">
-                      <button
-                        onClick={handleAddReflectionQuestion}
-                        type="button"
-                        className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50"
-                      >
-                        <Plus className="h-4 w-4" />
-                        Add Question
-                      </button>
-                    </div>
-                    {reflectionQuestions.map((question, index) => (
-                      <div key={index} className="flex gap-2">
-                        <textarea
-                          value={question}
-                          onChange={e => handleReflectionQuestionChange(index, e.target.value)}
-                          rows={2}
-                          className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
-                          placeholder={`Reflection question ${index + 1}`}
-                        />
-                        <button
-                          onClick={() => handleRemoveReflectionQuestion(index)}
-                          type="button"
-                          className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600"
-                          title="Delete question"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* Reflection Questions Template */}
+              <TemplateSelector
+                selectedTemplateId={reflectionTemplateId}
+                onChange={setReflectionTemplateId}
+                templateType="reflection"
+                apiEndpoint={
+                  scope === 'system'
+                    ? '/api/super-admin/templates'
+                    : scope === 'organization'
+                      ? '/api/org-admin/templates'
+                      : '/api/therapist/templates'
+                }
+                label="Reflection Questions (Qualitative Data)"
+                description="Post-session questions for patients in Story Pages. These collect qualitative narrative responses."
+                allowNone={true}
+              />
 
               {/* AI Prompts - Now using Prompt Library */}
               <PromptSelector
@@ -455,91 +277,22 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                 </div>
               </div>
 
-              {/* Survey Template (Alternative to Survey Bundle) */}
-              <div>
-                <div className="mb-3 flex items-center justify-between">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900">
-                      Custom Survey Questions
-                    </label>
-                    <p className="text-xs text-gray-500">
-                      Create a custom survey template with your own questions and formats.
-                    </p>
-                  </div>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={useSurveyTemplate}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        setUseSurveyTemplate(checked);
-                        if (checked && !surveyTemplate) {
-                          // Initialize template with empty data
-                          setSurveyTemplate({
-                            title: '',
-                            description: '',
-                            questions: [],
-                          });
-                        }
-                      }}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                    <span className="text-sm text-gray-700">Use Custom Survey Template</span>
-                  </label>
-                </div>
-
-                {useSurveyTemplate && (
-                  <div className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-gray-700">
-                        Survey Template Title
-                      </label>
-                      <input
-                        type="text"
-                        value={surveyTemplate?.title || ''}
-                        onChange={e =>
-                          setSurveyTemplate({
-                            title: e.target.value,
-                            description: surveyTemplate?.description || '',
-                            questions: surveyTemplate?.questions || [],
-                          })}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
-                        placeholder="e.g., Post-Session Outcome Survey"
-                        required={useSurveyTemplate}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-gray-700">
-                        Survey Description (optional)
-                      </label>
-                      <textarea
-                        value={surveyTemplate?.description || ''}
-                        onChange={e =>
-                          setSurveyTemplate({
-                            title: surveyTemplate?.title || '',
-                            description: e.target.value,
-                            questions: surveyTemplate?.questions || [],
-                          })}
-                        rows={2}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
-                        placeholder="Describe this survey template..."
-                      />
-                    </div>
-
-                    <TemplateQuestionEditor
-                      questions={surveyTemplate?.questions || []}
-                      onChange={questions =>
-                        setSurveyTemplate({
-                          title: surveyTemplate?.title || '',
-                          description: surveyTemplate?.description || '',
-                          questions,
-                        })}
-                      templateType="survey"
-                    />
-                  </div>
-                )}
-              </div>
+              {/* Survey Questions Template */}
+              <TemplateSelector
+                selectedTemplateId={surveyTemplateId}
+                onChange={setSurveyTemplateId}
+                templateType="survey"
+                apiEndpoint={
+                  scope === 'system'
+                    ? '/api/super-admin/templates'
+                    : scope === 'organization'
+                      ? '/api/org-admin/templates'
+                      : '/api/therapist/templates'
+                }
+                label="Custom Survey Questions (Optional)"
+                description="Select a survey template with custom questions. Leave empty to use only the Survey Bundle above."
+                allowNone={true}
+              />
 
               {/* Error */}
               {error && (
