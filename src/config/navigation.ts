@@ -17,6 +17,7 @@ import {
   Library,
   MessageSquare,
   Settings,
+  Sparkles,
   Users,
 } from 'lucide-react';
 
@@ -55,6 +56,12 @@ export const navigationConfig: NavigationConfig = {
       href: '/super-admin/module-templates',
       icon: Layers,
       description: 'Manage system-wide module templates',
+    },
+    {
+      name: 'Prompt Library',
+      href: '/super-admin/prompts',
+      icon: Sparkles,
+      description: 'Manage system-wide AI prompts',
     },
     {
       name: 'Organizations',
@@ -118,6 +125,12 @@ export const navigationConfig: NavigationConfig = {
       description: 'Approve and manage templates',
     },
     {
+      name: 'Prompt Library',
+      href: '/org-admin/prompts',
+      icon: Sparkles,
+      description: 'Manage organization AI prompts',
+    },
+    {
       name: 'Organization Settings',
       href: '/org-admin/settings',
       icon: Settings,
@@ -177,6 +190,12 @@ export const navigationConfig: NavigationConfig = {
       href: '/therapist/responses',
       icon: MessageSquare,
       description: 'View patient reflections and survey responses',
+    },
+    {
+      name: 'Prompt Library',
+      href: '/therapist/prompt-library',
+      icon: Sparkles,
+      description: 'Browse and manage AI analysis prompts',
     },
   ],
 
