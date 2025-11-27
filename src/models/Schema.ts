@@ -404,6 +404,11 @@ export const aiChatMessagesSchema = pgTable('ai_chat_messages', {
   // For conversation summaries - tracks what messages were summarized
   summaryUpToMessageId: uuid('summary_up_to_message_id'),
 
+  // JSON Output Support
+  messageType: varchar('message_type', { length: 50 }).default('text'), // 'text', 'json', 'system', 'progress'
+  jsonData: jsonb('json_data'), // Structured JSON data when messageType is 'json'
+  actionStatus: varchar('action_status', { length: 50 }), // 'pending', 'processing', 'completed', 'failed'
+
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -415,9 +420,8 @@ export const mediaLibrarySchema: any = pgTable('media_library', {
   id: uuid('id').primaryKey().defaultRandom(),
 
   // Ownership
-  patientId: uuid('patient_id')
-    .references(() => usersSchema.id)
-    .notNull(),
+  // patientId is nullable to support group session media
+  patientId: uuid('patient_id').references(() => usersSchema.id),
   createdByTherapistId: uuid('created_by_therapist_id')
     .references(() => usersSchema.id)
     .notNull(),
@@ -691,7 +695,8 @@ export const moduleAiPromptsSchema = pgTable('module_ai_prompts', {
   // Classification
   category: varchar('category', { length: 100 }).notNull(), // 'analysis', 'creative', 'extraction', 'reflection'
   icon: varchar('icon', { length: 50 }).default('sparkles'), // Icon name for UI (e.g., 'sparkles', 'target', 'lightbulb')
-  outputType: varchar('output_type', { length: 50 }).default('text'), // 'text', 'image', 'video', 'scene', 'quote', 'mixed'
+  outputType: varchar('output_type', { length: 50 }).default('text'), // 'text' or 'json'
+  jsonSchema: jsonb('json_schema'), // JSON schema definition for structured outputs
 
   // Scope & Ownership (same as treatment_modules)
   scope: templateScopeEnum('scope').default('system').notNull(),
@@ -894,6 +899,36 @@ export const storyPagesSchema = pgTable('story_pages', {
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Shareable Links for Story Pages
+export const pageShareLinksSchema = pgTable('page_share_links', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  // Page reference
+  pageId: uuid('page_id')
+    .references(() => storyPagesSchema.id, { onDelete: 'cascade' })
+    .notNull(),
+
+  // Share token (unique, used in URL)
+  token: varchar('token', { length: 64 }).unique().notNull(),
+
+  // Expiration
+  expiresAt: timestamp('expires_at').notNull(),
+  expiryDurationMinutes: integer('expiry_duration_minutes').notNull(), // e.g., 60 for 1 hour
+
+  // Metadata
+  createdByTherapistId: uuid('created_by_therapist_id')
+    .references(() => usersSchema.id)
+    .notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  revokedAt: timestamp('revoked_at'),
+
+  // Access tracking
+  accessCount: integer('access_count').default(0).notNull(),
+  lastAccessedAt: timestamp('last_accessed_at'),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 export const pageBlocksSchema = pgTable('page_blocks', {
@@ -1141,6 +1176,7 @@ export const emailNotifications = emailNotificationsSchema;
 export const scenes = scenesSchema;
 export const sceneClips = sceneClipsSchema;
 export const storyPages = storyPagesSchema;
+export const pageShareLinks = pageShareLinksSchema;
 export const pageBlocks = pageBlocksSchema;
 export const reflectionQuestions = reflectionQuestionsSchema;
 export const surveyQuestions = surveyQuestionsSchema;
@@ -1208,6 +1244,8 @@ export type PromptTemplate = ModuleAiPrompt;
 // Treatment module with linked AI prompts (for frontend display)
 export type TreatmentModuleWithPrompts = TreatmentModule & {
   linkedPrompts?: Array<ModuleAiPrompt & { sortOrder: number }>;
+  reflectionTemplates?: ReflectionTemplate[];
+  surveyTemplates?: SurveyTemplate[];
 };
 
 export type ModulePromptLink = typeof modulePromptLinksSchema.$inferSelect;
