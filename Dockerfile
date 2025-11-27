@@ -42,20 +42,18 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
 # This allows passing all env vars at once from GitHub Actions
 ARG ENV_FILE
 
-# Create a script to load environment variables and run build
-RUN echo '#!/bin/sh' > /tmp/build.sh && \
-    echo 'if [ -n "$ENV_FILE" ]; then' >> /tmp/build.sh && \
-    echo '  echo "$ENV_FILE" > /app/.env' >> /tmp/build.sh && \
-    echo '  set -a' >> /tmp/build.sh && \
-    echo '  . /app/.env' >> /tmp/build.sh && \
-    echo '  set +a' >> /tmp/build.sh && \
-    echo 'fi' >> /tmp/build.sh && \
-    echo 'npm run db:migrate' >> /tmp/build.sh && \
-    echo 'npm run build:next' >> /tmp/build.sh && \
-    chmod +x /tmp/build.sh
-
-# Run the build script with environment variables
-RUN ENV_FILE="$ENV_FILE" /tmp/build.sh
+# Write ENV_FILE to a clean .env file and run build
+RUN if [ -n "$ENV_FILE" ]; then \
+      echo "$ENV_FILE" | grep -v '^#' | grep -v '^$' | grep '=' > /app/.env.build || true; \
+    fi && \
+    if [ -f /app/.env.build ]; then \
+      export $(cat /app/.env.build | xargs) && \
+      npm run db:migrate && \
+      npm run build:next; \
+    else \
+      npm run db:migrate && \
+      npm run build:next; \
+    fi
 
 # ========================================
 # Stage 3: Production Runtime

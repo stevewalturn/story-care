@@ -21,8 +21,9 @@ create_env_file() {
 
   # Copy only build-time variables (NEXT_PUBLIC_* and DATABASE_URL)
   # These are needed during Docker build
+  local env_upper=$(echo "$env_name" | tr '[:lower:]' '[:upper:]')
   echo "# Build-time environment variables for Docker build ($env_name)" > "$output_file"
-  echo "# This file should be copied to GitHub Secret: ENV_FILE_${env_name^^}" >> "$output_file"
+  echo "# This file should be copied to GitHub Secret: ENV_FILE_${env_upper}" >> "$output_file"
   echo "" >> "$output_file"
 
   # Extract NEXT_PUBLIC_* variables

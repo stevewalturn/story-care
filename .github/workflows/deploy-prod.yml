@@ -1,13 +1,10 @@
 name: Deploy to Cloud Run (Production)
 
-# Trigger on push to main branch or release tags
+# Trigger ONLY on manual dispatch or release tags (not automatic on push)
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - 'v*.*.*'
-  workflow_dispatch: # Allow manual trigger
+  release:
+    types: [published]
+  workflow_dispatch: # Allow manual trigger from GitHub Actions UI
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -32,7 +29,9 @@ jobs:
       # Load environment variables from ENV_FILE_PROD secret
       - name: Create .env file from secret
         run: |
-          echo "${{ secrets.ENV_FILE_PROD }}" > .env.build
+          cat > .env.build << 'EOF'
+          ${{ secrets.ENV_FILE_PROD }}
+          EOF
 
       # Option 1: Authenticate via Workload Identity Federation (Recommended)
       - name: Authenticate to Google Cloud (Workload Identity)

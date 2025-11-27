@@ -1,12 +1,10 @@
 name: Deploy to Cloud Run (Dev)
 
-# Trigger on push to dev or feature branches
+# Trigger on push to main branch (automatic dev deployment)
 on:
   push:
     branches:
-      - dev
-      - develop
-      - 'feature/**'
+      - main
   workflow_dispatch: # Allow manual trigger
 
 env:
@@ -32,7 +30,9 @@ jobs:
       # Load environment variables from ENV_FILE_DEV secret
       - name: Create .env file from secret
         run: |
-          echo "${{ secrets.ENV_FILE_DEV }}" > .env.build
+          cat > .env.build << 'EOF'
+          ${{ secrets.ENV_FILE_DEV }}
+          EOF
 
       # Option 1: Authenticate via Workload Identity Federation (Recommended)
       - name: Authenticate to Google Cloud (Workload Identity)
