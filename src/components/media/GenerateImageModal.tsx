@@ -3,6 +3,7 @@
 import { Check, Image as ImageIcon, Loader2, Sparkles, User, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { getAvailableImageModels } from '@/libs/ModelMetadata';
 
 type Patient = {
   id: string;
@@ -17,136 +18,22 @@ type GenerateImageModalProps = {
   patients?: Patient[];
 };
 
-const IMAGE_MODELS = {
-  'OpenAI': [
-    {
-      id: 'dall-e-3',
-      name: 'DALL-E 3',
-      description: 'High quality, detailed images with excellent prompt following',
-      maxLength: 4000,
-    },
-    {
-      id: 'dall-e-2',
-      name: 'DALL-E 2',
-      description: 'Faster generation with good quality',
-      maxLength: 1000,
-    },
-  ],
-  'Stability AI': [
-    {
-      id: 'sd3.5-large',
-      name: 'Stable Diffusion 3.5 Large',
-      description: 'Latest SD model with superior image quality',
+// Get models from centralized metadata (Atlas models appear first)
+const IMAGE_MODELS_RAW = getAvailableImageModels();
+
+// Convert to UI format with descriptions
+const IMAGE_MODELS = Object.entries(IMAGE_MODELS_RAW).reduce(
+  (acc, [provider, models]) => {
+    acc[provider] = models.map(m => ({
+      id: m.value,
+      name: m.label,
+      description: m.label.includes('$') ? m.label : `${m.label} - High quality generation`,
       maxLength: 10000,
-    },
-    {
-      id: 'sd3.5-medium',
-      name: 'Stable Diffusion 3.5 Medium',
-      description: 'Balanced quality and speed',
-      maxLength: 10000,
-    },
-    {
-      id: 'sd3-large',
-      name: 'Stable Diffusion 3 Large',
-      description: 'Previous generation with reliable results',
-      maxLength: 10000,
-    },
-    {
-      id: 'sdxl-1.0',
-      name: 'Stable Diffusion XL 1.0',
-      description: 'High resolution photorealistic images',
-      maxLength: 10000,
-    },
-  ],
-  'FAL.AI': [
-    {
-      id: 'flux-pro',
-      name: 'Flux Pro',
-      description: 'Professional-grade image generation with best quality',
-      maxLength: 10000,
-    },
-    {
-      id: 'flux-dev',
-      name: 'Flux Dev',
-      description: 'Development model for experimentation',
-      maxLength: 10000,
-    },
-    {
-      id: 'flux-schnell',
-      name: 'Flux Schnell',
-      description: 'Fast generation for rapid iteration',
-      maxLength: 10000,
-    },
-    {
-      id: 'flux-realism',
-      name: 'Flux Realism',
-      description: 'Hyper-realistic image generation',
-      maxLength: 10000,
-    },
-    {
-      id: 'sdxl',
-      name: 'Fast SDXL',
-      description: 'Fast Stable Diffusion XL generation',
-      maxLength: 10000,
-    },
-    {
-      id: 'sdxl-lightning',
-      name: 'SDXL Lightning',
-      description: 'Ultra-fast SDXL in 4 steps',
-      maxLength: 10000,
-    },
-  ],
-  'Google Vertex AI': [
-    {
-      id: 'imagen-4.0-ultra-generate-001',
-      name: 'Imagen 4.0 Ultra',
-      description: 'Highest quality Imagen model with best detail and accuracy',
-      maxLength: 10000,
-    },
-    {
-      id: 'imagen-4.0-generate-001',
-      name: 'Imagen 4.0',
-      description: 'Latest Imagen model with balanced quality and speed',
-      maxLength: 10000,
-    },
-    {
-      id: 'imagen-4.0-fast-generate-001',
-      name: 'Imagen 4.0 Fast',
-      description: 'Fast generation with excellent quality - recommended',
-      maxLength: 10000,
-    },
-    {
-      id: 'imagen-3.0-generate-002',
-      name: 'Imagen 3.0 v2',
-      description: 'Updated Imagen 3.0 with improved performance',
-      maxLength: 10000,
-    },
-    {
-      id: 'imagen-3.0-fast-generate-001',
-      name: 'Imagen 3.0 Fast',
-      description: 'Fast Imagen 3.0 generation',
-      maxLength: 10000,
-    },
-    {
-      id: 'imagen-3.0-generate-001',
-      name: 'Imagen 3.0',
-      description: 'Original Imagen 3.0 model',
-      maxLength: 10000,
-    },
-    {
-      id: 'imagen-3.0-capability-001',
-      name: 'Imagen 3.0 Capability',
-      description: 'Specialized Imagen 3.0 for specific capabilities',
-      maxLength: 10000,
-    },
-    {
-      id: 'imagegeneration@006',
-      name: 'Imagen 2',
-      description: 'Legacy Imagen 2 model',
-      maxLength: 10000,
-    },
-  ],
-};
+    }));
+    return acc;
+  },
+  {} as Record<string, Array<{ id: string; name: string; description: string; maxLength: number }>>,
+);
 
 const IMAGE_SIZES = [
   { id: '1024x1024', label: 'Square (1024x1024)', ratio: '1:1' },
@@ -166,7 +53,7 @@ export function GenerateImageModal({
   patients = [],
 }: GenerateImageModalProps) {
   const [prompt, setPrompt] = useState('');
-  const [selectedModel, setSelectedModel] = useState('flux-pro');
+  const [selectedModel, setSelectedModel] = useState('flux-schnell'); // Atlas Cloud default
   const [selectedSize, setSelectedSize] = useState('1024x1024');
   const [selectedStyle, setSelectedStyle] = useState('vivid');
   const [selectedPatients, setSelectedPatients] = useState<string[]>([]);

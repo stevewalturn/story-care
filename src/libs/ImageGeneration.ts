@@ -3,6 +3,7 @@
  * Consolidates all image generation providers into a single interface
  */
 
+import type { AtlasImageModel } from './providers/AtlasCloud';
 import type { FalModel } from './providers/FalAI';
 import type { GeminiImageModel } from './providers/GeminiImage';
 import type { StabilityModel } from './providers/StabilityAI';
@@ -11,6 +12,7 @@ import type { StabilityModel } from './providers/StabilityAI';
 export type ImageGenModel
   = | StabilityModel
     | FalModel
+    | AtlasImageModel
     | GeminiImageModel;
 
 export type ImageGenerationOptions = {
@@ -66,11 +68,24 @@ export async function generateImage(
     });
   }
 
-  // Route to FAL.AI
+  // Route to Atlas Cloud (Flux models)
+  if (model === 'flux-dev' || model === 'flux-schnell') {
+    const { generateImageWithAtlas } = await import('./providers/AtlasCloud');
+    // Convert dimensions to Atlas format (e.g., "1024*1024")
+    const size = options.width && options.height
+      ? `${options.width}*${options.height}`
+      : '1024*1024';
+    return await generateImageWithAtlas({
+      prompt,
+      model: model as AtlasImageModel,
+      size,
+      seed: options.seed,
+    });
+  }
+
+  // Route to FAL.AI (Other Flux and SDXL models)
   if (
     model === 'flux-pro'
-    || model === 'flux-dev'
-    || model === 'flux-schnell'
     || model === 'flux-realism'
     || model === 'sdxl'
     || model === 'sdxl-lightning'

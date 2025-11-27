@@ -1,35 +1,41 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getAvailableImageModels } from '@/libs/ModelMetadata';
 
 type GenerateImageModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onGenerate: (prompt: string, model: string, useReference: boolean, referenceImage?: string) => Promise<void>;
+  onGenerate: (
+    prompt: string,
+    model: string,
+    useReference: boolean,
+    referenceImage?: string,
+    metadata?: {
+      title?: string;
+      description?: string;
+      sourceQuote?: string;
+      style?: string;
+    },
+  ) => Promise<void>;
   patientName?: string;
   patientReferenceImage?: string;
   initialPrompt?: string;
+  initialTitle?: string;
+  initialDescription?: string;
+  initialSourceQuote?: string;
+  initialStyle?: string;
 };
 
-const IMAGE_MODELS = {
-  'Google Gemini (Image-to-Image)': [
-    { id: 'gemini-2.5-flash-image', name: 'Nano Banana (Gemini 2.5 Flash Image) - HOT' },
-  ],
-  'Stability AI': [
-    { id: 'sd3.5-large', name: 'Stable Diffusion 3.5 Large' },
-    { id: 'sd3.5-medium', name: 'Stable Diffusion 3.5 Medium' },
-    { id: 'sd3-large', name: 'Stable Diffusion 3 Large' },
-    { id: 'sdxl-1.0', name: 'Stable Diffusion XL 1.0' },
-  ],
-  'FAL.AI': [
-    { id: 'flux-pro', name: 'Flux Pro' },
-    { id: 'flux-dev', name: 'Flux Dev' },
-    { id: 'flux-schnell', name: 'Flux Schnell' },
-    { id: 'flux-realism', name: 'Flux Realism' },
-    { id: 'sdxl', name: 'Fast SDXL' },
-    { id: 'sdxl-lightning', name: 'SDXL Lightning' },
-  ],
-};
+// Get models from centralized metadata (Atlas models appear first)
+const IMAGE_MODELS_RAW = getAvailableImageModels();
+const IMAGE_MODELS = Object.entries(IMAGE_MODELS_RAW).reduce(
+  (acc, [provider, models]) => {
+    acc[provider] = models.map(m => ({ id: m.value, name: m.label }));
+    return acc;
+  },
+  {} as Record<string, Array<{ id: string; name: string }>>,
+);
 
 export function GenerateImageModal({
   isOpen,
@@ -38,15 +44,34 @@ export function GenerateImageModal({
   patientName,
   patientReferenceImage,
   initialPrompt = '',
+  initialTitle = '',
+  initialDescription = '',
+  initialSourceQuote = '',
+  initialStyle = '',
 }: GenerateImageModalProps) {
   const [prompt, setPrompt] = useState(initialPrompt);
+  const [title, setTitle] = useState(initialTitle);
+  const [description, setDescription] = useState(initialDescription);
+  const [sourceQuote, setSourceQuote] = useState(initialSourceQuote); // Read-only, displayed but not edited
+  const [style, setStyle] = useState(initialStyle);
   const [useReference, setUseReference] = useState(true);
   const [overrideImageUrl, setOverrideImageUrl] = useState('');
   const [overrideImageBase64, setOverrideImageBase64] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showContextMetadata, setShowContextMetadata] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
-  const [aiModel, setAiModel] = useState('gemini-2.5-flash-image');
+  const [aiModel, setAiModel] = useState('flux-schnell'); // Atlas Cloud default
+
+  // Update state when initial props change (when modal opens with new data)
+  useEffect(() => {
+    if (isOpen) {
+      setPrompt(initialPrompt);
+      setTitle(initialTitle);
+      setDescription(initialDescription);
+      setSourceQuote(initialSourceQuote);
+      setStyle(initialStyle);
+    }
+  }, [isOpen, initialPrompt, initialTitle, initialDescription, initialSourceQuote, initialStyle]);
 
   if (!isOpen) {
     return null;
@@ -61,7 +86,12 @@ export function GenerateImageModal({
     try {
       // Prioritize override image (base64), then URL, then patient reference
       const referenceImage = overrideImageBase64 || overrideImageUrl || (useReference ? patientReferenceImage : undefined);
-      await onGenerate(prompt, aiModel, useReference, referenceImage);
+      await onGenerate(prompt, aiModel, useReference, referenceImage, {
+        title: title.trim() || undefined,
+        description: description.trim() || undefined,
+        sourceQuote: sourceQuote.trim() || undefined,
+        style: style.trim() || undefined,
+      });
       onClose();
     } catch (error) {
       console.error('Error generating image:', error);
@@ -202,6 +232,57 @@ export function GenerateImageModal({
                 </div>
               </div>
             </div>
+
+            {/* Title (Optional) */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Title (Optional)</label>
+              <input
+                type="text"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder="Give this image a title..."
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+
+            {/* Description (Optional) */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Description (Optional)</label>
+              <textarea
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                placeholder="Describe the therapeutic purpose or meaning..."
+                rows={3}
+                className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+
+            {/* Source Quote (Optional) */}
+            {sourceQuote && (
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Source Quote</label>
+                <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+                  <p className="text-sm text-blue-900 italic">
+                    "
+                    {sourceQuote}
+                    "
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Style (Optional) */}
+            {style && (
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Style</label>
+                <input
+                  type="text"
+                  value={style}
+                  onChange={e => setStyle(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                />
+              </div>
+            )}
 
             {/* Reference Image */}
             <div>

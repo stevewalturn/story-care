@@ -95,25 +95,30 @@ export async function POST(request: NextRequest) {
 
     // 2. GET PATIENT ID from session if not provided
     let finalPatientId = patientId;
+    let groupId = null;
+
     if (!finalPatientId && sessionId) {
       const session = await db.query.sessions.findFirst({
         where: eq(sessions.id, sessionId),
       });
       finalPatientId = session?.patientId;
+      groupId = session?.groupId;
     }
 
-    if (!finalPatientId) {
+    // For group sessions, patientId can be null - media belongs to the group/session
+    if (!finalPatientId && !groupId && !sessionId) {
       return NextResponse.json(
-        { error: 'Patient ID is required (either directly or via session)' },
+        { error: 'Either patient ID, group ID, or session ID is required' },
         { status: 400 },
       );
     }
 
     // 3. Save to database (save GCS path, not presigned URL)
+    // patientId can be null for group session media
     const result = await db
       .insert(mediaLibrary)
       .values({
-        patientId: finalPatientId,
+        patientId: finalPatientId || null, // Null for group sessions
         createdByTherapistId: user.dbUserId,
         title: title || 'AI Generated Image',
         mediaType: 'image',

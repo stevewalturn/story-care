@@ -62,41 +62,54 @@ export function GenerateVideoModal({
     setProgress(0);
 
     try {
-      // Simulate progress
-      const progressInterval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 3000);
-
+      // Start video generation (returns taskId immediately)
       const response = await fetch('/api/ai/generate-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt,
           duration: Number.parseInt(duration),
-          style,
-          motion,
+          model: 'seedance-1-lite',
         }),
       });
-
-      clearInterval(progressInterval);
-      setProgress(100);
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate video');
+        throw new Error(data.error || 'Failed to start video generation');
       }
 
-      setGeneratedVideo(data.videoUrl);
+      const taskId = data.taskId;
+
+      // Poll for completion
+      let attempts = 0;
+      const maxAttempts = 60; // 5 minutes max
+      const pollInterval = setInterval(async () => {
+        attempts++;
+
+        try {
+          const statusResponse = await fetch(`/api/ai/video-task/${taskId}`);
+          const statusData = await statusResponse.json();
+
+          if (statusData.data.status === 'completed') {
+            clearInterval(pollInterval);
+            setProgress(100);
+            setGeneratedVideo(statusData.data.media.mediaUrl);
+            setIsGenerating(false);
+          } else if (statusData.data.status === 'failed' || attempts >= maxAttempts) {
+            clearInterval(pollInterval);
+            throw new Error(statusData.data.error || 'Video generation timed out');
+          } else {
+            // Update progress from server
+            setProgress(statusData.data.progress || Math.min(attempts * 2, 90));
+          }
+        } catch (pollError: any) {
+          clearInterval(pollInterval);
+          throw pollError;
+        }
+      }, 5000); // Poll every 5 seconds
     } catch (err: any) {
       setError(err.message || 'Failed to generate video');
-    } finally {
       setIsGenerating(false);
     }
   };
