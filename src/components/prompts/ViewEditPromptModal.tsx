@@ -9,9 +9,10 @@ import type { PromptTemplate } from '@/models/Schema';
 import { Save, Sparkles, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { JSONSchemaEditor } from '@/components/prompts/JSONSchemaEditor';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
-import { authenticatedDelete, authenticatedPut } from '@/utils/AuthenticatedFetch';
+import { authenticatedDelete, authenticatedPatch } from '@/utils/AuthenticatedFetch';
 
 type ViewEditPromptModalProps = {
   prompt: PromptTemplate;
@@ -59,7 +60,9 @@ export function ViewEditPromptModal({
   const [description, setDescription] = useState(prompt.description || '');
   const [category, setCategory] = useState(prompt.category);
   const [icon, setIcon] = useState(prompt.icon || 'sparkles');
-  const [outputType, setOutputType] = useState(prompt.outputType || 'text');
+  const [outputType, setOutputType] = useState<'text' | 'json'>((prompt.outputType as 'text' | 'json') || 'text');
+  const [jsonSchema, setJsonSchema] = useState(prompt.jsonSchema || null);
+  const [showJsonEditor, setShowJsonEditor] = useState(false);
 
   const handleSave = async () => {
     if (!name.trim() || !promptText.trim() || !category) {
@@ -71,7 +74,7 @@ export function ViewEditPromptModal({
     const toastId = toast.loading('Saving prompt...');
 
     try {
-      const response = await authenticatedPut(
+      const response = await authenticatedPatch(
         `${apiEndpoint}/${prompt.id}`,
         user,
         {
@@ -81,6 +84,7 @@ export function ViewEditPromptModal({
           category,
           icon,
           outputType,
+          jsonSchema: jsonSchema || null,
         },
       );
 
@@ -183,9 +187,15 @@ export function ViewEditPromptModal({
                   value={name}
                   onChange={e => setName(e.target.value)}
                   disabled={!isEditing}
+                  maxLength={255}
                   className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none disabled:bg-gray-50 disabled:text-gray-600"
                   placeholder="e.g., Self-Resilience Analysis"
                 />
+                {isEditing && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    3-255 characters required
+                  </p>
+                )}
               </div>
 
               {/* Category and Icon */}
@@ -238,15 +248,57 @@ export function ViewEditPromptModal({
                 </label>
                 <select
                   value={outputType}
-                  onChange={e => setOutputType(e.target.value)}
+                  onChange={(e) => {
+                    const newType = e.target.value as 'text' | 'json';
+                    setOutputType(newType);
+                    // Show JSON editor automatically when JSON is selected
+                    if (newType === 'json' && isEditing) {
+                      setShowJsonEditor(true);
+                    }
+                  }}
                   disabled={!isEditing}
                   className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none disabled:bg-gray-50 disabled:text-gray-600"
                 >
-                  <option value="text">📝 Text - Returns formatted text response</option>
-                  <option value="image">🖼️ Image - Generates image description/prompt</option>
-                  <option value="scene">🎬 Scene - Generates scene visualization/video prompt</option>
+                  <option value="text">📝 Text Only - Returns formatted text response</option>
+                  <option value="json">🔧 JSON Only - Returns structured JSON data</option>
                 </select>
+                {outputType === 'json' && !showJsonEditor && isEditing && (
+                  <button
+                    onClick={() => setShowJsonEditor(true)}
+                    className="mt-2 text-sm text-indigo-600 hover:text-indigo-700 hover:underline"
+                    type="button"
+                  >
+                    Configure JSON Schema →
+                  </button>
+                )}
               </div>
+
+              {/* JSON Schema Editor (Conditional) */}
+              {showJsonEditor && isEditing && outputType === 'json' && (
+                <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
+                  <JSONSchemaEditor
+                    promptId={prompt.id}
+                    promptName={name}
+                    currentJsonSchema={jsonSchema}
+                    onSave={async (data) => {
+                      setJsonSchema(data.jsonSchema || null);
+                      setShowJsonEditor(false);
+                      toast.success('JSON schema configuration saved');
+                    }}
+                    onCancel={() => setShowJsonEditor(false)}
+                  />
+                </div>
+              )}
+
+              {/* Show current JSON config when not editing */}
+              {!isEditing && outputType === 'json' && jsonSchema && (
+                <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
+                  <p className="mb-2 text-sm font-medium text-purple-900">JSON Schema Configuration</p>
+                  <pre className="overflow-x-auto rounded-lg bg-white p-3 font-mono text-xs text-gray-800 shadow-inner">
+                    {JSON.stringify(jsonSchema, null, 2)}
+                  </pre>
+                </div>
+              )}
 
               {/* Description */}
               <div>
@@ -257,10 +309,16 @@ export function ViewEditPromptModal({
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                   disabled={!isEditing}
+                  maxLength={500}
                   rows={2}
                   className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none disabled:bg-gray-50 disabled:text-gray-600"
                   placeholder="Brief description of what this prompt does"
                 />
+                {isEditing && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Optional - up to 500 characters
+                  </p>
+                )}
               </div>
 
               {/* Prompt Text */}
@@ -274,19 +332,39 @@ export function ViewEditPromptModal({
                   value={promptText}
                   onChange={e => setPromptText(e.target.value)}
                   disabled={!isEditing}
+                  maxLength={5000}
                   rows={12}
                   className="w-full rounded-lg border border-gray-300 px-4 py-2.5 font-mono text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none disabled:bg-gray-50 disabled:text-gray-600"
                   placeholder="Enter the AI prompt text here..."
                 />
-                <p className="mt-1 text-xs text-gray-500">
-                  Use variables like
-                  {' '}
-                  {'{{transcript}}'}
-                  ,
-                  {' '}
-                  {'{{patientName}}'}
-                  , etc. in your prompt
-                </p>
+                {isEditing ? (
+                  <div className="mt-1 flex items-center justify-between">
+                    <p className="text-xs text-gray-500">
+                      50-5,000 characters required. Use variables like
+                      {' '}
+                      {'{{transcript}}'}
+                      ,
+                      {' '}
+                      {'{{patientName}}'}
+                      {' '}
+                      in your prompt
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {promptText.length}
+                      /5000
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Use variables like
+                    {' '}
+                    {'{{transcript}}'}
+                    ,
+                    {' '}
+                    {'{{patientName}}'}
+                    , etc. in your prompt
+                  </p>
+                )}
               </div>
 
               {/* Metadata */}
@@ -343,13 +421,15 @@ export function ViewEditPromptModal({
                     variant="secondary"
                     onClick={() => {
                       setIsEditing(false);
+                      setShowJsonEditor(false);
                       // Reset form
                       setName(prompt.name);
                       setPromptText(prompt.promptText);
                       setDescription(prompt.description || '');
                       setCategory(prompt.category);
                       setIcon(prompt.icon || 'sparkles');
-                      setOutputType(prompt.outputType || 'text');
+                      setOutputType((prompt.outputType as 'text' | 'json') || 'text');
+                      setJsonSchema(prompt.jsonSchema || null);
                     }}
                   >
                     Cancel

@@ -87,7 +87,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const body = await request.json();
-    const { name, promptText, description, category, icon, isActive } = body;
+    const { name, promptText, description, category, icon, isActive, outputType, jsonSchema } = body;
 
     // Validate category if provided
     if (category) {
@@ -95,6 +95,31 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       if (!validCategories.includes(category)) {
         return NextResponse.json(
           { error: `Invalid category. Must be one of: ${validCategories.join(', ')}` },
+          { status: 400 },
+        );
+      }
+    }
+
+    // Validate outputType if provided
+    if (outputType && !['text', 'json'].includes(outputType)) {
+      return NextResponse.json(
+        { error: 'Invalid outputType. Must be text or json' },
+        { status: 400 },
+      );
+    }
+
+    // Validate jsonSchema if provided
+    if (jsonSchema !== undefined && jsonSchema !== null) {
+      try {
+        // Ensure it's valid JSON
+        if (typeof jsonSchema === 'string') {
+          JSON.parse(jsonSchema);
+        } else if (typeof jsonSchema !== 'object') {
+          throw new TypeError('Invalid JSON schema format');
+        }
+      } catch {
+        return NextResponse.json(
+          { error: 'Invalid JSON schema format' },
           { status: 400 },
         );
       }
@@ -110,6 +135,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         ...(category && { category }),
         ...(icon && { icon }),
         ...(isActive !== undefined && { isActive }),
+        ...(outputType !== undefined && { outputType }),
+        ...(jsonSchema !== undefined && { jsonSchema }),
         updatedAt: new Date(),
       })
       .where(eq(moduleAiPromptsSchema.id, id))

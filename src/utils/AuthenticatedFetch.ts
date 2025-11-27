@@ -88,6 +88,29 @@ export async function authenticatedPut(
 }
 
 /**
+ * Make an authenticated PATCH request with JSON body
+ */
+export async function authenticatedPatch(
+  url: string,
+  user: User | null,
+  body: unknown,
+  options?: RequestInit,
+): Promise<Response> {
+  const authHeaders = await getAuthHeaders(user);
+
+  return fetch(url, {
+    method: 'PATCH',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders,
+      ...options?.headers,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+/**
  * Make an authenticated DELETE request
  */
 export async function authenticatedDelete(

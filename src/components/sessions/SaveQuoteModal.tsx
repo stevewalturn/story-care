@@ -106,10 +106,11 @@ export function SaveQuoteModal({
               value={tags}
               onChange={e => setTags(e.target.value)}
               placeholder="e.g., breakthrough, metaphor, resistance"
+              maxLength={200}
               className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none"
             />
             <p className="mt-1 text-xs text-gray-500">
-              Separate multiple tags with commas
+              Separate multiple tags with commas (up to 200 characters)
             </p>
           </div>
 
@@ -122,9 +123,13 @@ export function SaveQuoteModal({
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="Add any notes about this quote..."
+              maxLength={1000}
               rows={4}
               className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none"
             />
+            <p className="mt-1 text-xs text-gray-500">
+              Optional - up to 1,000 characters
+            </p>
           </div>
         </div>
 

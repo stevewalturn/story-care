@@ -158,10 +158,10 @@ export async function POST(request: NextRequest) {
           pageId: page.id,
           blockType: block.type,
           sequenceNumber: index,
-          mediaId: block.mediaId || null,
-          sceneId: block.sceneId || null,
-          textContent: block.textContent || null,
-          settings: block.settings || null,
+          mediaId: block.mediaId || block.content?.mediaId || null,
+          sceneId: block.sceneId || block.content?.sceneId || null,
+          textContent: block.textContent || block.content?.text || null,
+          settings: block.settings || block.content || null,
         }).returning();
 
         // If this is a reflection block with questions, create reflection question rows

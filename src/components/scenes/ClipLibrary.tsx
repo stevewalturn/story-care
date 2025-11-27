@@ -195,20 +195,26 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
               >
                 <div className="flex items-center gap-3 p-3">
                   {/* Thumbnail */}
-                  <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-gray-100">
-                    {item.type === 'audio' || !item.thumbnailUrl
+                  <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-gradient-to-br from-gray-100 to-gray-200">
+                    {item.type === 'audio'
                       ? (
                           <div className="flex h-full w-full items-center justify-center">
                             <Music className="h-6 w-6 text-gray-400" />
                           </div>
                         )
-                      : (
-                          <img
-                            src={item.thumbnailUrl}
-                            alt={item.title}
-                            className="h-full w-full object-cover"
-                          />
-                        )}
+                      : item.type === 'video'
+                        ? (
+                            <div className="flex h-full w-full items-center justify-center">
+                              <Video className="h-6 w-6 text-gray-400" />
+                            </div>
+                          )
+                        : (
+                            <img
+                              src={item.thumbnailUrl}
+                              alt={item.title}
+                              className="h-full w-full object-cover"
+                            />
+                          )}
                   </div>
 
                   {/* Info */}

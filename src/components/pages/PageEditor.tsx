@@ -1,7 +1,7 @@
 'use client';
 
 import type { TreatmentModule } from '@/models/Schema';
-import { Eye, FileText, GripVertical, Image as ImageIcon, ListChecks, MessageCircle, Sparkles, Trash2, Type, Video, X } from 'lucide-react';
+import { Clapperboard, Eye, FileText, GripVertical, Image as ImageIcon, ListChecks, MessageCircle, Sparkles, Trash2, Type, Video, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { AssetPickerModal } from '@/components/pages/AssetPickerModal';
 import { ModulePageGenerator } from '@/components/pages/ModulePageGenerator';
@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
-type BlockType = 'text' | 'image' | 'video' | 'quote' | 'reflection' | 'survey';
+type BlockType = 'text' | 'image' | 'video' | 'quote' | 'scene' | 'reflection' | 'survey';
 
 type QuestionType = 'open_text' | 'scale' | 'multiple_choice' | 'yes_no';
 
@@ -42,6 +42,8 @@ type ContentBlock = {
   content: {
     text?: string;
     mediaUrl?: string;
+    sceneId?: string;
+    sceneTitle?: string;
     questions?: ReflectionQuestion[]; // For reflection blocks
     surveyQuestions?: SurveyQuestion[]; // For survey blocks
     templateId?: string;
@@ -135,6 +137,7 @@ export function PageEditor({
     { value: 'image', label: 'Image', icon: ImageIcon },
     { value: 'video', label: 'Video', icon: Video },
     { value: 'quote', label: 'Quote', icon: FileText },
+    { value: 'scene', label: 'Scene', icon: Clapperboard },
     { value: 'reflection', label: 'Reflection Question', icon: MessageCircle },
     { value: 'survey', label: 'Survey Question', icon: ListChecks },
   ];
@@ -284,7 +287,7 @@ export function PageEditor({
     setShowAssetPicker(true);
   };
 
-  const handleAssetSelect = (asset: { type: 'media' | 'quotes' | 'notes'; data: any }) => {
+  const handleAssetSelect = (asset: { type: 'media' | 'quotes' | 'notes' | 'scenes'; data: any }) => {
     if (!assetPickerBlockId) return;
 
     const block = blocks.find(b => b.id === assetPickerBlockId);
@@ -300,6 +303,13 @@ export function PageEditor({
     } else if (asset.type === 'notes') {
       // Note asset
       updateBlockContent(assetPickerBlockId, { text: asset.data.noteText });
+    } else if (asset.type === 'scenes') {
+      // Scene asset
+      updateBlockContent(assetPickerBlockId, {
+        sceneId: asset.data.id,
+        sceneTitle: asset.data.title,
+        mediaUrl: asset.data.videoUrl || asset.data.thumbnailUrl,
+      });
     }
 
     // Close modal
@@ -457,6 +467,45 @@ export function PageEditor({
             >
               <FileText className="mr-2 h-4 w-4" />
               Browse Library (Quotes)
+            </Button>
+          </div>
+        );
+      case 'scene':
+        return (
+          <div className="space-y-2">
+            {block.content.sceneId && block.content.sceneTitle && (
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <div className="flex items-center gap-2">
+                  <Clapperboard className="h-5 w-5 text-indigo-600" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">{block.content.sceneTitle}</p>
+                    <p className="text-xs text-gray-600">
+                      Scene ID:
+                      {block.content.sceneId}
+                    </p>
+                  </div>
+                </div>
+                {block.content.mediaUrl && (
+                  <div className="mt-2 aspect-video overflow-hidden rounded bg-gray-900">
+                    {block.content.mediaUrl.includes('.mp4') || block.content.mediaUrl.includes('video') ? (
+                      <div className="flex h-full items-center justify-center">
+                        <Video className="h-12 w-12 text-white opacity-50" />
+                      </div>
+                    ) : (
+                      <img src={block.content.mediaUrl} alt={block.content.sceneTitle} className="h-full w-full object-cover" />
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openAssetPicker(block.id, 'all')}
+              className="w-full"
+            >
+              <Clapperboard className="mr-2 h-4 w-4" />
+              {block.content.sceneId ? 'Change Scene' : 'Browse Scenes'}
             </Button>
           </div>
         );
@@ -860,6 +909,13 @@ export function PageEditor({
                     {block.content.text && (
                       <p className="line-clamp-2">{block.content.text}</p>
                     )}
+                    {block.content.sceneId && block.content.sceneTitle && (
+                      <p className="line-clamp-1 text-xs text-gray-600">
+                        Scene:
+                        {' '}
+                        {block.content.sceneTitle}
+                      </p>
+                    )}
                     {block.content.questions && block.content.questions.length > 0 && (
                       <p className="line-clamp-1 text-xs text-gray-600">
                         {block.content.questions.length}
@@ -874,13 +930,13 @@ export function PageEditor({
                         survey question(s)
                       </p>
                     )}
-                    {block.content.mediaUrl && (
+                    {block.content.mediaUrl && !block.content.sceneId && (
                       <p className="text-xs">
                         Media:
                         {block.content.mediaUrl}
                       </p>
                     )}
-                    {!block.content.text && !block.content.questions && !block.content.surveyQuestions && !block.content.mediaUrl && (
+                    {!block.content.text && !block.content.sceneId && !block.content.questions && !block.content.surveyQuestions && !block.content.mediaUrl && (
                       <p className="text-gray-400 italic">Empty block - click to edit</p>
                     )}
                   </div>
@@ -944,6 +1000,25 @@ export function PageEditor({
                       {block.content.text}
                       "
                     </blockquote>
+                  )}
+                  {block.type === 'scene' && block.content.sceneId && (
+                    <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
+                      <div className="mb-2 flex items-center gap-2">
+                        <Clapperboard className="h-5 w-5 text-purple-600" />
+                        <p className="font-medium text-purple-900">{block.content.sceneTitle}</p>
+                      </div>
+                      {block.content.mediaUrl && (
+                        <div className="aspect-video overflow-hidden rounded-lg bg-gray-900">
+                          {block.content.mediaUrl.includes('.mp4') || block.content.mediaUrl.includes('video') ? (
+                            <div className="flex h-full items-center justify-center">
+                              <Video className="h-16 w-16 text-white opacity-50" />
+                            </div>
+                          ) : (
+                            <img src={block.content.mediaUrl} alt={block.content.sceneTitle || 'Scene'} className="h-full w-full object-cover" />
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
                   {block.type === 'reflection' && block.content.questions && block.content.questions.length > 0 && (
                     <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
@@ -1137,8 +1212,8 @@ export function PageEditor({
           setAssetPickerBlockId(null);
         }}
         onSelect={handleAssetSelect}
-        patientId={selectedPatientId || undefined}
         filterType={assetPickerFilterType}
+        patientId={selectedPatientId || undefined}
       />
 
       {/* Module Page Generator Modal */}

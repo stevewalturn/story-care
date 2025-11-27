@@ -35,7 +35,8 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
   const [reflectionTemplateIds, setReflectionTemplateIds] = useState<string[]>([]);
   const [surveyTemplateIds, setSurveyTemplateIds] = useState<string[]>([]);
 
-  // AI Prompts state - now uses prompt library
+  // AI Prompts state - inline prompt and library prompts
+  const [aiPromptText, setAiPromptText] = useState('');
   const [selectedPromptIds, setSelectedPromptIds] = useState<string[]>([]);
 
   const [saving, setSaving] = useState(false);
@@ -52,11 +53,12 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
       setReflectionTemplateIds((module as any).reflectionTemplateIds || []);
       setSurveyTemplateIds((module as any).surveyTemplateIds || []);
 
-      // Load AI prompts from module - now expects array of prompt IDs
-      if (module.aiPromptMetadata) {
-        const promptIds = (module.aiPromptMetadata as any)?.promptIds || [];
-        setSelectedPromptIds(promptIds);
-      }
+      // Load inline AI prompt text
+      setAiPromptText(module.aiPromptText || '');
+
+      // Load linked prompt IDs from junction table
+      const linkedPromptIds = (module as any).linkedPrompts?.map((p: any) => p.id) || [];
+      setSelectedPromptIds(linkedPromptIds);
     }
   }, [module]);
 
@@ -76,9 +78,9 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
         reflectionTemplateIds,
         surveyTemplateIds,
 
-        aiPromptMetadata: {
-          promptIds: selectedPromptIds,
-        },
+        // AI Prompts: inline prompt text + linked prompts from library
+        aiPromptText,
+        linkedPromptIds: selectedPromptIds,
       };
 
       const url = isEdit ? `${apiEndpoint}/${module.id}` : apiEndpoint;
@@ -130,15 +132,21 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-900">
                   Title
+                  {' '}
+                  <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={name}
                   onChange={e => setName(e.target.value)}
                   required
+                  maxLength={255}
                   className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
                   placeholder="e.g., Self-Resilience & Re-Authoring"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  3-255 characters required
+                </p>
               </div>
 
               {/* Domain */}
@@ -163,15 +171,27 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-900">
                   Description
+                  {' '}
+                  <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                   required
+                  maxLength={5000}
                   rows={3}
                   className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
                   placeholder="Help people re-tell stories of survival and rediscover agency."
                 />
+                <div className="mt-1 flex items-center justify-between">
+                  <p className="text-xs text-gray-500">
+                    10-5,000 characters required
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {description.length}
+                    /5000
+                  </p>
+                </div>
               </div>
 
               {/* Reflection Questions Template */}
@@ -190,7 +210,37 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                 description="Post-session questions for patients in Story Pages. These collect qualitative narrative responses."
               />
 
-              {/* AI Prompts - Now using Prompt Library */}
+              {/* Module AI Prompt (Inline) - Required */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-900">
+                  Module AI Prompt
+                  {' '}
+                  <span className="text-red-500">*</span>
+                </label>
+                <p className="mb-2 text-xs text-gray-600">
+                  Core AI prompt for this module. This is always used for transcript analysis.
+                </p>
+                <textarea
+                  value={aiPromptText}
+                  onChange={e => setAiPromptText(e.target.value)}
+                  required
+                  maxLength={10000}
+                  rows={8}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 font-mono text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                  placeholder="You are a narrative therapy AI assistant analyzing session transcripts. Focus on identifying therapeutic themes, patterns, and insights..."
+                />
+                <div className="mt-1 flex items-center justify-between">
+                  <p className="text-xs text-gray-500">
+                    50-10,000 characters required. This prompt is stored directly on the module and is always executed during analysis.
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {aiPromptText.length}
+                    /10000
+                  </p>
+                </div>
+              </div>
+
+              {/* Linked AI Prompts from Library - Optional */}
               <PromptSelector
                 selectedPromptIds={selectedPromptIds}
                 onChange={setSelectedPromptIds}

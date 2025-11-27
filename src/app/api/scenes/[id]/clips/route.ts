@@ -77,7 +77,7 @@ export async function POST(
   }
 }
 
-// PUT /api/scenes/[id]/clips - Update multiple clips (reorder)
+// PUT /api/scenes/[id]/clips - Replace all clips for a scene
 export async function PUT(
   request: NextRequest,
   context: RouteContext,
@@ -94,20 +94,21 @@ export async function PUT(
       );
     }
 
-    // Update each clip's sequence number
-    const updatePromises = clips.map((clip: any) =>
-      db
-        .update(sceneClips)
-        .set({
-          sequenceNumber: clip.sequenceNumber,
-          startTimeSeconds: clip.startTimeSeconds,
-          endTimeSeconds: clip.endTimeSeconds,
-        })
-        .where(eq(sceneClips.id, clip.id))
-        .returning(),
-    );
+    // Delete all existing clips for this scene
+    await db.delete(sceneClips).where(eq(sceneClips.sceneId, sceneId));
 
-    await Promise.all(updatePromises);
+    // Insert new clips
+    if (clips.length > 0) {
+      const newClips = clips.map((clip: any) => ({
+        sceneId,
+        mediaId: clip.mediaId,
+        sequenceNumber: clip.sequenceNumber,
+        startTimeSeconds: clip.startTimeSeconds,
+        endTimeSeconds: clip.endTimeSeconds,
+      }));
+
+      await db.insert(sceneClips).values(newClips);
+    }
 
     // Return updated clips
     const updatedClips = await db

@@ -10,7 +10,7 @@ import { z } from 'zod';
 import {
   createTemplate,
   listTemplates,
-
+  updateModulePromptLinks,
 } from '@/services/ModuleService';
 import { requireAuth } from '@/utils/AuthHelpers';
 import { createModuleSchema } from '@/validations/ModuleValidation';
@@ -93,6 +93,11 @@ export async function POST(request: NextRequest) {
       aiPromptText: validatedData.aiPromptText,
       aiPromptMetadata: validatedData.aiPromptMetadata,
     });
+
+    // 5. LINK AI PROMPTS from library (via junction table)
+    if (template && validatedData.linkedPromptIds && validatedData.linkedPromptIds.length > 0) {
+      await updateModulePromptLinks(template.id, validatedData.linkedPromptIds);
+    }
 
     return NextResponse.json(
       {

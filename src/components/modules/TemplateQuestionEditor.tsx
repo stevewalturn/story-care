@@ -145,6 +145,8 @@ export function TemplateQuestionEditor({
                       value={question.questionText}
                       onChange={e => updateQuestion(question.id, { questionText: e.target.value })}
                       placeholder="Enter question text..."
+                      maxLength={500}
+                      helperText="5-500 characters required"
                       className="w-full"
                     />
                   </div>
@@ -208,6 +210,7 @@ export function TemplateQuestionEditor({
                               value={option}
                               onChange={e => updateOption(question.id, optIndex, e.target.value)}
                               placeholder="Option text..."
+                              maxLength={200}
                               className="flex-1"
                             />
                             <Button
@@ -261,6 +264,7 @@ export function TemplateQuestionEditor({
                           onChange={e =>
                             updateQuestion(question.id, { scaleMinLabel: e.target.value })}
                           placeholder="e.g., Not at all"
+                          maxLength={100}
                         />
                       </div>
                       <div>
@@ -272,6 +276,7 @@ export function TemplateQuestionEditor({
                           onChange={e =>
                             updateQuestion(question.id, { scaleMaxLabel: e.target.value })}
                           placeholder="e.g., Extremely"
+                          maxLength={100}
                         />
                       </div>
                     </div>

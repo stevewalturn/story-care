@@ -1,7 +1,7 @@
 'use client';
 
-import { CheckCircle, Edit2, FileText, Plus, Trash2, Upload } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { CheckCircle, Copy, Edit2, FileText, Link2, Plus, Share2, Trash2, Upload, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { PageEditor } from '@/components/pages/PageEditor';
 import { Button } from '@/components/ui/Button';
 import { } from '@/components/ui/Modal';
@@ -27,7 +27,7 @@ type Patient = {
 
 type ContentBlock = {
   id: string;
-  type: 'text' | 'image' | 'video' | 'quote' | 'reflection' | 'survey';
+  type: 'text' | 'image' | 'video' | 'quote' | 'scene' | 'reflection' | 'survey';
   order: number;
   content: any;
 };
@@ -45,12 +45,17 @@ export function PagesClient() {
     patientId: string;
   } | null>(null);
 
-  useEffect(() => {
-    fetchPages();
-    fetchPatients();
-  }, []);
+  // Share modal state
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [sharePageId, setSharePageId] = useState<string | null>(null);
+  const [shareLinks, setShareLinks] = useState<any[]>([]);
+  const [loadingShare, setLoadingShare] = useState(false);
+  const [expiryMinutes, setExpiryMinutes] = useState(60);
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
-  const fetchPages = async () => {
+  const fetchPages = useCallback(async () => {
+    if (!user) return;
+
     try {
       setLoading(true);
       const response = await authenticatedFetch('/api/pages', user);
@@ -70,9 +75,11 @@ export function PagesClient() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const fetchPatients = async () => {
+  const fetchPatients = useCallback(async () => {
+    if (!user) return;
+
     try {
       const response = await authenticatedFetch('/api/patients', user);
       if (!response.ok) {
@@ -85,7 +92,14 @@ export function PagesClient() {
       console.error('Failed to fetch patients:', error);
       setPatients([]);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchPages();
+      fetchPatients();
+    }
+  }, [user, fetchPages, fetchPatients]);
 
   const handleCreatePage = () => {
     setEditingPageId(null);
@@ -140,6 +154,26 @@ export function PagesClient() {
         }
       }
 
+      // Fetch scene information for scene blocks
+      const sceneBlockIds = dbBlocks
+        .filter((b: any) => b.blockType === 'scene' && b.sceneId)
+        .map((b: any) => b.sceneId);
+
+      const scenesData: any = {};
+      if (sceneBlockIds.length > 0) {
+        for (const sceneId of sceneBlockIds) {
+          try {
+            const sceneResponse = await authenticatedFetch(`/api/scenes/${sceneId}`, user);
+            if (sceneResponse.ok) {
+              const sceneJson = await sceneResponse.json();
+              scenesData[sceneId] = sceneJson.scene;
+            }
+          } catch (error) {
+            console.error(`Failed to fetch scene ${sceneId}:`, error);
+          }
+        }
+      }
+
       // Transform database blocks to PageEditor format
       const transformedBlocks: ContentBlock[] = dbBlocks.map((block: any) => {
         const baseBlock = {
@@ -148,9 +182,18 @@ export function PagesClient() {
           order: block.sequenceNumber,
           content: {
             text: block.textContent || undefined,
+            sceneId: block.sceneId || undefined,
+            mediaUrl: block.mediaUrl || undefined,
             ...(block.settings || {}),
           },
         };
+
+        // Add scene information if this is a scene block
+        if (block.blockType === 'scene' && block.sceneId && scenesData[block.sceneId]) {
+          const scene = scenesData[block.sceneId];
+          baseBlock.content.sceneTitle = scene.title;
+          baseBlock.content.mediaUrl = scene.videoUrl || scene.thumbnailUrl || baseBlock.content.mediaUrl;
+        }
 
         // Add reflection questions if this is a reflection block
         if (block.blockType === 'reflection') {
@@ -265,6 +308,72 @@ export function PagesClient() {
     }
   };
 
+  const handleOpenShareModal = async (pageId: string) => {
+    setSharePageId(pageId);
+    setShowShareModal(true);
+    await fetchShareLinks(pageId);
+  };
+
+  const fetchShareLinks = async (pageId: string) => {
+    setLoadingShare(true);
+    try {
+      const response = await authenticatedFetch(`/api/pages/${pageId}/share`, user);
+      if (response.ok) {
+        const data = await response.json();
+        setShareLinks(data.shareLinks || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch share links:', error);
+    } finally {
+      setLoadingShare(false);
+    }
+  };
+
+  const handleCreateShareLink = async () => {
+    if (!sharePageId) return;
+
+    setLoadingShare(true);
+    try {
+      const response = await authenticatedPost(`/api/pages/${sharePageId}/share`, user, {
+        expiryMinutes,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create share link');
+      }
+
+      await fetchShareLinks(sharePageId);
+    } catch (error) {
+      console.error('Failed to create share link:', error);
+      alert('Failed to create share link. Please try again.');
+    } finally {
+      setLoadingShare(false);
+    }
+  };
+
+  const handleRevokeShareLink = async (linkId: string) => {
+    if (!sharePageId) return;
+
+    try {
+      const response = await authenticatedDelete(`/api/pages/${sharePageId}/share/${linkId}`, user);
+
+      if (!response.ok) {
+        throw new Error('Failed to revoke share link');
+      }
+
+      await fetchShareLinks(sharePageId);
+    } catch (error) {
+      console.error('Failed to revoke share link:', error);
+      alert('Failed to revoke share link. Please try again.');
+    }
+  };
+
+  const handleCopyLink = (shareUrl: string, linkId: string) => {
+    navigator.clipboard.writeText(shareUrl);
+    setCopiedLink(linkId);
+    setTimeout(() => setCopiedLink(null), 2000);
+  };
+
   const formatDate = (date: Date) => {
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - date.getTime());
@@ -377,6 +486,14 @@ export function PagesClient() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  onClick={() => handleOpenShareModal(page.id)}
+                  title="Share page"
+                >
+                  <Share2 className="h-4 w-4 text-indigo-600" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => handleDeletePage(page.id)}
                 >
                   <Trash2 className="h-4 w-4 text-red-600" />
@@ -412,6 +529,165 @@ export function PagesClient() {
               onSave={handleSavePage}
               onClose={() => setShowEditor(false)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-gray-900 p-4">
+          <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-gray-200 p-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Share Page</h3>
+                <p className="text-sm text-gray-600">Create time-limited shareable links</p>
+              </div>
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="text-gray-400 transition-colors hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="max-h-[60vh] overflow-y-auto p-6">
+              {/* Create New Link */}
+              <div className="mb-6 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+                <h4 className="mb-3 font-medium text-indigo-900">Create New Share Link</h4>
+                <div className="flex items-end gap-3">
+                  <div className="flex-1">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                      Expires in (minutes)
+                    </label>
+                    <input
+                      type="number"
+                      value={expiryMinutes}
+                      onChange={e => setExpiryMinutes(parseInt(e.target.value) || 60)}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      placeholder="60"
+                      min="1"
+                      max="10080"
+                    />
+                    <p className="mt-1 text-xs text-gray-600">
+                      Common: 60 (1 hour), 1440 (1 day), 10080 (7 days)
+                    </p>
+                  </div>
+                  <Button
+                    variant="primary"
+                    onClick={handleCreateShareLink}
+                    disabled={loadingShare}
+                  >
+                    <Link2 className="mr-2 h-4 w-4" />
+                    Generate Link
+                  </Button>
+                </div>
+              </div>
+
+              {/* Active Share Links */}
+              <div>
+                <h4 className="mb-3 font-medium text-gray-900">Active Share Links</h4>
+                {loadingShare && (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                  </div>
+                )}
+
+                {!loadingShare && shareLinks.length === 0 && (
+                  <div className="rounded-lg border-2 border-dashed border-gray-300 py-12 text-center">
+                    <Link2 className="mx-auto mb-2 h-12 w-12 text-gray-400" />
+                    <p className="text-sm text-gray-600">No active share links</p>
+                    <p className="text-xs text-gray-500">Create a link above to get started</p>
+                  </div>
+                )}
+
+                {!loadingShare && shareLinks.length > 0 && (
+                  <div className="space-y-3">
+                    {shareLinks.map((link) => {
+                      const isExpired = link.isExpired || new Date(link.expiresAt) < new Date();
+                      return (
+                        <div
+                          key={link.id}
+                          className={`rounded-lg border p-4 ${
+                            isExpired ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'
+                          }`}
+                        >
+                          <div className="mb-2 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className={`rounded px-2 py-1 text-xs font-medium ${
+                                isExpired
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-green-100 text-green-700'
+                              }`}
+                              >
+                                {isExpired ? 'Expired' : 'Active'}
+                              </span>
+                              <span className="text-xs text-gray-600">
+                                Expires:
+                                {' '}
+                                {new Date(link.expiresAt).toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {!isExpired && (
+                                <button
+                                  onClick={() => handleCopyLink(link.shareUrl, link.id)}
+                                  className="rounded p-1 text-gray-600 transition-colors hover:bg-gray-100 hover:text-indigo-600"
+                                  title="Copy link"
+                                >
+                                  {copiedLink === link.id ? (
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                  ) : (
+                                    <Copy className="h-4 w-4" />
+                                  )}
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleRevokeShareLink(link.id)}
+                                className="rounded p-1 text-gray-600 transition-colors hover:bg-red-100 hover:text-red-600"
+                                title="Revoke link"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="group relative">
+                            <input
+                              type="text"
+                              value={link.shareUrl}
+                              readOnly
+                              className="w-full truncate rounded border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700"
+                            />
+                          </div>
+                          <div className="mt-2 flex items-center gap-4 text-xs text-gray-600">
+                            <span>
+                              Duration:
+                              {link.expiryDurationMinutes}
+                              {' '}
+                              minutes
+                            </span>
+                            <span>
+                              Accessed:
+                              {link.accessCount}
+                              {' '}
+                              times
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end border-t border-gray-200 p-4">
+              <Button variant="ghost" onClick={() => setShowShareModal(false)}>
+                Close
+              </Button>
+            </div>
           </div>
         </div>
       )}

@@ -28,8 +28,13 @@ export async function GET(request: NextRequest) {
       where: eq(usersSchema.firebaseUid, firebaseUid),
     });
 
-    if (!user || user.role !== 'therapist') {
-      return NextResponse.json({ error: 'Forbidden: Therapist access required' }, { status: 403 });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Allow therapists, org admins, and super admins to access prompts
+    if (!['therapist', 'org_admin', 'super_admin'].includes(user.role)) {
+      return NextResponse.json({ error: 'Forbidden: Therapist, Org Admin, or Super Admin access required' }, { status: 403 });
     }
 
     // Fetch system prompts + org prompts + private prompts
@@ -50,6 +55,8 @@ export async function GET(request: NextRequest) {
         ),
       )
       .orderBy(moduleAiPromptsSchema.scope, moduleAiPromptsSchema.category, moduleAiPromptsSchema.name);
+
+    console.log(`[Therapist Prompts API] Returning ${prompts.length} prompts for user ${user.email} (role: ${user.role})`);
 
     return NextResponse.json({ prompts });
   } catch (error) {
@@ -75,12 +82,17 @@ export async function POST(request: NextRequest) {
       where: eq(usersSchema.firebaseUid, firebaseUid),
     });
 
-    if (!user || user.role !== 'therapist') {
-      return NextResponse.json({ error: 'Forbidden: Therapist access required' }, { status: 403 });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Allow therapists, org admins, and super admins to create prompts
+    if (!['therapist', 'org_admin', 'super_admin'].includes(user.role)) {
+      return NextResponse.json({ error: 'Forbidden: Therapist, Org Admin, or Super Admin access required' }, { status: 403 });
     }
 
     const body = await request.json();
-    const { name, promptText, description, category, icon } = body;
+    const { name, promptText, description, category, icon, outputType, jsonSchema } = body;
 
     // Validate required fields
     if (!name || !promptText || !category) {
@@ -99,6 +111,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate outputType
+    if (outputType && !['text', 'json'].includes(outputType)) {
+      return NextResponse.json(
+        { error: 'Invalid outputType. Must be text or json' },
+        { status: 400 },
+      );
+    }
+
+    // Validate jsonSchema is valid JSON if provided
+    if (jsonSchema) {
+      try {
+        // Ensure it's valid JSON
+        if (typeof jsonSchema === 'string') {
+          JSON.parse(jsonSchema);
+        } else if (typeof jsonSchema !== 'object') {
+          throw new TypeError('Invalid JSON schema format');
+        }
+      } catch {
+        return NextResponse.json(
+          { error: 'Invalid JSON schema format' },
+          { status: 400 },
+        );
+      }
+    }
+
     // Create new private prompt
     const [newPrompt] = await db
       .insert(moduleAiPromptsSchema)
@@ -108,6 +145,8 @@ export async function POST(request: NextRequest) {
         description: description || null,
         category,
         icon: icon || 'sparkles',
+        outputType: outputType || 'text',
+        jsonSchema: jsonSchema || null,
         scope: 'private',
         organizationId: null, // Private prompts don't belong to an organization
         createdBy: user.id,

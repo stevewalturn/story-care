@@ -12,7 +12,7 @@ import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type PromptScope = 'system' | 'organization' | 'private';
 type PromptCategory = 'analysis' | 'creative' | 'extraction' | 'reflection';
-type OutputType = 'text' | 'image' | 'scene';
+type OutputType = 'text' | 'json';
 
 type CreatePromptModalProps = {
   scope: PromptScope;
@@ -25,6 +25,8 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
   const [name, setName] = useState('');
   const [category, setCategory] = useState<PromptCategory>('analysis');
   const [outputType, setOutputType] = useState<OutputType>('text');
+  const [jsonSchema, setJsonSchema] = useState('');
+  const [jsonError, setJsonError] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [promptText, setPromptText] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -53,6 +55,22 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
     }
   };
 
+  const handleJsonSchemaChange = (value: string) => {
+    setJsonSchema(value);
+
+    // Validate JSON if not empty
+    if (value.trim()) {
+      try {
+        JSON.parse(value);
+        setJsonError(null);
+      } catch {
+        setJsonError('Invalid JSON format');
+      }
+    } else {
+      setJsonError(null);
+    }
+  };
+
   const handleCreate = async () => {
     // Validation
     if (!name.trim()) {
@@ -70,21 +88,38 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
       return;
     }
 
+    // Validate JSON schema if provided
+    if (outputType === 'json' && jsonSchema.trim()) {
+      try {
+        JSON.parse(jsonSchema);
+      } catch {
+        setError('Invalid JSON schema format');
+        return;
+      }
+    }
+
     setIsCreating(true);
     setError(null);
 
     try {
+      const requestBody: any = {
+        name: name.trim(),
+        promptText: promptText.trim(),
+        description: description.trim() || undefined,
+        category,
+        icon: 'sparkles',
+        outputType,
+      };
+
+      // Include JSON schema if output type is json and schema is provided
+      if (outputType === 'json' && jsonSchema.trim()) {
+        requestBody.jsonSchema = JSON.parse(jsonSchema);
+      }
+
       const response = await authenticatedFetch(getApiEndpoint(), user, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          promptText: promptText.trim(),
-          description: description.trim() || undefined,
-          category,
-          icon: 'sparkles', // Default icon
-          outputType,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -191,14 +226,41 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
                   className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
                   disabled={isCreating}
                 >
-                  <option value="text">📝 Text - Returns formatted text response</option>
-                  <option value="image">🖼️ Image - Generates image description/prompt</option>
-                  <option value="scene">🎬 Scene - Generates scene visualization/video prompt</option>
+                  <option value="text">📝 Text - Returns formatted text/markdown response</option>
+                  <option value="json">📊 JSON - Returns structured data (scene cards, therapeutic notes, etc.)</option>
                 </select>
                 <p className="mt-1 text-xs text-gray-500">
-                  Determines how the AI response is displayed (text output vs image generation)
+                  Choose text for narrative responses or JSON for structured therapeutic data
                 </p>
               </div>
+
+              {/* JSON Schema Configuration (only if JSON selected) */}
+              {outputType === 'json' && (
+                <div>
+                  <label htmlFor="jsonSchema" className="mb-2 block text-sm font-medium text-gray-700">
+                    JSON Schema (Optional)
+                  </label>
+                  <textarea
+                    id="jsonSchema"
+                    value={jsonSchema}
+                    onChange={e => handleJsonSchemaChange(e.target.value)}
+                    rows={12}
+                    className={`w-full rounded-lg border px-4 py-2.5 font-mono text-xs focus:ring-2 focus:ring-indigo-500/20 focus:outline-none ${
+                      jsonError
+                        ? 'border-red-300 focus:border-red-500'
+                        : 'border-gray-300 focus:border-indigo-500'
+                    }`}
+                    placeholder='{\n  "type": "object",\n  "properties": {\n    "video_introduction": {\n      "type": "string"\n    },\n    "patient_reflection_questions": {\n      "type": "array",\n      "items": { "type": "string" }\n    }\n  },\n  "required": ["video_introduction"]\n}'
+                    disabled={isCreating}
+                  />
+                  {jsonError && (
+                    <p className="mt-1 text-xs text-red-600">{jsonError}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">
+                    Define the JSON structure for validation and AI response format.
+                  </p>
+                </div>
+              )}
 
               {/* Description */}
               <div>

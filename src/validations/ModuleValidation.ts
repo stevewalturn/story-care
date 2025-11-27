@@ -33,6 +33,7 @@ export const createModuleSchema = z.object({
   surveyTemplateIds: z.array(z.string().uuid()).default([]),
   aiPromptText: z.string().min(50).max(10000),
   aiPromptMetadata: z.record(z.string(), z.any()).optional(),
+  linkedPromptIds: z.array(z.string().uuid()).default([]),
 });
 
 /**
@@ -45,6 +46,7 @@ export const updateModuleSchema = z.object({
   surveyTemplateIds: z.array(z.string().uuid()).optional(),
   aiPromptText: z.string().min(50).max(10000).optional(),
   aiPromptMetadata: z.record(z.string(), z.any()).optional(),
+  linkedPromptIds: z.array(z.string().uuid()).optional(),
   status: moduleStatusSchema.optional(),
 });
 

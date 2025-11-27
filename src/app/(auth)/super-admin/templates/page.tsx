@@ -220,7 +220,10 @@ export default function SuperAdminTemplatesPage() {
               <TemplateCard
                 key={template.id}
                 template={template}
-                onView={() => setViewingTemplate(template)}
+                onView={() => {
+                  console.log('[Templates Page] Opening template details:', template);
+                  setViewingTemplate(template);
+                }}
               />
             ))}
           </div>
@@ -270,8 +273,19 @@ function TemplateCard({ template, onView }: TemplateCardProps) {
     'custom': 'bg-gray-100 text-gray-700',
   };
 
+  // Category-specific card border colors for visual differentiation
+  const categoryBorderColors: Record<string, string> = {
+    'narrative': 'border-l-4 border-l-purple-500',
+    'emotion': 'border-l-4 border-l-pink-500',
+    'screening': 'border-l-4 border-l-blue-500',
+    'outcome': 'border-l-4 border-l-green-500',
+    'satisfaction': 'border-l-4 border-l-yellow-500',
+    'goal-setting': 'border-l-4 border-l-orange-500',
+    'custom': 'border-l-4 border-l-gray-500',
+  };
+
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+    <div className={`rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md ${categoryBorderColors[template.category] || ''}`}>
       {/* Header */}
       <div className="mb-3 flex items-start justify-between">
         <div className="flex-1">
@@ -321,7 +335,10 @@ function TemplateCard({ template, onView }: TemplateCardProps) {
 
       {/* Actions */}
       <button
-        onClick={onView}
+        onClick={() => {
+          console.log('[TemplateCard] View Details clicked for:', template.title);
+          onView();
+        }}
         className="w-full rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
         type="button"
       >

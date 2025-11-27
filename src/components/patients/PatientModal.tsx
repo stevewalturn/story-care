@@ -171,6 +171,8 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
               onChange={e => setFormData({ ...formData, name: e.target.value })}
               placeholder="John Doe"
               required
+              maxLength={255}
+              helperText="2-255 characters required"
             />
 
             <Input
@@ -179,6 +181,7 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
               value={formData.email}
               onChange={e => setFormData({ ...formData, email: e.target.value })}
               placeholder="john@example.com"
+              helperText="Optional - valid email format required if provided"
             />
 
             {/* Therapist Selection (Org Admin Only) */}

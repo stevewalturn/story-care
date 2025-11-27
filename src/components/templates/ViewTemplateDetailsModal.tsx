@@ -6,6 +6,8 @@
  */
 
 import { CheckCircle, FileText, X } from 'lucide-react';
+import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 type QuestionType = 'open_text' | 'multiple_choice' | 'scale' | 'emotion';
 
@@ -65,7 +67,22 @@ export function ViewTemplateDetailsModal({ template, scopeLabel, onClose }: View
     }
   };
 
-  return (
+  // Debug logging
+  useEffect(() => {
+    console.log('[ViewTemplateDetailsModal] Opened with template:', template);
+    console.log('[ViewTemplateDetailsModal] Questions:', template.questions);
+    console.log('[ViewTemplateDetailsModal] Questions count:', template.questions?.length || 0);
+  }, [template]);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
+
+  const modalContent = (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
@@ -241,4 +258,11 @@ export function ViewTemplateDetailsModal({ template, scopeLabel, onClose }: View
       </div>
     </div>
   );
+
+  // Render modal using portal to ensure it appears above all content
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  return createPortal(modalContent, document.body);
 }

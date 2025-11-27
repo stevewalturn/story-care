@@ -4,6 +4,7 @@ import { Pencil, Plus, Trash2, Upload, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import { MediaViewer } from '@/components/assets/MediaViewer';
 import { EditQuoteModal } from '@/components/sessions/EditQuoteModal';
 import { Button } from '@/components/ui/Button';
 import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog';
@@ -22,6 +23,8 @@ type MediaItem = {
   tags: string[] | null;
   createdAt: string;
   patientName: string;
+  sessionTitle?: string;
+  generationPrompt?: string | null;
 };
 
 export function AssetsClient() {
@@ -55,6 +58,10 @@ export function AssetsClient() {
   const [uploadDescription, setUploadDescription] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Media viewer state
+  const [selectedMediaItem, setSelectedMediaItem] = useState<MediaItem | null>(null);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
 
   // Load patients on mount (only when user is available)
   useEffect(() => {
@@ -249,6 +256,16 @@ export function AssetsClient() {
     } finally {
       setIsDeletingMedia(false);
     }
+  };
+
+  const handleMediaClick = (item: MediaItem) => {
+    setSelectedMediaItem(item);
+    setIsViewerOpen(true);
+  };
+
+  const handleCloseViewer = () => {
+    setIsViewerOpen(false);
+    setSelectedMediaItem(null);
   };
 
   const handleUploadClick = () => {
@@ -588,17 +605,18 @@ export function AssetsClient() {
                   <div
                     key={item.id}
                     className="group relative cursor-pointer overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:border-indigo-300 hover:shadow-lg"
+                    onClick={() => handleMediaClick(item)}
                   >
                     {/* Thumbnail */}
                     <div className="relative aspect-video bg-gray-100">
                       {item.mediaType === 'video'
                         ? (
                             <>
-                              <img
-                                src={item.thumbnailUrl || item.mediaUrl}
-                                alt={item.title}
-                                className="h-full w-full object-cover"
-                              />
+                              <div className="flex h-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                                <svg className="h-20 w-20 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                              </div>
                               <div className="absolute inset-0 flex items-center justify-center">
                                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/60 transition-colors group-hover:bg-indigo-600">
                                   <svg className="h-7 w-7 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -1170,6 +1188,26 @@ export function AssetsClient() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Media Viewer Modal */}
+      {isViewerOpen && selectedMediaItem && (
+        <MediaViewer
+          item={{
+            id: selectedMediaItem.id,
+            type: selectedMediaItem.mediaType,
+            title: selectedMediaItem.title,
+            url: selectedMediaItem.mediaUrl,
+            thumbnailUrl: selectedMediaItem.thumbnailUrl || undefined,
+            patientName: selectedMediaItem.patientName,
+            sessionName: selectedMediaItem.sessionTitle,
+            createdAt: new Date(selectedMediaItem.createdAt),
+            duration: selectedMediaItem.durationSeconds || undefined,
+            tags: selectedMediaItem.tags || undefined,
+            prompt: selectedMediaItem.generationPrompt || undefined,
+          }}
+          onClose={handleCloseViewer}
+        />
       )}
     </div>
   );

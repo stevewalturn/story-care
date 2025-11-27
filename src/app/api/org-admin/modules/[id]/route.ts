@@ -10,6 +10,7 @@ import {
   archiveModule,
   getModuleById,
   updateModule,
+  updateModulePromptLinks,
 } from '@/services/ModuleService';
 import { requireAuth } from '@/utils/AuthHelpers';
 import { updateModuleSchema } from '@/validations/ModuleValidation';
@@ -150,6 +151,11 @@ export async function PUT(
       aiPromptMetadata: validatedData.aiPromptMetadata,
       status: validatedData.status,
     });
+
+    // 7. UPDATE LINKED AI PROMPTS (if provided)
+    if (validatedData.linkedPromptIds !== undefined) {
+      await updateModulePromptLinks(resolvedParams.id, validatedData.linkedPromptIds);
+    }
 
     return NextResponse.json({
       module: updatedModule,

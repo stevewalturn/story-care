@@ -81,6 +81,7 @@ export async function GET(
         id: module.id,
         name: module.name,
         domain: module.domain,
+        aiPromptText: module.aiPromptText,
       },
       prompts: activePrompts,
     });

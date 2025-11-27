@@ -11,7 +11,7 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Image as ImageIcon, Pause, Play, Plus, Trash2, Volume2 } from 'lucide-react';
+import { GripVertical, Image as ImageIcon, Music, Pause, Play, Plus, Trash2, Video, Volume2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 
@@ -26,10 +26,21 @@ type Clip = {
   audioTrack?: string; // Optional audio overlay
 };
 
+type AudioTrack = {
+  id: string;
+  audioId: string;
+  audioUrl: string;
+  title: string;
+  startTime: number;
+  duration: number;
+};
+
 type SceneTimelineProps = {
   clips: Clip[];
+  audioTracks?: AudioTrack[];
   totalDuration: number;
   onClipsChange: (clips: Clip[]) => void;
+  onAudioTracksChange?: (tracks: AudioTrack[]) => void;
   onAddClip: () => void;
 };
 
@@ -72,8 +83,16 @@ function SortableClipItem({
         <GripVertical className="h-5 w-5 text-gray-400" />
       </div>
 
-      <div className="h-16 w-28 flex-shrink-0 overflow-hidden rounded">
-        <img src={clip.thumbnailUrl} alt={clip.title} className="h-full w-full object-cover" />
+      <div className="h-16 w-28 flex-shrink-0 overflow-hidden rounded bg-gradient-to-br from-gray-100 to-gray-200">
+        {clip.type === 'video'
+          ? (
+              <div className="flex h-full w-full items-center justify-center">
+                <Video className="h-8 w-8 text-gray-400" />
+              </div>
+            )
+          : (
+              <img src={clip.thumbnailUrl} alt={clip.title} className="h-full w-full object-cover" />
+            )}
       </div>
 
       <div className="min-w-0 flex-1">
@@ -113,13 +132,16 @@ function SortableClipItem({
 
 export function SceneTimeline({
   clips,
+  audioTracks = [],
   totalDuration,
   onClipsChange,
+  onAudioTracksChange,
   onAddClip,
 }: SceneTimelineProps) {
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
+  const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
 
   const sensors = useSensors(
@@ -174,6 +196,15 @@ export function SceneTimeline({
     onClipsChange(recalculatedClips);
     if (selectedClipId === clipId) {
       setSelectedClipId(null);
+    }
+  };
+
+  const handleDeleteAudio = (audioId: string) => {
+    if (!onAudioTracksChange) return;
+    const updatedAudio = audioTracks.filter(a => a.id !== audioId);
+    onAudioTracksChange(updatedAudio);
+    if (selectedAudioId === audioId) {
+      setSelectedAudioId(null);
     }
   };
 
@@ -348,11 +379,19 @@ export function SceneTimeline({
                 >
                   {/* Thumbnail */}
                   <div className="relative h-full w-full">
-                    <img
-                      src={clip.thumbnailUrl}
-                      alt={clip.title}
-                      className="h-full w-full object-cover"
-                    />
+                    {clip.type === 'video'
+                      ? (
+                          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+                            <Video className="h-8 w-8 text-gray-300" />
+                          </div>
+                        )
+                      : (
+                          <img
+                            src={clip.thumbnailUrl}
+                            alt={clip.title}
+                            className="h-full w-full object-cover"
+                          />
+                        )}
                     {/* Type badge */}
                     <div className="absolute top-1 left-1">
                       {clip.type === 'image'
@@ -403,6 +442,72 @@ export function SceneTimeline({
               </div>
             )}
           </div>
+
+          {/* Audio Track */}
+          <div className="mt-4">
+            <div className="mb-2 px-2 text-xs font-medium text-gray-700">
+              Audio Track
+            </div>
+            <div
+              className="relative h-12 rounded bg-gray-100"
+            >
+              {/* Empty state */}
+              {(!audioTracks || audioTracks.length === 0) && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <p className="text-xs text-gray-400">No audio tracks added</p>
+                </div>
+              )}
+
+              {/* Audio clips */}
+              {audioTracks && audioTracks.map((track) => {
+                const left = (track.startTime / totalDuration) * 100;
+                const width = (track.duration / totalDuration) * 100;
+                const isSelected = selectedAudioId === track.id;
+
+                return (
+                  <div
+                    key={track.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedAudioId(track.id);
+                    }}
+                    style={{ left: `${left}%`, width: `${width}%` }}
+                    className={`absolute top-1 h-[calc(100%-8px)] overflow-hidden rounded border-2 transition-all ${
+                      isSelected
+                        ? 'border-purple-500 shadow-lg'
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  >
+                    {/* Audio visualization */}
+                    <div className="relative h-full w-full bg-gradient-to-br from-purple-500 to-purple-700">
+                      {/* Waveform-style bars */}
+                      <div className="flex h-full items-center justify-around px-1">
+                        {Array.from({ length: Math.min(Math.floor(width / 2), 20) }).map((_, i) => (
+                          <div
+                            key={i}
+                            className="w-0.5 bg-white/60"
+                            style={{
+                              height: `${30 + Math.random() * 70}%`,
+                            }}
+                          />
+                        ))}
+                      </div>
+                      {/* Audio icon */}
+                      <div className="absolute top-1 left-1">
+                        <Music className="h-3 w-3 text-white drop-shadow" />
+                      </div>
+                      {/* Title */}
+                      <div className="absolute right-1 bottom-1 left-1">
+                        <p className="truncate text-[10px] font-medium text-white drop-shadow">
+                          {track.title}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Clip Details */}
@@ -442,6 +547,45 @@ export function SceneTimeline({
                 <p className="text-sm text-gray-900">{selectedClip.audioTrack}</p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Audio Track Details */}
+        {audioTracks && selectedAudioId && audioTracks.find(a => a.id === selectedAudioId) && (
+          <div className="border-t border-gray-200 bg-purple-50 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Music className="h-4 w-4 text-purple-600" />
+                <h3 className="font-medium text-gray-900">
+                  {audioTracks.find(a => a.id === selectedAudioId)?.title}
+                </h3>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDeleteAudio(selectedAudioId)}
+              >
+                <Trash2 className="h-4 w-4 text-red-600" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <p className="text-gray-600">Start Time</p>
+                <p className="font-mono text-gray-900">
+                  {formatTime(audioTracks.find(a => a.id === selectedAudioId)?.startTime || 0)}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-600">Duration</p>
+                <p className="font-mono text-gray-900">
+                  {formatTime(audioTracks.find(a => a.id === selectedAudioId)?.duration || 0)}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-600">Type</p>
+                <p className="text-gray-900">Audio</p>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -31,7 +31,7 @@ type Template = {
 };
 
 export default function TherapistTemplatesPage() {
-  const { user } = useAuth();
+  const { user, dbUser } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>('my_templates');
   const [activeType, setActiveType] = useState<TemplateType>('all');
   const [activeCategory, setActiveCategory] = useState<TemplateCategory>('all');
@@ -318,6 +318,7 @@ export default function TherapistTemplatesPage() {
                       ? 'Organization'
                       : 'System'
                 }
+                isSuperAdmin={dbUser?.role === 'super_admin'}
               />
             ))}
           </div>
@@ -375,9 +376,10 @@ type TemplateCardProps = {
   onEdit?: () => void;
   onCopy?: () => void;
   scope: string;
+  isSuperAdmin?: boolean;
 };
 
-function TemplateCard({ template, onView, onEdit, onCopy, scope }: TemplateCardProps) {
+function TemplateCard({ template, onView, onEdit, onCopy, scope, isSuperAdmin }: TemplateCardProps) {
   const categoryColors: Record<string, string> = {
     'narrative': 'bg-purple-100 text-purple-700',
     'emotion': 'bg-pink-100 text-pink-700',
@@ -388,8 +390,19 @@ function TemplateCard({ template, onView, onEdit, onCopy, scope }: TemplateCardP
     'custom': 'bg-gray-100 text-gray-700',
   };
 
+  // Category-specific card border colors for visual differentiation
+  const categoryBorderColors: Record<string, string> = {
+    'narrative': 'border-l-4 border-l-purple-500',
+    'emotion': 'border-l-4 border-l-pink-500',
+    'screening': 'border-l-4 border-l-blue-500',
+    'outcome': 'border-l-4 border-l-green-500',
+    'satisfaction': 'border-l-4 border-l-yellow-500',
+    'goal-setting': 'border-l-4 border-l-orange-500',
+    'custom': 'border-l-4 border-l-gray-500',
+  };
+
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+    <div className={`rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md ${categoryBorderColors[template.category] || ''}`}>
       {/* Header */}
       <div className="mb-3 flex items-start justify-between">
         <div className="flex-1">
@@ -429,12 +442,14 @@ function TemplateCard({ template, onView, onEdit, onCopy, scope }: TemplateCardP
           Questions:
           {template.questions?.length || 0}
         </div>
-        <div>
-          Used:
-          {template.useCount}
-          {' '}
-          times
-        </div>
+        {isSuperAdmin && (
+          <div>
+            Used:
+            {template.useCount}
+            {' '}
+            times
+          </div>
+        )}
       </div>
 
       {/* Actions */}

@@ -254,12 +254,21 @@ function SystemPromptCard({ prompt, onView, onDelete }: SystemPromptCardProps) {
               </span>
             )}
             {prompt.outputType && (
-              <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+              <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                prompt.outputType === 'json'
+                  ? 'bg-purple-100 text-purple-700'
+                  : 'bg-gray-100 text-gray-700'
+              }`}
+              >
                 {prompt.outputType === 'text' && '📝'}
-                {prompt.outputType === 'image' && '🖼️'}
-                {prompt.outputType === 'scene' && '🎬'}
+                {prompt.outputType === 'json' && '🔧'}
                 {' '}
                 {prompt.outputType}
+              </span>
+            )}
+            {!!prompt.jsonSchema && (
+              <span className="inline-block rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
+                JSON Schema
               </span>
             )}
             <span className="text-xs text-gray-500">System</span>

@@ -4,12 +4,18 @@ import { NextResponse } from 'next/server';
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
 import { uploadFile } from '@/libs/GCS';
 
+// Configure runtime for consistent behavior
+export const runtime = 'nodejs';
+
 /**
  * POST /api/media/upload
  * Upload media files (images, videos, audio) to GCS for patient media library
  */
 export async function POST(request: NextRequest) {
   try {
+    // Clone request to avoid body lock issues in Next.js 16 dev mode
+    const clonedRequest = request.clone();
+
     // Authentication
     const authHeader = request.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
@@ -44,8 +50,19 @@ export async function POST(request: NextRequest) {
     // }
 
     // Parse multipart form data
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
+    // Note: In Next.js 16, we need to ensure the request body is only read once
+    // Use the cloned request to avoid "body already used" errors
+    let formData: FormData;
+    try {
+      formData = await clonedRequest.formData();
+    } catch (formDataError) {
+      console.error('[ERROR] Failed to parse form data:', formDataError);
+      return NextResponse.json(
+        { error: 'Failed to parse upload data' },
+        { status: 400 },
+      );
+    }
+    const file = formData.get('file') as File | null;
 
     if (!file) {
       return NextResponse.json(
@@ -57,6 +74,14 @@ export async function POST(request: NextRequest) {
     // Validate file type and size
     const contentType = file.type;
     const fileSize = file.size;
+
+    // Additional validation
+    if (!contentType || !fileSize) {
+      return NextResponse.json(
+        { error: 'Invalid file data' },
+        { status: 400 },
+      );
+    }
 
     // Define allowed types
     const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -102,8 +127,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Convert file to buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    let buffer: Buffer;
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+    } catch (bufferError) {
+      console.error('[ERROR] Failed to convert file to buffer:', bufferError);
+      return NextResponse.json(
+        { error: 'Failed to process file' },
+        { status: 500 },
+      );
+    }
 
     // Generate filename
     const timestamp = Date.now();
@@ -111,11 +145,23 @@ export async function POST(request: NextRequest) {
     const filename = `${timestamp}-${sanitizedName}`;
 
     // Upload to GCS
-    const uploadResult = await uploadFile(buffer, filename, {
-      folder: 'media/uploaded',
-      contentType,
-      makePublic: false, // HIPAA compliance - use signed URLs
-    });
+    let uploadResult;
+    try {
+      uploadResult = await uploadFile(buffer, filename, {
+        folder: 'media/uploaded',
+        contentType,
+        makePublic: false, // HIPAA compliance - use signed URLs
+      });
+    } catch (uploadError) {
+      console.error('[ERROR] GCS upload failed:', uploadError);
+      return NextResponse.json(
+        {
+          error: 'Failed to upload file to storage',
+          details: uploadError instanceof Error ? uploadError.message : 'Unknown error',
+        },
+        { status: 500 },
+      );
+    }
 
     // Log upload for audit
     console.log('[AUDIT] Media file uploaded:', {

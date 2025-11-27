@@ -63,20 +63,36 @@ export async function POST(
       );
     }
 
-    // Transform clips for video service
-    const videoClips = clips.map((c) => {
-      if (!c.media) {
-        throw new Error(`Media not found for clip ${c.clip.id}`);
-      }
+    // Transform clips for video service with presigned URLs
+    const videoClips = await Promise.all(
+      clips.map(async (c) => {
+        if (!c.media) {
+          throw new Error(`Media not found for clip ${c.clip.id}`);
+        }
 
-      return {
-        mediaUrl: c.media.url || c.media.thumbnailUrl || '',
-        startTime: Number.parseFloat(c.clip.startTimeSeconds || '0'),
-        duration:
-          Number.parseFloat(c.clip.endTimeSeconds || '0') - Number.parseFloat(c.clip.startTimeSeconds || '0'),
-        type: (c.media.mediaType === 'video' ? 'video' : 'image') as 'video' | 'image',
-      };
-    });
+        // Get GCS path (use url or thumbnailUrl)
+        const gcsPath = c.media.url || c.media.thumbnailUrl || '';
+
+        if (!gcsPath) {
+          throw new Error(`No media URL found for clip ${c.clip.id}`);
+        }
+
+        // Generate presigned URL for accessing the media
+        const presignedUrl = await generatePresignedUrl(gcsPath, 1); // 1 hour expiry
+
+        if (!presignedUrl) {
+          throw new Error(`Failed to generate presigned URL for clip ${c.clip.id}`);
+        }
+
+        return {
+          mediaUrl: presignedUrl,
+          startTime: Number.parseFloat(c.clip.startTimeSeconds || '0'),
+          duration:
+            Number.parseFloat(c.clip.endTimeSeconds || '0') - Number.parseFloat(c.clip.startTimeSeconds || '0'),
+          type: (c.media.mediaType === 'video' ? 'video' : 'image') as 'video' | 'image',
+        };
+      }),
+    );
 
     // Update scene status to processing
     await db

@@ -198,6 +198,9 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
           placeholder="e.g., Weekly Check-in"
           value={formData.title}
           onChange={e => setFormData({ ...formData, title: e.target.value })}
+          required
+          maxLength={255}
+          helperText="3-255 characters required"
         />
 
         {/* Session Date */}
@@ -224,7 +227,12 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-700">
             Audio File
+            {' '}
+            <span className="text-red-500">*</span>
           </label>
+          <p className="mb-2 text-xs text-gray-500">
+            MP3, WAV, M4A, or other audio formats - up to 100MB
+          </p>
           <div
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}

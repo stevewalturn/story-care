@@ -339,9 +339,10 @@ export async function listTemplates(params?: {
     .where(and(...conditions))
     .orderBy(desc(treatmentModulesSchema.createdAt));
 
-  // Fetch linked prompts for all templates
+  // Fetch linked prompts and templates for all modules
   const templatesWithPrompts = await Promise.all(
     templates.map(async (template) => {
+      // Fetch linked AI prompts
       const linkedPrompts = await db
         .select({
           id: moduleAiPromptsSchema.id,
@@ -361,9 +362,27 @@ export async function listTemplates(params?: {
         .where(eq(modulePromptLinksSchema.moduleId, template.id))
         .orderBy(modulePromptLinksSchema.sortOrder);
 
+      // Fetch reflection templates
+      const reflectionTemplates = template.reflectionTemplateIds.length > 0
+        ? await db
+            .select()
+            .from(reflectionTemplatesSchema)
+            .where(inArray(reflectionTemplatesSchema.id, template.reflectionTemplateIds))
+        : [];
+
+      // Fetch survey templates
+      const surveyTemplates = template.surveyTemplateIds.length > 0
+        ? await db
+            .select()
+            .from(surveyTemplatesSchema)
+            .where(inArray(surveyTemplatesSchema.id, template.surveyTemplateIds))
+        : [];
+
       return {
         ...template,
         linkedPrompts: linkedPrompts.filter(p => p.isActive),
+        reflectionTemplates,
+        surveyTemplates,
       };
     }),
   );
@@ -602,4 +621,29 @@ export async function createTherapistModule(data: {
     scope: 'private',
     organizationId: null,
   });
+}
+
+/**
+ * Update module's linked AI prompts via junction table
+ * Replaces all existing links with new set
+ */
+export async function updateModulePromptLinks(
+  moduleId: string,
+  promptIds: string[],
+) {
+  // 1. Delete existing links
+  await db
+    .delete(modulePromptLinksSchema)
+    .where(eq(modulePromptLinksSchema.moduleId, moduleId));
+
+  // 2. Insert new links with sortOrder
+  if (promptIds.length > 0) {
+    const links = promptIds.map((promptId, index) => ({
+      moduleId,
+      promptId,
+      sortOrder: index + 1,
+    }));
+
+    await db.insert(modulePromptLinksSchema).values(links);
+  }
 }

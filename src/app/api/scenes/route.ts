@@ -2,7 +2,8 @@ import type { NextRequest } from 'next/server';
 import { and, desc, eq, ilike } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { scenes, usersSchema } from '@/models/Schema';
+import { verifyIdToken } from '@/libs/FirebaseAdmin';
+import { scenes, sessions, usersSchema } from '@/models/Schema';
 
 // GET /api/scenes - List scenes
 export async function GET(request: NextRequest) {
@@ -57,18 +58,86 @@ export async function GET(request: NextRequest) {
 // POST /api/scenes - Create scene
 export async function POST(request: NextRequest) {
   try {
+    // Authentication
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 },
+      );
+    }
+
+    const token = authHeader.substring(7);
+    let user;
+    try {
+      user = await verifyIdToken(token);
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Invalid token' },
+        { status: 401 },
+      );
+    }
+
     const body = await request.json();
     const {
       patientId,
-      createdByTherapistId,
+      sessionId,
       title,
       description,
+      sceneData: _sceneData,
+      focusInstruction: _focusInstruction,
+      keyQuote: _keyQuote,
+      therapeuticRationale: _therapeuticRationale,
+      forPatient: _forPatient,
     } = body;
 
-    // Validate required fields
-    if (!patientId || !createdByTherapistId) {
+    // Validate required fields - either patientId or sessionId must be provided
+    if (!patientId && !sessionId) {
       return NextResponse.json(
-        { error: 'Missing required fields: patientId, createdByTherapistId' },
+        { error: 'Missing required field: patientId or sessionId' },
+        { status: 400 },
+      );
+    }
+
+    // Convert Firebase UID to database UUID
+    const [therapist] = await db
+      .select({ id: usersSchema.id })
+      .from(usersSchema)
+      .where(eq(usersSchema.firebaseUid, user.uid))
+      .limit(1);
+
+    if (!therapist) {
+      return NextResponse.json(
+        { error: 'Therapist not found' },
+        { status: 404 },
+      );
+    }
+
+    // Determine patient ID
+    let finalPatientId = patientId;
+
+    // If sessionId is provided, fetch the session to get patientId
+    if (sessionId && !finalPatientId) {
+      const [session] = await db
+        .select({ patientId: sessions.patientId })
+        .from(sessions)
+        .where(eq(sessions.id, sessionId))
+        .limit(1);
+
+      if (!session) {
+        return NextResponse.json(
+          { error: 'Session not found' },
+          { status: 404 },
+        );
+      }
+
+      finalPatientId = session.patientId;
+    }
+
+    // Validate we have a patient ID
+    if (!finalPatientId) {
+      return NextResponse.json(
+        { error: 'Unable to determine patient ID' },
         { status: 400 },
       );
     }
@@ -77,8 +146,8 @@ export async function POST(request: NextRequest) {
     const [newScene] = await db
       .insert(scenes)
       .values({
-        patientId,
-        createdByTherapistId,
+        patientId: finalPatientId,
+        createdByTherapistId: therapist.id,
         title: title || 'Untitled Scene',
         description: description || null,
         status: 'draft',

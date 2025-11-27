@@ -1,9 +1,11 @@
 'use client';
 
-import { ArrowLeft, Download, Eye, Loader2, Save } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ArrowLeft, Download, Eye, Loader2, Play, Save } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
+import { MediaViewer } from '@/components/assets/MediaViewer';
 import { ClipLibrary } from '@/components/scenes/ClipLibrary';
+import { ScenePreviewPlayer } from '@/components/scenes/ScenePreviewPlayer';
 import { SceneTimeline } from '@/components/scenes/SceneTimeline';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -21,11 +23,21 @@ type Clip = {
   audioTrack?: string;
 };
 
+type AudioTrack = {
+  id: string;
+  audioId: string;
+  audioUrl: string;
+  title: string;
+  startTime: number;
+  duration: number;
+};
+
 type MediaItem = {
   id: string;
   type: 'video' | 'image' | 'audio';
   title: string;
   thumbnailUrl: string;
+  mediaUrl?: string;
   duration?: number;
 };
 
@@ -39,14 +51,28 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
   const [sceneName, setSceneName] = useState('Untitled Scene');
   const [sceneDescription, setSceneDescription] = useState('');
   const [clips, setClips] = useState<Clip[]>([]);
-  const [totalDuration, setTotalDuration] = useState(60); // 60 seconds default
+  const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [currentSceneId, setCurrentSceneId] = useState<string | null>(initialSceneId || null);
   const [selectedPatient, setSelectedPatient] = useState<string>('');
   const [patients, setPatients] = useState<any[]>([]);
-  const [scenes, setScenes] = useState<any[]>([]);
-  const [isLoadingScenes, setIsLoadingScenes] = useState(false);
+
+  // Calculate total duration automatically from both clips and audio tracks
+  const totalDuration = useMemo(() => {
+    const clipsEndTime = clips.reduce((max, clip) =>
+      Math.max(max, clip.startTime + clip.duration), 0);
+    const audioEndTime = audioTracks.reduce((max, track) =>
+      Math.max(max, track.startTime + track.duration), 0);
+    const calculatedDuration = Math.max(clipsEndTime, audioEndTime);
+    // Minimum 60 seconds, round up to nearest 10
+    return Math.max(60, Math.ceil(calculatedDuration / 10) * 10);
+  }, [clips, audioTracks]);
+
+  // Preview modal states
+  const [showInstantPreview, setShowInstantPreview] = useState(false);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
 
   // Load initial scene if provided
   useEffect(() => {
@@ -61,11 +87,6 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
   }, []);
 
   // Load scenes when patient changes
-  useEffect(() => {
-    if (selectedPatient) {
-      fetchScenes();
-    }
-  }, [selectedPatient]);
 
   const fetchPatients = async () => {
     try {
@@ -82,21 +103,6 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
     } catch (error) {
       console.error('Error fetching patients:', error);
       toast.error('Error loading patients');
-    }
-  };
-
-  const fetchScenes = async () => {
-    try {
-      setIsLoadingScenes(true);
-      const response = await authenticatedFetch(`/api/scenes?patientId=${selectedPatient}`, user);
-      if (response.ok) {
-        const data = await response.json();
-        setScenes(data.scenes || []);
-      }
-    } catch (error) {
-      console.error('Error fetching scenes:', error);
-    } finally {
-      setIsLoadingScenes(false);
     }
   };
 
@@ -121,11 +127,7 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
         }));
 
         setClips(transformedClips);
-
-        if (transformedClips.length > 0) {
-          const maxEnd = Math.max(...transformedClips.map(c => c.startTime + c.duration));
-          setTotalDuration(Math.ceil(maxEnd / 10) * 10);
-        }
+        // totalDuration is now auto-calculated from clips
       }
     } catch (error) {
       console.error('Error loading scene:', error);
@@ -137,13 +139,35 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
     setSceneName('Untitled Scene');
     setSceneDescription('');
     setClips([]);
-    setTotalDuration(60);
+    setAudioTracks([]);
   };
 
   const handleAddClip = (media: MediaItem, duration: number) => {
     console.log('handleAddClip called:', { media, duration });
 
-    // Calculate start time (end of last clip)
+    // Handle audio separately - add to audio tracks
+    if (media.type === 'audio') {
+      const startTime = audioTracks.reduce((sum, track) => {
+        const trackEnd = track.startTime + track.duration;
+        return Math.max(sum, trackEnd);
+      }, 0);
+
+      const newAudioTrack: AudioTrack = {
+        id: `audio-${Date.now()}`,
+        audioId: media.id,
+        audioUrl: media.mediaUrl || media.thumbnailUrl,
+        title: media.title,
+        startTime,
+        duration: duration || media.duration || 5,
+      };
+
+      console.log('New audio track created:', newAudioTrack);
+      setAudioTracks([...audioTracks, newAudioTrack]);
+
+      return;
+    }
+
+    // Handle video/image clips
     const startTime = clips.reduce((sum, clip) => {
       const clipEnd = clip.startTime + clip.duration;
       return Math.max(sum, clipEnd);
@@ -151,13 +175,12 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
 
     const newClip: Clip = {
       id: `clip-${Date.now()}`,
-      type: media.type === 'audio' ? 'image' : media.type,
+      type: media.type as 'video' | 'image',
       mediaId: media.id,
       title: media.title,
       thumbnailUrl: media.thumbnailUrl,
       startTime,
       duration,
-      audioTrack: media.type === 'audio' ? media.title : undefined,
     };
 
     console.log('New clip created:', newClip);
@@ -165,12 +188,6 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
     const updatedClips = [...clips, newClip];
     console.log('Updated clips array:', updatedClips);
     setClips(updatedClips);
-
-    // Adjust total duration if needed
-    const sceneEnd = startTime + duration;
-    if (sceneEnd > totalDuration) {
-      setTotalDuration(Math.ceil(sceneEnd / 10) * 10); // Round up to nearest 10s
-    }
 
     // Show success toast
     toast.success(`Added "${media.title}" to timeline`);
@@ -193,7 +210,6 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
         // Create new scene
         const response = await authenticatedPost('/api/scenes', user, {
           patientId: selectedPatient,
-          createdByTherapistId: user?.uid || 'temp-therapist-id',
           title: sceneName,
           description: sceneDescription,
         });
@@ -223,7 +239,7 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
       if (sceneId) {
         await authenticatedPut(`/api/scenes/${sceneId}/clips`, user, {
           clips: clips.map((clip, index) => ({
-            id: clip.id,
+            mediaId: clip.mediaId,
             sequenceNumber: index,
             startTimeSeconds: clip.startTime.toString(),
             endTimeSeconds: (clip.startTime + clip.duration).toString(),
@@ -232,7 +248,6 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
       }
 
       toast.success('Scene saved successfully!', { id: toastId });
-      fetchScenes(); // Refresh scenes list
       return sceneId;
     } catch (error) {
       console.error('Error saving scene:', error);
@@ -325,8 +340,9 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
 
       if (data.isAssembled && data.assembledVideoUrl) {
         toast.success('Opening video preview...', { id: toastId });
-        // Open video in new tab
-        window.open(data.assembledVideoUrl, '_blank');
+        // Open video in modal viewer
+        setPreviewVideoUrl(data.assembledVideoUrl);
+        setIsViewerOpen(true);
       } else {
         toast.dismiss(toastId);
         const shouldAssemble = window.confirm(
@@ -379,43 +395,6 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
               ))}
             </select>
           </div>
-
-          {selectedPatient && (
-            <>
-              <div className="max-w-xs flex-1">
-                <label className="mb-1 block text-xs font-medium text-gray-700">
-                  Scene
-                </label>
-                <select
-                  value={currentSceneId || ''}
-                  onChange={(e) => {
-                    if (e.target.value === 'new') {
-                      createNewScene();
-                    } else if (e.target.value) {
-                      loadScene(e.target.value);
-                    }
-                  }}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
-                  disabled={isLoadingScenes}
-                >
-                  <option value="">New scene</option>
-                  {scenes.map(scene => (
-                    <option key={scene.id} value={scene.id}>
-                      {scene.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <Button
-                variant="secondary"
-                onClick={createNewScene}
-                className="mt-5"
-              >
-                New Scene
-              </Button>
-            </>
-          )}
         </div>
 
         <div className="mb-4 flex items-center justify-between">
@@ -431,11 +410,19 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
+              onClick={() => setShowInstantPreview(true)}
+              disabled={!selectedPatient || clips.length === 0}
+            >
+              <Play className="mr-2 h-4 w-4" />
+              Preview Draft
+            </Button>
+            <Button
+              variant="ghost"
               onClick={handlePreview}
               disabled={!selectedPatient || clips.length === 0 || isExporting}
             >
               <Eye className="mr-2 h-4 w-4" />
-              Preview
+              Preview Final
             </Button>
             <Button
               variant="secondary"
@@ -526,8 +513,10 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
           <div className="min-h-0 flex-1">
             <SceneTimeline
               clips={clips}
+              audioTracks={audioTracks}
               totalDuration={totalDuration}
-              onClipsChange={setClips}
+              onClipsChange={clips => setClips(clips)}
+              onAudioTracksChange={setAudioTracks}
               onAddClip={() => {
                 // Scroll to clip library or show modal
                 console.log('Add clip from library');
@@ -536,6 +525,39 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
           </div>
         </div>
       </div>
+
+      {/* Instant Preview Player Modal */}
+      {showInstantPreview && (
+        <ScenePreviewPlayer
+          clips={clips}
+          audioTracks={audioTracks}
+          totalDuration={totalDuration}
+          sceneName={sceneName}
+          onClose={() => setShowInstantPreview(false)}
+        />
+      )}
+
+      {/* Final Video Player Modal */}
+      {isViewerOpen && previewVideoUrl && (
+        <MediaViewer
+          item={{
+            id: currentSceneId || 'preview',
+            type: 'video',
+            title: sceneName,
+            url: previewVideoUrl,
+            patientName: patients.find(p => p.id === selectedPatient)?.name,
+            sessionName: undefined,
+            createdAt: new Date(),
+            duration: totalDuration,
+            tags: undefined,
+            prompt: sceneDescription || undefined,
+          }}
+          onClose={() => {
+            setIsViewerOpen(false);
+            setPreviewVideoUrl(null);
+          }}
+        />
+      )}
     </div>
   );
 }

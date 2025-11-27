@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, promptText, description, category, icon } = body;
+    const { name, promptText, description, category, icon, outputType, jsonSchema } = body;
 
     // Validate required fields
     if (!name || !promptText || !category) {
@@ -107,6 +107,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate outputType
+    if (outputType && !['text', 'json'].includes(outputType)) {
+      return NextResponse.json(
+        { error: 'Invalid outputType. Must be text or json' },
+        { status: 400 },
+      );
+    }
+
+    // Validate jsonSchema is valid JSON if provided
+    if (jsonSchema) {
+      try {
+        // Ensure it's valid JSON
+        if (typeof jsonSchema === 'string') {
+          JSON.parse(jsonSchema);
+        } else if (typeof jsonSchema !== 'object') {
+          throw new TypeError('Invalid JSON schema format');
+        }
+      } catch {
+        return NextResponse.json(
+          { error: 'Invalid JSON schema format' },
+          { status: 400 },
+        );
+      }
+    }
+
     // Create new system prompt
     const [newPrompt] = await db
       .insert(moduleAiPromptsSchema)
@@ -116,6 +141,8 @@ export async function POST(request: NextRequest) {
         description: description || null,
         category,
         icon: icon || 'sparkles',
+        outputType: outputType || 'text',
+        jsonSchema: jsonSchema || null,
         scope: 'system',
         organizationId: null, // System prompts don't belong to an organization
         createdBy: user.id, // Use database UUID, not Firebase UID

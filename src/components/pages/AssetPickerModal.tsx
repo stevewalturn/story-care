@@ -1,13 +1,13 @@
 'use client';
 
-import { FileText, Image as ImageIcon, Search, StickyNote, X } from 'lucide-react';
+import { Clapperboard, FileText, Image as ImageIcon, Search, StickyNote, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
-type AssetType = 'media' | 'quotes' | 'notes';
+type AssetType = 'media' | 'quotes' | 'notes' | 'scenes';
 
 type MediaAsset = {
   id: string;
@@ -33,10 +33,20 @@ type NoteAsset = {
   createdAt: string;
 };
 
+type SceneAsset = {
+  id: string;
+  title: string;
+  description: string | null;
+  videoUrl: string | null;
+  thumbnailUrl: string | null;
+  duration: number | null;
+  createdAt: string;
+};
+
 type AssetPickerModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (asset: { type: AssetType; data: MediaAsset | QuoteAsset | NoteAsset }) => void;
+  onSelect: (asset: { type: AssetType; data: MediaAsset | QuoteAsset | NoteAsset | SceneAsset }) => void;
   patientId?: string;
   filterType?: 'image' | 'video' | 'text' | 'all';
 };
@@ -54,6 +64,7 @@ export function AssetPickerModal({
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
   const [quoteAssets, setQuoteAssets] = useState<QuoteAsset[]>([]);
   const [noteAssets, setNoteAssets] = useState<NoteAsset[]>([]);
+  const [sceneAssets, setSceneAssets] = useState<SceneAsset[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -67,10 +78,16 @@ export function AssetPickerModal({
     try {
       if (activeTab === 'media') {
         const url = `/api/media${patientId ? `?patientId=${patientId}` : ''}`;
+        console.log('[AssetPickerModal] Fetching media from:', url);
+        console.log('[AssetPickerModal] Patient ID:', patientId);
         const res = await authenticatedFetch(url, user);
         if (res.ok) {
           const data = await res.json();
+          console.log('[AssetPickerModal] Media data received:', data);
+          console.log('[AssetPickerModal] Media count:', data.media?.length || 0);
           setMediaAssets(data.media || []);
+        } else {
+          console.error('[AssetPickerModal] Media fetch failed:', res.status, res.statusText);
         }
       } else if (activeTab === 'quotes') {
         const url = `/api/quotes${patientId ? `?patientId=${patientId}` : ''}`;
@@ -86,6 +103,13 @@ export function AssetPickerModal({
           const data = await res.json();
           setNoteAssets(data.notes || []);
         }
+      } else if (activeTab === 'scenes') {
+        const url = `/api/scenes${patientId ? `?patientId=${patientId}` : ''}`;
+        const res = await authenticatedFetch(url, user);
+        if (res.ok) {
+          const data = await res.json();
+          setSceneAssets(data.scenes || []);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch assets:', error);
@@ -94,7 +118,7 @@ export function AssetPickerModal({
     }
   };
 
-  const handleSelect = (asset: MediaAsset | QuoteAsset | NoteAsset) => {
+  const handleSelect = (asset: MediaAsset | QuoteAsset | NoteAsset | SceneAsset) => {
     onSelect({ type: activeTab, data: asset });
     onClose();
   };
@@ -115,6 +139,12 @@ export function AssetPickerModal({
     if (filterType !== 'all' && filterType !== 'text') return false;
     if (!search) return true;
     return asset.noteText.toLowerCase().includes(search.toLowerCase());
+  });
+
+  const filteredSceneAssets = sceneAssets.filter((asset) => {
+    if (!search) return true;
+    return asset.title.toLowerCase().includes(search.toLowerCase())
+      || asset.description?.toLowerCase().includes(search.toLowerCase());
   });
 
   if (!isOpen) return null;
@@ -173,6 +203,19 @@ export function AssetPickerModal({
                 Notes
               </button>
             </>
+          )}
+          {filterType === 'all' && (
+            <button
+              onClick={() => setActiveTab('scenes')}
+              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+                activeTab === 'scenes'
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Clapperboard className="h-4 w-4" />
+              Scenes
+            </button>
           )}
         </div>
 
@@ -297,6 +340,51 @@ export function AssetPickerModal({
                   {filteredNoteAssets.length === 0 && (
                     <div className="py-12 text-center text-sm text-gray-500">
                       No notes found
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Scenes Grid */}
+              {activeTab === 'scenes' && (
+                <div className="grid grid-cols-2 gap-4">
+                  {filteredSceneAssets.map(asset => (
+                    <button
+                      key={asset.id}
+                      onClick={() => handleSelect(asset)}
+                      className="group overflow-hidden rounded-lg border border-gray-200 transition-all hover:border-indigo-500 hover:shadow-lg"
+                    >
+                      <div className="relative aspect-video overflow-hidden bg-gray-100">
+                        {asset.thumbnailUrl ? (
+                          <img src={asset.thumbnailUrl} alt={asset.title} className="h-full w-full object-cover" />
+                        ) : asset.videoUrl ? (
+                          <div className="flex h-full items-center justify-center bg-gray-900">
+                            <Clapperboard className="h-12 w-12 text-white opacity-50" />
+                          </div>
+                        ) : (
+                          <div className="flex h-full items-center justify-center">
+                            <Clapperboard className="h-12 w-12 text-gray-400" />
+                          </div>
+                        )}
+                        {asset.duration && (
+                          <div className="absolute right-2 bottom-2 rounded bg-black/75 px-2 py-1 text-xs text-white">
+                            {Math.floor(asset.duration / 60)}
+                            :
+                            {(asset.duration % 60).toString().padStart(2, '0')}
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-3">
+                        <p className="truncate text-sm font-medium text-gray-900">{asset.title}</p>
+                        {asset.description && (
+                          <p className="mt-1 line-clamp-2 text-xs text-gray-600">{asset.description}</p>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                  {filteredSceneAssets.length === 0 && (
+                    <div className="col-span-2 py-12 text-center text-sm text-gray-500">
+                      No scenes found
                     </div>
                   )}
                 </div>

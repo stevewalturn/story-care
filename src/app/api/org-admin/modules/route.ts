@@ -12,7 +12,7 @@ import {
   createOrgModule,
   listOrgModules,
   listTemplates,
-
+  updateModulePromptLinks,
 } from '@/services/ModuleService';
 
 import { requireAuth } from '@/utils/AuthHelpers';
@@ -145,6 +145,11 @@ export async function POST(request: NextRequest) {
       aiPromptText: validatedData.aiPromptText,
       aiPromptMetadata: validatedData.aiPromptMetadata,
     });
+
+    // Link AI prompts from library (via junction table)
+    if (newModule && validatedData.linkedPromptIds && validatedData.linkedPromptIds.length > 0) {
+      await updateModulePromptLinks(newModule.id, validatedData.linkedPromptIds);
+    }
 
     return NextResponse.json(
       {
