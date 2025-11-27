@@ -1,0 +1,107 @@
+{
+  "Scene Card Generation": {
+    "type": "object",
+    "properties": {
+      "schemaType": { "type": "string", "enum": ["scene_card"] },
+      "video_introduction": { "type": "string" },
+      "reference_images": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string" },
+            "patient_quote_anchor": { "type": "string" },
+            "meaning": { "type": "string" },
+            "image_prompt": { "type": "string" }
+          },
+          "required": ["title", "image_prompt"]
+        }
+      },
+      "music": {
+        "type": "object",
+        "properties": {
+          "prompt": { "type": "string" },
+          "mood": { "type": "string" },
+          "genre": { "type": "string" }
+        }
+      },
+      "patient_reflection_questions": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "group_reflection_questions": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "assembly_steps": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "required": ["schemaType", "video_introduction", "reference_images"]
+  },
+  "Scene Suggestions": {
+    "type": "object",
+    "properties": {
+      "schemaType": { "type": "string", "enum": ["scene_suggestions"] },
+      "potential_scenes_by_participant": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "for_patient_name": { "type": "string" },
+            "scenes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "scene_title": { "type": "string" },
+                  "scene_description": { "type": "string" },
+                  "scene_focus_instruction": { "type": "string" },
+                  "key_quote": { "type": "string" },
+                  "therapeutic_rationale": { "type": "string" }
+                },
+                "required": ["scene_title", "scene_description", "therapeutic_rationale"]
+              }
+            }
+          },
+          "required": ["for_patient_name", "scenes"]
+        }
+      }
+    },
+    "required": ["schemaType", "potential_scenes_by_participant"]
+  },
+  "Music Generation Options": {
+    "type": "object",
+    "properties": {
+      "schemaType": { "type": "string", "enum": ["music_generation"] },
+      "instrumental_option": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "genre_tags": { "type": "array", "items": { "type": "string" } },
+          "mood": { "type": "string" },
+          "music_description": { "type": "string" },
+          "style_prompt": { "type": "string" },
+          "source_quotes": { "type": "array", "items": { "type": "string" } },
+          "rationale": { "type": "string" }
+        },
+        "required": ["title", "style_prompt"]
+      },
+      "lyrical_option": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "genre_tags": { "type": "array", "items": { "type": "string" } },
+          "mood": { "type": "string" },
+          "suggested_lyrics": { "type": "string" },
+          "style_prompt": { "type": "string" },
+          "source_quotes": { "type": "array", "items": { "type": "string" } },
+          "rationale": { "type": "string" }
+        },
+        "required": ["title", "suggested_lyrics", "style_prompt"]
+      }
+    },
+    "required": ["schemaType", "instrumental_option", "lyrical_option"]
+  }
+}

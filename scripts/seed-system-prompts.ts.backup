@@ -1,0 +1,983 @@
+/**
+ * Seed Script: System-Level AI Prompts
+ * Creates default system prompts available to all users
+ */
+
+// Load environment variables FIRST
+import * as dotenv from 'dotenv';
+
+import { eq } from 'drizzle-orm';
+// Import drizzle and pg directly to bypass Env validation
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+import { moduleAiPromptsSchema, usersSchema } from '../src/models/Schema';
+import * as schema from '../src/models/Schema';
+
+dotenv.config({ path: '.env.local' });
+dotenv.config({ path: '.env' });
+
+// Create database connection directly
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+const db = drizzle(pool, { schema });
+
+const systemPrompts = [
+  {
+    name: 'Self-Resilience & Re-Authoring Analysis',
+    promptText: `Read the transcript carefully. Locate passages about struggle, adversity, and survival. Extract moments where the person demonstrated resilience, agency, or strength - even in small ways.
+
+Focus on:
+1. Externalizing problems (the problem is not the person)
+2. Internalizing strengths (the person has inherent capabilities)
+3. Alternative narratives (other possible interpretations)
+4. Unique outcomes (times they acted differently than the problem would predict)
+
+Extract 2-3 meaningful quotes that show resilience. Summarize therapeutic themes in 2-3 sentences. Suggest visual scenes or metaphors that capture their journey of survival and strength.`,
+    description: 'Analyze for moments of personal agency, strength, and alternative narratives',
+    category: 'analysis',
+    icon: 'target',
+    outputType: 'json',
+  },
+  {
+    name: 'Create A Scene',
+    promptText: `Generate a therapeutic scene visualization from transcript moments.
+
+Analyze the selected text and create a vivid visual scene description that:
+1. Captures the emotional core of the therapeutic moment
+2. Uses metaphor and sensory language
+3. Embodies the patient's narrative journey
+4. Suggests specific visual elements (setting, lighting, colors, symbols)
+5. Conveys hope or possibility
+
+Format as a detailed DALL-E prompt that could generate an image representing this therapeutic moment. Include specific details about composition, mood, and symbolic elements.`,
+    description: 'Generate therapeutic scene visualization from transcript moments',
+    category: 'creative',
+    icon: 'sparkles',
+    outputType: 'json',
+  },
+  {
+    name: 'Extract Meaningful Quotes',
+    promptText: `AI analyzes selection and extracts therapeutically significant quotes.
+
+Review the selected transcript segment and identify:
+1. Moments of insight or self-awareness
+2. Expressions of emotion or vulnerability
+3. Statements showing agency or choice
+4. Metaphors or imagery the patient uses naturally
+5. Turning points in the narrative
+
+Extract 3-5 quotes with context:
+- The exact quote
+- Why it's therapeutically significant
+- How it connects to larger themes
+- Suggested use in story page
+
+Format each quote with attribution (timestamp or session date).`,
+    description: 'AI extracts therapeutically meaningful quotes with context',
+    category: 'extraction',
+    icon: 'quote',
+    outputType: 'json',
+  },
+  {
+    name: 'Potential Images',
+    promptText: `Generate image suggestions based on transcript themes and metaphors.
+
+Analyze the selected text for:
+1. Natural metaphors the patient uses
+2. Emotional states described
+3. Relationships and connections
+4. Transformation or change themes
+5. Settings or environments mentioned
+
+Suggest 3-5 image concepts that could visualize these themes:
+- Brief title for the image
+- Detailed DALL-E prompt
+- Rationale (why this image supports the therapeutic narrative)
+- Suggested placement in story page
+
+Focus on images that empower, heal, or reframe the patient's story.`,
+    description: 'Generate image suggestions based on transcript themes and metaphors',
+    category: 'creative',
+    icon: 'image',
+    outputType: 'json',
+  },
+  {
+    name: 'Grounding & Regulation Analysis',
+    promptText: `Identify grounding and emotional regulation opportunities in the transcript.
+
+Analyze for:
+1. Moments of dysregulation (heightened emotion, dissociation, overwhelm)
+2. Natural grounding techniques the patient already uses
+3. Opportunities for somatic awareness
+4. Patterns in emotional triggers
+5. Windows of tolerance (optimal arousal zone)
+
+Extract:
+- Specific moments showing dysregulation
+- Patient's existing coping mechanisms
+- Suggestions for grounding interventions
+- Themes for psychoeducation about regulation
+
+Provide therapeutic insights for helping the patient build regulation capacity.`,
+    description: 'Identify dysregulation patterns and coping mechanisms',
+    category: 'analysis',
+    icon: 'activity',
+    outputType: 'json',
+  },
+  {
+    name: 'Relational Healing & Integration Analysis',
+    promptText: `Examine relational healing and integration patterns in the transcript.
+
+Focus on:
+1. Attachment patterns (secure, anxious, avoidant, disorganized)
+2. Relational wounds (past hurts, betrayals, losses)
+3. Connection attempts (reaching out, vulnerability, trust)
+4. Integration of parts (internal family systems, fragmented self)
+5. Repair moments (in therapy relationship or external relationships)
+
+Extract:
+- Patterns in how the patient relates to others
+- Moments of relational courage or risk
+- Opportunities for healing through connection
+- Integration work (bringing together split-off parts)
+
+Suggest how to support relational healing in future sessions.`,
+    description: 'Analyze attachment patterns and relational healing opportunities',
+    category: 'analysis',
+    icon: 'users',
+    outputType: 'json',
+  },
+  {
+    name: 'Generate Reflection Questions',
+    promptText: `Create thoughtful reflection questions for the patient based on the transcript.
+
+Analyze the session themes and generate 3-5 open-ended questions that:
+1. Invite deeper self-exploration
+2. Build on insights from the session
+3. Use strength-based language
+4. Encourage narrative expansion
+5. Connect past, present, and future
+
+Format each question with:
+- The question itself
+- Therapeutic rationale (why this question matters)
+- Suggested placement (timing in story page)
+
+Questions should feel personal, not generic - use language and themes from the patient's own narrative.`,
+    description: 'Generate personalized reflection questions for story pages',
+    category: 'reflection',
+    icon: 'message-circle',
+    outputType: 'json',
+  },
+  {
+    name: 'Identify Metaphors & Symbols',
+    promptText: `Extract natural metaphors and symbolic language from the transcript.
+
+Look for:
+1. Metaphors the patient uses naturally (not therapist-imposed)
+2. Recurring symbols or imagery
+3. Sensory descriptions (colors, textures, sounds)
+4. Nature or landscape references
+5. Journey/movement metaphors
+
+For each metaphor identified:
+- Extract the exact language used
+- Interpret the symbolic meaning
+- Suggest how to expand or explore this metaphor
+- Propose visual representations
+
+These metaphors can become powerful elements in story pages and therapeutic conversations.`,
+    description: 'Extract patient\'s natural metaphors and symbolic language',
+    category: 'extraction',
+    icon: 'eye',
+    outputType: 'json',
+  },
+
+  // === NEW ANALYSIS PROMPTS ===
+  {
+    name: 'Therapeutic Alliance Analysis',
+    promptText: `Assess the quality and development of the therapeutic relationship based on the transcript.
+
+Analyze for:
+1. Trust indicators (what patient shares, how openly)
+2. Rupture moments (misunderstandings, disconnections)
+3. Repair attempts (reconnection, addressing issues)
+4. Collaboration quality (shared goals, mutual respect)
+5. Transference/countertransference hints
+
+Extract:
+- Specific moments showing alliance strength or weakness
+- Patient's attachment to therapy and therapist
+- Opportunities to strengthen the therapeutic bond
+- Red flags requiring attention
+
+Provide insights for maintaining a strong working alliance.`,
+    description: 'Assess quality of therapeutic relationship and alliance indicators',
+    category: 'analysis',
+    icon: 'heart',
+    outputType: 'json',
+  },
+  {
+    name: 'Defense Mechanisms Analysis',
+    promptText: `Identify psychological defense mechanisms in the transcript.
+
+Look for signs of:
+1. Denial (refusing to acknowledge reality)
+2. Projection (attributing own feelings to others)
+3. Rationalization (logical explanations for emotional issues)
+4. Displacement (redirecting emotions to safer targets)
+5. Intellectualization (avoiding emotions through analysis)
+6. Reaction formation (expressing opposite of true feelings)
+7. Humor/deflection (avoiding difficult topics)
+
+For each defense:
+- Quote showing the mechanism
+- Function (what it's protecting against)
+- Cost (what it prevents access to)
+- Gentle intervention ideas
+
+Help patient develop awareness of protective patterns.`,
+    description: 'Identify defense patterns and their protective functions',
+    category: 'analysis',
+    icon: 'shield',
+    outputType: 'json',
+  },
+  {
+    name: 'Emotional Regulation Analysis',
+    promptText: `Analyze emotion management strategies and regulation capacity.
+
+Examine:
+1. Emotional awareness (ability to name/describe feelings)
+2. Emotional expression (how feelings are communicated)
+3. Regulation strategies (healthy and unhealthy)
+4. Emotional triggers and patterns
+5. Window of tolerance (capacity range)
+
+Extract:
+- Moments of skillful emotion regulation
+- Times of emotional overwhelm or shutdown
+- Natural regulation strategies patient uses
+- Skills to develop or strengthen
+
+Provide recommendations for building emotional capacity.`,
+    description: 'Analyze emotion management strategies and regulation capacity',
+    category: 'analysis',
+    icon: 'thermometer',
+    outputType: 'json',
+  },
+  {
+    name: 'Progress Tracking Analysis',
+    promptText: `Evaluate therapeutic progress and development over time.
+
+Compare current session to earlier work (if available) for:
+1. Symptom reduction or management
+2. Insight development
+3. Behavior changes
+4. Coping skill acquisition
+5. Narrative shifts (how story is told differently)
+
+Identify:
+- Concrete progress markers
+- Areas of growth
+- Challenges still present
+- Next therapeutic targets
+- Celebration moments
+
+Provide clear, strength-based progress summary.`,
+    description: 'Evaluate therapeutic progress and development markers',
+    category: 'analysis',
+    icon: 'trending-up',
+    outputType: 'json',
+  },
+  {
+    name: 'Attachment Pattern Analysis',
+    promptText: `Identify attachment styles and relational patterns in the transcript.
+
+Analyze for indicators of:
+1. Secure attachment (comfort with closeness and autonomy)
+2. Anxious attachment (fear of abandonment, need for reassurance)
+3. Avoidant attachment (discomfort with intimacy, self-reliance)
+4. Disorganized attachment (contradictory behaviors, fear)
+
+Look at:
+- How patient describes relationships
+- Patterns in connection and disconnection
+- Internal working models (beliefs about self and others)
+- Attachment injuries from past relationships
+
+Suggest attachment-informed interventions.`,
+    description: 'Identify attachment styles and relational blueprints',
+    category: 'analysis',
+    icon: 'link',
+    outputType: 'json',
+  },
+  {
+    name: 'Trauma Response Analysis',
+    promptText: `Recognize trauma indicators and post-traumatic responses in the transcript.
+
+Watch for:
+1. Hyperarousal (anxiety, hypervigilance, irritability)
+2. Hypoarousal (numbing, dissociation, shutdown)
+3. Intrusive memories or flashbacks
+4. Avoidance patterns
+5. Negative cognitions about self/world
+6. Somatic symptoms
+
+Extract:
+- Specific trauma responses observed
+- Triggers that activate trauma responses
+- Existing resilience and coping
+- Trauma-informed intervention needs
+
+Provide gentle, trauma-sensitive recommendations.`,
+    description: 'Recognize trauma indicators and adaptive responses',
+    category: 'analysis',
+    icon: 'alert-triangle',
+    outputType: 'json',
+  },
+  {
+    name: 'Coping Strategy Assessment',
+    promptText: `Map current coping mechanisms and adaptive strategies.
+
+Identify:
+1. Healthy coping (exercise, connection, creativity, etc.)
+2. Maladaptive coping (avoidance, substances, self-harm, etc.)
+3. Problem-focused vs emotion-focused strategies
+4. Individual vs social coping
+5. Coping flexibility and repertoire
+
+Extract:
+- Specific coping behaviors mentioned
+- Function of each strategy (what need it meets)
+- Effectiveness and costs
+- Opportunities to expand coping toolkit
+
+Suggest evidence-based coping skills to develop.`,
+    description: 'Map current coping mechanisms and adaptive strategies',
+    category: 'analysis',
+    icon: 'tool',
+    outputType: 'json',
+  },
+
+  // === NEW JSON OUTPUT PROMPTS ===
+  {
+    name: 'Scene Card Generation',
+    promptText: `Generate a complete therapeutic scene card in JSON format based on the transcript.
+
+A scene card is a comprehensive therapeutic video visualization that includes reference images, background music, assembly instructions, and reflection questions.
+
+Analyze the selected transcript segment and create a complete scene card with:
+
+1. **Video Introduction** (2-3 sentences): Brief narration that sets the emotional tone and introduces the scene's therapeutic purpose.
+
+2. **Reference Images** (3-5 images): Each with:
+   - Title: Brief, evocative name
+   - Patient Quote Anchor: Exact quote from transcript that inspired this image
+   - Meaning: Therapeutic significance of this image
+   - Image Prompt: Detailed DALL-E prompt for photorealistic generation
+
+3. **Background Music**: Specify mood, tempo, genre, and emotional purpose. Use descriptive music generation prompts.
+
+4. **Patient Reflection Questions** (3-5 questions): Open-ended questions that:
+   - Connect to the scene's themes
+   - Encourage narrative exploration
+   - Use strength-based language
+   - Feel personal and authentic
+
+5. **Group Reflection Questions** (2-3 questions, optional): For group therapy contexts.
+
+6. **Assembly Steps**: Clear instructions for video editor showing how to sequence the images, timing, transitions, and music cues.
+
+Output ONLY valid JSON matching the scene_card schema. No markdown, no explanations, just the JSON object.`,
+    description: 'Generate complete therapeutic scene card with images, music, and reflections (JSON output)',
+    category: 'creative',
+    icon: 'film',
+    outputType: 'json',
+  },
+  {
+    name: 'Scene Suggestions',
+    promptText: `Analyze the transcript and suggest multiple therapeutic scenes that could be created for different participants.
+
+Review the full transcript and identify key therapeutic moments, themes, and narratives for each participant. Generate scene suggestions organized by participant.
+
+For each participant, create 2-4 scene suggestions with:
+
+1. **Scene Title**: Evocative, specific title (e.g., "Journey Through the Storm")
+2. **Scene Description**: 2-3 sentences describing what the scene would visualize
+3. **Scene Focus Instruction**: Specific guidance for what therapeutic elements to emphasize
+4. **Key Quote**: Most powerful quote from transcript that anchors this scene
+5. **Therapeutic Rationale**: Why this scene would be healing/helpful (2-3 sentences)
+
+Consider:
+- Moments of insight or transformation
+- Metaphors the patient used naturally
+- Emotional turning points
+- Strength and resilience demonstrations
+- Hope and future-oriented themes
+- Relational healing moments
+
+Output ONLY valid JSON matching the scene_suggestions schema:
+{
+  "potential_scenes_by_participant": [
+    {
+      "for_patient_name": "Patient Name",
+      "scenes": [
+        {
+          "scene_title": "...",
+          "scene_description": "...",
+          "scene_focus_instruction": "...",
+          "key_quote": "...",
+          "therapeutic_rationale": "..."
+        }
+      ]
+    }
+  ]
+}
+
+No markdown, no explanations, just the JSON object.`,
+    description: 'Generate multiple scene suggestions for participants based on transcript (JSON output)',
+    category: 'creative',
+    icon: 'sparkles',
+    outputType: 'json',
+  },
+  {
+    name: 'Music Generation Options',
+    promptText: `Generate therapeutic music options (instrumental and lyrical) based on transcript themes.
+
+Analyze the selected transcript and create TWO music generation options:
+
+**Instrumental Option:**
+- Title: Evocative name for the piece
+- Genre Tags: Array of 2-3 genres (e.g., ["ambient", "piano", "meditation"])
+- Mood: Emotional tone (e.g., "peaceful and reflective", "hopeful and uplifting")
+- Music Description: 2-3 sentences describing the musical journey
+- Style Prompt: Detailed music generation prompt (instruments, tempo, dynamics, progression)
+- Source Quotes: Array of 2-3 quotes from transcript that inspired this music
+- Rationale: Why this music supports the therapeutic narrative (2-3 sentences)
+
+**Lyrical Option:**
+- Title: Song title
+- Genre Tags: Array of 2-3 genres (e.g., ["folk", "acoustic", "singer-songwriter"])
+- Mood: Emotional tone
+- Suggested Lyrics: Full lyrics (verse 1, chorus, verse 2, chorus, bridge, final chorus)
+  - Use patient's own words and metaphors when possible
+  - Strength-based, hopeful, empowering language
+  - 6-12 lines per section
+- Style Prompt: Music generation instructions (vocal style, instrumentation, tempo)
+- Source Quotes: Quotes from transcript that inspired the lyrics
+- Rationale: Therapeutic purpose of this song
+
+Output ONLY valid JSON matching the music_generation schema. No markdown, no explanations.
+
+Example structure:
+{
+  "instrumental_option": { ... },
+  "lyrical_option": { ... }
+}`,
+    description: 'Generate instrumental and lyrical music options based on transcript (JSON output)',
+    category: 'creative',
+    icon: 'music',
+    outputType: 'json',
+  },
+
+  // === NEW CREATIVE PROMPTS ===
+  {
+    name: 'Generate Visual Metaphor',
+    promptText: `Create symbolic image concepts that represent therapeutic themes.
+
+Based on the transcript, design visual metaphors that:
+1. Capture abstract concepts (healing, growth, struggle, hope)
+2. Use powerful symbolism (nature, journey, transformation)
+3. Resonate with patient's language and imagery
+4. Empower and inspire
+5. Can be understood without explanation
+
+For each metaphor:
+- Title
+- Detailed DALL-E prompt with specific visual elements
+- Symbolic meaning explanation
+- How it connects to patient's narrative
+
+Create 2-3 compelling visual metaphors.`,
+    description: 'Create symbolic image concepts representing therapeutic themes',
+    category: 'creative',
+    icon: 'palette',
+    outputType: 'json',
+  },
+  {
+    name: 'Story Reframe Suggestion',
+    promptText: `Offer alternative narrative perspectives on the patient's story.
+
+Analyze the dominant narrative and suggest reframes that:
+1. Externalize problems (problem is separate from person)
+2. Highlight agency and choice
+3. Emphasize strengths over deficits
+4. Connect to values and meaning
+5. Open possibilities for the future
+
+Provide:
+- Current dominant story (brief summary)
+- 2-3 alternative narratives
+- Supporting evidence from transcript
+- Questions to explore new perspectives
+
+Keep patient's truth central while expanding possibilities.`,
+    description: 'Offer alternative narrative perspectives and reframes',
+    category: 'creative',
+    icon: 'refresh-cw',
+    outputType: 'json',
+  },
+  {
+    name: 'Hope Visualization',
+    promptText: `Visualize the patient's preferred future and aspirations.
+
+Based on hopes, dreams, and goals mentioned, create:
+1. Vivid description of preferred future
+2. Concrete visual elements (setting, actions, relationships)
+3. Emotional tone and atmosphere
+4. Symbols of achievement and growth
+5. Connection to current strengths
+
+Generate:
+- Narrative description of hoped-for future
+- DALL-E prompt for hope visualization
+- Pathway steps from present to future
+- Affirmations based on this vision
+
+Focus on realistic hope grounded in patient's values.`,
+    description: 'Visualize patient\'s preferred future and aspirations',
+    category: 'creative',
+    icon: 'sun',
+    outputType: 'json',
+  },
+  {
+    name: 'Journey Map Creation',
+    promptText: `Map the patient's therapeutic journey visually.
+
+Create a visual journey map showing:
+1. Where they started (presenting issues, initial state)
+2. Key milestones (insights, breakthroughs, changes)
+3. Obstacles overcome (challenges faced and conquered)
+4. Current location (present state)
+5. Direction forward (goals and aspirations)
+
+Format as:
+- Narrative arc description
+- Visual journey metaphor (mountain climb, ocean voyage, path through forest)
+- DALL-E prompt for journey visualization
+- Celebration of progress made
+
+Emphasize growth and resilience throughout journey.`,
+    description: 'Map therapeutic journey from past through present to future',
+    category: 'creative',
+    icon: 'map',
+    outputType: 'json',
+  },
+  {
+    name: 'Character Strength Portrait',
+    promptText: `Identify and visualize the patient's core character strengths.
+
+Based on the transcript, identify:
+1. VIA character strengths displayed (wisdom, courage, humanity, justice, temperance, transcendence)
+2. Signature strengths (most authentic, energizing)
+3. Underused strengths (potential to develop)
+4. Strengths in action (specific examples)
+
+Create:
+- List of key character strengths with evidence
+- Visual portrait concept showing these strengths
+- DALL-E prompt for strength visualization
+- Ways to leverage strengths in therapy
+
+Focus on inherent qualities and capabilities.`,
+    description: 'Identify and visualize patient\'s core character strengths',
+    category: 'creative',
+    icon: 'award',
+    outputType: 'json',
+  },
+  {
+    name: 'Timeline Visualization',
+    promptText: `Create visual timeline of patient's therapeutic process.
+
+Design a timeline showing:
+1. Pre-therapy state
+2. Key sessions and turning points
+3. Interventions and their impact
+4. Progress markers
+5. Future milestones
+
+Format as:
+- Chronological narrative
+- Visual timeline concept (horizontal path, spiral, tree growth)
+- DALL-E prompt for timeline image
+- Annotations for key moments
+
+Make progress visible and tangible.`,
+    description: 'Create visual timeline of therapeutic process and progress',
+    category: 'creative',
+    icon: 'clock',
+    outputType: 'json',
+  },
+
+  // === NEW EXTRACTION PROMPTS ===
+  {
+    name: 'Extract Key Moments',
+    promptText: `Identify pivotal moments and turning points in the session.
+
+Look for:
+1. Moments of insight ("aha" moments)
+2. Emotional breakthroughs
+3. Behavior change commitments
+4. Narrative shifts
+5. Connections made (between past and present, feelings and thoughts)
+
+For each key moment:
+- Exact quote or description
+- Why it matters therapeutically
+- How to build on it in future sessions
+- Potential for story page inclusion
+
+Extract 3-5 most significant moments.`,
+    description: 'Identify pivotal session moments and therapeutic turning points',
+    category: 'extraction',
+    icon: 'star',
+    outputType: 'json',
+  },
+  {
+    name: 'Extract Values & Beliefs',
+    promptText: `Identify core values and belief systems expressed in the transcript.
+
+Extract:
+1. Stated values (what patient says matters)
+2. Demonstrated values (what actions reveal)
+3. Core beliefs about self
+4. Core beliefs about others/world
+5. Values conflicts or alignment
+
+For each value/belief:
+- Supporting quotes
+- How it influences behavior
+- Whether it serves patient well
+- Alignment with authentic self
+
+Provide values-based insights for therapy.`,
+    description: 'Identify core values and belief systems',
+    category: 'extraction',
+    icon: 'compass',
+    outputType: 'json',
+  },
+  {
+    name: 'Extract Goals & Intentions',
+    promptText: `Pull out stated goals, intentions, and desired changes.
+
+Identify:
+1. Explicit goals stated by patient
+2. Implicit goals (what they're moving toward)
+3. Short-term vs long-term aspirations
+4. Approach goals (what they want) vs avoidance goals (what they don't want)
+5. SMART goal components (Specific, Measurable, Achievable, Relevant, Time-bound)
+
+Extract:
+- Exact language of goals
+- Motivation and readiness level
+- Barriers to goal achievement
+- Action steps already identified
+
+Format as goal list with therapeutic recommendations.`,
+    description: 'Pull out stated goals, intentions, and desired changes',
+    category: 'extraction',
+    icon: 'crosshair',
+    outputType: 'json',
+  },
+  {
+    name: 'Extract Strengths & Resources',
+    promptText: `Identify personal assets, strengths, and resources mentioned.
+
+Extract:
+1. Personal strengths (resilience, creativity, determination, etc.)
+2. Social support (relationships, community, family)
+3. Material resources (financial stability, housing, etc.)
+4. Spiritual/existential resources (faith, meaning, purpose)
+5. Skills and competencies
+
+For each strength/resource:
+- How it's been demonstrated
+- How it can support healing
+- Opportunities to leverage it more
+- Connections to goals
+
+Create comprehensive resource map.`,
+    description: 'Identify personal assets, strengths, and support systems',
+    category: 'extraction',
+    icon: 'battery-charging',
+    outputType: 'json',
+  },
+  {
+    name: 'Extract Barriers & Challenges',
+    promptText: `List obstacles, barriers, and challenges patient faces.
+
+Identify:
+1. Internal barriers (thoughts, feelings, patterns)
+2. External barriers (circumstances, systems, people)
+3. Skill deficits
+4. Resource limitations
+5. Systemic/structural challenges
+
+For each barrier:
+- Specific description
+- Impact on functioning and goals
+- Patient's current approach to it
+- Potential interventions or supports
+
+Balance problem awareness with solution focus.`,
+    description: 'List obstacles and challenges requiring attention',
+    category: 'extraction',
+    icon: 'octagon',
+    outputType: 'json',
+  },
+
+  // === NEW REFLECTION PROMPTS ===
+  {
+    name: 'Generate Between-Session Questions',
+    promptText: `Create questions for patient reflection between sessions.
+
+Based on session themes, generate 3-5 questions that:
+1. Deepen insights from session
+2. Encourage self-observation
+3. Apply learning to daily life
+4. Notice patterns and changes
+5. Prepare for next session
+
+Each question should:
+- Use patient's own language
+- Be open-ended and exploratory
+- Connect to therapeutic goals
+- Feel supportive, not homework-like
+
+Format with question and brief rationale.`,
+    description: 'Create questions for reflection between sessions',
+    category: 'reflection',
+    icon: 'lightbulb',
+    outputType: 'json',
+  },
+  {
+    name: 'Generate Journaling Prompts',
+    promptText: `Create journaling prompts for therapeutic writing.
+
+Generate 4-6 prompts that encourage:
+1. Emotional expression and processing
+2. Self-discovery and insight
+3. Narrative exploration
+4. Gratitude and strengths focus
+5. Goal clarification
+6. Meaning-making
+
+Each prompt should:
+- Be specific to patient's themes
+- Allow for open-ended exploration
+- Feel safe and manageable
+- Support therapeutic objectives
+
+Include brief guidance for each prompt.`,
+    description: 'Create therapeutic journaling prompts for self-exploration',
+    category: 'reflection',
+    icon: 'book-open',
+    outputType: 'json',
+  },
+  {
+    name: 'Generate Goal-Setting Questions',
+    promptText: `Help patient define and refine therapeutic goals.
+
+Create questions that:
+1. Clarify what patient truly wants
+2. Explore motivation and values alignment
+3. Identify concrete action steps
+4. Anticipate obstacles
+5. Measure progress
+
+Question types:
+- Miracle question variations
+- Scaling questions (0-10)
+- Exception-finding (when problem doesn't occur)
+- Values alignment checks
+- Future-oriented visualization
+
+Provide 5-7 powerful goal-setting questions.`,
+    description: 'Help patient define and refine therapeutic goals',
+    category: 'reflection',
+    icon: 'target',
+    outputType: 'json',
+  },
+  {
+    name: 'Generate Self-Compassion Prompts',
+    promptText: `Create prompts that cultivate self-compassion and kindness.
+
+Generate reflections that:
+1. Counter self-criticism with understanding
+2. Normalize suffering and struggle
+3. Encourage self-kindness
+4. Promote common humanity
+5. Practice mindfulness of difficult emotions
+
+Each prompt should:
+- Use gentle, warm language
+- Validate difficulty
+- Offer alternative perspectives
+- Feel genuinely compassionate
+
+Provide 4-5 self-compassion practices.`,
+    description: 'Cultivate self-compassion and self-kindness practices',
+    category: 'reflection',
+    icon: 'heart',
+    outputType: 'json',
+  },
+  {
+    name: 'Generate Gratitude Prompts',
+    promptText: `Foster gratitude practice and positive focus.
+
+Create prompts that:
+1. Notice small positive moments
+2. Appreciate relationships and support
+3. Recognize growth and learning
+4. Find meaning in challenges
+5. Express thanks for resources
+
+Each prompt should:
+- Feel authentic, not forced
+- Allow for nuanced gratitude (can coexist with pain)
+- Connect to patient's values
+- Build resilience through appreciation
+
+Provide 5-6 gratitude reflection prompts.`,
+    description: 'Foster gratitude practice and positive awareness',
+    category: 'reflection',
+    icon: 'gift',
+    outputType: 'json',
+  },
+  {
+    name: 'Generate Homework Assignments',
+    promptText: `Create therapeutic homework for between sessions.
+
+Design 2-3 assignments that:
+1. Apply session insights to real life
+2. Build specific skills
+3. Test new behaviors
+4. Gather data or notice patterns
+5. Prepare for next session
+
+Each assignment should:
+- Be concrete and specific
+- Feel manageable (not overwhelming)
+- Connect clearly to goals
+- Have clear success criteria
+
+Include rationale and guidance for each.`,
+    description: 'Create therapeutic homework and between-session practices',
+    category: 'reflection',
+    icon: 'clipboard-list',
+    outputType: 'json',
+  },
+  {
+    name: 'Generate Check-In Questions',
+    promptText: `Create questions for ongoing progress monitoring.
+
+Generate check-in questions for:
+1. Symptom tracking (mood, anxiety, etc.)
+2. Functioning assessment (work, relationships, self-care)
+3. Goal progress review
+4. Coping skill usage
+5. Support system engagement
+
+Questions should:
+- Be brief and easy to answer
+- Track change over time
+- Use rating scales or concrete examples
+- Feel supportive, not evaluative
+
+Provide 5-7 check-in questions for regular use.`,
+    description: 'Create questions for ongoing progress monitoring and check-ins',
+    category: 'reflection',
+    icon: 'check-square',
+    outputType: 'json',
+  },
+];
+
+async function seedSystemPrompts() {
+  try {
+    console.log('🌱 Seeding system prompts...');
+
+    // Get or create a system user (super admin)
+    let systemUser = await db.query.usersSchema.findFirst({
+      where: eq(usersSchema.email, 'system@storycare.app'),
+    });
+
+    if (!systemUser) {
+      console.log('Creating system user...');
+      const result = await db
+        .insert(usersSchema)
+        .values({
+          email: 'system@storycare.app',
+          name: 'System',
+          role: 'super_admin',
+        })
+        .returning();
+      systemUser = (result as any[])[0];
+    }
+
+    if (!systemUser) {
+      throw new Error('Failed to create or find system user');
+    }
+
+    console.log(`Using system user: ${systemUser.email} (${systemUser.id})`);
+
+    // Insert each prompt
+    for (const promptData of systemPrompts) {
+      try {
+        const [existingPrompt] = await db
+          .select()
+          .from(moduleAiPromptsSchema)
+          .where(eq(moduleAiPromptsSchema.name, promptData.name))
+          .limit(1);
+
+        if (existingPrompt) {
+          console.log(`⏭️  Skipping "${promptData.name}" (already exists)`);
+          continue;
+        }
+
+        const result = await db
+          .insert(moduleAiPromptsSchema)
+          .values({
+            ...promptData,
+            scope: 'system',
+            organizationId: null,
+            createdBy: systemUser.id,
+            isActive: true,
+            useCount: 0,
+          })
+          .returning();
+
+        const newPrompt = (result as any[])[0];
+        if (newPrompt) {
+          console.log(`✅ Created: "${newPrompt.name}" (${newPrompt.category})`);
+        }
+      } catch (error) {
+        console.error(`❌ Error creating "${promptData.name}":`, error);
+      }
+    }
+
+    console.log('');
+    console.log('✨ Seed complete!');
+    console.log(`Created ${systemPrompts.length} system prompts`);
+
+    await pool.end();
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Seed failed:', error);
+    await pool.end();
+    process.exit(1);
+  }
+}
+
+seedSystemPrompts();
