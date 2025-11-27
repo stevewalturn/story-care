@@ -44,6 +44,7 @@ ARG ENV_FILE
 
 # Write ENV_FILE to .env.build and source it properly
 # This handles multi-line values like private keys
+# Skip migrations during build - Cloud SQL is not accessible during Docker build
 RUN if [ -n "$ENV_FILE" ]; then \
       echo "$ENV_FILE" > /app/.env.build; \
     fi && \
@@ -51,10 +52,8 @@ RUN if [ -n "$ENV_FILE" ]; then \
       set -a && \
       . /app/.env.build && \
       set +a && \
-      npm run db:migrate && \
       npm run build:next; \
     else \
-      npm run db:migrate && \
       npm run build:next; \
     fi
 
