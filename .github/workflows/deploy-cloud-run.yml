@@ -1,0 +1,106 @@
+name: Deploy to Cloud Run
+
+# Trigger on push to main branch
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  SERVICE_NAME: storycare-app
+  REGION: us-central1
+  # Cloud SQL instance connection name (format: PROJECT_ID:REGION:INSTANCE_NAME)
+  # Example: storycare-prod-123:us-central1:storycare-db
+  # Uncomment and set if using Cloud SQL:
+  # CLOUD_SQL_INSTANCE: ${{ secrets.CLOUD_SQL_INSTANCE }}
+
+jobs:
+  deploy:
+    name: Build and Deploy to Cloud Run
+    runs-on: ubuntu-latest
+
+    # Required for Workload Identity Federation
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Option 1: Authenticate via Workload Identity Federation (Recommended)
+      # Uncomment this block after setting up Workload Identity Federation
+      # - name: Authenticate to Google Cloud (Workload Identity)
+      #   uses: google-github-actions/auth@v2
+      #   with:
+      #     workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+      #     service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      # Option 2: Authenticate via Service Account Key (Quick Setup)
+      # Comment out this block after setting up Workload Identity Federation
+      - name: Authenticate to Google Cloud (Service Account)
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_FIREBASE_API_KEY="${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}" \
+            --build-arg NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}" \
+            --build-arg NEXT_PUBLIC_FIREBASE_PROJECT_ID="${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}" \
+            --build-arg NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}" \
+            --build-arg NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}" \
+            --build-arg NEXT_PUBLIC_FIREBASE_APP_ID="${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}" \
+            --build-arg NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID="${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}" \
+            --build-arg NEXT_PUBLIC_APP_URL="${{ secrets.NEXT_PUBLIC_APP_URL }}" \
+            --build-arg NEXT_PUBLIC_SENTRY_DSN="${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}" \
+            --build-arg NEXT_PUBLIC_POSTHOG_KEY="${{ secrets.NEXT_PUBLIC_POSTHOG_KEY }}" \
+            --build-arg NEXT_PUBLIC_POSTHOG_HOST="${{ secrets.NEXT_PUBLIC_POSTHOG_HOST }}" \
+            --build-arg NEXT_PUBLIC_BETTER_STACK_SOURCE_TOKEN="${{ secrets.NEXT_PUBLIC_BETTER_STACK_SOURCE_TOKEN }}" \
+            --build-arg DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+            -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest \
+            .
+
+      - name: Push Docker image to GCR
+        run: |
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          flags: |
+            --platform=managed
+            --allow-unauthenticated
+            --memory=4Gi
+            --cpu=2
+            --timeout=300
+            --max-instances=10
+            --min-instances=0
+            --port=8080
+            --set-env-vars=NODE_ENV=production,NEXT_TELEMETRY_DISABLED=1,PORT=8080
+            --update-secrets=DATABASE_URL=DATABASE_URL:latest,FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest,FIREBASE_CLIENT_EMAIL=FIREBASE_CLIENT_EMAIL:latest,FIREBASE_PRIVATE_KEY=FIREBASE_PRIVATE_KEY:latest,GCS_PROJECT_ID=GCS_PROJECT_ID:latest,GCS_CLIENT_EMAIL=GCS_CLIENT_EMAIL:latest,GCS_PRIVATE_KEY=GCS_PRIVATE_KEY:latest,GCS_BUCKET_NAME=GCS_BUCKET_NAME:latest,DEEPGRAM_API_KEY=DEEPGRAM_API_KEY:latest,SUNO_API_KEY=SUNO_API_KEY:latest,ATLASCLOUD_API_KEY=ATLASCLOUD_API_KEY:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,GOOGLE_VERTEX_PROJECT_ID=GOOGLE_VERTEX_PROJECT_ID:latest,GOOGLE_VERTEX_LOCATION=GOOGLE_VERTEX_LOCATION:latest,STABILITY_API_KEY=STABILITY_API_KEY:latest,FLUX_API_KEY=FLUX_API_KEY:latest,REPLICATE_API_TOKEN=REPLICATE_API_TOKEN:latest,ARCJET_KEY=ARCJET_KEY:latest,NEXT_PUBLIC_FIREBASE_API_KEY=NEXT_PUBLIC_FIREBASE_API_KEY:latest,NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:latest,NEXT_PUBLIC_FIREBASE_PROJECT_ID=NEXT_PUBLIC_FIREBASE_PROJECT_ID:latest,NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET:latest,NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID:latest,NEXT_PUBLIC_FIREBASE_APP_ID=NEXT_PUBLIC_FIREBASE_APP_ID:latest,NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID:latest,NEXT_PUBLIC_APP_URL=NEXT_PUBLIC_APP_URL:latest,NEXT_PUBLIC_SENTRY_DSN=NEXT_PUBLIC_SENTRY_DSN:latest,NEXT_PUBLIC_POSTHOG_KEY=NEXT_PUBLIC_POSTHOG_KEY:latest,NEXT_PUBLIC_POSTHOG_HOST=NEXT_PUBLIC_POSTHOG_HOST:latest,NEXT_PUBLIC_BETTER_STACK_SOURCE_TOKEN=NEXT_PUBLIC_BETTER_STACK_SOURCE_TOKEN:latest
+          # Uncomment to enable Cloud SQL connection (if using Cloud SQL):
+          # sql-instances: ${{ env.CLOUD_SQL_INSTANCE }}
+
+      - name: Show deployment URL
+        run: echo "Deployed to ${{ steps.deploy.outputs.url }}"
+
+      - name: Health check
+        run: |
+          sleep 10
+          curl -f ${{ steps.deploy.outputs.url }}/api/health || exit 1

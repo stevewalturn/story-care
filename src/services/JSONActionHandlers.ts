@@ -3,7 +3,7 @@
 
 import { authenticatedPost } from '@/utils/AuthenticatedFetch';
 
-export interface ActionContext {
+export type ActionContext = {
   jsonData: any;
   sessionId: string;
   user: any;
@@ -24,7 +24,7 @@ export interface ActionContext {
     sourceQuote?: string;
   }) => void;
   imageIndex?: number; // For image_references and video_references actions
-}
+};
 
 // ============================================================================
 // SCENE CARD ACTIONS
@@ -75,32 +75,32 @@ export async function handleGenerateImages(ctx: ActionContext) {
     const img = images[i];
     onProgress(`🎨 Generating image ${i + 1}/${images.length}: "${img.title}"...`);
 
-  
-    const response = await authenticatedPost('/api/ai/generate-image', user, {
-      prompt: img.image_prompt,
-      style: 'photorealistic',
-      sessionId,
-      title: img.title,
-      description: img.meaning,
-      sourceQuote: img.patient_quote_anchor,
-    });
+    try {
+      const response = await authenticatedPost('/api/ai/generate-image', user, {
+        prompt: img.image_prompt,
+        style: 'photorealistic',
+        sessionId,
+        title: img.title,
+        description: img.meaning,
+        sourceQuote: img.patient_quote_anchor,
+      });
 
-    if (!response.ok) {
-      onProgress(`❌ Failed to generate "${img.title}"`);
-      continue;
+      if (!response.ok) {
+        onProgress(`❌ Failed to generate "${img.title}"`);
+        continue;
+      }
+
+      const result = await response.json();
+      results.push(result);
+      onProgress(`✅ Generated "${img.title}"`);
+    } catch (error) {
+      onProgress(`❌ Error generating "${img.title}": ${(error as Error).message}`);
     }
-
-    const result = await response.json();
-    results.push(result);
-    onProgress(`✅ Generated "${img.title}"`);
-  } catch (error) {
-    onProgress(`❌ Error generating "${img.title}": ${(error as Error).message}`);
-  }
   }
 
   onComplete({
-  message: `✅ Generated ${results.length}/${images.length} images. View in Library panel.`,
-  data: results,
+    message: `✅ Generated ${results.length}/${images.length} images. View in Library panel.`,
+    data: results,
   });
 }
 
@@ -112,64 +112,68 @@ export async function handleGenerateMusic(ctx: ActionContext) {
   const musicData = jsonData.music;
 
   if (!musicData) {
-  onComplete({ message: '⚠️ No music data found.' });
-  return;
+    onComplete({ message: '⚠️ No music data found.' });
+    return;
   }
 
   onProgress('🎵 Generating music track...');
 
   try {
-  const response = await authenticatedPost('/api/ai/generate-music', user, {
-    sessionId,
-    musicType: 'instrumental',
-    title: 'Scene Background Music',
-    prompt: musicData.prompt,
-    model: 'V4_5',
-    instrumental: true,
-    stylePrompt: musicData.prompt,
-  });
+    const response = await authenticatedPost('/api/ai/generate-music', user, {
+      sessionId,
+      musicType: 'instrumental',
+      title: 'Scene Background Music',
+      prompt: musicData.prompt,
+      model: 'V4_5',
+      instrumental: true,
+      stylePrompt: musicData.prompt,
+    });
 
-  if (!response.ok) throw new Error('Failed to generate music');
+    if (!response.ok) throw new Error('Failed to generate music');
 
-  const result = await response.json();
-  const taskId = result.taskId;
+    const result = await response.json();
+    const taskId = result.taskId;
 
-  onProgress('🎵 Music generation started. This may take 2-3 minutes...');
+    onProgress('🎵 Music generation started. This may take 2-3 minutes...');
 
-  // Poll for completion
-  let attempts = 0;
-  const maxAttempts = 36; // 3 minutes max
-  const poll = setInterval(async () => {
-    attempts++;
+    // Poll for completion
+    let attempts = 0;
+    const maxAttempts = 36; // 3 minutes max
+    const poll = setInterval(async () => {
+      attempts++;
 
-    try {
-      const statusResponse = await fetch(`/api/ai/music-task/${taskId}`, {
-        headers: {
-          Authorization: `Bearer ${await user.getIdToken()}`,
-        },
-      });
-
-      const statusData = await statusResponse.json();
-
-      if (statusData.data.status === 'completed') {
-        clearInterval(poll);
-        onComplete({
-          message: '✅ Music generated successfully! Listen in Library panel.',
-          data: statusData.data,
+      try {
+        const statusResponse = await fetch(`/api/ai/music-task/${taskId}`, {
+          headers: {
+            Authorization: `Bearer ${await user.getIdToken()}`,
+          },
         });
-      } else if (statusData.data.status === 'failed' || attempts >= maxAttempts) {
-        clearInterval(poll);
-        throw new Error('Music generation failed or timed out');
-      } else if (attempts % 6 === 0) {
-        // Update every 30 seconds
-        onProgress(`🎵 Still generating... (${Math.floor((attempts * 5) / 60)}m ${(attempts * 5) % 60}s)`);
-      }
-    } catch (pollError) {
-      clearInterval(poll);
-      throw pollError;
-    }
-  }, 5000);
 
+        const statusData = await statusResponse.json();
+
+        if (statusData.data.status === 'completed') {
+          clearInterval(poll);
+          onComplete({
+            message: '✅ Music generated successfully! Listen in Library panel.',
+            data: statusData.data,
+          });
+        } else if (statusData.data.status === 'failed' || attempts >= maxAttempts) {
+          clearInterval(poll);
+          throw new Error('Music generation failed or timed out');
+        } else if (attempts % 6 === 0) {
+          // Update every 30 seconds
+          onProgress(`🎵 Still generating... (${Math.floor((attempts * 5) / 60)}m ${(attempts * 5) % 60}s)`);
+        }
+      } catch (pollError) {
+        clearInterval(poll);
+        throw pollError;
+      }
+    }, 5000);
+  } catch (error) {
+    onComplete({
+      message: `❌ Music generation failed: ${(error as Error).message}`,
+    });
+  }
 }
 
 /**
@@ -180,6 +184,7 @@ export async function handleSaveReflections(ctx: ActionContext) {
 
   onProgress('💭 Saving reflection questions...');
 
+  try {
     const response = await authenticatedPost('/api/reflections', user, {
       sessionId,
       patientQuestions: jsonData.patient_reflection_questions || [],
@@ -191,6 +196,11 @@ export async function handleSaveReflections(ctx: ActionContext) {
     onComplete({
       message: '✅ Reflection questions saved to session.',
     });
+  } catch (error) {
+    onComplete({
+      message: `❌ Failed to save reflections: ${(error as Error).message}`,
+    });
+  }
 }
 
 // ============================================================================
@@ -211,6 +221,7 @@ export async function handleGenerateInstrumental(ctx: ActionContext) {
 
   onProgress(`🎵 Generating instrumental: "${instrumental.title}"...`);
 
+  try {
     const response = await authenticatedPost('/api/ai/generate-music', user, {
       sessionId,
       musicType: 'instrumental',
@@ -237,6 +248,11 @@ export async function handleGenerateInstrumental(ctx: ActionContext) {
       message: `✅ Instrumental "${instrumental.title}" queued for generation. Check Library in 2-3 minutes.`,
       data: result,
     });
+  } catch (error) {
+    onComplete({
+      message: `❌ Failed to generate instrumental: ${(error as Error).message}`,
+    });
+  }
 }
 
 /**
@@ -253,6 +269,7 @@ export async function handleGenerateLyrical(ctx: ActionContext) {
 
   onProgress(`🎤 Generating lyrical song: "${lyrical.title}"...`);
 
+  try {
     const response = await authenticatedPost('/api/ai/generate-music', user, {
       sessionId,
       musicType: 'lyrical',
@@ -276,6 +293,11 @@ export async function handleGenerateLyrical(ctx: ActionContext) {
       message: `✅ Lyrical song "${lyrical.title}" queued for generation. Check Library in 2-3 minutes.`,
       data: result,
     });
+  } catch (error) {
+    onComplete({
+      message: `❌ Failed to generate lyrical song: ${(error as Error).message}`,
+    });
+  }
 }
 
 // ============================================================================
@@ -305,33 +327,33 @@ export async function handleCreateScenesFromSuggestions(ctx: ActionContext) {
       count++;
       onProgress(`🎬 Creating scene ${count}/${totalScenes}: "${scene.scene_title}"...`);
 
-    
-      const response = await authenticatedPost('/api/scenes', user, {
-        sessionId,
-        title: scene.scene_title,
-        description: scene.scene_description,
-        focusInstruction: scene.scene_focus_instruction,
-        keyQuote: scene.key_quote,
-        therapeuticRationale: scene.therapeutic_rationale,
-        forPatient: participant.for_patient_name,
-      });
+      try {
+        const response = await authenticatedPost('/api/scenes', user, {
+          sessionId,
+          title: scene.scene_title,
+          description: scene.scene_description,
+          focusInstruction: scene.scene_focus_instruction,
+          keyQuote: scene.key_quote,
+          therapeuticRationale: scene.therapeutic_rationale,
+          forPatient: participant.for_patient_name,
+        });
 
-      if (response.ok) {
-        const result = await response.json();
-        results.push(result);
-        onProgress(`✅ Created "${scene.scene_title}"`);
-      } else {
-        onProgress(`❌ Failed to create "${scene.scene_title}"`);
+        if (response.ok) {
+          const result = await response.json();
+          results.push(result);
+          onProgress(`✅ Created "${scene.scene_title}"`);
+        } else {
+          onProgress(`❌ Failed to create "${scene.scene_title}"`);
+        }
+      } catch {
+        onProgress(`❌ Error creating "${scene.scene_title}"`);
       }
-    } catch {
-      onProgress(`❌ Error creating "${scene.scene_title}"`);
     }
-  }
   }
 
   onComplete({
-  message: `✅ Created ${results.length}/${totalScenes} scenes. View in Scenes panel.`,
-  data: results,
+    message: `✅ Created ${results.length}/${totalScenes} scenes. View in Scenes panel.`,
+    data: results,
   });
 }
 
@@ -344,27 +366,31 @@ export async function handleSaveScenesAsNotes(ctx: ActionContext) {
   onProgress('📝 Saving scene suggestions as notes...');
 
   try {
-  const participants = jsonData.potential_scenes_by_participant || [];
-  const noteContent = participants
-    .map((p: any) => {
-      const scenes = p.scenes.map((s: any) => `- **${s.scene_title}**: ${s.scene_description}`).join('\n');
-      return `## ${p.for_patient_name}\n\n${scenes}`;
-    })
-    .join('\n\n');
+    const participants = jsonData.potential_scenes_by_participant || [];
+    const noteContent = participants
+      .map((p: any) => {
+        const scenes = p.scenes.map((s: any) => `- **${s.scene_title}**: ${s.scene_description}`).join('\n');
+        return `## ${p.for_patient_name}\n\n${scenes}`;
+      })
+      .join('\n\n');
 
-  const response = await authenticatedPost('/api/notes', user, {
-    sessionId,
-    title: 'Scene Suggestions',
-    content: noteContent,
-    tags: ['ai-generated', 'scene-suggestions'],
-  });
+    const response = await authenticatedPost('/api/notes', user, {
+      sessionId,
+      title: 'Scene Suggestions',
+      content: noteContent,
+      tags: ['ai-generated', 'scene-suggestions'],
+    });
 
-  if (!response.ok) throw new Error('Failed to save notes');
+    if (!response.ok) throw new Error('Failed to save notes');
 
-  onComplete({
-    message: '✅ Scene suggestions saved as notes.',
-  });
-
+    onComplete({
+      message: '✅ Scene suggestions saved as notes.',
+    });
+  } catch (error) {
+    onComplete({
+      message: `❌ Failed to save notes: ${(error as Error).message}`,
+    });
+  }
 }
 
 // ============================================================================
@@ -459,6 +485,7 @@ export async function handleSaveAsNote(ctx: ActionContext) {
 
   onProgress('📝 Saving as note...');
 
+  try {
     const questions = jsonData.patient_questions || jsonData.reflection_questions || [];
     const content = questions.map((q: string, i: number) => `${i + 1}. ${q}`).join('\n');
 
@@ -474,6 +501,11 @@ export async function handleSaveAsNote(ctx: ActionContext) {
     onComplete({
       message: '✅ Reflection questions saved as note.',
     });
+  } catch (error) {
+    onComplete({
+      message: `❌ Failed to save note: ${(error as Error).message}`,
+    });
+  }
 }
 
 // ============================================================================
@@ -488,6 +520,7 @@ export async function handleSaveTherapeuticNote(ctx: ActionContext) {
 
   onProgress('📝 Saving therapeutic note...');
 
+  try {
     const response = await authenticatedPost('/api/notes', user, {
       sessionId,
       title: jsonData.note_title,
@@ -500,6 +533,11 @@ export async function handleSaveTherapeuticNote(ctx: ActionContext) {
     onComplete({
       message: '✅ Therapeutic note saved.',
     });
+  } catch (error) {
+    onComplete({
+      message: `❌ Failed to save note: ${(error as Error).message}`,
+    });
+  }
 }
 
 // ============================================================================
