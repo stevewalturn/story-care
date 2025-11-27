@@ -10,6 +10,9 @@ const baseConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   reactCompiler: true,
+  // Enable standalone output for Docker/Cloud Run deployment
+  // This creates a minimal production build with only required files
+  output: 'standalone',
   outputFileTracingIncludes: {
     '/': ['./migrations/**/*'],
   },
