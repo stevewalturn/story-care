@@ -42,12 +42,15 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
 # This allows passing all env vars at once from GitHub Actions
 ARG ENV_FILE
 
-# Write ENV_FILE to a clean .env file and run build
+# Write ENV_FILE to .env.build and source it properly
+# This handles multi-line values like private keys
 RUN if [ -n "$ENV_FILE" ]; then \
-      echo "$ENV_FILE" | grep -v '^#' | grep -v '^$' | grep '=' > /app/.env.build || true; \
+      echo "$ENV_FILE" > /app/.env.build; \
     fi && \
     if [ -f /app/.env.build ]; then \
-      export $(cat /app/.env.build | xargs) && \
+      set -a && \
+      . /app/.env.build && \
+      set +a && \
       npm run db:migrate && \
       npm run build:next; \
     else \
