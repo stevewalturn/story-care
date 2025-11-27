@@ -29,6 +29,10 @@ export const TEXT_GENERATION_MODELS = {
 
 // Image Generation Models
 export const IMAGE_GENERATION_MODELS = {
+  'Atlas Cloud (Flux)': [
+    { value: 'flux-schnell', label: 'Flux Schnell (Fastest) - $0.0024/pic' },
+    { value: 'flux-dev', label: 'Flux Dev (High Quality) - $0.0096/pic' },
+  ],
   'Google Gemini (Image-to-Image)': [
     { value: 'gemini-2.5-flash-image', label: 'Nano Banana (Gemini 2.5 Flash Image) - HOT' },
   ],
@@ -40,11 +44,16 @@ export const IMAGE_GENERATION_MODELS = {
   ],
   'FAL.AI': [
     { value: 'flux-pro', label: 'Flux Pro' },
-    { value: 'flux-dev', label: 'Flux Dev' },
-    { value: 'flux-schnell', label: 'Flux Schnell' },
     { value: 'flux-realism', label: 'Flux Realism' },
     { value: 'sdxl', label: 'Fast SDXL' },
     { value: 'sdxl-lightning', label: 'SDXL Lightning' },
+  ],
+} as const;
+
+// Video Generation Models
+export const VIDEO_GENERATION_MODELS = {
+  'Atlas Cloud': [
+    { value: 'seedance-1-lite', label: 'SeeDance 1 Lite (Fast generation)' },
   ],
 } as const;
 
@@ -62,4 +71,12 @@ export function getAvailableTextModels() {
  */
 export function getAvailableImageModels() {
   return IMAGE_GENERATION_MODELS;
+}
+
+/**
+ * Get all available video generation models
+ * Safe to call from client components
+ */
+export function getAvailableVideoModels() {
+  return VIDEO_GENERATION_MODELS;
 }
