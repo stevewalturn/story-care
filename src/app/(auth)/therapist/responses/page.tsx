@@ -1,28 +1,32 @@
 /**
  * Therapist Responses Dashboard
- * View patient responses to reflection questions and surveys
+ * View story page responses to reflection questions and surveys
  */
 
 'use client';
 
-import { CheckCircle, Clock, MessageSquare, User } from 'lucide-react';
+import { CheckCircle, Clock, FileText, MessageSquare } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
-type PatientResponse = {
+type PageResponse = {
+  pageId: string;
+  pageTitle: string;
   patientId: string;
   patientName: string;
-  totalPages: number;
-  completedPages: number;
-  pendingPages: number;
+  reflectionResponseCount: number;
+  surveyResponseCount: number;
+  totalResponses: number;
+  hasResponses: boolean;
   lastResponseAt: string | null;
+  publishedAt: string | null;
 };
 
 export default function TherapistResponsesPage() {
   const { user } = useAuth();
-  const [responses, setResponses] = useState<PatientResponse[]>([]);
+  const [pages, setPages] = useState<PageResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,14 +44,17 @@ export default function TherapistResponsesPage() {
       }
 
       const data = await response.json();
-      setResponses(data.responses || []);
+      setPages(data.pages || []);
     } catch (error) {
       console.error('Failed to fetch responses:', error);
-      setResponses([]);
+      setPages([]);
     } finally {
       setLoading(false);
     }
   };
+
+  const pagesWithResponses = pages.filter(p => p.hasResponses);
+  const pagesWithoutResponses = pages.filter(p => !p.hasResponses);
 
   if (loading) {
     return (
@@ -61,9 +68,9 @@ export default function TherapistResponsesPage() {
     <div className="p-8">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Patient Responses</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Story Page Responses</h1>
         <p className="mt-2 text-sm text-gray-600">
-          View and track patient responses to reflection questions and surveys
+          View patient responses to reflection questions and surveys from published story pages
         </p>
       </div>
 
@@ -72,11 +79,11 @@ export default function TherapistResponsesPage() {
         <div className="rounded-lg border border-gray-200 bg-white p-6">
           <div className="flex items-center">
             <div className="rounded-full bg-indigo-100 p-3">
-              <User className="h-6 w-6 text-indigo-600" />
+              <FileText className="h-6 w-6 text-indigo-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Patients</p>
-              <p className="text-2xl font-bold text-gray-900">{responses.length}</p>
+              <p className="text-sm font-medium text-gray-600">Published Pages</p>
+              <p className="text-2xl font-bold text-gray-900">{pages.length}</p>
             </div>
           </div>
         </div>
@@ -87,10 +94,8 @@ export default function TherapistResponsesPage() {
               <CheckCircle className="h-6 w-6 text-green-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Completed</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {responses.reduce((sum, r) => sum + r.completedPages, 0)}
-              </p>
+              <p className="text-sm font-medium text-gray-600">With Responses</p>
+              <p className="text-2xl font-bold text-gray-900">{pagesWithResponses.length}</p>
             </div>
           </div>
         </div>
@@ -101,90 +106,79 @@ export default function TherapistResponsesPage() {
               <Clock className="h-6 w-6 text-yellow-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Pending</p>
+              <p className="text-sm font-medium text-gray-600">Total Responses</p>
               <p className="text-2xl font-bold text-gray-900">
-                {responses.reduce((sum, r) => sum + r.pendingPages, 0)}
+                {pages.reduce((sum, p) => sum + p.totalResponses, 0)}
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Patient List */}
-      <div className="rounded-lg border border-gray-200 bg-white">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-900">Patients</h2>
-        </div>
-
-        {responses.length === 0 ? (
-          <div className="py-16 text-center">
-            <MessageSquare className="mx-auto h-12 w-12 text-gray-400" />
-            <p className="mt-2 text-sm text-gray-500">No patient responses yet</p>
-            <p className="mt-1 text-xs text-gray-400">
-              Assign story pages to patients to start collecting responses
-            </p>
+      {/* Pages with Responses */}
+      {pagesWithResponses.length > 0 && (
+        <div className="mb-8 rounded-lg border border-gray-200 bg-white">
+          <div className="border-b border-gray-200 px-6 py-4">
+            <h2 className="text-lg font-semibold text-gray-900">Pages with Responses</h2>
+            <p className="text-sm text-gray-600">Story pages that have received patient responses</p>
           </div>
-        ) : (
+
           <div className="divide-y divide-gray-200">
-            {responses.map(response => (
+            {pagesWithResponses.map(page => (
               <div
-                key={response.patientId}
+                key={page.pageId}
                 className="flex items-center justify-between p-6 transition-colors hover:bg-gray-50"
               >
                 <div className="flex-1">
-                  <div className="flex items-center">
+                  <div className="flex items-start">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100">
-                      <User className="h-5 w-5 text-indigo-600" />
+                      <FileText className="h-5 w-5 text-indigo-600" />
                     </div>
-                    <div className="ml-4">
-                      <h3 className="font-medium text-gray-900">{response.patientName}</h3>
-                      <p className="text-sm text-gray-500">
-                        {response.completedPages}
-                        {' '}
-                        of
-                        {' '}
-                        {response.totalPages}
-                        {' '}
-                        pages completed
+                    <div className="ml-4 flex-1">
+                      <h3 className="font-medium text-gray-900">{page.pageTitle}</h3>
+                      <p className="text-sm text-gray-600">
+                        Patient:
+                        {page.patientName}
                       </p>
+                      <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <MessageSquare className="h-3 w-3" />
+                          {page.reflectionResponseCount}
+                          {' '}
+                          reflection
+                          {page.reflectionResponseCount !== 1 ? 's' : ''}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <FileText className="h-3 w-3" />
+                          {page.surveyResponseCount}
+                          {' '}
+                          survey
+                          {page.surveyResponseCount !== 1 ? 's' : ''}
+                        </span>
+                        {page.lastResponseAt && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Last:
+                            {' '}
+                            {new Date(page.lastResponseAt).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                  {/* Progress */}
-                  <div className="text-right">
-                    <div className="mb-1 flex items-center gap-2">
-                      <div className="h-2 w-32 overflow-hidden rounded-full bg-gray-200">
-                        <div
-                          className="h-full bg-indigo-600 transition-all"
-                          style={{
-                            width: `${response.totalPages > 0 ? (response.completedPages / response.totalPages) * 100 : 0}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium text-gray-700">
-                        {response.totalPages > 0
-                          ? Math.round((response.completedPages / response.totalPages) * 100)
-                          : 0}
-                        %
-                      </span>
-                    </div>
-                    {response.lastResponseAt && (
-                      <p className="text-xs text-gray-500">
-                        Last response:
-                        {' '}
-                        {new Date(response.lastResponseAt).toLocaleDateString()}
-                      </p>
-                    )}
+                <div className="flex items-center gap-2">
+                  <div className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
+                    {page.totalResponses}
+                    {' '}
+                    responses
                   </div>
-
-                  {/* View Button */}
                   <Button
-                    variant="secondary"
+                    variant="primary"
                     size="sm"
                     onClick={() => {
-                      window.location.href = `/therapist/responses/${response.patientId}`;
+                      window.location.href = `/therapist/responses/${page.pageId}`;
                     }}
                   >
                     View Responses
@@ -193,8 +187,64 @@ export default function TherapistResponsesPage() {
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Pages without Responses */}
+      {pagesWithoutResponses.length > 0 && (
+        <div className="rounded-lg border border-gray-200 bg-white">
+          <div className="border-b border-gray-200 px-6 py-4">
+            <h2 className="text-lg font-semibold text-gray-900">Awaiting Responses</h2>
+            <p className="text-sm text-gray-600">Published pages with no responses yet</p>
+          </div>
+
+          <div className="divide-y divide-gray-200">
+            {pagesWithoutResponses.map(page => (
+              <div
+                key={page.pageId}
+                className="flex items-center justify-between p-6 opacity-60"
+              >
+                <div className="flex-1">
+                  <div className="flex items-start">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+                      <FileText className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="font-medium text-gray-700">{page.pageTitle}</h3>
+                      <p className="text-sm text-gray-500">
+                        Patient:
+                        {page.patientName}
+                      </p>
+                      {page.publishedAt && (
+                        <p className="mt-1 text-xs text-gray-400">
+                          Published:
+                          {' '}
+                          {new Date(page.publishedAt).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                  No responses
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {pages.length === 0 && (
+        <div className="rounded-lg border border-gray-200 bg-white py-16 text-center">
+          <FileText className="mx-auto h-12 w-12 text-gray-400" />
+          <p className="mt-2 text-sm text-gray-500">No published story pages yet</p>
+          <p className="mt-1 text-xs text-gray-400">
+            Create and publish story pages to start collecting patient responses
+          </p>
+        </div>
+      )}
     </div>
   );
 }
