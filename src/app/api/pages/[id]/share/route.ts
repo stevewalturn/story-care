@@ -1,175 +1,276 @@
 /**
  * Share Story Page API
  * Generate and manage time-limited shareable links for story pages
+ * Supports multiple concurrent share links per page
  */
 
 import type { NextRequest } from 'next/server';
 import { randomBytes } from 'node:crypto';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { storyPagesSchema } from '@/models/Schema';
-import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
+import { verifyIdToken } from '@/libs/FirebaseAdmin';
+import { pageShareLinks, storyPages, users } from '@/models/Schema';
+
+type RouteContext = {
+  params: Promise<{ id: string }>;
+};
 
 /**
  * POST /api/pages/[id]/share
  * Generate a time-limited shareable link
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(request: NextRequest, context: RouteContext) {
   try {
-    const { id } = await params;
-    const user = await requireAuth(request);
+    // Verify authentication
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    // Only therapists and admins can create share links
-    if (user.role === 'patient') {
+    const token = authHeader.substring(7);
+    const decodedToken = await verifyIdToken(token);
+
+    // Get current user (therapist)
+    const [therapist] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.firebaseUid, decodedToken.uid))
+      .limit(1);
+
+    if (!therapist) {
       return NextResponse.json(
-        { error: 'Forbidden: Patients cannot create share links' },
-        { status: 403 },
+        { error: 'User not found' },
+        { status: 404 },
       );
     }
 
+    const { id: pageId } = await context.params;
     const body = await request.json();
-    const { expiryDuration } = body as { expiryDuration: '15min' | '1hour' | '2hours' };
+    const { expiryMinutes = 60 } = body; // Default 60 minutes
 
-    // Validate expiry duration
-    if (!['15min', '1hour', '2hours'].includes(expiryDuration)) {
+    // Validate expiry minutes
+    if (typeof expiryMinutes !== 'number' || expiryMinutes < 1 || expiryMinutes > 10080) {
+      // Max 7 days (10080 minutes)
       return NextResponse.json(
-        { error: 'Invalid expiry duration. Must be 15min, 1hour, or 2hours' },
+        { error: 'Invalid expiry duration. Must be between 1 and 10080 minutes' },
         { status: 400 },
       );
     }
 
-    // Verify page exists and user has access
+    // Verify page exists and belongs to therapist
     const [page] = await db
       .select()
-      .from(storyPagesSchema)
-      .where(eq(storyPagesSchema.id, id))
+      .from(storyPages)
+      .where(eq(storyPages.id, pageId))
       .limit(1);
 
     if (!page) {
       return NextResponse.json({ error: 'Page not found' }, { status: 404 });
     }
 
-    // Check if user created this page or is admin
-    if (page.createdByTherapistId !== user.dbUserId && user.role !== 'super_admin') {
+    if (page.createdByTherapistId !== therapist.id) {
       return NextResponse.json(
-        { error: 'Forbidden: You do not have access to this page' },
+        { error: 'You do not have permission to share this page' },
         { status: 403 },
       );
     }
 
-    // Generate unique share token
+    // Generate unique token
     const shareToken = randomBytes(32).toString('hex');
 
-    // Calculate expiry timestamp
-    const now = new Date();
-    let expiresAt: Date;
+    // Calculate expiration time
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + expiryMinutes);
 
-    switch (expiryDuration) {
-      case '15min':
-        expiresAt = new Date(now.getTime() + 15 * 60 * 1000);
-        break;
-      case '1hour':
-        expiresAt = new Date(now.getTime() + 60 * 60 * 1000);
-        break;
-      case '2hours':
-        expiresAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-        break;
-      default:
-        expiresAt = new Date(now.getTime() + 60 * 60 * 1000); // Default 1 hour
-    }
-
-    // Update page with share token
-    await db
-      .update(storyPagesSchema)
-      .set({
-        shareToken,
-        shareExpiresAt: expiresAt,
-        shareExpiryDuration: expiryDuration,
-        isShareable: true,
-        updatedAt: new Date(),
+    // Create share link
+    const [shareLink] = await db
+      .insert(pageShareLinks)
+      .values({
+        pageId,
+        token: shareToken,
+        expiresAt,
+        expiryDurationMinutes: expiryMinutes,
+        createdByTherapistId: therapist.id,
+        isActive: true,
+        accessCount: 0,
       })
-      .where(eq(storyPagesSchema.id, id));
+      .returning();
 
-    // Build shareable URL
+    // Generate full share URL
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const shareUrl = `${baseUrl}/share/${shareToken}`;
 
     return NextResponse.json(
       {
         message: 'Share link generated successfully',
-        shareUrl,
-        shareToken,
-        expiresAt: expiresAt.toISOString(),
-        expiryDuration,
+        shareLink: {
+          ...shareLink,
+          shareUrl,
+        },
       },
-      { status: 200 },
+      { status: 201 },
     );
   } catch (error) {
-    console.error('Error generating share link:', error);
-    return handleAuthError(error);
+    console.error('Error creating share link:', error);
+    return NextResponse.json(
+      { error: 'Failed to create share link' },
+      { status: 500 },
+    );
   }
 }
 
 /**
- * DELETE /api/pages/[id]/share
- * Revoke/invalidate a shareable link
+ * GET /api/pages/[id]/share
+ * Get all share links for a page
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
-    const { id } = await params;
-    const user = await requireAuth(request);
+    // Verify authentication
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    // Only therapists and admins can revoke share links
-    if (user.role === 'patient') {
+    const token = authHeader.substring(7);
+    const decodedToken = await verifyIdToken(token);
+
+    // Get current user (therapist)
+    const [therapist] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.firebaseUid, decodedToken.uid))
+      .limit(1);
+
+    if (!therapist) {
       return NextResponse.json(
-        { error: 'Forbidden: Patients cannot revoke share links' },
-        { status: 403 },
+        { error: 'User not found' },
+        { status: 404 },
       );
     }
 
-    // Verify page exists and user has access
+    const { id: pageId } = await context.params;
+
+    // Verify page exists and belongs to therapist
     const [page] = await db
       .select()
-      .from(storyPagesSchema)
-      .where(eq(storyPagesSchema.id, id))
+      .from(storyPages)
+      .where(eq(storyPages.id, pageId))
       .limit(1);
 
     if (!page) {
       return NextResponse.json({ error: 'Page not found' }, { status: 404 });
     }
 
-    // Check if user created this page or is admin
-    if (page.createdByTherapistId !== user.dbUserId && user.role !== 'super_admin') {
+    if (page.createdByTherapistId !== therapist.id) {
       return NextResponse.json(
-        { error: 'Forbidden: You do not have access to this page' },
+        { error: 'You do not have permission to view share links for this page' },
         { status: 403 },
       );
     }
 
-    // Clear share token and expiry
+    // Get all active share links
+    const shareLinks = await db
+      .select()
+      .from(pageShareLinks)
+      .where(
+        and(
+          eq(pageShareLinks.pageId, pageId),
+          eq(pageShareLinks.isActive, true),
+        ),
+      )
+      .orderBy(pageShareLinks.createdAt);
+
+    // Generate share URLs and check expiration
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const now = new Date();
+    const shareLinksWithUrls = shareLinks.map(link => ({
+      ...link,
+      shareUrl: `${baseUrl}/share/${link.token}`,
+      isExpired: new Date(link.expiresAt) < now,
+    }));
+
+    return NextResponse.json({ shareLinks: shareLinksWithUrls });
+  } catch (error) {
+    console.error('Error fetching share links:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch share links' },
+      { status: 500 },
+    );
+  }
+}
+
+/**
+ * DELETE /api/pages/[id]/share
+ * Revoke all share links for a page
+ */
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  try {
+    // Verify authentication
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    const decodedToken = await verifyIdToken(token);
+
+    // Get current user (therapist)
+    const [therapist] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.firebaseUid, decodedToken.uid))
+      .limit(1);
+
+    if (!therapist) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 },
+      );
+    }
+
+    const { id: pageId } = await context.params;
+
+    // Verify page exists and belongs to therapist
+    const [page] = await db
+      .select()
+      .from(storyPages)
+      .where(eq(storyPages.id, pageId))
+      .limit(1);
+
+    if (!page) {
+      return NextResponse.json({ error: 'Page not found' }, { status: 404 });
+    }
+
+    if (page.createdByTherapistId !== therapist.id) {
+      return NextResponse.json(
+        { error: 'You do not have permission to revoke share links for this page' },
+        { status: 403 },
+      );
+    }
+
+    // Revoke all active share links
     await db
-      .update(storyPagesSchema)
+      .update(pageShareLinks)
       .set({
-        shareToken: null,
-        shareExpiresAt: null,
-        shareExpiryDuration: null,
-        isShareable: false,
-        updatedAt: new Date(),
+        isActive: false,
+        revokedAt: new Date(),
       })
-      .where(eq(storyPagesSchema.id, id));
+      .where(
+        and(
+          eq(pageShareLinks.pageId, pageId),
+          eq(pageShareLinks.isActive, true),
+        ),
+      );
 
     return NextResponse.json({
-      message: 'Share link revoked successfully',
+      message: 'All share links revoked successfully',
     });
   } catch (error) {
-    console.error('Error revoking share link:', error);
-    return handleAuthError(error);
+    console.error('Error revoking share links:', error);
+    return NextResponse.json(
+      { error: 'Failed to revoke share links' },
+      { status: 500 },
+    );
   }
 }
