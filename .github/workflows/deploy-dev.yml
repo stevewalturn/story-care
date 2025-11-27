@@ -94,7 +94,7 @@ jobs:
             --min-instances=0
             --port=8080
             --add-cloudsql-instances=storycare-478114:us-central1:storycare-dev
-            --set-env-vars=NODE_ENV=development,NEXT_TELEMETRY_DISABLED=1,PORT=8080
+            --set-env-vars=NODE_ENV=development,NEXT_TELEMETRY_DISABLED=1
             --update-secrets=DATABASE_URL=DATABASE_URL_DEV:latest
 
       - name: Show deployment URL
