@@ -65,7 +65,7 @@ jobs:
 
       - name: Build Docker image with env file
         run: |
-          # Build with all env vars from .env.build file
+          # Build with env file
           docker build \
             --build-arg ENV_FILE="$(cat .env.build)" \
             -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \

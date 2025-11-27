@@ -42,20 +42,13 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
 # This allows passing all env vars at once from GitHub Actions
 ARG ENV_FILE
 
-# Write ENV_FILE to .env.build and source it properly
-# This handles multi-line values like private keys
-# Skip migrations during build - Cloud SQL is not accessible during Docker build
+# Write ENV_FILE to .env for Next.js to read during build
+# Don't source it with shell to avoid parsing issues with multi-line keys
+# Next.js will automatically load .env files during build
 RUN if [ -n "$ENV_FILE" ]; then \
-      echo "$ENV_FILE" > /app/.env.build; \
+      echo "$ENV_FILE" > /app/.env; \
     fi && \
-    if [ -f /app/.env.build ]; then \
-      set -a && \
-      . /app/.env.build && \
-      set +a && \
-      npm run build:next; \
-    else \
-      npm run build:next; \
-    fi
+    npm run build:next
 
 # ========================================
 # Stage 3: Production Runtime
