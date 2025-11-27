@@ -1,0 +1,115 @@
+name: Deploy to Cloud Run (Dev)
+
+# Trigger on push to dev or feature branches
+on:
+  push:
+    branches:
+      - dev
+      - develop
+      - 'feature/**'
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  SERVICE_NAME: storycare-app-dev
+  REGION: us-central1
+
+jobs:
+  deploy:
+    name: Build and Deploy to Cloud Run (Development)
+    runs-on: ubuntu-latest
+    environment: development # GitHub environment for dev
+
+    # Required for Workload Identity Federation
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Load environment variables from ENV_FILE_DEV secret
+      - name: Create .env file from secret
+        run: |
+          echo "${{ secrets.ENV_FILE_DEV }}" > .env.build
+
+      # Option 1: Authenticate via Workload Identity Federation (Recommended)
+      - name: Authenticate to Google Cloud (Workload Identity)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      # Option 2: Authenticate via Service Account Key (Fallback)
+      # Uncomment if WIF is not set up yet
+      # - name: Authenticate to Google Cloud (Service Account)
+      #   uses: google-github-actions/auth@v2
+      #   with:
+      #     credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker
+
+      - name: Build Docker image with env file
+        run: |
+          # Build with all env vars from .env.build file
+          docker build \
+            --build-arg ENV_FILE="$(cat .env.build)" \
+            -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:dev-latest \
+            .
+
+      - name: Push Docker image to GCR
+        run: |
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:dev-latest
+
+      - name: Deploy to Cloud Run (Dev)
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          flags: |
+            --platform=managed
+            --allow-unauthenticated
+            --memory=2Gi
+            --cpu=1
+            --timeout=300
+            --max-instances=5
+            --min-instances=0
+            --port=8080
+            --set-env-vars=NODE_ENV=development,NEXT_TELEMETRY_DISABLED=1,PORT=8080
+            --update-secrets=DATABASE_URL=DATABASE_URL_DEV:latest,FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID_DEV:latest,FIREBASE_CLIENT_EMAIL=FIREBASE_CLIENT_EMAIL_DEV:latest,FIREBASE_PRIVATE_KEY=FIREBASE_PRIVATE_KEY_DEV:latest,GCS_PROJECT_ID=GCS_PROJECT_ID:latest,GCS_CLIENT_EMAIL=GCS_CLIENT_EMAIL:latest,GCS_PRIVATE_KEY=GCS_PRIVATE_KEY:latest,GCS_BUCKET_NAME=GCS_BUCKET_NAME_DEV:latest,DEEPGRAM_API_KEY=DEEPGRAM_API_KEY:latest,SUNO_API_KEY=SUNO_API_KEY:latest,ATLASCLOUD_API_KEY=ATLASCLOUD_API_KEY:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,GOOGLE_VERTEX_PROJECT_ID=GOOGLE_VERTEX_PROJECT_ID:latest,GOOGLE_VERTEX_LOCATION=GOOGLE_VERTEX_LOCATION:latest,STABILITY_API_KEY=STABILITY_API_KEY:latest,FLUX_API_KEY=FLUX_API_KEY:latest,REPLICATE_API_TOKEN=REPLICATE_API_TOKEN:latest,ARCJET_KEY=ARCJET_KEY:latest,NEXT_PUBLIC_FIREBASE_API_KEY=NEXT_PUBLIC_FIREBASE_API_KEY_DEV:latest,NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN_DEV:latest,NEXT_PUBLIC_FIREBASE_PROJECT_ID=NEXT_PUBLIC_FIREBASE_PROJECT_ID_DEV:latest,NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET_DEV:latest,NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID_DEV:latest,NEXT_PUBLIC_FIREBASE_APP_ID=NEXT_PUBLIC_FIREBASE_APP_ID_DEV:latest,NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID_DEV:latest,NEXT_PUBLIC_APP_URL=NEXT_PUBLIC_APP_URL_DEV:latest,NEXT_PUBLIC_SENTRY_DSN=NEXT_PUBLIC_SENTRY_DSN_DEV:latest,NEXT_PUBLIC_POSTHOG_KEY=NEXT_PUBLIC_POSTHOG_KEY_DEV:latest,NEXT_PUBLIC_POSTHOG_HOST=NEXT_PUBLIC_POSTHOG_HOST:latest,NEXT_PUBLIC_BETTER_STACK_SOURCE_TOKEN=NEXT_PUBLIC_BETTER_STACK_SOURCE_TOKEN:latest
+
+      - name: Show deployment URL
+        run: |
+          echo "🚀 Deployed to Development: ${{ steps.deploy.outputs.url }}"
+
+      - name: Health check
+        run: |
+          echo "⏳ Waiting for service to be ready..."
+          sleep 15
+          echo "🏥 Running health check..."
+          curl -f ${{ steps.deploy.outputs.url }}/api/health || exit 1
+          echo "✅ Health check passed!"
+
+      - name: Deployment summary
+        run: |
+          echo "=========================================="
+          echo "🎉 Development Deployment Successful!"
+          echo "=========================================="
+          echo ""
+          echo "Service: ${{ env.SERVICE_NAME }}"
+          echo "Region: ${{ env.REGION }}"
+          echo "URL: ${{ steps.deploy.outputs.url }}"
+          echo "Image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          echo ""
+          echo "=========================================="

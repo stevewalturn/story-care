@@ -38,42 +38,24 @@ RUN npm ci --ignore-scripts
 ENV NEXT_TELEMETRY_DISABLED=1 \
     NODE_ENV=production
 
-# Build arguments for build-time environment variables
-# These are needed for Next.js build process
-ARG NEXT_PUBLIC_FIREBASE_API_KEY
-ARG NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-ARG NEXT_PUBLIC_FIREBASE_PROJECT_ID
-ARG NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-ARG NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-ARG NEXT_PUBLIC_FIREBASE_APP_ID
-ARG NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
-ARG NEXT_PUBLIC_APP_URL
-ARG NEXT_PUBLIC_SENTRY_DSN
-ARG NEXT_PUBLIC_POSTHOG_KEY
-ARG NEXT_PUBLIC_POSTHOG_HOST
-ARG NEXT_PUBLIC_BETTER_STACK_SOURCE_TOKEN
-ARG DATABASE_URL
+# Build argument for entire .env file content
+# This allows passing all env vars at once from GitHub Actions
+ARG ENV_FILE
 
-# Pass build args as environment variables for Next.js build
-ENV NEXT_PUBLIC_FIREBASE_API_KEY=$NEXT_PUBLIC_FIREBASE_API_KEY \
-    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=$NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN \
-    NEXT_PUBLIC_FIREBASE_PROJECT_ID=$NEXT_PUBLIC_FIREBASE_PROJECT_ID \
-    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=$NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET \
-    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=$NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID \
-    NEXT_PUBLIC_FIREBASE_APP_ID=$NEXT_PUBLIC_FIREBASE_APP_ID \
-    NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=$NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID \
-    NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
-    NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN \
-    NEXT_PUBLIC_POSTHOG_KEY=$NEXT_PUBLIC_POSTHOG_KEY \
-    NEXT_PUBLIC_POSTHOG_HOST=$NEXT_PUBLIC_POSTHOG_HOST \
-    NEXT_PUBLIC_BETTER_STACK_SOURCE_TOKEN=$NEXT_PUBLIC_BETTER_STACK_SOURCE_TOKEN \
-    DATABASE_URL=$DATABASE_URL
+# Create a script to load environment variables and run build
+RUN echo '#!/bin/sh' > /tmp/build.sh && \
+    echo 'if [ -n "$ENV_FILE" ]; then' >> /tmp/build.sh && \
+    echo '  echo "$ENV_FILE" > /app/.env' >> /tmp/build.sh && \
+    echo '  set -a' >> /tmp/build.sh && \
+    echo '  . /app/.env' >> /tmp/build.sh && \
+    echo '  set +a' >> /tmp/build.sh && \
+    echo 'fi' >> /tmp/build.sh && \
+    echo 'npm run db:migrate' >> /tmp/build.sh && \
+    echo 'npm run build:next' >> /tmp/build.sh && \
+    chmod +x /tmp/build.sh
 
-# Run database migrations before build
-RUN npm run db:migrate
-
-# Build Next.js application
-RUN npm run build:next
+# Run the build script with environment variables
+RUN ENV_FILE="$ENV_FILE" /tmp/build.sh
 
 # ========================================
 # Stage 3: Production Runtime
