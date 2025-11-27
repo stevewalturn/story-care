@@ -26,6 +26,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for proper git operations
+
+      - name: Debug - List checked out files
+        run: |
+          echo "Checking if DeleteConfirmationDialog exists:"
+          ls -la src/components/ui/DeleteConfirmationDialog.tsx || echo "File NOT found!"
+          echo "Listing src/components/ui/:"
+          ls -la src/components/ui/ | head -20
 
       # Load environment variables from ENV_FILE_DEV secret
       - name: Create .env file from secret

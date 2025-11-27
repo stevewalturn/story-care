@@ -92,8 +92,7 @@ local.db
 .lefthook
 .commitlintrc.json
 .editorconfig
-.eslintrc*
-.prettierrc*
-tsconfig.json
+# Don't exclude tsconfig.json - Next.js needs it!
+# tsconfig.json
 vitest.config.*
 playwright.config.*
