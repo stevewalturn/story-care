@@ -34,25 +34,25 @@ function SignInForm() {
   // Mock accounts for testing
   const mockAccounts = [
     {
-      email: 'zharfan@walturn.com',
+      email: 'zharfan@entryway.health',
       password: 'securepassword',
       role: 'Super Admin',
       color: 'bg-purple-100 text-purple-700 border-purple-300',
     },
     {
-      email: 'amri@walturn.com',
+      email: 'zharfan@entryway.health',
       password: 'securepassword',
       role: 'Org Admin',
       color: 'bg-blue-100 text-blue-700 border-blue-300',
     },
     {
-      email: 'zharfan.akbar104@gmail.com',
+      email: 'akbarandriawanakak@gmail.com',
       password: 'securepassword',
       role: 'Therapist',
       color: 'bg-green-100 text-green-700 border-green-300',
     },
     {
-      email: 'akbar129031@gmail.com',
+      email: 'zharfan@student.undip.ac.id',
       password: 'securepassword',
       role: 'Patient',
       color: 'bg-orange-100 text-orange-700 border-orange-300',

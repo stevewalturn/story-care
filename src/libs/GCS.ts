@@ -1,10 +1,14 @@
 import { Storage } from '@google-cloud/storage';
 
-// Initialize GCS client
-// Cloud Run: Uses default compute service account automatically
-// Local: Uses Application Default Credentials (gcloud auth application-default login)
+// Initialize GCS client with explicit credentials for signing
+// Cloud Run: Uses service account credentials
+// Local: Uses service account key from environment variables
 const storage = new Storage({
   projectId: process.env.GCS_PROJECT_ID,
+  credentials: {
+    client_email: process.env.GCS_CLIENT_EMAIL,
+    private_key: process.env.GCS_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  },
 });
 
 const bucketName = process.env.GCS_BUCKET_NAME || 'storycare-media';
