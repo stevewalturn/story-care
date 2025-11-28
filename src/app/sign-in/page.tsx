@@ -15,6 +15,9 @@ function SignInForm() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [showResendEmail, setShowResendEmail] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [unverifiedUser, setUnverifiedUser] = useState<any>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -61,6 +64,32 @@ function SignInForm() {
     setPassword(mockPassword);
     setError('');
     setSuccessMessage('');
+    setShowResendEmail(false);
+  };
+
+  const handleResendVerificationEmail = async () => {
+    if (!unverifiedUser)
+      return;
+
+    setResendLoading(true);
+    setError('');
+
+    try {
+      const { sendVerificationEmail } = await import('@/libs/Firebase');
+      const { error: sendError } = await sendVerificationEmail(unverifiedUser);
+
+      if (sendError) {
+        setError(`Failed to send verification email: ${sendError}`);
+      } else {
+        setSuccessMessage('Verification email sent! Please check your inbox and spam folder.');
+        setShowResendEmail(false);
+        setError('');
+      }
+    } catch (err) {
+      setError('Failed to send verification email. Please try again.');
+    } finally {
+      setResendLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,6 +106,8 @@ function SignInForm() {
     } else if (user) {
       // Check if email is verified
       if (!user.emailVerified) {
+        setUnverifiedUser(user);
+        setShowResendEmail(true);
         setError(
           'Please verify your email before signing in. Check your inbox for the verification link.',
         );
@@ -131,8 +162,20 @@ function SignInForm() {
           )}
 
           {error && (
-            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              {error}
+            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
+              <p className="text-sm text-red-700">{error}</p>
+              {showResendEmail && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleResendVerificationEmail}
+                  disabled={resendLoading}
+                  className="mt-3 w-full border-red-300 text-red-700 hover:bg-red-100"
+                >
+                  {resendLoading ? 'Sending...' : 'Resend Verification Email'}
+                </Button>
+              )}
             </div>
           )}
 
