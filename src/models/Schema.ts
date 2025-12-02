@@ -113,6 +113,12 @@ export const auditActionEnum = pgEnum('audit_action', [
   'logout',
 ]);
 export const chatRoleEnum = pgEnum('chat_role', ['user', 'assistant', 'system']);
+export const musicGenerationStatusEnum = pgEnum('music_generation_status', [
+  'pending',
+  'processing',
+  'completed',
+  'failed',
+]);
 
 // Treatment Module System Enums
 export const therapeuticDomainEnum = pgEnum('therapeutic_domain', [
@@ -467,6 +473,59 @@ export const mediaLibrarySchema: any = pgTable('media_library', {
 });
 
 // ============================================================================
+// MUSIC GENERATION TASKS
+// ============================================================================
+
+export const musicGenerationTasksSchema: any = pgTable('music_generation_tasks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  taskId: varchar('task_id', { length: 255 }).notNull().unique(), // music_123_abc format
+  sunoTaskId: varchar('suno_task_id', { length: 255 }), // Suno's task ID
+
+  // Status tracking
+  status: musicGenerationStatusEnum('status').notNull().default('pending'),
+  progress: integer('progress').notNull().default(0), // 0-100
+
+  // Request parameters
+  prompt: text('prompt'),
+  style: varchar('style', { length: 1000 }),
+  title: varchar('title', { length: 100 }),
+  model: varchar('model', { length: 50 }).notNull().default('V4_5'),
+  customMode: boolean('custom_mode').notNull().default(false),
+  instrumental: boolean('instrumental').notNull().default(true),
+
+  // Advanced V5 parameters
+  personaId: varchar('persona_id', { length: 255 }),
+  negativeTags: text('negative_tags'),
+  vocalGender: varchar('vocal_gender', { length: 1 }), // 'm' or 'f'
+  styleWeight: decimal('style_weight', { precision: 3, scale: 2 }), // 0.00-1.00
+  weirdnessConstraint: decimal('weirdness_constraint', { precision: 3, scale: 2 }),
+  audioWeight: decimal('audio_weight', { precision: 3, scale: 2 }),
+
+  // Result
+  mediaId: uuid('media_id').references(() => mediaLibrarySchema.id),
+  audioUrl: text('audio_url'), // Suno's audio URL
+  duration: integer('duration'), // Duration in seconds
+
+  // Error handling
+  error: text('error'),
+  retryCount: integer('retry_count').notNull().default(0),
+
+  // Relationships
+  patientId: uuid('patient_id')
+    .notNull()
+    .references(() => usersSchema.id),
+  sessionId: uuid('session_id').references(() => sessionsSchema.id),
+  createdByTherapistId: uuid('created_by_therapist_id')
+    .notNull()
+    .references(() => usersSchema.id),
+
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  completedAt: timestamp('completed_at'),
+});
+
+// ============================================================================
 // QUOTES & NOTES
 // ============================================================================
 
@@ -697,6 +756,10 @@ export const moduleAiPromptsSchema = pgTable('module_ai_prompts', {
   icon: varchar('icon', { length: 50 }).default('sparkles'), // Icon name for UI (e.g., 'sparkles', 'target', 'lightbulb')
   outputType: varchar('output_type', { length: 50 }).default('text'), // 'text' or 'json'
   jsonSchema: jsonb('json_schema'), // JSON schema definition for structured outputs
+
+  // Building Blocks Support (NEW)
+  blocks: jsonb('blocks'), // Array of BlockInstance[] for form-based prompt builder
+  useAdvancedMode: boolean('use_advanced_mode').default(false), // True for JSON editor, false for building blocks
 
   // Scope & Ownership (same as treatment_modules)
   scope: templateScopeEnum('scope').default('system').notNull(),
@@ -1163,6 +1226,7 @@ export const speakers = speakersSchema;
 export const utterances = utterancesSchema;
 export const aiChatMessages = aiChatMessagesSchema;
 export const mediaLibrary = mediaLibrarySchema;
+export const musicGenerationTasks = musicGenerationTasksSchema;
 export const quotes = quotesSchema;
 export const notes = notesSchema;
 export const surveyTemplates = surveyTemplatesSchema;
@@ -1216,6 +1280,9 @@ export type NewAiChatMessage = typeof aiChatMessagesSchema.$inferInsert;
 
 export type MediaLibrary = typeof mediaLibrarySchema.$inferSelect;
 export type NewMediaLibrary = typeof mediaLibrarySchema.$inferInsert;
+
+export type MusicGenerationTask = typeof musicGenerationTasksSchema.$inferSelect;
+export type NewMusicGenerationTask = typeof musicGenerationTasksSchema.$inferInsert;
 
 export type Quote = typeof quotesSchema.$inferSelect;
 export type NewQuote = typeof quotesSchema.$inferInsert;

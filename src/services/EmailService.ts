@@ -5,13 +5,16 @@
 
 import { and, desc, eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
+import { getPauboxClient, isPauboxConfigured } from '@/libs/Paubox';
 import { emailNotificationsSchema, platformSettingsSchema } from '@/models/Schema';
+import type { PauboxMessage } from '@/types/Paubox';
 
 export type NotificationType
   = | 'story_page_published'
     | 'module_completed'
     | 'session_reminder'
-    | 'survey_reminder';
+    | 'survey_reminder'
+    | 'therapist_invitation';
 
 export type NotificationStatus = 'pending' | 'sent' | 'failed' | 'bounced' | 'opened' | 'clicked';
 
@@ -56,12 +59,64 @@ export async function sendStoryPageNotification(params: {
     throw new Error('Failed to create email notification record');
   }
 
-  // TODO: Integrate with SendGrid API
-  // For now, just mark as pending. Actual sending will be implemented in Phase 6
-  // await sendViaSendGrid(params.patientEmail, subject, bodyHtml, bodyText);
+  // Get email settings from platform configuration
+  const emailSettings = await getEmailSettings();
 
-  // Mark as sent (placeholder until SendGrid integration)
-  await updateEmailStatus(notification.id, 'sent', new Date());
+  if (!emailSettings.enabled) {
+    console.log('Email notifications are disabled in platform settings');
+    await updateEmailStatus(notification.id, 'failed', undefined, 'Email notifications disabled');
+    return notification;
+  }
+
+  // Send email via Paubox
+  try {
+    const paubox = getPauboxClient();
+
+    const message: PauboxMessage = {
+      recipients: [params.patientEmail],
+      headers: {
+        subject,
+        from: `${emailSettings.fromName} <${emailSettings.fromAddress}>`,
+      },
+      content: {
+        'text/html': bodyHtml,
+        'text/plain': bodyText,
+      },
+    };
+
+    const result = await paubox.sendEmail(message, {
+      enableOpenTracking: true,
+      enableLinkTracking: true,
+    });
+
+    if (result.success && result.sourceTrackingId) {
+      // Store Paubox tracking ID and mark as sent
+      await db
+        .update(emailNotificationsSchema)
+        .set({
+          status: 'sent',
+          sentAt: new Date(),
+          externalId: result.sourceTrackingId,
+        })
+        .where(eq(emailNotificationsSchema.id, notification.id));
+    } else {
+      // Email send failed
+      await updateEmailStatus(
+        notification.id,
+        'failed',
+        undefined,
+        result.error || 'Unknown error',
+      );
+    }
+  } catch (error) {
+    console.error('Failed to send email via Paubox:', error);
+    await updateEmailStatus(
+      notification.id,
+      'failed',
+      undefined,
+      error instanceof Error ? error.message : 'Failed to send email',
+    );
+  }
 
   return notification;
 }
@@ -102,8 +157,362 @@ export async function sendModuleCompletionNotification(params: {
     throw new Error('Failed to create email notification record');
   }
 
-  // TODO: Integrate with SendGrid API
-  await updateEmailStatus(notification.id, 'sent', new Date());
+  // Get email settings from platform configuration
+  const emailSettings = await getEmailSettings();
+
+  if (!emailSettings.enabled) {
+    console.log('Email notifications are disabled in platform settings');
+    await updateEmailStatus(notification.id, 'failed', undefined, 'Email notifications disabled');
+    return notification;
+  }
+
+  // Send email via Paubox
+  try {
+    const paubox = getPauboxClient();
+
+    const message: PauboxMessage = {
+      recipients: [params.patientEmail],
+      headers: {
+        subject,
+        from: `${emailSettings.fromName} <${emailSettings.fromAddress}>`,
+      },
+      content: {
+        'text/html': bodyHtml,
+        'text/plain': bodyText,
+      },
+    };
+
+    const result = await paubox.sendEmail(message, {
+      enableOpenTracking: true,
+      enableLinkTracking: true,
+    });
+
+    if (result.success && result.sourceTrackingId) {
+      // Store Paubox tracking ID and mark as sent
+      await db
+        .update(emailNotificationsSchema)
+        .set({
+          status: 'sent',
+          sentAt: new Date(),
+          externalId: result.sourceTrackingId,
+        })
+        .where(eq(emailNotificationsSchema.id, notification.id));
+    } else {
+      // Email send failed
+      await updateEmailStatus(
+        notification.id,
+        'failed',
+        undefined,
+        result.error || 'Unknown error',
+      );
+    }
+  } catch (error) {
+    console.error('Failed to send email via Paubox:', error);
+    await updateEmailStatus(
+      notification.id,
+      'failed',
+      undefined,
+      error instanceof Error ? error.message : 'Failed to send email',
+    );
+  }
+
+  return notification;
+}
+
+/**
+ * Send therapist invitation email
+ */
+export async function sendTherapistInvitationEmail(params: {
+  therapistEmail: string;
+  therapistName: string;
+  therapistUserId: string;
+  inviterName: string;
+  organizationName: string;
+  setupAccountUrl: string;
+}) {
+  const { subject, bodyText, bodyHtml } = generateTherapistInvitationEmailContent({
+    therapistName: params.therapistName,
+    inviterName: params.inviterName,
+    organizationName: params.organizationName,
+    setupAccountUrl: params.setupAccountUrl,
+  });
+
+  const [notification] = await db
+    .insert(emailNotificationsSchema)
+    .values({
+      notificationType: 'therapist_invitation',
+      recipientUserId: params.therapistUserId,
+      recipientEmail: params.therapistEmail,
+      subject,
+      bodyText,
+      bodyHtml,
+      status: 'pending',
+      createdAt: new Date(),
+    })
+    .returning();
+
+  if (!notification) {
+    throw new Error('Failed to create email notification record');
+  }
+
+  // Get email settings from platform configuration
+  const emailSettings = await getEmailSettings();
+
+  if (!emailSettings.enabled) {
+    console.log('Email notifications are disabled in platform settings');
+    await updateEmailStatus(notification.id, 'failed', undefined, 'Email notifications disabled');
+    return notification;
+  }
+
+  // Send email via Paubox
+  try {
+    const paubox = getPauboxClient();
+
+    const message: PauboxMessage = {
+      recipients: [params.therapistEmail],
+      headers: {
+        subject,
+        from: `${emailSettings.fromName} <${emailSettings.fromAddress}>`,
+      },
+      content: {
+        'text/html': bodyHtml,
+        'text/plain': bodyText,
+      },
+    };
+
+    const result = await paubox.sendEmail(message, {
+      enableOpenTracking: true,
+      enableLinkTracking: true,
+    });
+
+    if (result.success && result.sourceTrackingId) {
+      // Store Paubox tracking ID and mark as sent
+      await db
+        .update(emailNotificationsSchema)
+        .set({
+          status: 'sent',
+          sentAt: new Date(),
+          externalId: result.sourceTrackingId,
+        })
+        .where(eq(emailNotificationsSchema.id, notification.id));
+    } else {
+      // Email send failed
+      await updateEmailStatus(
+        notification.id,
+        'failed',
+        undefined,
+        result.error || 'Unknown error',
+      );
+    }
+  } catch (error) {
+    console.error('Failed to send email via Paubox:', error);
+    await updateEmailStatus(
+      notification.id,
+      'failed',
+      undefined,
+      error instanceof Error ? error.message : 'Failed to send email',
+    );
+  }
+
+  return notification;
+}
+
+/**
+ * Send session reminder email
+ */
+export async function sendSessionReminderEmail(params: {
+  patientEmail: string;
+  patientName: string;
+  patientUserId: string;
+  therapistName: string;
+  sessionDate: Date;
+  sessionId: string;
+  sessionNotes?: string;
+}) {
+  const { subject, bodyText, bodyHtml } = generateSessionReminderEmailContent({
+    patientName: params.patientName,
+    therapistName: params.therapistName,
+    sessionDate: params.sessionDate,
+    sessionNotes: params.sessionNotes,
+  });
+
+  const [notification] = await db
+    .insert(emailNotificationsSchema)
+    .values({
+      notificationType: 'session_reminder',
+      recipientUserId: params.patientUserId,
+      recipientEmail: params.patientEmail,
+      subject,
+      bodyText,
+      bodyHtml,
+      sessionId: params.sessionId,
+      status: 'pending',
+      createdAt: new Date(),
+    })
+    .returning();
+
+  if (!notification) {
+    throw new Error('Failed to create email notification record');
+  }
+
+  // Get email settings from platform configuration
+  const emailSettings = await getEmailSettings();
+
+  if (!emailSettings.enabled) {
+    console.log('Email notifications are disabled in platform settings');
+    await updateEmailStatus(notification.id, 'failed', undefined, 'Email notifications disabled');
+    return notification;
+  }
+
+  // Send email via Paubox
+  try {
+    const paubox = getPauboxClient();
+
+    const message: PauboxMessage = {
+      recipients: [params.patientEmail],
+      headers: {
+        subject,
+        from: `${emailSettings.fromName} <${emailSettings.fromAddress}>`,
+      },
+      content: {
+        'text/html': bodyHtml,
+        'text/plain': bodyText,
+      },
+    };
+
+    const result = await paubox.sendEmail(message, {
+      enableOpenTracking: true,
+      enableLinkTracking: true,
+    });
+
+    if (result.success && result.sourceTrackingId) {
+      // Store Paubox tracking ID and mark as sent
+      await db
+        .update(emailNotificationsSchema)
+        .set({
+          status: 'sent',
+          sentAt: new Date(),
+          externalId: result.sourceTrackingId,
+        })
+        .where(eq(emailNotificationsSchema.id, notification.id));
+    } else {
+      // Email send failed
+      await updateEmailStatus(
+        notification.id,
+        'failed',
+        undefined,
+        result.error || 'Unknown error',
+      );
+    }
+  } catch (error) {
+    console.error('Failed to send email via Paubox:', error);
+    await updateEmailStatus(
+      notification.id,
+      'failed',
+      undefined,
+      error instanceof Error ? error.message : 'Failed to send email',
+    );
+  }
+
+  return notification;
+}
+
+/**
+ * Send survey reminder email
+ */
+export async function sendSurveyReminderEmail(params: {
+  patientEmail: string;
+  patientName: string;
+  patientUserId: string;
+  surveyTitle: string;
+  surveyUrl: string;
+  storyPageId: string;
+  dueDate?: Date;
+}) {
+  const { subject, bodyText, bodyHtml } = generateSurveyReminderEmailContent({
+    patientName: params.patientName,
+    surveyTitle: params.surveyTitle,
+    surveyUrl: params.surveyUrl,
+    dueDate: params.dueDate,
+  });
+
+  const [notification] = await db
+    .insert(emailNotificationsSchema)
+    .values({
+      notificationType: 'survey_reminder',
+      recipientUserId: params.patientUserId,
+      recipientEmail: params.patientEmail,
+      subject,
+      bodyText,
+      bodyHtml,
+      storyPageId: params.storyPageId,
+      status: 'pending',
+      createdAt: new Date(),
+    })
+    .returning();
+
+  if (!notification) {
+    throw new Error('Failed to create email notification record');
+  }
+
+  // Get email settings from platform configuration
+  const emailSettings = await getEmailSettings();
+
+  if (!emailSettings.enabled) {
+    console.log('Email notifications are disabled in platform settings');
+    await updateEmailStatus(notification.id, 'failed', undefined, 'Email notifications disabled');
+    return notification;
+  }
+
+  // Send email via Paubox
+  try {
+    const paubox = getPauboxClient();
+
+    const message: PauboxMessage = {
+      recipients: [params.patientEmail],
+      headers: {
+        subject,
+        from: `${emailSettings.fromName} <${emailSettings.fromAddress}>`,
+      },
+      content: {
+        'text/html': bodyHtml,
+        'text/plain': bodyText,
+      },
+    };
+
+    const result = await paubox.sendEmail(message, {
+      enableOpenTracking: true,
+      enableLinkTracking: true,
+    });
+
+    if (result.success && result.sourceTrackingId) {
+      // Store Paubox tracking ID and mark as sent
+      await db
+        .update(emailNotificationsSchema)
+        .set({
+          status: 'sent',
+          sentAt: new Date(),
+          externalId: result.sourceTrackingId,
+        })
+        .where(eq(emailNotificationsSchema.id, notification.id));
+    } else {
+      // Email send failed
+      await updateEmailStatus(
+        notification.id,
+        'failed',
+        undefined,
+        result.error || 'Unknown error',
+      );
+    }
+  } catch (error) {
+    console.error('Failed to send email via Paubox:', error);
+    await updateEmailStatus(
+      notification.id,
+      'failed',
+      undefined,
+      error instanceof Error ? error.message : 'Failed to send email',
+    );
+  }
 
   return notification;
 }
@@ -294,13 +703,274 @@ The StoryCare Team
 }
 
 /**
+ * Generate therapist invitation email content
+ */
+function generateTherapistInvitationEmailContent(params: {
+  therapistName: string;
+  inviterName: string;
+  organizationName: string;
+  setupAccountUrl: string;
+}) {
+  const subject = `You're invited to join ${params.organizationName} on StoryCare`;
+
+  const bodyText = `
+Hi ${params.therapistName},
+
+${params.inviterName} has invited you to join ${params.organizationName} on StoryCare, a digital therapeutic platform that uses narrative therapy to help patients visualize and reframe their stories.
+
+To get started, please set up your account:
+${params.setupAccountUrl}
+
+Once your account is set up, you'll be able to:
+- Upload and manage therapy sessions
+- Analyze transcripts with AI assistance
+- Generate visual media for patients
+- Create personalized story pages
+- Monitor patient engagement
+
+If you have any questions, please don't hesitate to reach out.
+
+Best regards,
+The StoryCare Team
+  `.trim();
+
+  const bodyHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">Welcome to StoryCare</h1>
+  </div>
+
+  <div style="background: white; padding: 30px; border: 1px solid #E5E7EB; border-top: none; border-radius: 0 0 12px 12px;">
+    <p style="font-size: 16px; margin-bottom: 20px;">Hi <strong>${params.therapistName}</strong>,</p>
+
+    <p style="font-size: 16px; margin-bottom: 20px;">
+      <strong>${params.inviterName}</strong> has invited you to join <strong>${params.organizationName}</strong> on StoryCare,
+      a digital therapeutic platform that uses narrative therapy to help patients visualize and reframe their stories.
+    </p>
+
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${params.setupAccountUrl}" style="background: #4F46E5; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
+        Set Up Your Account
+      </a>
+    </div>
+
+    <p style="font-size: 16px; margin-bottom: 10px;"><strong>Once your account is set up, you'll be able to:</strong></p>
+    <ul style="font-size: 16px; color: #4B5563; line-height: 1.8;">
+      <li>Upload and manage therapy sessions</li>
+      <li>Analyze transcripts with AI assistance</li>
+      <li>Generate visual media for patients</li>
+      <li>Create personalized story pages</li>
+      <li>Monitor patient engagement</li>
+    </ul>
+
+    <p style="font-size: 16px; margin-top: 20px;">
+      If you have any questions, please don't hesitate to reach out.
+    </p>
+
+    <p style="font-size: 14px; color: #6B7280; margin-top: 30px; padding-top: 20px; border-top: 1px solid #E5E7EB;">
+      Best regards,<br>
+      The StoryCare Team
+    </p>
+  </div>
+
+  <div style="text-align: center; padding: 20px; font-size: 12px; color: #9CA3AF;">
+    <p>This invitation was sent by ${params.inviterName} on behalf of ${params.organizationName}.</p>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  return { subject, bodyText, bodyHtml };
+}
+
+/**
+ * Generate session reminder email content
+ */
+function generateSessionReminderEmailContent(params: {
+  patientName: string;
+  therapistName: string;
+  sessionDate: Date;
+  sessionNotes?: string;
+}) {
+  const dateStr = params.sessionDate.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  const timeStr = params.sessionDate.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
+  const subject = `Reminder: Session with ${params.therapistName} on ${dateStr}`;
+
+  const bodyText = `
+Hi ${params.patientName},
+
+This is a friendly reminder about your upcoming session with ${params.therapistName}.
+
+Date: ${dateStr}
+Time: ${timeStr}
+
+${params.sessionNotes ? `Notes: ${params.sessionNotes}\n\n` : ''}
+We look forward to seeing you!
+
+Best regards,
+The StoryCare Team
+  `.trim();
+
+  const bodyHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">📅 Session Reminder</h1>
+  </div>
+
+  <div style="background: white; padding: 30px; border: 1px solid #E5E7EB; border-top: none; border-radius: 0 0 12px 12px;">
+    <p style="font-size: 16px; margin-bottom: 20px;">Hi <strong>${params.patientName}</strong>,</p>
+
+    <p style="font-size: 16px; margin-bottom: 20px;">
+      This is a friendly reminder about your upcoming session with <strong>${params.therapistName}</strong>.
+    </p>
+
+    <div style="background: #F9FAFB; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <p style="margin: 0 0 10px 0; font-size: 16px;"><strong>📅 Date:</strong> ${dateStr}</p>
+      <p style="margin: 0; font-size: 16px;"><strong>🕐 Time:</strong> ${timeStr}</p>
+    </div>
+
+    ${params.sessionNotes ? `<p style="font-size: 16px; margin-bottom: 20px; font-style: italic; color: #6B7280;"><strong>Notes:</strong> ${params.sessionNotes}</p>` : ''}
+
+    <p style="font-size: 16px;">
+      We look forward to seeing you!
+    </p>
+
+    <p style="font-size: 14px; color: #6B7280; margin-top: 30px; padding-top: 20px; border-top: 1px solid #E5E7EB;">
+      Best regards,<br>
+      The StoryCare Team
+    </p>
+  </div>
+
+  <div style="text-align: center; padding: 20px; font-size: 12px; color: #9CA3AF;">
+    <p>You received this reminder because you have an upcoming session on StoryCare.</p>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  return { subject, bodyText, bodyHtml };
+}
+
+/**
+ * Generate survey reminder email content
+ */
+function generateSurveyReminderEmailContent(params: {
+  patientName: string;
+  surveyTitle: string;
+  surveyUrl: string;
+  dueDate?: Date;
+}) {
+  const subject = `Please complete: ${params.surveyTitle}`;
+
+  const dueDateStr = params.dueDate
+    ? params.dueDate.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+    : null;
+
+  const bodyText = `
+Hi ${params.patientName},
+
+You have a pending survey to complete: "${params.surveyTitle}"
+
+${dueDateStr ? `Please complete by: ${dueDateStr}\n\n` : ''}
+Your feedback is important and helps us provide better care for you.
+
+Complete the survey: ${params.surveyUrl}
+
+Thank you for your participation!
+
+Best regards,
+The StoryCare Team
+  `.trim();
+
+  const bodyHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">📋 Survey Reminder</h1>
+  </div>
+
+  <div style="background: white; padding: 30px; border: 1px solid #E5E7EB; border-top: none; border-radius: 0 0 12px 12px;">
+    <p style="font-size: 16px; margin-bottom: 20px;">Hi <strong>${params.patientName}</strong>,</p>
+
+    <p style="font-size: 16px; margin-bottom: 20px;">
+      You have a pending survey to complete:
+    </p>
+
+    <div style="background: #FEF3C7; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #F59E0B;">
+      <h2 style="color: #92400E; margin: 0 0 10px 0; font-size: 18px;">"${params.surveyTitle}"</h2>
+      ${dueDateStr ? `<p style="margin: 0; font-size: 14px; color: #92400E;"><strong>Due:</strong> ${dueDateStr}</p>` : ''}
+    </div>
+
+    <p style="font-size: 16px; margin-bottom: 20px;">
+      Your feedback is important and helps us provide better care for you.
+    </p>
+
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${params.surveyUrl}" style="background: #F59E0B; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
+        Complete Survey
+      </a>
+    </div>
+
+    <p style="font-size: 16px;">
+      Thank you for your participation!
+    </p>
+
+    <p style="font-size: 14px; color: #6B7280; margin-top: 30px; padding-top: 20px; border-top: 1px solid #E5E7EB;">
+      Best regards,<br>
+      The StoryCare Team
+    </p>
+  </div>
+
+  <div style="text-align: center; padding: 20px; font-size: 12px; color: #9CA3AF;">
+    <p>You received this reminder because you have a pending survey on StoryCare.</p>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  return { subject, bodyText, bodyHtml };
+}
+
+/**
  * Validate email configuration
- * Check if SendGrid API key is configured and valid
+ * Check if Paubox API credentials are configured
  */
 export async function validateEmailConfig(): Promise<boolean> {
-  // TODO: Implement SendGrid API validation
-  // For now, return true if SENDGRID_API_KEY env var exists
-  return Boolean(process.env.SENDGRID_API_KEY);
+  return isPauboxConfigured();
 }
 
 /**

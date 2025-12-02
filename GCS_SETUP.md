@@ -40,6 +40,12 @@ Google Cloud Storage is perfect for StoryCare because:
 - 📄 **Documents**: Session notes, transcripts (PDFs)
 - 🎨 **Media Assets**: Thumbnails, processed media
 
+> **Note on GPU Transcoding**: The GPU video transcoding feature uses **separate buckets**
+> (`preprocessing-{project}` and `transcoded-{project}`) with a **dedicated service account**.
+> This setup guide covers the main StoryCare media bucket. For GPU transcoding setup, see:
+> - **Quick Start**: [GPU_TRANSCODING_QUICKSTART.md](./GPU_TRANSCODING_QUICKSTART.md)
+> - **Detailed Guide**: [GPU_TRANSCODING_GUIDE.md](./GPU_TRANSCODING_GUIDE.md)
+
 ---
 
 ## Prerequisites

@@ -1,0 +1,214 @@
+name: Deploy Video Transcoding Job (GPU)
+
+# Manual deployment only - transcoding job is deployed separately from main app
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  JOB_NAME: video-encoding-job
+  REGION: us-central1
+
+jobs:
+  deploy:
+    name: Deploy GPU Transcoding Job
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Validate Prerequisites
+        run: |
+          echo "=========================================="
+          echo "Validating Prerequisites..."
+          echo "=========================================="
+          echo ""
+
+          HAS_ERRORS=false
+
+          # Check preprocessing bucket
+          echo -n "Checking preprocessing bucket... "
+          if gcloud storage buckets describe gs://preprocessing-${{ env.PROJECT_ID }} &>/dev/null; then
+            echo "✅ EXISTS"
+          else
+            echo "❌ NOT FOUND"
+            echo ""
+            echo "ERROR: Preprocessing bucket not found!"
+            echo "You must run the setup script first:"
+            echo "  ./scripts/setup-video-transcode-buckets.sh"
+            echo ""
+            echo "Or see: GPU_TRANSCODING_QUICKSTART.md"
+            HAS_ERRORS=true
+          fi
+
+          # Check transcoded bucket
+          echo -n "Checking transcoded bucket... "
+          if gcloud storage buckets describe gs://transcoded-${{ env.PROJECT_ID }} &>/dev/null; then
+            echo "✅ EXISTS"
+          else
+            echo "❌ NOT FOUND"
+            echo ""
+            echo "ERROR: Transcoded bucket not found!"
+            echo "Run setup script: ./scripts/setup-video-transcode-buckets.sh"
+            HAS_ERRORS=true
+          fi
+
+          # Check service account
+          SERVICE_ACCOUNT="video-encoding@${{ env.PROJECT_ID }}.iam.gserviceaccount.com"
+          echo -n "Checking service account... "
+          if gcloud iam service-accounts describe "$SERVICE_ACCOUNT" --project="${{ env.PROJECT_ID }}" &>/dev/null; then
+            echo "✅ EXISTS"
+          else
+            echo "❌ NOT FOUND"
+            echo ""
+            echo "ERROR: Service account not found: $SERVICE_ACCOUNT"
+            echo "Run setup script: ./scripts/setup-video-transcode-buckets.sh"
+            HAS_ERRORS=true
+          fi
+
+          echo ""
+          if [ "$HAS_ERRORS" = true ]; then
+            echo "=========================================="
+            echo "❌ Prerequisites check FAILED"
+            echo "=========================================="
+            echo ""
+            echo "Please complete the one-time setup first:"
+            echo "  1. Run: ./scripts/setup-video-transcode-buckets.sh"
+            echo "  2. Validate: ./scripts/validate-video-transcode-setup.sh"
+            echo "  3. Then retry this deployment"
+            echo ""
+            exit 1
+          else
+            echo "=========================================="
+            echo "✅ All prerequisites exist!"
+            echo "=========================================="
+          fi
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker us-docker.pkg.dev
+
+      - name: Create Artifact Registry repository if not exists
+        run: |
+          if ! gcloud artifacts repositories describe cloud-run-source-deploy \
+            --location=${{ env.REGION }} \
+            --project=${{ env.PROJECT_ID }} &>/dev/null; then
+            echo "Creating Artifact Registry repository..."
+            gcloud artifacts repositories create cloud-run-source-deploy \
+              --repository-format=docker \
+              --location=${{ env.REGION }} \
+              --project=${{ env.PROJECT_ID }}
+          else
+            echo "Artifact Registry repository already exists"
+          fi
+
+      - name: Build GPU transcoding image
+        run: |
+          docker build \
+            -f Dockerfile.transcode \
+            -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/cloud-run-source-deploy/video-transcoding:${{ github.sha }} \
+            -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/cloud-run-source-deploy/video-transcoding:latest \
+            .
+
+      - name: Push image to Artifact Registry
+        run: |
+          docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/cloud-run-source-deploy/video-transcoding:${{ github.sha }}
+          docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/cloud-run-source-deploy/video-transcoding:latest
+
+      - name: Create service account if not exists
+        run: |
+          SERVICE_ACCOUNT="video-encoding@${{ env.PROJECT_ID }}.iam.gserviceaccount.com"
+          if ! gcloud iam service-accounts describe "$SERVICE_ACCOUNT" --project="${{ env.PROJECT_ID }}" &>/dev/null; then
+            echo "Creating service account..."
+            gcloud iam service-accounts create video-encoding \
+              --project="${{ env.PROJECT_ID }}" \
+              --display-name="Video Encoding Service Account"
+          else
+            echo "Service account already exists"
+          fi
+
+      - name: Deploy Cloud Run Job with GPU
+        run: |
+          # Check if job exists
+          if gcloud run jobs describe ${{ env.JOB_NAME }} \
+            --region=${{ env.REGION }} \
+            --project=${{ env.PROJECT_ID }} &>/dev/null; then
+            echo "Updating existing job..."
+            ACTION="update"
+          else
+            echo "Creating new job..."
+            ACTION="create"
+          fi
+
+          gcloud run jobs $ACTION ${{ env.JOB_NAME }} \
+            --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/cloud-run-source-deploy/video-transcoding:${{ github.sha }} \
+            --region=${{ env.REGION }} \
+            --project=${{ env.PROJECT_ID }} \
+            --memory=32Gi \
+            --cpu=8 \
+            --gpu=1 \
+            --gpu-type=nvidia-l4 \
+            --no-gpu-zonal-redundancy \
+            --max-retries=1 \
+            --service-account=video-encoding@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+            --add-volume=name=input-volume,type=cloud-storage,bucket=preprocessing-${{ env.PROJECT_ID }},readonly=true \
+            --add-volume-mount=volume=input-volume,mount-path=/inputs \
+            --add-volume=name=output-volume,type=cloud-storage,bucket=transcoded-${{ env.PROJECT_ID }} \
+            --add-volume-mount=volume=output-volume,mount-path=/outputs
+
+      - name: Deployment summary
+        run: |
+          echo "=========================================="
+          echo "GPU Transcoding Job Deployed!"
+          echo "=========================================="
+          echo ""
+          echo "Job: ${{ env.JOB_NAME }}"
+          echo "Region: ${{ env.REGION }}"
+          echo "GPU: 1x NVIDIA L4"
+          echo "Memory: 32Gi"
+          echo "CPU: 8"
+          echo ""
+          echo "Input bucket:  gs://preprocessing-${{ env.PROJECT_ID }}"
+          echo "Output bucket: gs://transcoded-${{ env.PROJECT_ID }}"
+          echo ""
+          echo "Test the job:"
+          echo "  1. Upload a video:"
+          echo "     gcloud storage cp test.mp4 gs://preprocessing-${{ env.PROJECT_ID }}/"
+          echo ""
+          echo "  2. Execute the job:"
+          echo "     gcloud run jobs execute ${{ env.JOB_NAME }} \\"
+          echo "       --region=${{ env.REGION }} \\"
+          echo "       --args=\"test.mp4,transcoded.mp4,-vcodec,h264_nvenc,-cq,21,-movflags,+faststart\""
+          echo ""
+          echo "  3. Download the result:"
+          echo "     gcloud storage cp gs://transcoded-${{ env.PROJECT_ID }}/transcoded.mp4 ."
+          echo ""
+          echo "=========================================="
+
+      - name: Notify success
+        if: success()
+        run: |
+          echo "Deployment completed successfully!"
+          echo "Environment: ${{ github.event.inputs.environment }}"

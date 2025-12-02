@@ -8,7 +8,9 @@ import type { NextRequest } from 'next/server';
 import { and, count, eq, ilike } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { users } from '@/models/Schema';
+import { Env } from '@/libs/Env';
+import { organizationsSchema, users } from '@/models/Schema';
+import { sendTherapistInvitationEmail } from '@/services/EmailService';
 import { handleAuthError, requireAdmin, requireAuth } from '@/utils/AuthHelpers';
 import { inviteTherapistSchema } from '@/validations/UserValidation';
 
@@ -188,13 +190,53 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Note: No email is sent. Therapist can set up their account at /setup-account.
-    // The system will auto-link their Firebase UID and activate their account when they sign in.
+    // Send invitation email
+    let emailSent = false;
+    let emailError: string | null = null;
+
+    try {
+      // Get organization name
+      let organizationName = 'your organization';
+      if (authUser.organizationId) {
+        const [organization] = await db
+          .select({ name: organizationsSchema.name })
+          .from(organizationsSchema)
+          .where(eq(organizationsSchema.id, authUser.organizationId))
+          .limit(1);
+
+        if (organization) {
+          organizationName = organization.name;
+        }
+      }
+
+      // Construct setup account URL
+      const appUrl = Env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const setupAccountUrl = `${appUrl}/setup-account?email=${encodeURIComponent(validated.email)}`;
+
+      // Send invitation email
+      await sendTherapistInvitationEmail({
+        therapistEmail: therapist.email,
+        therapistName: therapist.name,
+        therapistUserId: therapist.id,
+        inviterName: authUser.name || 'Admin',
+        organizationName,
+        setupAccountUrl,
+      });
+
+      emailSent = true;
+    } catch (error) {
+      // Log error but don't fail the request (therapist already created)
+      console.error('Failed to send therapist invitation email:', error);
+      emailError = error instanceof Error ? error.message : 'Failed to send email';
+    }
 
     return NextResponse.json(
       {
         therapist,
-        message: `Therapist invited! They can set up their account by visiting the sign-in page and clicking "Set Up Your Account"`,
+        emailSent,
+        message: emailSent
+          ? `Therapist invited successfully! An invitation email has been sent to ${therapist.email}`
+          : `Therapist created but invitation email failed: ${emailError}. They can still set up their account at /setup-account`,
       },
       { status: 201 },
     );

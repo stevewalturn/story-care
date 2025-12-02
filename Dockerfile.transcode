@@ -1,0 +1,67 @@
+# GPU-Accelerated Video Transcoding Dockerfile for Cloud Run Jobs
+# Based on Google Cloud's official FFmpeg GPU tutorial
+# Uses NVIDIA L4 GPU for hardware-accelerated video encoding
+
+FROM nvidia/cuda:12.2.0-base-ubuntu22.04
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    build-essential \
+    pkg-config \
+    yasm \
+    nasm \
+    libx264-dev \
+    libx265-dev \
+    libvpx-dev \
+    libfdk-aac-dev \
+    libmp3lame-dev \
+    libopus-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install NVIDIA Video Codec SDK headers
+RUN wget https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.1.14.0/nv-codec-headers-12.1.14.0.tar.gz \
+    && tar -xzf nv-codec-headers-12.1.14.0.tar.gz \
+    && cd nv-codec-headers-12.1.14.0 \
+    && make install \
+    && cd .. \
+    && rm -rf nv-codec-headers-*
+
+# Build FFmpeg with NVIDIA GPU support
+RUN wget https://ffmpeg.org/releases/ffmpeg-6.1.tar.bz2 \
+    && tar -xjf ffmpeg-6.1.tar.bz2 \
+    && cd ffmpeg-6.1 \
+    && ./configure \
+        --enable-nonfree \
+        --enable-cuda-nvcc \
+        --enable-libnpp \
+        --enable-gpl \
+        --enable-libx264 \
+        --enable-libx265 \
+        --enable-libvpx \
+        --enable-libfdk-aac \
+        --enable-libmp3lame \
+        --enable-libopus \
+        --enable-nvenc \
+        --enable-nvdec \
+        --extra-cflags=-I/usr/local/cuda/include \
+        --extra-ldflags=-L/usr/local/cuda/lib64 \
+    && make -j$(nproc) \
+    && make install \
+    && cd .. \
+    && rm -rf ffmpeg-*
+
+# Verify FFmpeg installation
+RUN ffmpeg -version && \
+    ffmpeg -encoders | grep nvenc && \
+    echo "FFmpeg with NVIDIA GPU support installed successfully"
+
+# Set working directory
+WORKDIR /app
+
+# Copy entrypoint script
+COPY jobs/transcode/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Set entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]

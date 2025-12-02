@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, promptText, description, category, icon, outputType, jsonSchema } = body;
+    const { name, promptText, description, category, icon, outputType, jsonSchema, blocks, useAdvancedMode } = body;
 
     // Validate required fields
     if (!name || !promptText || !category) {
@@ -143,6 +143,8 @@ export async function POST(request: NextRequest) {
         icon: icon || 'sparkles',
         outputType: outputType || 'text',
         jsonSchema: jsonSchema || null,
+        blocks: blocks || null,
+        useAdvancedMode: useAdvancedMode || false,
         scope: 'system',
         organizationId: null, // System prompts don't belong to an organization
         createdBy: user.id, // Use database UUID, not Firebase UID

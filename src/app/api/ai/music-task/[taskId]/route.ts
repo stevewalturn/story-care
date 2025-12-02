@@ -22,8 +22,8 @@ export async function GET(
     // 2. GET TASK ID
     const { taskId } = await context.params;
 
-    // 3. CHECK TASK STATUS
-    const task = MusicTaskService.getTask(taskId);
+    // 3. CHECK TASK STATUS FROM DATABASE
+    const task = await MusicTaskService.getTask(taskId);
 
     if (!task) {
       return NextResponse.json(
@@ -35,24 +35,20 @@ export async function GET(
     // 4. IF COMPLETED, FETCH MEDIA DETAILS
     let media = null;
     if (task.status === 'completed' && task.mediaId) {
-      const [mediaRecord] = await db
-        .select()
-        .from(mediaLibrary)
-        .where(eq(mediaLibrary.id, task.mediaId))
-        .limit(1);
-
-      media = mediaRecord || null;
+      media = await db.query.mediaLibrary.findFirst({
+        where: (mediaLib, { eq }) => eq(mediaLib.id, task.mediaId!),
+      });
     }
 
     // 5. RETURN STATUS
     return NextResponse.json({
-      data: {
-        taskId: task.taskId,
-        status: task.status,
-        progress: task.progress,
-        media,
-        error: task.error,
-      },
+      taskId: task.taskId,
+      status: task.status,
+      progress: task.progress,
+      media: media || undefined,
+      error: task.error,
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
     });
   } catch (error) {
     console.error('Error polling music task:', error);

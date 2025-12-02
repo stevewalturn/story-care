@@ -9,6 +9,8 @@ import { Sparkles, X } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
+import type { BlockInstance } from '@/types/BuildingBlocks';
+import BuildingBlocksEditor from './BuildingBlocksEditor';
 
 type PromptScope = 'system' | 'organization' | 'private';
 type PromptCategory = 'analysis' | 'creative' | 'extraction' | 'reflection';
@@ -25,8 +27,9 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
   const [name, setName] = useState('');
   const [category, setCategory] = useState<PromptCategory>('analysis');
   const [outputType, setOutputType] = useState<OutputType>('text');
-  const [jsonSchema, setJsonSchema] = useState('');
-  const [jsonError, setJsonError] = useState<string | null>(null);
+  const [jsonSchema, setJsonSchema] = useState<object | undefined>(undefined);
+  const [blocks, setBlocks] = useState<BlockInstance[]>([]);
+  const [advancedMode, setAdvancedMode] = useState(false);
   const [description, setDescription] = useState('');
   const [promptText, setPromptText] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -55,20 +58,9 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
     }
   };
 
-  const handleJsonSchemaChange = (value: string) => {
-    setJsonSchema(value);
-
-    // Validate JSON if not empty
-    if (value.trim()) {
-      try {
-        JSON.parse(value);
-        setJsonError(null);
-      } catch {
-        setJsonError('Invalid JSON format');
-      }
-    } else {
-      setJsonError(null);
-    }
+  const handleBlocksChange = (newBlocks: BlockInstance[], schema: object) => {
+    setBlocks(newBlocks);
+    setJsonSchema(schema);
   };
 
   const handleCreate = async () => {
@@ -88,16 +80,6 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
       return;
     }
 
-    // Validate JSON schema if provided
-    if (outputType === 'json' && jsonSchema.trim()) {
-      try {
-        JSON.parse(jsonSchema);
-      } catch {
-        setError('Invalid JSON schema format');
-        return;
-      }
-    }
-
     setIsCreating(true);
     setError(null);
 
@@ -111,9 +93,18 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
         outputType,
       };
 
-      // Include JSON schema if output type is json and schema is provided
-      if (outputType === 'json' && jsonSchema.trim()) {
-        requestBody.jsonSchema = JSON.parse(jsonSchema);
+      // Include blocks and schema if output type is json
+      if (outputType === 'json') {
+        if (!advancedMode && blocks.length > 0) {
+          requestBody.blocks = blocks;
+          requestBody.useAdvancedMode = false;
+        }
+        if (jsonSchema) {
+          requestBody.jsonSchema = jsonSchema;
+        }
+        if (advancedMode) {
+          requestBody.useAdvancedMode = true;
+        }
       }
 
       const response = await authenticatedFetch(getApiEndpoint(), user, {
@@ -234,31 +225,20 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
                 </p>
               </div>
 
-              {/* JSON Schema Configuration (only if JSON selected) */}
+              {/* Building Blocks / JSON Schema Configuration (only if JSON selected) */}
               {outputType === 'json' && (
                 <div>
-                  <label htmlFor="jsonSchema" className="mb-2 block text-sm font-medium text-gray-700">
-                    JSON Schema (Optional)
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    Output Structure
                   </label>
-                  <textarea
-                    id="jsonSchema"
-                    value={jsonSchema}
-                    onChange={e => handleJsonSchemaChange(e.target.value)}
-                    rows={12}
-                    className={`w-full rounded-lg border px-4 py-2.5 font-mono text-xs focus:ring-2 focus:ring-indigo-500/20 focus:outline-none ${
-                      jsonError
-                        ? 'border-red-300 focus:border-red-500'
-                        : 'border-gray-300 focus:border-indigo-500'
-                    }`}
-                    placeholder='{\n  "type": "object",\n  "properties": {\n    "video_introduction": {\n      "type": "string"\n    },\n    "patient_reflection_questions": {\n      "type": "array",\n      "items": { "type": "string" }\n    }\n  },\n  "required": ["video_introduction"]\n}'
-                    disabled={isCreating}
+                  <BuildingBlocksEditor
+                    initialBlocks={blocks}
+                    onChange={handleBlocksChange}
+                    advancedMode={advancedMode}
+                    onAdvancedModeToggle={() => setAdvancedMode(!advancedMode)}
+                    jsonSchema={jsonSchema}
+                    onJsonSchemaChange={setJsonSchema}
                   />
-                  {jsonError && (
-                    <p className="mt-1 text-xs text-red-600">{jsonError}</p>
-                  )}
-                  <p className="mt-1 text-xs text-gray-500">
-                    Define the JSON structure for validation and AI response format.
-                  </p>
                 </div>
               )}
 

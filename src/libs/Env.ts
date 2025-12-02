@@ -20,6 +20,12 @@ export const Env = createEnv({
     // AI Services
     DEEPGRAM_API_KEY: z.string().optional(),
     OPENAI_API_KEY: z.string().optional(),
+    SUNO_API_KEY: z.string().optional(),
+    SUNO_WEBHOOK_SECRET: z.string().optional(),
+
+    // Email Service (Paubox)
+    PAUBOX_API_KEY: z.string().min(1).optional(),
+    PAUBOX_API_USERNAME: z.string().min(1).optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().optional(),
@@ -59,6 +65,12 @@ export const Env = createEnv({
     // AI Services
     DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    SUNO_API_KEY: process.env.SUNO_API_KEY,
+    SUNO_WEBHOOK_SECRET: process.env.SUNO_WEBHOOK_SECRET,
+
+    // Email Service (Paubox)
+    PAUBOX_API_KEY: process.env.PAUBOX_API_KEY,
+    PAUBOX_API_USERNAME: process.env.PAUBOX_API_USERNAME,
 
     // Client vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,

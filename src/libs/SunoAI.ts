@@ -8,7 +8,7 @@ export type SunoGenerateOptions = {
   customMode: boolean; // Enable custom mode for advanced settings
   instrumental: boolean; // Whether track should be instrumental
   personaId?: string; // Optional persona ID
-  model?: 'V3_5' | 'V4' | 'V4_5' | 'V4_5PLUS' | 'V5'; // Model version
+  model?: 'V4' | 'V4_5' | 'V4_5PLUS' | 'V4_5ALL' | 'V5'; // Model version
   negativeTags?: string; // Styles to exclude
   vocalGender?: 'm' | 'f'; // Vocal gender preference
   styleWeight?: number; // Style guidance weight (0.00-1.00)
@@ -39,9 +39,25 @@ export type SunoTaskStatusResponse = {
 };
 
 /**
- * Generate music using Suno AI API
+ * Get webhook callback URL for Suno API
  */
-export async function generateSunoMusic(options: SunoGenerateOptions): Promise<SunoGenerateResponse> {
+export function getWebhookUrl(baseUrl?: string): string {
+  const url = baseUrl || process.env.NEXT_PUBLIC_APP_URL;
+  if (!url) {
+    throw new Error('NEXT_PUBLIC_APP_URL not configured for webhook callbacks');
+  }
+  return `${url}/api/webhooks/suno`;
+}
+
+/**
+ * Generate music using Suno AI API
+ * @param options - Music generation options
+ * @param includeCallback - Whether to include webhook callback URL (default: true)
+ */
+export async function generateSunoMusic(
+  options: SunoGenerateOptions,
+  includeCallback = true
+): Promise<SunoGenerateResponse> {
   const apiKey = process.env.SUNO_API_KEY;
 
   if (!apiKey) {
@@ -65,16 +81,22 @@ export async function generateSunoMusic(options: SunoGenerateOptions): Promise<S
     }
   }
 
+  // Add callback URL if not provided and includeCallback is true
+  const requestOptions = {
+    ...options,
+    callBackUrl: options.callBackUrl || (includeCallback ? getWebhookUrl() : undefined),
+  };
+
   try {
-    console.log('[SUNO API] Request options:', JSON.stringify(options, null, 2));
-    
+    console.log('[SUNO API] Request options:', JSON.stringify(requestOptions, null, 2));
+
     const response = await fetch('https://api.sunoapi.org/api/v1/generate', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(options),
+      body: JSON.stringify(requestOptions),
     });
 
     const data: SunoGenerateResponse = await response.json();
@@ -147,7 +169,7 @@ export function createTherapeuticMusicOptions(params: {
   instrumental?: boolean;
   duration?: number;
   mood?: string;
-  model?: 'V3_5' | 'V4' | 'V4_5' | 'V4_5PLUS' | 'V5';
+  model?: 'V4' | 'V4_5' | 'V4_5PLUS' | 'V4_5ALL' | 'V5';
 }): SunoGenerateOptions {
   const {
     prompt,

@@ -8,7 +8,10 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import {
   listEmailNotifications,
+  sendModuleCompletionNotification,
+  sendSessionReminderEmail,
   sendStoryPageNotification,
+  sendSurveyReminderEmail,
 } from '@/services/EmailService';
 import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
 
@@ -20,10 +23,27 @@ const sendNotificationSchema = z.object({
   recipientUserId: z.string().uuid(),
   recipientEmail: z.string().email(),
   recipientName: z.string().min(1),
+
+  // Story page notification fields
   storyPageId: z.string().uuid().optional(),
   storyPageTitle: z.string().optional(),
-  therapistName: z.string().optional(),
   customMessage: z.string().max(1000).optional(),
+
+  // Module completion fields
+  moduleName: z.string().optional(),
+  moduleId: z.string().uuid().optional(),
+  completionDate: z.string().datetime().optional(),
+
+  // Session reminder fields
+  therapistName: z.string().optional(),
+  sessionDate: z.string().datetime().optional(),
+  sessionId: z.string().uuid().optional(),
+  sessionNotes: z.string().optional(),
+
+  // Survey reminder fields
+  surveyTitle: z.string().optional(),
+  surveyUrl: z.string().url().optional(),
+  dueDate: z.string().datetime().optional(),
 });
 
 /**
@@ -108,17 +128,106 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(
         {
-          message: 'Notification sent successfully',
+          message: 'Story page notification sent successfully',
           notification,
         },
         { status: 201 },
       );
     }
 
-    // TODO: Implement other notification types
+    // Module completion notification
+    if (validated.type === 'module_completed') {
+      if (!validated.moduleName || !validated.moduleId || !validated.completionDate) {
+        return NextResponse.json(
+          {
+            error: 'Missing required fields for module completion notification: moduleName, moduleId, completionDate',
+          },
+          { status: 400 },
+        );
+      }
+
+      const notification = await sendModuleCompletionNotification({
+        patientEmail: validated.recipientEmail,
+        patientName: validated.recipientName,
+        patientUserId: validated.recipientUserId,
+        moduleName: validated.moduleName,
+        moduleId: validated.moduleId,
+        completionDate: new Date(validated.completionDate),
+      });
+
+      return NextResponse.json(
+        {
+          message: 'Module completion notification sent successfully',
+          notification,
+        },
+        { status: 201 },
+      );
+    }
+
+    // Session reminder notification
+    if (validated.type === 'session_reminder') {
+      if (!validated.therapistName || !validated.sessionDate || !validated.sessionId) {
+        return NextResponse.json(
+          {
+            error: 'Missing required fields for session reminder: therapistName, sessionDate, sessionId',
+          },
+          { status: 400 },
+        );
+      }
+
+      const notification = await sendSessionReminderEmail({
+        patientEmail: validated.recipientEmail,
+        patientName: validated.recipientName,
+        patientUserId: validated.recipientUserId,
+        therapistName: validated.therapistName,
+        sessionDate: new Date(validated.sessionDate),
+        sessionId: validated.sessionId,
+        sessionNotes: validated.sessionNotes,
+      });
+
+      return NextResponse.json(
+        {
+          message: 'Session reminder sent successfully',
+          notification,
+        },
+        { status: 201 },
+      );
+    }
+
+    // Survey reminder notification
+    if (validated.type === 'survey_reminder') {
+      if (!validated.surveyTitle || !validated.surveyUrl || !validated.storyPageId) {
+        return NextResponse.json(
+          {
+            error: 'Missing required fields for survey reminder: surveyTitle, surveyUrl, storyPageId',
+          },
+          { status: 400 },
+        );
+      }
+
+      const notification = await sendSurveyReminderEmail({
+        patientEmail: validated.recipientEmail,
+        patientName: validated.recipientName,
+        patientUserId: validated.recipientUserId,
+        surveyTitle: validated.surveyTitle,
+        surveyUrl: validated.surveyUrl,
+        storyPageId: validated.storyPageId,
+        dueDate: validated.dueDate ? new Date(validated.dueDate) : undefined,
+      });
+
+      return NextResponse.json(
+        {
+          message: 'Survey reminder sent successfully',
+          notification,
+        },
+        { status: 201 },
+      );
+    }
+
+    // Should never reach here due to type enum validation
     return NextResponse.json(
-      { error: `Notification type '${validated.type}' not yet implemented` },
-      { status: 501 },
+      { error: 'Invalid notification type' },
+      { status: 400 },
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
