@@ -7,6 +7,7 @@
 
 import type { MediaTabProps } from '../types/transcript.types';
 import { useEffect, useState } from 'react';
+import { FullscreenMediaViewer } from '@/components/media/FullscreenMediaViewer';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 export function MediaTab({
@@ -19,6 +20,7 @@ export function MediaTab({
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'image' | 'video' | 'audio'>('all');
+  const [fullscreenMedia, setFullscreenMedia] = useState<any | null>(null);
 
   // Load media for this session
   useEffect(() => {
@@ -206,10 +208,13 @@ export function MediaTab({
             {media.map(item => (
               <div
                 key={item.id}
-                className="group cursor-pointer overflow-hidden rounded-lg border border-gray-200 transition-all hover:border-indigo-300 hover:shadow-sm"
+                className="group overflow-hidden rounded-lg border border-gray-200 transition-all hover:border-indigo-300 hover:shadow-sm"
               >
                 {/* Thumbnail */}
-                <div className="relative aspect-video bg-gray-100">
+                <div
+                  className="relative aspect-video cursor-pointer bg-gray-100"
+                  onClick={() => setFullscreenMedia(item)}
+                >
                   {item.mediaType === 'video'
                     ? (
                         <>
@@ -229,11 +234,21 @@ export function MediaTab({
                       )
                     : item.mediaType === 'image'
                       ? (
-                          <img
-                            src={item.thumbnailUrl || item.mediaUrl}
-                            alt={item.title}
-                            className="h-full w-full object-cover"
-                          />
+                          <>
+                            <img
+                              src={item.thumbnailUrl || item.mediaUrl}
+                              alt={item.title}
+                              className="h-full w-full object-cover"
+                            />
+                            {/* Fullscreen overlay icon */}
+                            <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 backdrop-blur-sm">
+                                <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                                </svg>
+                              </div>
+                            </div>
+                          </>
                         )
                       : (
                           <div className="flex h-full items-center justify-center">
@@ -280,6 +295,13 @@ export function MediaTab({
           </div>
         )}
       </div>
+
+      {/* Fullscreen Media Viewer */}
+      <FullscreenMediaViewer
+        isOpen={!!fullscreenMedia}
+        onClose={() => setFullscreenMedia(null)}
+        media={fullscreenMedia}
+      />
     </>
   );
 }

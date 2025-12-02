@@ -53,6 +53,11 @@ export type AIAssistantPanelProps = {
     referenceImagePrompt?: string;
     sourceQuote?: string;
   }) => void;
+  onOpenMusicModal: (data: {
+    instrumentalOption?: any;
+    lyricalOption?: any;
+  }) => void;
+  onLibraryRefresh?: () => void;
 };
 
 // Props for LibraryPanel
@@ -76,6 +81,7 @@ export type MediaTabProps = {
 export type QuotesTabProps = {
   sessionId: string;
   user: User | null;
+  refreshKey?: number;
 };
 
 // Props for NotesTab
@@ -83,6 +89,7 @@ export type NotesTabProps = {
   sessionId: string;
   user: User | null;
   sessionData: any;
+  refreshKey?: number;
 };
 
 // Props for ProfileTab

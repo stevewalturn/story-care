@@ -9,11 +9,11 @@ import type { QuotesTabProps } from '../types/transcript.types';
 import { useEffect, useState } from 'react';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
-export function QuotesTab({ sessionId, user }: QuotesTabProps) {
+export function QuotesTab({ sessionId, user, refreshKey }: QuotesTabProps) {
   const [quotes, setQuotes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load quotes for this session
+  // Load quotes for this session (refreshes when refreshKey changes)
   useEffect(() => {
     const loadQuotes = async () => {
       try {
@@ -36,7 +36,7 @@ export function QuotesTab({ sessionId, user }: QuotesTabProps) {
     };
 
     loadQuotes();
-  }, [sessionId, user]);
+  }, [sessionId, user, refreshKey]);
 
   return (
     <div className="flex-1 overflow-y-auto p-4">

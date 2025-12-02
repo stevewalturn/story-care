@@ -69,7 +69,7 @@ export async function generateImage(
   }
 
   // Route to Atlas Cloud (Flux models)
-  if (model === 'flux-dev' || model === 'flux-schnell') {
+  if (model === 'flux-dev' || model === 'flux-schnell' || model === 'flux-redux-dev') {
     const { generateImageWithAtlas } = await import('./providers/AtlasCloud');
     // Convert dimensions to Atlas format (e.g., "1024*1024")
     const size = options.width && options.height
@@ -80,6 +80,7 @@ export async function generateImage(
       model: model as AtlasImageModel,
       size,
       seed: options.seed,
+      referenceImage: options.referenceImage, // Pass reference image for Flux Redux
     });
   }
 

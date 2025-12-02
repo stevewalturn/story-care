@@ -40,6 +40,11 @@ function inferSchemaType(data: any): JSONSchemaType | null {
     return null;
   }
 
+  // If schemaType is explicitly provided, use it
+  if (data.schemaType && typeof data.schemaType === 'string') {
+    return data.schemaType as JSONSchemaType;
+  }
+
   // Scene Card detection
   if (
     hasRequiredKeys(data, [
@@ -83,8 +88,8 @@ function inferSchemaType(data: any): JSONSchemaType | null {
     return 'reflection_questions';
   }
 
-  // Therapeutic Note detection
-  if (hasRequiredKeys(data, ['note_title', 'note_content'])) {
+  // Therapeutic Note detection - support both old and new field names
+  if (hasRequiredKeys(data, ['note_title', 'note_content']) || hasRequiredKeys(data, ['title', 'content'])) {
     return 'therapeutic_note';
   }
 
@@ -144,6 +149,43 @@ export function extractJSONFromMarkdown(content: string): string {
 }
 
 /**
+ * Extract JSON object from mixed text content
+ * Looks for {...} patterns and attempts to parse them
+ * @param content - Content that may contain JSON objects mixed with text
+ * @returns Extracted JSON string or null
+ */
+export function extractJSONFromMixedContent(content: string): string | null {
+  // Find all potential JSON objects by looking for balanced braces
+  // This regex finds content between outermost { and }
+  const jsonObjectRegex = /\{[\s\S]*\}/;
+  const match = content.match(jsonObjectRegex);
+
+  if (match) {
+    try {
+      // Validate it's actually valid JSON by attempting to parse
+      JSON.parse(match[0]);
+      return match[0].trim();
+    } catch {
+      // Not valid JSON, try to find nested objects
+      // Look for schemaType field which all our JSONs should have
+      const schemaTypeRegex = /\{[\s\S]*"schemaType"[\s\S]*\}/;
+      const schemaMatch = content.match(schemaTypeRegex);
+
+      if (schemaMatch) {
+        try {
+          JSON.parse(schemaMatch[0]);
+          return schemaMatch[0].trim();
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Validate JSON schema structure (basic validation)
  * @param data - Parsed JSON data
  * @param schemaType - Expected schema type
@@ -198,7 +240,7 @@ export function validateJSONSchema(data: any, schemaType: JSONSchemaType): boole
         );
 
       case 'therapeutic_note':
-        return hasRequiredKeys(data, ['note_title', 'note_content']);
+        return hasRequiredKeys(data, ['note_title', 'note_content']) || hasRequiredKeys(data, ['title', 'content']);
 
       case 'quote_extraction':
         return (
@@ -230,6 +272,15 @@ export function detectAndExtractJSON(content: string): (AnyJSONSchema & { schema
   const extracted = extractJSONFromMarkdown(content);
   if (extracted !== content) {
     result = detectJSONSchema(extracted);
+    if (result) {
+      return result;
+    }
+  }
+
+  // Try extracting JSON from mixed content (text before/after JSON)
+  const mixedExtracted = extractJSONFromMixedContent(content);
+  if (mixedExtracted) {
+    result = detectJSONSchema(mixedExtracted);
     if (result) {
       return result;
     }

@@ -25,6 +25,8 @@ export function AIAssistantPanel({
   onTextSelection,
   onOpenImageModal,
   onOpenVideoModal,
+  onOpenMusicModal,
+  onLibraryRefresh,
 }: AIAssistantPanelProps) {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
@@ -139,8 +141,8 @@ export function AIAssistantPanel({
               {patientName}
               's Narrative)
             </h2>
-            {/* Compact Module Badge */}
-            {assignedModule && (
+            {/* Module Badge or Assign Button */}
+            {assignedModule ? (
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5 rounded-full bg-indigo-100 px-3 py-1">
                   <svg className="h-3.5 w-3.5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
@@ -160,6 +162,16 @@ export function AIAssistantPanel({
                   Change
                 </button>
               </div>
+            ) : (
+              <button
+                onClick={onAssignModule}
+                className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-medium text-white shadow-md transition-all hover:from-indigo-700 hover:to-purple-700 hover:shadow-lg"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Assign Treatment Module
+              </button>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -215,9 +227,35 @@ export function AIAssistantPanel({
               </div>
 
               <h3 className="mb-2 text-lg font-semibold text-gray-900">Therapeutic Chat Assistant</h3>
-              <p className="mb-6 text-sm text-gray-500">
+              <p className="mb-4 text-sm text-gray-500">
                 Ask questions about this session, request insights, or describe what you'd like to visualize.
               </p>
+
+              {/* No Module Assigned Notice */}
+              {!assignedModule && (
+                <div className="mb-6 rounded-lg border-2 border-dashed border-indigo-300 bg-indigo-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <svg className="h-5 w-5 flex-shrink-0 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="flex-1 text-left">
+                      <h4 className="mb-1 text-sm font-semibold text-indigo-900">No Treatment Module Assigned</h4>
+                      <p className="mb-3 text-xs text-indigo-700">
+                        Assign a treatment module to unlock specialized prompts and therapeutic workflows tailored to this patient's needs.
+                      </p>
+                      <button
+                        onClick={onAssignModule}
+                        className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-700"
+                      >
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Assign Module Now
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Example Prompts */}
               <div className="mb-6 space-y-3 text-left">
@@ -322,21 +360,19 @@ export function AIAssistantPanel({
                           sessionId={sessionId}
                           user={user}
                           onActionComplete={(result) => {
-                            // Add completion message to chat
-                            setMessages(prev => [...prev, {
-                              role: 'assistant',
-                              content: result.message,
-                            }]);
+                            // Refresh the library panel to show newly saved items
+                            if (onLibraryRefresh) {
+                              onLibraryRefresh();
+                            }
+                            console.log('Action completed:', result.message);
                           }}
                           onProgress={(update) => {
-                            // Add progress message to chat
-                            setMessages(prev => [...prev, {
-                              role: 'assistant',
-                              content: update,
-                            }]);
+                            // Just log progress, don't clutter chat
+                            console.log('Progress update:', update);
                           }}
                           onOpenImageModal={onOpenImageModal}
                           onOpenVideoModal={onOpenVideoModal}
+                          onOpenMusicModal={onOpenMusicModal}
                         />
                       ) : (
                         // Regular markdown rendering for non-JSON content

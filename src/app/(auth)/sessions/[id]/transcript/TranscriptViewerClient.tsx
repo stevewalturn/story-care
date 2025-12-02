@@ -10,6 +10,7 @@ import { AssignModuleModal } from '@/components/sessions/AssignModuleModal';
 import { EditQuoteModal } from '@/components/sessions/EditQuoteModal';
 import { GenerateImageModal } from '@/components/sessions/GenerateImageModal';
 import { GenerateVideoModal } from '@/components/sessions/GenerateVideoModal';
+import { GenerateMusicModal } from '@/components/media/GenerateMusicModal';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
 import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,6 +46,7 @@ export function TranscriptViewerClient({
   const [showAnalyzeModal, setShowAnalyzeModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [showMusicModal, setShowMusicModal] = useState(false);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [showMediaUploadModal, setShowMediaUploadModal] = useState(false);
   const [isAssignModuleModalOpen, setIsAssignModuleModalOpen] = useState(false);
@@ -61,12 +63,18 @@ export function TranscriptViewerClient({
     style?: string;
   }>({});
 
+  // Music modal initial data (for pre-filling from JSON actions)
+  const [musicModalInitialData, setMusicModalInitialData] = useState<{
+    instrumentalOption?: any;
+    lyricalOption?: any;
+  }>({});
+
   // Quote edit/delete state
   const [editingQuote, setEditingQuote] = useState<any | null>(null);
   const [deletingQuote, setDeletingQuote] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Media refresh trigger
+  // Media/Library refresh trigger (for media, quotes, and notes)
   const [mediaRefreshKey, setMediaRefreshKey] = useState(0);
 
   // Fetch session and transcript data
@@ -313,6 +321,18 @@ export function TranscriptViewerClient({
     setShowVideoModal(true);
   };
 
+  // Callback to open music modal with pre-filled data (from JSON actions)
+  const handleOpenMusicModal = (data: {
+    instrumentalOption?: any;
+    lyricalOption?: any;
+  }) => {
+    setMusicModalInitialData({
+      instrumentalOption: data.instrumentalOption,
+      lyricalOption: data.lyricalOption,
+    });
+    setShowMusicModal(true);
+  };
+
   // Handler for saving quote
   const handleSaveQuote = async (quoteData: {
     quoteText: string;
@@ -511,6 +531,8 @@ export function TranscriptViewerClient({
             onTextSelection={handleAITextSelection}
             onOpenImageModal={handleOpenImageModal}
             onOpenVideoModal={handleOpenVideoModal}
+            onOpenMusicModal={handleOpenMusicModal}
+            onLibraryRefresh={() => setMediaRefreshKey(prev => prev + 1)}
           />
         </div>
 
@@ -570,6 +592,18 @@ export function TranscriptViewerClient({
         isOpen={showVideoModal}
         onClose={() => setShowVideoModal(false)}
         onGenerate={handleGenerateVideo}
+      />
+
+      <GenerateMusicModal
+        isOpen={showMusicModal}
+        onClose={() => {
+          setShowMusicModal(false);
+          setMusicModalInitialData({}); // Clear initial data on close
+        }}
+        sessionId={sessionId}
+        instrumentalOption={musicModalInitialData.instrumentalOption}
+        lyricalOption={musicModalInitialData.lyricalOption}
+        user={user}
       />
 
       {/* Assign Module Modal */}

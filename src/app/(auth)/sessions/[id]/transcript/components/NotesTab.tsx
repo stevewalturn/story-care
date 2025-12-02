@@ -10,12 +10,12 @@ import { useEffect, useState } from 'react';
 import { SaveNoteModal } from '@/components/sessions/SaveNoteModal';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 
-export function NotesTab({ sessionId, user, sessionData }: NotesTabProps) {
+export function NotesTab({ sessionId, user, sessionData, refreshKey }: NotesTabProps) {
   const [notes, setNotes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showNewNoteModal, setShowNewNoteModal] = useState(false);
 
-  // Load notes for this session
+  // Load notes for this session (refreshes when refreshKey changes)
   useEffect(() => {
     const loadNotes = async () => {
       try {
@@ -38,7 +38,7 @@ export function NotesTab({ sessionId, user, sessionData }: NotesTabProps) {
     };
 
     loadNotes();
-  }, [sessionId, user]);
+  }, [sessionId, user, refreshKey]);
 
   // Handler for creating new note
   const handleCreateNote = async (noteData: { title: string; content: string; tags: string[] }) => {

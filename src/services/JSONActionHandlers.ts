@@ -23,6 +23,10 @@ export type ActionContext = {
     referenceImagePrompt?: string;
     sourceQuote?: string;
   }) => void;
+  onOpenMusicModal?: (data: {
+    instrumentalOption?: any;
+    lyricalOption?: any;
+  }) => void;
   imageIndex?: number; // For image_references and video_references actions
 };
 
@@ -209,94 +213,49 @@ export async function handleSaveReflections(ctx: ActionContext) {
 
 /**
  * Generate instrumental music from music_generation JSON
+ * Opens GenerateMusicModal with pre-filled instrumental data for user review
  */
 export async function handleGenerateInstrumental(ctx: ActionContext) {
-  const { jsonData, sessionId, user, onProgress, onComplete } = ctx;
+  const { jsonData, onOpenMusicModal } = ctx;
   const instrumental = jsonData.instrumental_option;
 
   if (!instrumental) {
-    onComplete({ message: '⚠️ No instrumental data found.' });
+    console.error('No instrumental data found in music_generation JSON');
     return;
   }
 
-  onProgress(`🎵 Generating instrumental: "${instrumental.title}"...`);
-
-  try {
-    const response = await authenticatedPost('/api/ai/generate-music', user, {
-      sessionId,
-      musicType: 'instrumental',
-      title: instrumental.title,
-      style: instrumental.genre_tags,
-      prompt: instrumental.music_description,
-      model: 'V4_5',
-      instrumental: true,
-      mood: instrumental.mood,
-      stylePrompt: instrumental.style_prompt,
-      sourceQuotes: instrumental.source_quotes,
-      rationale: instrumental.rationale,
+  // Open the GenerateMusicModal with pre-filled instrumental data
+  if (onOpenMusicModal) {
+    onOpenMusicModal({
+      instrumentalOption: instrumental,
+      lyricalOption: undefined,
     });
-
-    if (!response.ok) throw new Error('Failed to generate music');
-
-    const result = await response.json();
-    onProgress('🎵 Music generation started. This may take 2-3 minutes...');
-
-    // Polling logic (similar to handleGenerateMusic)
-    // ... (implementation similar to above)
-
-    onComplete({
-      message: `✅ Instrumental "${instrumental.title}" queued for generation. Check Library in 2-3 minutes.`,
-      data: result,
-    });
-  } catch (error) {
-    onComplete({
-      message: `❌ Failed to generate instrumental: ${(error as Error).message}`,
-    });
+  } else {
+    console.error('onOpenMusicModal callback not provided');
   }
 }
 
 /**
  * Generate lyrical song from music_generation JSON
+ * Opens GenerateMusicModal with pre-filled lyrical data for user review
  */
 export async function handleGenerateLyrical(ctx: ActionContext) {
-  const { jsonData, sessionId, user, onProgress, onComplete } = ctx;
+  const { jsonData, onOpenMusicModal } = ctx;
   const lyrical = jsonData.lyrical_option;
 
   if (!lyrical) {
-    onComplete({ message: '⚠️ No lyrical data found.' });
+    console.error('No lyrical data found in music_generation JSON');
     return;
   }
 
-  onProgress(`🎤 Generating lyrical song: "${lyrical.title}"...`);
-
-  try {
-    const response = await authenticatedPost('/api/ai/generate-music', user, {
-      sessionId,
-      musicType: 'lyrical',
-      title: lyrical.title,
-      style: lyrical.genre_tags,
-      lyrics: lyrical.suggested_lyrics,
-      model: 'V4_5',
-      instrumental: false,
-      mood: lyrical.mood,
-      stylePrompt: lyrical.style_prompt,
-      sourceQuotes: lyrical.source_quotes,
-      rationale: lyrical.rationale,
+  // Open the GenerateMusicModal with pre-filled lyrical data
+  if (onOpenMusicModal) {
+    onOpenMusicModal({
+      instrumentalOption: undefined,
+      lyricalOption: lyrical,
     });
-
-    if (!response.ok) throw new Error('Failed to generate music');
-
-    const result = await response.json();
-    onProgress('🎤 Lyrical song generation started. This may take 2-3 minutes...');
-
-    onComplete({
-      message: `✅ Lyrical song "${lyrical.title}" queued for generation. Check Library in 2-3 minutes.`,
-      data: result,
-    });
-  } catch (error) {
-    onComplete({
-      message: `❌ Failed to generate lyrical song: ${(error as Error).message}`,
-    });
+  } else {
+    console.error('onOpenMusicModal callback not provided');
   }
 }
 

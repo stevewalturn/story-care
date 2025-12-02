@@ -73,6 +73,7 @@ export function LibraryPanel({
         <QuotesTab
           sessionId={sessionId}
           user={user}
+          refreshKey={refreshKey}
         />
       )}
 
@@ -81,6 +82,7 @@ export function LibraryPanel({
           sessionId={sessionId}
           user={user}
           sessionData={sessionData}
+          refreshKey={refreshKey}
         />
       )}
 

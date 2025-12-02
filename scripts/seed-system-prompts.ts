@@ -175,28 +175,16 @@ Suggest 3-5 image concepts with detailed generation prompts.
 - Specific elements and their arrangement
 - Artistic style and mood
 
-Example:
-{
-  "title": "Breaking Through the Fog",
-  "prompt": "A photorealistic image of a person standing on a rocky cliff edge, facing a vast misty valley with rays of golden sunlight breaking through dark storm clouds. The light illuminates their silhouette from behind, creating a hopeful glow. The atmosphere is moody yet optimistic, with rich contrast between dark shadows and warm light. Shot with cinematic depth of field.",
-  "style": "photorealistic",
-  "therapeutic_purpose": "To visualize the patient's journey through depression toward hope and clarity",
-  "source_quote": "I feel like I'm finally starting to see through the fog"
-}
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 
-Output ONLY valid JSON:
-{
-  "schemaType": "image_references",
-  "images": [
-    {
-      "title": "Image title",
-      "prompt": "DETAILED generation prompt (2-3 sentences with visual specifics)",
-      "style": "photorealistic",
-      "therapeutic_purpose": "Why this empowers/heals",
-      "source_quote": "Quote that inspired this"
-    }
-  ]
-}`,
+Required JSON fields:
+- schemaType: "image_references"
+- images: array of objects, each with:
+  - title: string
+  - prompt: DETAILED 2-3 sentence image generation prompt with composition, lighting, colors, elements, style
+  - style: string (photorealistic, artistic, abstract, etc.)
+  - therapeutic_purpose: string
+  - source_quote: string from the transcript`,
     description: 'Generate image suggestions based on transcript themes and metaphors',
     category: 'creative',
     icon: 'image',
@@ -496,15 +484,15 @@ Examine:
 4. Emotional triggers and patterns
 5. Window of tolerance (capacity range)
 
-Output ONLY valid JSON:
-{
-  "schemaType": "therapeutic_note",
-  "title": "Emotional Regulation Analysis",
-  "content": "detailed analysis...",
-  "tags": ["regulation", "emotions", "capacity"],
-  "keyInsights": ["insight 1", "insight 2"],
-  "actionItems": ["action 1", "action 2"]
-}`,
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+Required JSON fields:
+- schemaType: "therapeutic_note"
+- title: string (brief title for this analysis)
+- content: string (full detailed analysis in markdown format)
+- tags: array of strings
+- keyInsights: array of strings
+- actionItems: array of strings`,
     description: 'Analyze emotion management strategies and regulation capacity',
     category: 'analysis',
     icon: 'thermometer',

@@ -39,6 +39,10 @@ type JSONOutputRendererProps = {
     referenceImagePrompt?: string;
     sourceQuote?: string;
   }) => void;
+  onOpenMusicModal?: (data: {
+    instrumentalOption?: any;
+    lyricalOption?: any;
+  }) => void;
 };
 
 export function JSONOutputRenderer({
@@ -49,6 +53,7 @@ export function JSONOutputRenderer({
   onProgress,
   onOpenImageModal,
   onOpenVideoModal,
+  onOpenMusicModal,
 }: JSONOutputRendererProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
@@ -83,6 +88,7 @@ export function JSONOutputRenderer({
         onComplete: onActionComplete,
         onOpenImageModal,
         onOpenVideoModal,
+        onOpenMusicModal,
         imageIndex, // Pass imageIndex for handlers that need it
       });
     } catch (error) {

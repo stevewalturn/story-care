@@ -30,23 +30,24 @@ export const TEXT_GENERATION_MODELS = {
 // Image Generation Models
 export const IMAGE_GENERATION_MODELS = {
   'Atlas Cloud (Flux)': [
-    { value: 'flux-schnell', label: 'Flux Schnell (Fastest) - $0.0024/pic' },
-    { value: 'flux-dev', label: 'Flux Dev (High Quality) - $0.0096/pic' },
+    { value: 'flux-schnell', label: 'Flux Schnell (Fastest) - $0.0024/pic', supportsReference: false },
+    { value: 'flux-dev', label: 'Flux Dev (High Quality) - $0.0096/pic', supportsReference: false },
+    { value: 'flux-redux-dev', label: 'Flux Redux Dev (Image-to-Image) - $0.0096/pic', supportsReference: true },
   ],
   'Google Gemini (Image-to-Image)': [
-    { value: 'gemini-2.5-flash-image', label: 'Nano Banana (Gemini 2.5 Flash Image) - HOT' },
+    { value: 'gemini-2.5-flash-image', label: 'Nano Banana (Gemini 2.5 Flash Image) - HOT', supportsReference: true },
   ],
   'Stability AI': [
-    { value: 'sd3.5-large', label: 'Stable Diffusion 3.5 Large' },
-    { value: 'sd3.5-medium', label: 'Stable Diffusion 3.5 Medium' },
-    { value: 'sd3-large', label: 'Stable Diffusion 3 Large' },
-    { value: 'sdxl-1.0', label: 'Stable Diffusion XL 1.0' },
+    { value: 'sd3.5-large', label: 'Stable Diffusion 3.5 Large', supportsReference: false },
+    { value: 'sd3.5-medium', label: 'Stable Diffusion 3.5 Medium', supportsReference: false },
+    { value: 'sd3-large', label: 'Stable Diffusion 3 Large', supportsReference: false },
+    { value: 'sdxl-1.0', label: 'Stable Diffusion XL 1.0', supportsReference: false },
   ],
   'FAL.AI': [
-    { value: 'flux-pro', label: 'Flux Pro' },
-    { value: 'flux-realism', label: 'Flux Realism' },
-    { value: 'sdxl', label: 'Fast SDXL' },
-    { value: 'sdxl-lightning', label: 'SDXL Lightning' },
+    { value: 'flux-pro', label: 'Flux Pro', supportsReference: false },
+    { value: 'flux-realism', label: 'Flux Realism', supportsReference: false },
+    { value: 'sdxl', label: 'Fast SDXL', supportsReference: false },
+    { value: 'sdxl-lightning', label: 'SDXL Lightning', supportsReference: false },
   ],
 } as const;
 

@@ -66,6 +66,8 @@ export async function generateSunoMusic(options: SunoGenerateOptions): Promise<S
   }
 
   try {
+    console.log('[SUNO API] Request options:', JSON.stringify(options, null, 2));
+    
     const response = await fetch('https://api.sunoapi.org/api/v1/generate', {
       method: 'POST',
       headers: {
@@ -76,6 +78,7 @@ export async function generateSunoMusic(options: SunoGenerateOptions): Promise<S
     });
 
     const data: SunoGenerateResponse = await response.json();
+    console.log('[SUNO API] Response:', JSON.stringify(data, null, 2));
 
     // Handle error responses
     if (data.code !== 200) {
@@ -154,14 +157,26 @@ export function createTherapeuticMusicOptions(params: {
     model = 'V4_5',
   } = params;
 
-  return {
-    prompt: instrumental ? undefined : prompt,
-    style: prompt, // Use prompt as style for instrumental music
-    title,
-    customMode: true,
-    instrumental,
-    model,
-    styleWeight: 0.7, // Moderate style adherence
-    weirdnessConstraint: 0.3, // Lower weirdness for therapeutic music
-  };
+  if (!prompt) {
+    throw new Error('Prompt is required for music generation');
+  }
+
+  if (!title) {
+    throw new Error('Title is required for music generation');
+  }
+
+  // Try the most basic request format that Suno accepts
+  if (instrumental) {
+    return {
+      prompt,
+      customMode: false,
+      instrumental: true,
+    };
+  } else {
+    return {
+      prompt,
+      customMode: false,
+      instrumental: false,
+    };
+  }
 }

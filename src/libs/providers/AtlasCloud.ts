@@ -4,7 +4,7 @@
  * Documentation: https://docs.atlascloud.ai/
  */
 
-export type AtlasImageModel = 'flux-schnell' | 'flux-dev';
+export type AtlasImageModel = 'flux-schnell' | 'flux-dev' | 'flux-redux-dev';
 
 export type AtlasVideoModel = 'seedance-1-lite';
 
@@ -17,6 +17,7 @@ export type AtlasImageGenerateOptions = {
   guidanceScale?: number;
   numInferenceSteps?: number;
   enableSafetyChecker?: boolean;
+  referenceImage?: string; // URL or base64 - for image-to-image generation (Flux Redux)
 };
 
 export type AtlasVideoGenerateOptions = {
@@ -57,9 +58,30 @@ export async function generateImageWithAtlas(
   const modelNames: Record<AtlasImageModel, string> = {
     'flux-schnell': 'black-forest-labs/flux-schnell',
     'flux-dev': 'black-forest-labs/flux-dev',
+    'flux-redux-dev': 'black-forest-labs/flux-redux-dev',
   };
 
   const atlasModel = modelNames[model];
+
+  // Build request body
+  const requestBody: any = {
+    model: atlasModel,
+    prompt: options.prompt,
+    seed: options.seed ?? 0,
+    size: options.size || '1024*1024',
+    num_images: options.numImages || 1,
+    output_format: 'jpeg',
+    guidance_scale: options.guidanceScale ?? 3.5,
+    num_inference_steps: options.numInferenceSteps ?? (model === 'flux-schnell' ? 4 : 28),
+    enable_sync_mode: false,
+    enable_base64_output: false,
+    enable_safety_checker: options.enableSafetyChecker ?? true,
+  };
+
+  // Add reference image for Flux Redux (image-to-image generation)
+  if (options.referenceImage) {
+    requestBody.image = options.referenceImage; // Can be URL or base64
+  }
 
   // Step 1: Start image generation
   const generateResponse = await fetch(
@@ -70,17 +92,7 @@ export async function generateImageWithAtlas(
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        model: atlasModel,
-        prompt: options.prompt,
-        seed: options.seed ?? -1,
-        size: options.size || '1024*1024',
-        num_images: options.numImages || 1,
-        guidance_scale: options.guidanceScale ?? 3.5,
-        num_inference_steps: options.numInferenceSteps ?? (model === 'flux-schnell' ? 4 : 28),
-        enable_base64_output: false,
-        enable_safety_checker: options.enableSafetyChecker ?? true,
-      }),
+      body: JSON.stringify(requestBody),
     },
   );
 
@@ -232,6 +244,7 @@ export function getAtlasImageModels(): Array<{
   name: string;
   description: string;
   pricing: string;
+  supportsImageToImage?: boolean;
 }> {
   return [
     {
@@ -239,12 +252,21 @@ export function getAtlasImageModels(): Array<{
       name: 'Flux Schnell',
       description: 'Fastest image generation (4 steps) - 12B parameter model',
       pricing: '$0.0024/image',
+      supportsImageToImage: false,
     },
     {
       id: 'flux-dev',
       name: 'Flux Dev',
       description: 'High quality image generation (28 steps) - 12B parameter model',
       pricing: '$0.0096/image',
+      supportsImageToImage: false,
+    },
+    {
+      id: 'flux-redux-dev',
+      name: 'Flux Redux Dev',
+      description: 'Image-to-image generation with reference image support (28 steps)',
+      pricing: '$0.0096/image',
+      supportsImageToImage: true,
     },
   ];
 }
