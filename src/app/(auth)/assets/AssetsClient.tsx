@@ -1,10 +1,15 @@
 'use client';
 
-import { Pencil, Plus, Trash2, Upload, Users } from 'lucide-react';
+import { Music, Pencil, Plus, Sparkles, Trash2, Upload, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { MediaViewer } from '@/components/assets/MediaViewer';
+import { GenerateImageModal } from '@/components/media/GenerateImageModal';
+import { GenerateMusicModal } from '@/components/media/GenerateMusicModal';
+import { CreateNoteModal } from '@/components/notes/CreateNoteModal';
+import { EditNoteModal } from '@/components/notes/EditNoteModal';
+import { CreateQuoteModal } from '@/components/quotes/CreateQuoteModal';
 import { EditQuoteModal } from '@/components/sessions/EditQuoteModal';
 import { Button } from '@/components/ui/Button';
 import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog';
@@ -46,6 +51,13 @@ export function AssetsClient() {
   const [editingQuote, setEditingQuote] = useState<any | null>(null);
   const [deletingQuote, setDeletingQuote] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showCreateQuoteModal, setShowCreateQuoteModal] = useState(false);
+
+  // Note create/edit/delete state
+  const [showCreateNoteModal, setShowCreateNoteModal] = useState(false);
+  const [editingNote, setEditingNote] = useState<any | null>(null);
+  const [deletingNote, setDeletingNote] = useState<any | null>(null);
+  const [isDeletingNote, setIsDeletingNote] = useState(false);
 
   // Media delete state
   const [deletingMedia, setDeletingMedia] = useState<MediaItem | null>(null);
@@ -62,6 +74,14 @@ export function AssetsClient() {
   // Media viewer state
   const [selectedMediaItem, setSelectedMediaItem] = useState<MediaItem | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
+
+  // Media generation state
+  const [showGenerateImageModal, setShowGenerateImageModal] = useState(false);
+  const [showGenerateMusicModal, setShowGenerateMusicModal] = useState(false);
+
+  // In-progress tasks state
+  const [inProgressTasks, setInProgressTasks] = useState<any[]>([]);
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false);
 
   // Load patients on mount (only when user is available)
   useEffect(() => {
@@ -90,6 +110,22 @@ export function AssetsClient() {
       loadNotes();
     }
   }, [selectedPatient, activeTab, searchQuery]);
+
+  // Poll for in-progress tasks every 5 seconds
+  useEffect(() => {
+    if (selectedPatient && activeTab === 'media') {
+      // Initial load
+      loadInProgressTasks();
+
+      // Set up polling interval
+      const interval = setInterval(() => {
+        loadInProgressTasks();
+      }, 5000);
+
+      // Cleanup interval on unmount or when dependencies change
+      return () => clearInterval(interval);
+    }
+  }, [selectedPatient, activeTab]);
 
   const loadPatients = async () => {
     if (!user) {
@@ -139,6 +175,30 @@ export function AssetsClient() {
       console.error('Error loading media:', error);
     } finally {
       setIsLoadingMedia(false);
+    }
+  };
+
+  const loadInProgressTasks = async () => {
+    if (!selectedPatient || !user) {
+      return;
+    }
+
+    try {
+      setIsLoadingTasks(true);
+      const params = new URLSearchParams({
+        patientId: selectedPatient,
+        status: 'pending,processing',
+      });
+
+      const response = await authenticatedFetch(`/api/ai/music-tasks?${params.toString()}`, user);
+      if (response.ok) {
+        const data = await response.json();
+        setInProgressTasks(data.tasks || []);
+      }
+    } catch (error) {
+      console.error('Error loading in-progress tasks:', error);
+    } finally {
+      setIsLoadingTasks(false);
     }
   };
 
@@ -231,6 +291,98 @@ export function AssetsClient() {
       alert('Failed to delete quote. Please try again.');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleCreateQuote = async (quoteData: { quoteText: string; tags: string[]; notes: string }) => {
+    try {
+      const response = await authenticatedPost('/api/quotes', user, {
+        patientId: selectedPatient,
+        quoteText: quoteData.quoteText,
+        tags: quoteData.tags,
+        notes: quoteData.notes,
+      });
+
+      if (response.ok) {
+        // Refresh quotes list
+        await loadQuotes();
+        toast.success('Quote created successfully');
+      } else {
+        throw new Error('Failed to create quote');
+      }
+    } catch (error) {
+      console.error('Error creating quote:', error);
+      throw error;
+    }
+  };
+
+  // Note create/edit/delete handlers
+  const handleCreateNote = async (noteData: { title: string; content: string; tags: string[] }) => {
+    try {
+      const response = await authenticatedPost('/api/notes', user, {
+        patientId: selectedPatient,
+        title: noteData.title,
+        content: noteData.content,
+        tags: noteData.tags,
+      });
+
+      if (response.ok) {
+        // Refresh notes list
+        await loadNotes();
+        toast.success('Note created successfully');
+      } else {
+        throw new Error('Failed to create note');
+      }
+    } catch (error) {
+      console.error('Error creating note:', error);
+      throw error;
+    }
+  };
+
+  const handleEditNote = async (noteId: string, noteData: { title: string; content: string; tags: string[] }) => {
+    try {
+      const response = await authenticatedFetch(`/api/notes/${noteId}`, user, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(noteData),
+      });
+
+      if (response.ok) {
+        // Refresh notes list
+        await loadNotes();
+        setEditingNote(null);
+        toast.success('Note updated successfully');
+      } else {
+        throw new Error('Failed to update note');
+      }
+    } catch (error) {
+      console.error('Error updating note:', error);
+      throw error;
+    }
+  };
+
+  const handleDeleteNote = async () => {
+    if (!deletingNote) return;
+
+    try {
+      setIsDeletingNote(true);
+      const response = await authenticatedFetch(`/api/notes/${deletingNote.id}`, user, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Refresh notes list
+        await loadNotes();
+        setDeletingNote(null);
+        toast.success('Note deleted successfully');
+      } else {
+        throw new Error('Failed to delete note');
+      }
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      alert('Failed to delete note. Please try again.');
+    } finally {
+      setIsDeletingNote(false);
     }
   };
 
@@ -374,6 +526,20 @@ export function AssetsClient() {
     return `${Math.floor(diffDays / 365)} years ago`;
   };
 
+  const formatTimeElapsed = (dateString: string) => {
+    const now = new Date();
+    const created = new Date(dateString);
+    const diffSeconds = Math.floor((now.getTime() - created.getTime()) / 1000);
+
+    if (diffSeconds < 60) {
+      return `${diffSeconds}s ago`;
+    }
+    if (diffSeconds < 3600) {
+      return `${Math.floor(diffSeconds / 60)}m ago`;
+    }
+    return `${Math.floor(diffSeconds / 3600)}h ago`;
+  };
+
   // Get counts by type
   const videosCount = media.filter(m => m.mediaType === 'video').length;
   const imagesCount = media.filter(m => m.mediaType === 'image').length;
@@ -497,12 +663,35 @@ export function AssetsClient() {
                 <Button
                   variant="primary"
                   size="sm"
+                  onClick={() => setShowGenerateImageModal(true)}
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Generate Image
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setShowGenerateMusicModal(true)}
+                >
+                  <Music className="mr-2 h-4 w-4" />
+                  Generate Music
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
                   onClick={handleUploadClick}
                 >
                   <Upload className="mr-2 h-4 w-4" />
                   Upload Media
                 </Button>
-                <button onClick={() => loadMedia()} className="text-gray-500 hover:text-gray-700">
+                <button
+                  onClick={() => {
+                    loadMedia();
+                    loadInProgressTasks();
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                  title="Refresh media and tasks"
+                >
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
@@ -581,6 +770,88 @@ export function AssetsClient() {
               </button>
             </div>
           </div>
+
+          {/* In-Progress Tasks */}
+          {inProgressTasks.length > 0 && (
+            <div className="border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50 px-6 py-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Music className="h-5 w-5 animate-pulse text-indigo-600" />
+                  <h3 className="text-sm font-semibold text-gray-900">
+                    Generating Music (
+                    {inProgressTasks.length}
+                    {' '}
+                    in progress)
+                  </h3>
+                </div>
+                <button
+                  onClick={() => loadInProgressTasks()}
+                  className="rounded-lg p-1.5 text-indigo-600 transition-colors hover:bg-indigo-100"
+                  title="Refresh task status from Suno"
+                  disabled={isLoadingTasks}
+                >
+                  <svg
+                    className={`h-4 w-4 ${isLoadingTasks ? 'animate-spin' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {inProgressTasks.map(task => (
+                  <div
+                    key={task.id}
+                    className="rounded-lg border border-indigo-200 bg-white p-4 shadow-sm"
+                  >
+                    <div className="mb-2 flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="text-sm font-medium text-gray-900">
+                          {task.title || 'Untitled Music'}
+                        </h4>
+                        <div className="mt-1 flex items-center gap-2">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                              task.status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-indigo-100 text-indigo-700'
+                            }`}
+                          >
+                            {task.status === 'pending' ? '⏳ Pending' : '🎵 Processing'}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {formatTimeElapsed(task.createdAt)}
+                          </span>
+                        </div>
+                        <div className="mt-1">
+                          <span className="font-mono text-xs text-gray-400">
+                            Task ID:
+                            {' '}
+                            {task.id}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="relative h-2 overflow-hidden rounded-full bg-gray-200">
+                      <div
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500 ease-out"
+                        style={{ width: `${task.progress || 0}%` }}
+                      />
+                    </div>
+                    <div className="mt-1 text-right text-xs text-gray-600">
+                      {task.progress || 0}
+                      %
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Media Grid */}
           <div className="flex-1 overflow-y-auto p-6">
@@ -712,7 +983,10 @@ export function AssetsClient() {
                 {selectedPatientData?.name}
                 's Quotes
               </h2>
-              <button className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+              <button
+                onClick={() => setShowCreateQuoteModal(true)}
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              >
                 + New Quote
               </button>
             </div>
@@ -820,7 +1094,10 @@ export function AssetsClient() {
               <h2 className="text-lg font-semibold text-gray-900">
                 {selectedPatientData?.name ? `${selectedPatientData.name}'s Notes` : 'Notes'}
               </h2>
-              <button className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700">
+              <button
+                onClick={() => setShowCreateNoteModal(true)}
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+              >
                 + New Note
               </button>
             </div>
@@ -897,11 +1174,22 @@ export function AssetsClient() {
                           )}
                         </div>
                       </div>
-                      <button className="text-gray-400 transition-colors hover:text-gray-600">
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                        </svg>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setEditingNote(note)}
+                          className="text-gray-400 transition-colors hover:text-indigo-600"
+                          title="Edit note"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeletingNote(note)}
+                          className="text-gray-400 transition-colors hover:text-red-600"
+                          title="Delete note"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
 
                     {/* Note Content */}
@@ -1070,6 +1358,14 @@ export function AssetsClient() {
         </div>
       )}
 
+      {/* Create Quote Modal */}
+      <CreateQuoteModal
+        isOpen={showCreateQuoteModal}
+        onClose={() => setShowCreateQuoteModal(false)}
+        patientId={selectedPatient}
+        onSave={handleCreateQuote}
+      />
+
       {/* Edit Quote Modal */}
       {editingQuote && (
         <EditQuoteModal
@@ -1077,6 +1373,24 @@ export function AssetsClient() {
           onClose={() => setEditingQuote(null)}
           quote={editingQuote}
           onSave={handleEditQuote}
+        />
+      )}
+
+      {/* Create Note Modal */}
+      <CreateNoteModal
+        isOpen={showCreateNoteModal}
+        onClose={() => setShowCreateNoteModal(false)}
+        patientId={selectedPatient}
+        onSave={handleCreateNote}
+      />
+
+      {/* Edit Note Modal */}
+      {editingNote && (
+        <EditNoteModal
+          isOpen={!!editingNote}
+          onClose={() => setEditingNote(null)}
+          note={editingNote}
+          onSave={handleEditNote}
         />
       )}
 
@@ -1088,6 +1402,16 @@ export function AssetsClient() {
         title="Delete Quote"
         message="Are you sure you want to delete this quote? This action cannot be undone."
         isDeleting={isDeleting}
+      />
+
+      {/* Delete Note Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        isOpen={!!deletingNote}
+        onClose={() => setDeletingNote(null)}
+        onConfirm={handleDeleteNote}
+        title="Delete Note"
+        message={`Are you sure you want to delete this note? This action cannot be undone.`}
+        isDeleting={isDeletingNote}
       />
 
       {/* Delete Media Confirmation Dialog */}
@@ -1207,6 +1531,45 @@ export function AssetsClient() {
             prompt: selectedMediaItem.generationPrompt || undefined,
           }}
           onClose={handleCloseViewer}
+        />
+      )}
+
+      {/* Generate Image Modal */}
+      {showGenerateImageModal && (
+        <GenerateImageModal
+          isOpen={showGenerateImageModal}
+          onClose={() => setShowGenerateImageModal(false)}
+          onGenerate={async (imageUrl, prompt) => {
+            // Image is already saved to DB by the modal's API call
+            // Just refresh the media list and show success message
+            await loadMedia();
+            toast.success('Image generated successfully!');
+            setShowGenerateImageModal(false);
+          }}
+          patients={patients}
+        />
+      )}
+
+      {/* Generate Music Modal */}
+      {showGenerateMusicModal && (
+        <GenerateMusicModal
+          isOpen={showGenerateMusicModal}
+          onClose={() => setShowGenerateMusicModal(false)}
+          patientId={selectedPatient}
+          user={user}
+          instrumentalOption={{
+            title: 'Therapeutic Music',
+            music_description: 'Create therapeutic music for this patient',
+          }}
+          lyricalOption={{
+            title: 'Lyrical Therapeutic Song',
+            music_description: 'Create a song with meaningful lyrics for this patient',
+          }}
+          onComplete={() => {
+            // Refresh media list and tasks when music generation completes
+            loadMedia();
+            loadInProgressTasks();
+          }}
         />
       )}
     </div>

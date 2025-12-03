@@ -2,7 +2,8 @@ import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { sceneClips, scenes } from '@/models/Schema';
+import { generatePresignedUrlsForMedia } from '@/libs/GCS';
+import { mediaLibrary, sceneClips, scenes } from '@/models/Schema';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -30,12 +31,31 @@ export async function GET(
       );
     }
 
-    // Get clips for this scene
-    const clips = await db
-      .select()
+    // Get clips for this scene with media details
+    const clipsWithMedia = await db
+      .select({
+        clip: sceneClips,
+        media: mediaLibrary,
+      })
       .from(sceneClips)
+      .leftJoin(mediaLibrary, eq(sceneClips.mediaId, mediaLibrary.id))
       .where(eq(sceneClips.sceneId, sceneId))
       .orderBy(sceneClips.sequenceNumber);
+
+    // Generate presigned URLs for media items
+    const mediaItems = clipsWithMedia
+      .map(c => c.media)
+      .filter((m): m is NonNullable<typeof m> => m !== null);
+
+    const mediaWithSignedUrls = await generatePresignedUrlsForMedia(mediaItems, 1);
+
+    // Map media back to clips
+    const mediaMap = new Map(mediaWithSignedUrls.map(m => [m.id, m]));
+
+    const clips = clipsWithMedia.map(({ clip, media }) => ({
+      ...clip,
+      media: media ? mediaMap.get(media.id) : null,
+    }));
 
     return NextResponse.json({ scene, clips });
   } catch (error) {

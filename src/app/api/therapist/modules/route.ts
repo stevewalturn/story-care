@@ -108,14 +108,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createModuleSchema.parse(body);
 
-    // 4. CREATE PRIVATE MODULE (template IDs are now arrays)
+    // 4. CREATE PRIVATE MODULE
     const newModule = await createTherapistModule({
       name: validatedData.name,
       domain: validatedData.domain as TherapeuticDomain,
       description: validatedData.description,
       createdBy: user.dbUserId,
-      reflectionTemplateIds: validatedData.reflectionTemplateIds,
-      surveyTemplateIds: validatedData.surveyTemplateIds,
       aiPromptText: validatedData.aiPromptText,
       aiPromptMetadata: validatedData.aiPromptMetadata,
     });

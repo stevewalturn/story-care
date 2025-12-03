@@ -39,7 +39,7 @@ export async function GET(
     }
 
     // 3. FETCH MODULE
-    const { module: therapistModule, reflectionTemplates, surveyTemplates } = await getModuleById(
+    const { module: therapistModule } = await getModuleById(
       resolvedParams.id,
     );
 
@@ -60,8 +60,6 @@ export async function GET(
 
     return NextResponse.json({
       module: therapistModule,
-      reflectionTemplates,
-      surveyTemplates,
     });
   } catch (error: any) {
     console.error('[Therapist] Get module error:', error);
@@ -121,12 +119,10 @@ export async function PUT(
     const body = await request.json();
     const validatedData = updateModuleSchema.parse(body);
 
-    // 5. UPDATE MODULE (template IDs are now arrays)
+    // 5. UPDATE MODULE
     const updatedModule = await updateModule(resolvedParams.id, {
       name: validatedData.name,
       description: validatedData.description,
-      reflectionTemplateIds: validatedData.reflectionTemplateIds,
-      surveyTemplateIds: validatedData.surveyTemplateIds,
       aiPromptText: validatedData.aiPromptText,
       aiPromptMetadata: validatedData.aiPromptMetadata,
       status: validatedData.status,

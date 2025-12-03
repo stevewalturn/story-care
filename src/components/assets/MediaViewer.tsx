@@ -1,6 +1,7 @@
 'use client';
 
 import { Download, Tag, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 
 type MediaItem = {
@@ -32,6 +33,57 @@ export function MediaViewer({ item, onClose }: MediaViewerProps) {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const handleDownload = async () => {
+    if (!item.url) {
+      toast.error('No file available to download');
+      return;
+    }
+
+    try {
+      // Get file extension from URL or default based on type
+      const urlPath = item.url.split('?')[0]; // Remove query params
+      const urlExtension = urlPath.split('.').pop()?.toLowerCase();
+
+      let extension = urlExtension || 'mp4';
+      if (!urlExtension) {
+        // Default extensions by type
+        if (item.type === 'image') extension = 'jpg';
+        else if (item.type === 'audio') extension = 'mp3';
+        else if (item.type === 'video') extension = 'mp4';
+      }
+
+      const filename = `${item.title.replace(/[^a-z0-9]/gi, '_')}.${extension}`;
+
+      // Download using fetch and blob (works with presigned URLs)
+      toast.loading('Downloading...');
+      const response = await fetch(item.url);
+
+      if (!response.ok) {
+        throw new Error('Download failed');
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      // Create temporary anchor and trigger download
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      // Clean up
+      URL.revokeObjectURL(blobUrl);
+      toast.dismiss();
+      toast.success('Download started');
+    } catch (error) {
+      console.error('Download failed:', error);
+      toast.dismiss();
+      toast.error('Failed to download file');
+    }
   };
 
   return (
@@ -95,7 +147,7 @@ export function MediaViewer({ item, onClose }: MediaViewerProps) {
                   {formatDate(item.createdAt)}
                 </p>
               </div>
-              <Button variant="secondary">
+              <Button variant="secondary" onClick={handleDownload}>
                 <Download className="mr-2 h-4 w-4" />
                 Download
               </Button>

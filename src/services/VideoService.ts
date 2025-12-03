@@ -20,6 +20,13 @@ export type AssembleOptions = {
   height?: number;
   fps?: number;
   audioTrack?: string;
+  audioTracks?: Array<{
+    audioUrl: string;
+    volume: number;
+    startTimeSeconds?: number;
+  }>;
+  loopAudio?: boolean;
+  fitAudioToDuration?: boolean;
 };
 
 /**
@@ -135,10 +142,152 @@ export class VideoService {
   }
 
   /**
-   * Main assembly function - assemble scene from clips
+   * Merge multiple audio tracks with volume control
+   */
+  private static async mergeAudioTracks(
+    audioPaths: string[],
+    volumes: number[],
+    outputPath: string,
+  ): Promise<void> {
+    if (audioPaths.length === 0) {
+      throw new Error('No audio tracks to merge');
+    }
+
+    if (audioPaths.length === 1) {
+      // Single track - just copy with volume adjustment
+      const volumeDb = 20 * Math.log10(volumes[0]! / 100);
+      const command = `ffmpeg -i "${audioPaths[0]}" -af "volume=${volumeDb}dB" -c:a aac "${outputPath}" -y`;
+      await execAsync(command);
+      return;
+    }
+
+    // Multiple tracks - use amix filter
+    const inputs = audioPaths.map(p => `-i "${p}"`).join(' ');
+    const weights = volumes.map(v => v / 100).join(' ');
+    const command = `ffmpeg ${inputs} -filter_complex "amix=inputs=${audioPaths.length}:duration=longest:weights=${weights}" -c:a aac "${outputPath}" -y`;
+
+    await execAsync(command);
+  }
+
+  /**
+   * Loop audio to fit video duration with crossfade
+   */
+  private static async loopAudioToFit(
+    audioPath: string,
+    targetDuration: number,
+    outputPath: string,
+  ): Promise<void> {
+    // Get audio duration
+    const metadata = await this.getVideoMetadata(audioPath);
+    const audioDuration = parseFloat(metadata.format.duration);
+
+    if (audioDuration >= targetDuration) {
+      // Audio is already long enough, just trim it
+      const command = `ffmpeg -i "${audioPath}" -t ${targetDuration} -c:a aac "${outputPath}" -y`;
+      await execAsync(command);
+      return;
+    }
+
+    // Calculate how many loops we need
+    const loopCount = Math.ceil(targetDuration / audioDuration);
+
+    // Create a concat file for looping
+    const concatFilePath = path.join(this.tempDir, 'audio-loop-concat.txt');
+    const concatContent = Array(loopCount)
+      .fill(`file '${audioPath}'`)
+      .join('\n');
+    fs.writeFileSync(concatFilePath, concatContent);
+
+    // Concatenate with crossfade between loops
+    const fadeTime = Math.min(2, audioDuration * 0.1); // 2s or 10% of audio duration
+    const command = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -af "afade=t=out:st=${targetDuration - fadeTime}:d=${fadeTime}" -t ${targetDuration} -c:a aac "${outputPath}" -y`;
+
+    await execAsync(command);
+  }
+
+  /**
+   * Fit audio to video duration by trimming/cutting to exact length
+   */
+  private static async fitAudioToDuration(
+    audioPath: string,
+    targetDuration: number,
+    outputPath: string,
+  ): Promise<void> {
+    // Simple trim command - cut audio at target duration
+    // -t: trim to exact duration
+    // -c:a aac: re-encode to AAC codec
+    const command = `ffmpeg -i "${audioPath}" -t ${targetDuration} -c:a aac "${outputPath}" -y`;
+
+    await execAsync(command);
+  }
+
+  /**
+   * Process audio tracks for scene assembly
+   * Downloads, merges, and applies loop/fit settings
+   */
+  private static async processAudioTracks(
+    audioTracks: Array<{
+      audioUrl: string;
+      volume: number;
+      startTimeSeconds?: number;
+    }>,
+    videoDuration: number,
+    loopAudio: boolean,
+    fitAudio: boolean,
+  ): Promise<string | null> {
+    if (audioTracks.length === 0) {
+      return null;
+    }
+
+    this.ensureTempDir();
+
+    // Download all audio tracks
+    const downloadedPaths: string[] = [];
+    const volumes: number[] = [];
+
+    for (let i = 0; i < audioTracks.length; i++) {
+      const track = audioTracks[i]!;
+      const audioFilename = `audio-track-${i}.mp3`;
+      const audioPath = await this.downloadMedia(track.audioUrl, audioFilename);
+      downloadedPaths.push(audioPath);
+      volumes.push(track.volume);
+    }
+
+    // Merge audio tracks if multiple
+    const mergedPath = path.join(this.tempDir, 'audio-merged.mp3');
+    await this.mergeAudioTracks(downloadedPaths, volumes, mergedPath);
+
+    // Apply loop or fit if requested
+    const finalAudioPath = path.join(this.tempDir, 'audio-final.mp3');
+
+    if (loopAudio) {
+      await this.loopAudioToFit(mergedPath, videoDuration, finalAudioPath);
+    } else if (fitAudio) {
+      await this.fitAudioToDuration(mergedPath, videoDuration, finalAudioPath);
+    } else {
+      // Just use merged audio as-is
+      fs.copyFileSync(mergedPath, finalAudioPath);
+    }
+
+    return finalAudioPath;
+  }
+
+  /**
+   * Main assembly function - assemble scene from clips with multi-audio support
+   * Supports up to 60 seconds of video
    */
   static async assembleScene(options: AssembleOptions): Promise<string> {
-    const { clips, outputPath, width = 1920, height = 1080, fps = 30, audioTrack } = options;
+    const {
+      clips,
+      outputPath,
+      width = 1920,
+      height = 1080,
+      fps = 30,
+      audioTrack,
+      audioTracks = [],
+      loopAudio = false,
+      fitAudioToDuration = false,
+    } = options;
 
     // Check FFmpeg availability
     const hasFFmpeg = await this.checkFFmpeg();
@@ -196,16 +345,48 @@ export class VideoService {
       const tempOutputPath = path.join(this.tempDir, 'assembled-temp.mp4');
       await this.concatenateVideos(processedClips, tempOutputPath);
 
-      // Add audio track if provided
-      if (audioTrack) {
+      // Get video duration for validation and audio processing
+      const metadata = await this.getVideoMetadata(tempOutputPath);
+      const videoDuration = parseFloat(metadata.format.duration);
+
+      // Validate 60-second limit
+      if (videoDuration > 60) {
+        throw new Error(
+          `Video duration (${videoDuration.toFixed(1)}s) exceeds 60-second limit`,
+        );
+      }
+
+      console.log('[ASSEMBLE] Video assembled, duration:', videoDuration);
+
+      // Handle audio tracks (new multi-audio approach or legacy single track)
+      let finalOutputPath = outputPath;
+
+      if (audioTracks.length > 0) {
+        // New approach: multiple audio tracks with loop/fit options
+        console.log('[ASSEMBLE] Processing multiple audio tracks');
+        const processedAudioPath = await this.processAudioTracks(
+          audioTracks,
+          videoDuration,
+          loopAudio,
+          fitAudioToDuration,
+        );
+
+        if (processedAudioPath) {
+          await this.addAudioTrack(tempOutputPath, processedAudioPath, outputPath);
+          console.log('[ASSEMBLE] Audio tracks added to video');
+        } else {
+          fs.copyFileSync(tempOutputPath, outputPath);
+        }
+      } else if (audioTrack) {
+        // Legacy approach: single audio track
         const audioPath = await this.downloadMedia(audioTrack, 'audio-track.mp3');
         await this.addAudioTrack(tempOutputPath, audioPath, outputPath);
       } else {
-        // Just move/copy the file
+        // No audio
         fs.copyFileSync(tempOutputPath, outputPath);
       }
 
-      return outputPath;
+      return finalOutputPath;
     } catch (error) {
       console.error('Error assembling scene:', error);
       throw error;

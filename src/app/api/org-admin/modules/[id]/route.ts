@@ -145,8 +145,6 @@ export async function PUT(
       name: validatedData.name,
       description: validatedData.description,
 
-      reflectionTemplateIds: validatedData.reflectionTemplateIds,
-      surveyTemplateIds: validatedData.surveyTemplateIds,
       aiPromptText: validatedData.aiPromptText,
       aiPromptMetadata: validatedData.aiPromptMetadata,
       status: validatedData.status,

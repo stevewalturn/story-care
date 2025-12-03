@@ -8,6 +8,7 @@
 import { Film, MoreVertical, Play, Plus, Search, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { MediaViewer } from '@/components/assets/MediaViewer';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
@@ -214,6 +215,7 @@ type SceneCardProps = {
 
 function SceneCard({ scene, onEdit, onDelete }: SceneCardProps) {
   const [showMenu, setShowMenu] = useState(false);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
 
   const statusColors = {
     draft: 'bg-gray-100 text-gray-700',
@@ -241,9 +243,14 @@ function SceneCard({ scene, onEdit, onDelete }: SceneCardProps) {
               className="h-full w-full object-cover"
             />
             {scene.assembledVideoUrl && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+              <button
+                onClick={() => setIsViewerOpen(true)}
+                className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100"
+                type="button"
+                aria-label="Play video"
+              >
                 <Play className="h-12 w-12 text-white" />
-              </div>
+              </button>
             )}
           </>
         ) : (
@@ -305,7 +312,7 @@ function SceneCard({ scene, onEdit, onDelete }: SceneCardProps) {
                   <button
                     onClick={() => {
                       setShowMenu(false);
-                      window.open(scene.assembledVideoUrl!, '_blank');
+                      setIsViewerOpen(true);
                     }}
                     className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                     type="button"
@@ -353,6 +360,23 @@ function SceneCard({ scene, onEdit, onDelete }: SceneCardProps) {
           <span>{new Date(scene.updatedAt).toLocaleDateString()}</span>
         </div>
       </button>
+
+      {/* MediaViewer Modal */}
+      {isViewerOpen && scene.assembledVideoUrl && (
+        <MediaViewer
+          item={{
+            id: scene.id,
+            type: 'video',
+            title: scene.title,
+            url: scene.assembledVideoUrl,
+            createdAt: new Date(scene.createdAt),
+            thumbnailUrl: scene.thumbnailUrl || undefined,
+            patientName: scene.patientName,
+            duration: scene.durationSeconds ? Number.parseFloat(scene.durationSeconds) : undefined,
+          }}
+          onClose={() => setIsViewerOpen(false)}
+        />
+      )}
     </div>
   );
 }

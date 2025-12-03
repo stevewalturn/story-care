@@ -115,7 +115,80 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Handle completed music generation
+ * Download audio from Suno and save to media library
+ * Reusable function for both webhook and polling endpoints
+ */
+export async function downloadAndSaveAudio(
+  task: any,
+  audioUrl: string,
+  audioData: {
+    title?: string;
+    duration?: number;
+    prompt?: string;
+  },
+) {
+  console.log(`[Suno Audio] Downloading audio for task ${task.taskId}`);
+
+  // 1. Download audio from Suno URL
+  const audioResponse = await fetch(audioUrl);
+  if (!audioResponse.ok) {
+    throw new Error(`Failed to download audio: ${audioResponse.statusText}`);
+  }
+
+  const audioBuffer = await audioResponse.arrayBuffer();
+  const buffer = Buffer.from(audioBuffer);
+
+  // 2. Upload to GCS
+  const fileName = `${task.taskId}.mp3`;
+  const { url: gcsUrl, path: gcsPath } = await uploadFile(buffer, fileName, {
+    folder: 'music',
+    contentType: 'audio/mpeg',
+    makePublic: false,
+  });
+
+  console.log(`[Suno Audio] Uploaded to GCS: ${gcsPath}`);
+
+  // 3. Save to media_library (store path, not signed URL)
+  const [media] = await db
+    .insert(mediaLibrary)
+    .values({
+      mediaType: 'audio',
+      mediaUrl: gcsPath,
+      sourceType: 'generated',
+      generationPrompt: audioData.prompt || task.prompt,
+      aiModel: `suno-${task.model}`,
+      durationSeconds: Math.round(audioData.duration || task.duration || 120),
+      status: 'completed',
+      patientId: task.patientId,
+      sourceSessionId: task.sessionId,
+      createdByTherapistId: task.createdByTherapistId,
+      title: audioData.title || task.title || 'AI Generated Music',
+    })
+    .returning();
+
+  console.log(`[Suno Audio] Created media record: ${media.id}`);
+
+  // 4. Update task as completed
+  await db
+    .update(musicGenerationTasks)
+    .set({
+      status: 'completed',
+      progress: 100,
+      mediaId: media.id,
+      audioUrl,
+      duration: audioData.duration ? Math.round(audioData.duration) : undefined,
+      completedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(musicGenerationTasks.id, task.id));
+
+  console.log(`[Suno Audio] Task completed: ${task.taskId}`);
+
+  return media;
+}
+
+/**
+ * Handle completed music generation (webhook-specific wrapper)
  */
 async function handleCompletedMusic(task: any, payload: SunoWebhookPayload) {
   try {
@@ -123,58 +196,12 @@ async function handleCompletedMusic(task: any, payload: SunoWebhookPayload) {
       `[SUNO WEBHOOK] Processing completed music for task ${task.taskId}`,
     );
 
-    // 1. Download audio from Suno URL
-    const audioResponse = await fetch(payload.audioUrl!);
-    if (!audioResponse.ok) {
-      throw new Error(
-        `Failed to download audio: ${audioResponse.statusText}`,
-      );
-    }
-
-    const audioBuffer = await audioResponse.arrayBuffer();
-    const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
-
-    // 2. Upload to GCS
-    const fileName = `music/${task.patientId}/${task.taskId}.mp3`;
-    const gcsPath = await uploadFile(audioBlob, fileName, 'audio/mpeg');
-
-    console.log(`[SUNO WEBHOOK] Uploaded to GCS: ${gcsPath}`);
-
-    // 3. Save to media_library
-    const [media] = await db
-      .insert(mediaLibrary)
-      .values({
-        mediaType: 'audio',
-        mediaUrl: gcsPath,
-        sourceType: 'generated',
-        generationPrompt: task.prompt,
-        aiModel: `suno-${task.model}`,
-        durationSeconds: payload.duration || task.duration || 120,
-        status: 'completed',
-        patientId: task.patientId,
-        sourceSessionId: task.sessionId,
-        createdByTherapistId: task.createdByTherapistId,
-        title: task.title || 'AI Generated Music',
-      })
-      .returning();
-
-    console.log(`[SUNO WEBHOOK] Created media record: ${media.id}`);
-
-    // 4. Update task as completed
-    await db
-      .update(musicGenerationTasks)
-      .set({
-        status: 'completed',
-        progress: 100,
-        mediaId: media.id,
-        audioUrl: payload.audioUrl,
-        duration: payload.duration,
-        completedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(musicGenerationTasks.id, task.id));
-
-    console.log(`[SUNO WEBHOOK] Task completed: ${task.taskId}`);
+    // Use the reusable function
+    await downloadAndSaveAudio(task, payload.audioUrl!, {
+      title: payload.title || task.title,
+      duration: payload.duration,
+      prompt: task.prompt,
+    });
   } catch (error) {
     console.error('[SUNO WEBHOOK] Error handling completed music:', error);
 

@@ -6,7 +6,7 @@
  */
 
 import type { TreatmentModuleWithPrompts } from '@/models/Schema';
-import { FileText, Pencil, Sparkles, TrendingUp, X } from 'lucide-react';
+import { Pencil, Sparkles, TrendingUp, X } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -17,32 +17,14 @@ type ModuleDetailsModalProps = {
   onCopy?: () => void; // Optional - only provided for system modules
 };
 
-type Tab = 'overview' | 'questions' | 'prompts';
+type Tab = 'overview' | 'prompts';
 
 export function ModuleDetailsModal({ module, onClose, onEdit, onCopy }: ModuleDetailsModalProps) {
   const { dbUser } = useAuth();
   const isSuperAdmin = dbUser?.role === 'super_admin';
-  const [activeTab, setActiveTab] = useState<Tab>(isSuperAdmin ? 'overview' : 'questions');
+  const [activeTab, setActiveTab] = useState<Tab>(isSuperAdmin ? 'overview' : 'prompts');
 
   const domainInfo = getDomainInfo(module.domain);
-
-  // Use pre-fetched templates from module prop
-  const reflectionTemplates = module.reflectionTemplates || [];
-  const surveyTemplates = module.surveyTemplates || [];
-
-  // Format question type for display
-  const formatQuestionType = (type: string): string => {
-    const typeMap: Record<string, string> = {
-      open_text: 'Open Text',
-      scale: 'Scale',
-      emotion: 'Emotion',
-      multiple_choice: 'Multiple Choice',
-      yes_no: 'Yes/No',
-      rating: 'Rating',
-      text: 'Text',
-    };
-    return typeMap[type] || type;
-  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -106,17 +88,6 @@ export function ModuleDetailsModal({ module, onClose, onEdit, onCopy }: ModuleDe
                     Overview
                   </button>
                 )}
-                <button
-                  onClick={() => setActiveTab('questions')}
-                  className={`pb-3 text-sm font-medium transition-colors ${
-                    activeTab === 'questions'
-                      ? 'border-b-2 border-indigo-600 text-indigo-600'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                  type="button"
-                >
-                  Questions
-                </button>
                 <button
                   onClick={() => setActiveTab('prompts')}
                   className={`pb-3 text-sm font-medium transition-colors ${
@@ -183,175 +154,6 @@ export function ModuleDetailsModal({ module, onClose, onEdit, onCopy }: ModuleDe
                     </div>
                   </>
                 )}
-              </div>
-            )}
-
-            {/* Questions Tab */}
-            {activeTab === 'questions' && (
-              <div className="space-y-6">
-                {/* Reflection Questions Templates */}
-                <div>
-                  <h3 className="mb-3 text-sm font-semibold text-gray-900">
-                    Reflection Questions (Post-Session)
-                  </h3>
-                  <p className="mb-4 text-sm text-gray-600">
-                    Questions for patients to answer in story pages after the session.
-                  </p>
-
-                  {reflectionTemplates.length > 0 ? (
-                    <div className="space-y-4">
-                      {reflectionTemplates.map(template => (
-                        <div key={template.id} className="rounded-lg border border-gray-200 bg-white p-4">
-                          <div className="mb-4 flex items-start justify-between">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <FileText className="h-5 w-5 text-indigo-600" />
-                                <h4 className="font-semibold text-gray-900">{template.title}</h4>
-                              </div>
-                              {template.description && (
-                                <p className="mt-1 text-sm text-gray-600">{template.description}</p>
-                              )}
-                              <div className="mt-2 flex items-center gap-2">
-                                <span className="rounded bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
-                                  {template.category}
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  {template.scope === 'system' ? 'System Template' : template.scope === 'organization' ? 'Organization Template' : 'Private Template'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="space-y-3">
-                            {(template.questions as any[] | undefined)?.map((question: any, index: number) => (
-                              <div key={index} className="rounded-lg border border-green-200 bg-green-50 p-4">
-                                <div className="mb-2 flex items-start gap-3">
-                                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-100 text-sm font-semibold text-green-700">
-                                    {index + 1}
-                                  </span>
-                                  <div className="flex-1">
-                                    <p className="font-medium text-gray-900">{question.text}</p>
-                                    <span className="mt-1 inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                                      {formatQuestionType(question.type)}
-                                    </span>
-                                  </div>
-                                </div>
-                                {question.type === 'multiple_choice' && question.options && (
-                                  <div className="mt-2 ml-9 text-sm text-gray-600">
-                                    Options:
-                                    {' '}
-                                    {question.options.join(', ')}
-                                  </div>
-                                )}
-                                {question.type === 'scale' && (
-                                  <div className="mt-2 ml-9 text-sm text-gray-600">
-                                    Scale:
-                                    {' '}
-                                    {question.scaleMin}
-                                    {' '}
-                                    (
-                                    {question.scaleMinLabel}
-                                    ) to
-                                    {' '}
-                                    {question.scaleMax}
-                                    {' '}
-                                    (
-                                    {question.scaleMaxLabel}
-                                    )
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">No reflection templates selected</p>
-                  )}
-                </div>
-
-                {/* Survey Questions Templates */}
-                <div>
-                  <h3 className="mb-3 text-sm font-semibold text-gray-900">
-                    Survey Questions
-                  </h3>
-                  <p className="mb-4 text-sm text-gray-600">
-                    Structured survey questions for quantitative data collection.
-                  </p>
-
-                  {surveyTemplates.length > 0 ? (
-                    <div className="space-y-4">
-                      {surveyTemplates.map(template => (
-                        <div key={template.id} className="rounded-lg border border-gray-200 bg-white p-4">
-                          <div className="mb-4 flex items-start justify-between">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <FileText className="h-5 w-5 text-indigo-600" />
-                                <h4 className="font-semibold text-gray-900">{template.title}</h4>
-                              </div>
-                              {template.description && (
-                                <p className="mt-1 text-sm text-gray-600">{template.description}</p>
-                              )}
-                              <div className="mt-2 flex items-center gap-2">
-                                <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-                                  {template.category}
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  {template.scope === 'system' ? 'System Template' : template.scope === 'organization' ? 'Organization Template' : 'Private Template'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="space-y-3">
-                            {(template.questions as any[] | undefined)?.map((question: any, index: number) => (
-                              <div key={index} className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-                                <div className="mb-2 flex items-start gap-3">
-                                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
-                                    {index + 1}
-                                  </span>
-                                  <div className="flex-1">
-                                    <p className="font-medium text-gray-900">{question.text}</p>
-                                    <span className="mt-1 inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                                      {formatQuestionType(question.type)}
-                                    </span>
-                                  </div>
-                                </div>
-                                {question.type === 'multiple_choice' && question.options && (
-                                  <div className="mt-2 ml-9 text-sm text-gray-600">
-                                    Options:
-                                    {' '}
-                                    {question.options.join(', ')}
-                                  </div>
-                                )}
-                                {question.type === 'scale' && (
-                                  <div className="mt-2 ml-9 text-sm text-gray-600">
-                                    Scale:
-                                    {' '}
-                                    {question.scaleMin}
-                                    {' '}
-                                    (
-                                    {question.scaleMinLabel}
-                                    ) to
-                                    {' '}
-                                    {question.scaleMax}
-                                    {' '}
-                                    (
-                                    {question.scaleMaxLabel}
-                                    )
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">No survey templates selected</p>
-                  )}
-                </div>
               </div>
             )}
 

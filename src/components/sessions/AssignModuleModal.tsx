@@ -6,7 +6,7 @@
  */
 
 import type { TreatmentModule } from '@/models/Schema';
-import { CheckCircle, FileText, Lightbulb, X } from 'lucide-react';
+import { Lightbulb, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ModuleBadge } from '@/components/modules/ModuleBadge';
 import { ModulePicker } from '@/components/modules/ModulePicker';
@@ -195,26 +195,6 @@ export function AssignModuleModal({
                           <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
                           <span>AI-Guided Analysis</span>
                         </div>
-                        {(selectedModule as any).reflectionTemplateIds && (selectedModule as any).reflectionTemplateIds.length > 0 && (
-                          <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                            <FileText className="h-3.5 w-3.5 text-blue-500" />
-                            <span>
-                              Reflection Questions (
-                              {(selectedModule as any).reflectionTemplateIds.length}
-                              )
-                            </span>
-                          </div>
-                        )}
-                        {(selectedModule as any).surveyTemplateIds && (selectedModule as any).surveyTemplateIds.length > 0 && (
-                          <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                            <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-                            <span>
-                              Survey Questions (
-                              {(selectedModule as any).surveyTemplateIds.length}
-                              )
-                            </span>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>

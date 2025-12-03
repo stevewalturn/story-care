@@ -8,9 +8,7 @@ import { db } from '@/libs/DB';
 import {
   mediaLibrarySchema,
   pageBlocksSchema,
-  reflectionQuestionsSchema,
   storyPagesSchema,
-  surveyQuestionsSchema,
 } from '@/models/Schema';
 import { sendStoryPageNotification } from './EmailService';
 import { getModuleById } from './ModuleService';
@@ -29,8 +27,8 @@ export async function generateStoryPageFromModule(params: {
   customTitle?: string;
   customMessage?: string;
 }) {
-  // 1. Fetch module with templates
-  const { module: treatmentModule, reflectionTemplates, surveyTemplates } = await getModuleById(params.moduleId);
+  // 1. Fetch module
+  const { module: treatmentModule } = await getModuleById(params.moduleId);
 
   if (!treatmentModule) {
     throw new Error('Module not found');
@@ -78,26 +76,6 @@ export async function generateStoryPageFromModule(params: {
     includeMedia: params.includeMedia || false,
     aiAnalysisResult: sessionModule.aiAnalysisResult,
   });
-
-  // 6. Add reflection questions blocks (for each template)
-  for (const reflectionTemplate of reflectionTemplates) {
-    const reflectionBlock = await createReflectionBlock({
-      pageId: storyPage.id,
-      reflectionTemplate,
-      sequenceNumber: blocks.length + 1,
-    });
-    blocks.push(reflectionBlock);
-  }
-
-  // 7. Add survey questions blocks (for each template)
-  for (const surveyTemplate of surveyTemplates) {
-    const surveyBlock = await createSurveyBlock({
-      pageId: storyPage.id,
-      surveyTemplate,
-      sequenceNumber: blocks.length + 1,
-    });
-    blocks.push(surveyBlock);
-  }
 
   // 8. Link story page to session-module
   await linkStoryPageToSessionModule(params.sessionId, storyPage.id);
@@ -253,111 +231,6 @@ async function buildPageBlocks(params: {
   }
 
   return blocks;
-}
-
-/**
- * Create reflection block and clone questions from template
- */
-async function createReflectionBlock(params: {
-  pageId: string;
-  reflectionTemplate: any;
-  sequenceNumber: number;
-}) {
-  // 1. Create reflection block
-  const [block] = await db
-    .insert(pageBlocksSchema)
-    .values({
-      pageId: params.pageId,
-      blockType: 'reflection',
-      sequenceNumber: params.sequenceNumber,
-      textContent: null,
-      settings: {
-        templateId: params.reflectionTemplate.id,
-        templateTitle: params.reflectionTemplate.title,
-      },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .returning();
-
-  if (!block) {
-    throw new Error('Failed to create reflection block');
-  }
-
-  // 2. Clone questions from template
-  const templateQuestions = params.reflectionTemplate.questions as any[];
-
-  if (Array.isArray(templateQuestions)) {
-    for (let i = 0; i < templateQuestions.length; i++) {
-      const q = templateQuestions[i];
-
-      await db.insert(reflectionQuestionsSchema).values({
-        blockId: block.id,
-        questionText: q.text,
-        questionType: q.type || 'open_text',
-        options: q.options || null,
-        sequenceNumber: i + 1,
-        createdAt: new Date(),
-      });
-    }
-  }
-
-  return block;
-}
-
-/**
- * Create survey block and clone questions from template
- */
-async function createSurveyBlock(params: {
-  pageId: string;
-  surveyTemplate: any;
-  sequenceNumber: number;
-}) {
-  // 1. Create survey block
-  const blockResult = await db
-    .insert(pageBlocksSchema)
-    .values({
-      pageId: params.pageId,
-      blockType: 'survey',
-      sequenceNumber: params.sequenceNumber,
-      textContent: null,
-      settings: {
-        templateId: params.surveyTemplate.id,
-        templateTitle: params.surveyTemplate.title,
-      },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .returning();
-
-  const block = blockResult[0];
-  if (!block) {
-    throw new Error('Failed to create survey block');
-  }
-
-  // 2. Clone questions from template
-  const templateQuestions = params.surveyTemplate.questions as any[];
-
-  if (Array.isArray(templateQuestions)) {
-    for (let i = 0; i < templateQuestions.length; i++) {
-      const q = templateQuestions[i];
-
-      await db.insert(surveyQuestionsSchema).values({
-        blockId: block.id,
-        questionText: q.text,
-        questionType: q.type,
-        scaleMin: q.scaleMin || null,
-        scaleMax: q.scaleMax || null,
-        scaleMinLabel: q.scaleMinLabel || null,
-        scaleMaxLabel: q.scaleMaxLabel || null,
-        options: q.options || null,
-        sequenceNumber: i + 1,
-        createdAt: new Date(),
-      });
-    }
-  }
-
-  return block;
 }
 
 /**

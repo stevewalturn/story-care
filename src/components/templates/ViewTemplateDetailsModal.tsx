@@ -143,13 +143,6 @@ export function ViewTemplateDetailsModal({ template, scopeLabel, onClose }: View
                 {template.questions?.length || 0}
               </div>
               <div>
-                <span className="font-medium">Used:</span>
-                {' '}
-                {template.useCount}
-                {' '}
-                times
-              </div>
-              <div>
                 <span className="font-medium">Created:</span>
                 {' '}
                 {new Date(template.createdAt).toLocaleDateString()}

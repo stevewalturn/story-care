@@ -11,8 +11,8 @@ type AssetType = 'media' | 'quotes' | 'notes' | 'scenes';
 
 type MediaAsset = {
   id: string;
-  url: string;
-  type: 'image' | 'video' | 'audio';
+  mediaUrl: string;
+  mediaType: 'image' | 'video' | 'audio';
   title: string | null;
   createdAt: string;
 };
@@ -73,6 +73,11 @@ export function AssetPickerModal({
     }
   }, [isOpen, activeTab, patientId]);
 
+  // Clear search when switching tabs
+  useEffect(() => {
+    setSearch('');
+  }, [activeTab]);
+
   const fetchAssets = async () => {
     setLoading(true);
     try {
@@ -124,7 +129,7 @@ export function AssetPickerModal({
   };
 
   const filteredMediaAssets = mediaAssets.filter((asset) => {
-    if (filterType !== 'all' && filterType !== asset.type) return false;
+    if (filterType !== 'all' && filterType !== asset.mediaType) return false;
     if (!search) return true;
     return asset.title?.toLowerCase().includes(search.toLowerCase());
   });
@@ -226,7 +231,12 @@ export function AssetPickerModal({
             <Input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder={`Search ${activeTab}...`}
+              placeholder={
+                activeTab === 'media' ? 'Search media files...' :
+                activeTab === 'quotes' ? 'Search quotes...' :
+                activeTab === 'notes' ? 'Search notes...' :
+                'Search scenes...'
+              }
               className="pl-10"
             />
           </div>
@@ -238,10 +248,8 @@ export function AssetPickerModal({
             <div className="flex h-full items-center justify-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
             </div>
-          ) : (
-            <>
-              {/* Media Grid */}
-              {activeTab === 'media' && (
+          ) : activeTab === 'media' ? (
+            // Media Grid
                 <div className="grid grid-cols-3 gap-4">
                   {filteredMediaAssets.map(asset => (
                     <button
@@ -249,9 +257,9 @@ export function AssetPickerModal({
                       onClick={() => handleSelect(asset)}
                       className="group relative aspect-square overflow-hidden rounded-lg border border-gray-200 transition-all hover:border-indigo-500 hover:shadow-lg"
                     >
-                      {asset.type === 'image' ? (
-                        <img src={asset.url} alt={asset.title || 'Media'} className="h-full w-full object-cover" />
-                      ) : asset.type === 'video' ? (
+                      {asset.mediaType === 'image' ? (
+                        <img src={asset.mediaUrl} alt={asset.title || 'Media'} className="h-full w-full object-cover" />
+                      ) : asset.mediaType === 'video' ? (
                         <div className="flex h-full items-center justify-center bg-gray-100">
                           <ImageIcon className="h-12 w-12 text-gray-400" />
                         </div>
@@ -273,10 +281,8 @@ export function AssetPickerModal({
                     </div>
                   )}
                 </div>
-              )}
-
-              {/* Quotes List */}
-              {activeTab === 'quotes' && (
+          ) : activeTab === 'quotes' ? (
+            // Quotes List
                 <div className="space-y-3">
                   {filteredQuoteAssets.map(asset => (
                     <button
@@ -309,10 +315,8 @@ export function AssetPickerModal({
                     </div>
                   )}
                 </div>
-              )}
-
-              {/* Notes List */}
-              {activeTab === 'notes' && (
+          ) : activeTab === 'notes' ? (
+            // Notes List
                 <div className="space-y-3">
                   {filteredNoteAssets.map(asset => (
                     <button
@@ -343,10 +347,8 @@ export function AssetPickerModal({
                     </div>
                   )}
                 </div>
-              )}
-
-              {/* Scenes Grid */}
-              {activeTab === 'scenes' && (
+          ) : activeTab === 'scenes' ? (
+            // Scenes Grid
                 <div className="grid grid-cols-2 gap-4">
                   {filteredSceneAssets.map(asset => (
                     <button
@@ -388,9 +390,7 @@ export function AssetPickerModal({
                     </div>
                   )}
                 </div>
-              )}
-            </>
-          )}
+          ) : null}
         </div>
 
         {/* Footer */}

@@ -83,8 +83,6 @@ type SessionWithModule = {
     name: string;
     domain: string;
     description: string;
-    reflectionTemplateIds: string[];
-    surveyTemplateIds: string[];
   } | null;
 };
 
@@ -296,7 +294,7 @@ export function PageEditor({
     // Handle different asset types
     if (asset.type === 'media') {
       // Image or video asset
-      updateBlockContent(assetPickerBlockId, { mediaUrl: asset.data.url });
+      updateBlockContent(assetPickerBlockId, { mediaUrl: asset.data.mediaUrl });
     } else if (asset.type === 'quotes') {
       // Quote asset
       updateBlockContent(assetPickerBlockId, { text: asset.data.quoteText });

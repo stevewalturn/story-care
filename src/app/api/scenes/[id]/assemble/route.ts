@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { generatePresignedUrl } from '@/libs/GCS';
-import { mediaLibrary, sceneClips, scenes } from '@/models/Schema';
+import { mediaLibrary, sceneAudioTracks, sceneClips, scenes } from '@/models/Schema';
 import { VideoService } from '@/services/VideoService';
 
 type RouteContext = {
@@ -70,8 +70,8 @@ export async function POST(
           throw new Error(`Media not found for clip ${c.clip.id}`);
         }
 
-        // Get GCS path (use url or thumbnailUrl)
-        const gcsPath = c.media.url || c.media.thumbnailUrl || '';
+        // Get GCS path (use mediaUrl or thumbnailUrl)
+        const gcsPath = c.media.mediaUrl || c.media.thumbnailUrl || '';
 
         if (!gcsPath) {
           throw new Error(`No media URL found for clip ${c.clip.id}`);
@@ -114,17 +114,39 @@ export async function POST(
       fs.mkdirSync(tempDir, { recursive: true });
     }
 
-    // Get audio track if specified in request body
+    // Get audio tracks from database
+    const audioTracksData = await db
+      .select()
+      .from(sceneAudioTracks)
+      .where(eq(sceneAudioTracks.sceneId, sceneId))
+      .orderBy(sceneAudioTracks.sequenceNumber);
+
+    // Transform audio tracks with presigned URLs
+    const audioTracks = await Promise.all(
+      audioTracksData.map(async (track) => {
+        const presignedUrl = await generatePresignedUrl(track.audioUrl, 1);
+        return {
+          audioUrl: presignedUrl || track.audioUrl,
+          volume: track.volume || 100,
+          startTimeSeconds: Number.parseFloat(track.startTimeSeconds || '0'),
+        };
+      }),
+    );
+
+    // Get audio track from legacy field if specified in request body (backward compatibility)
     const body = await request.json().catch(() => ({}));
     const { audioTrack } = body;
 
     // Assemble the scene
-    console.error(`Starting assembly for scene ${sceneId} with ${videoClips.length} clips`);
+    console.error(`Starting assembly for scene ${sceneId} with ${videoClips.length} clips and ${audioTracks.length} audio tracks`);
 
     await VideoService.assembleScene({
       clips: videoClips,
       outputPath,
-      audioTrack,
+      audioTrack, // Legacy single audio track
+      audioTracks, // New multi-audio tracks
+      loopAudio: scene.loopAudio || false,
+      fitAudioToDuration: scene.fitAudioToDuration || false,
     });
 
     // Calculate total duration

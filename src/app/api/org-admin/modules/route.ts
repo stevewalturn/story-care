@@ -139,9 +139,6 @@ export async function POST(request: NextRequest) {
       description: validatedData.description,
       organizationId: user.organizationId,
       createdBy: user.dbUserId,
-
-      reflectionTemplateIds: validatedData.reflectionTemplateIds,
-      surveyTemplateIds: validatedData.surveyTemplateIds,
       aiPromptText: validatedData.aiPromptText,
       aiPromptMetadata: validatedData.aiPromptMetadata,
     });

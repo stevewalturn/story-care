@@ -509,7 +509,10 @@ export function parseSchemaToBlocks(jsonSchema: any): BlockInstance[] {
       break;
 
     default:
-      // Unknown schema type
+      // Try to parse as generic JSON Schema (with properties, type, required, etc.)
+      if (!schemaType && jsonSchema.type === 'object' && jsonSchema.properties) {
+        blocks.push(...parseGenericJSONSchema(jsonSchema));
+      }
       break;
   }
 
@@ -619,4 +622,111 @@ function parseCustomSchemaToBlocks(schema: any): BlockInstance[] {
     values: value.values || {},
     order: index,
   }));
+}
+
+/**
+ * Parse generic JSON Schema (standard format with properties, type, required, etc.)
+ * Attempts to create a visual representation using building blocks
+ */
+function parseGenericJSONSchema(jsonSchema: any): BlockInstance[] {
+  const blocks: BlockInstance[] = [];
+
+  // Detect the best block type based on schema properties
+  const properties = jsonSchema.properties || {};
+  const propertyKeys = Object.keys(properties);
+
+  // Check for common patterns to determine block type
+
+  // Pattern 1: Therapeutic Note (has title, content, tags, keyInsights, actionItems)
+  if (
+    propertyKeys.includes('title') &&
+    propertyKeys.includes('content') &&
+    (propertyKeys.includes('tags') || propertyKeys.includes('keyInsights') || propertyKeys.includes('actionItems'))
+  ) {
+    blocks.push({
+      blockId: 'therapeutic_note',
+      instanceId: `therapeutic_note_${Date.now()}`,
+      values: {
+        title: properties.title?.default || 'Therapeutic Note',
+        content_prompt: 'Generate therapeutic note based on transcript analysis',
+      },
+      order: 0,
+    });
+  }
+  // Pattern 2: Quote Extraction (has quoteText, speaker, etc.)
+  else if (propertyKeys.includes('quoteText') || propertyKeys.includes('quote_text') || propertyKeys.includes('text')) {
+    blocks.push({
+      blockId: 'quote',
+      instanceId: `quote_${Date.now()}`,
+      values: {
+        extraction_instruction: 'Extract meaningful quotes from the transcript',
+        min_quotes: 1,
+        max_quotes: 5,
+      },
+      order: 0,
+    });
+  }
+  // Pattern 3: Questions (has questions array)
+  else if (propertyKeys.includes('questions') && properties.questions?.type === 'array') {
+    blocks.push({
+      blockId: 'reflection_question',
+      instanceId: `reflection_${Date.now()}`,
+      values: {
+        question: 'Reflection question based on session',
+        context: 'Session analysis',
+      },
+      order: 0,
+    });
+  }
+  // Pattern 4: Images (has images array, image_url, or prompt)
+  else if (
+    propertyKeys.includes('images') ||
+    propertyKeys.includes('image_url') ||
+    propertyKeys.includes('imageUrl') ||
+    (propertyKeys.includes('prompt') && propertyKeys.includes('style'))
+  ) {
+    blocks.push({
+      blockId: 'image_prompt',
+      instanceId: `image_${Date.now()}`,
+      values: {
+        title: 'Generated Image',
+        prompt: 'Image generation prompt',
+        style: 'photorealistic',
+      },
+      order: 0,
+    });
+  }
+  // Pattern 5: Music/Audio (has audio_url, lyrics, musicStyle, etc.)
+  else if (
+    propertyKeys.includes('audio_url') ||
+    propertyKeys.includes('audioUrl') ||
+    propertyKeys.includes('lyrics') ||
+    propertyKeys.includes('musicStyle')
+  ) {
+    blocks.push({
+      blockId: 'music_generation',
+      instanceId: `music_${Date.now()}`,
+      values: {
+        title: 'Generated Music',
+        music_type: 'instrumental',
+        music_style: 'calm',
+      },
+      order: 0,
+    });
+  }
+  // Generic fallback: Create a text_output block
+  else {
+    blocks.push({
+      blockId: 'text_output',
+      instanceId: `text_output_${Date.now()}`,
+      values: {
+        title: 'AI Response',
+        content_type: 'text',
+        prompt_for_content: 'Generate response based on the schema structure',
+      },
+      order: 0,
+    });
+  }
+
+  return blocks;
 }

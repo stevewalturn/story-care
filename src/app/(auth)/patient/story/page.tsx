@@ -85,7 +85,7 @@ export default function PatientStoryPage() {
               {storyPages.map(page => (
                 <a
                   key={page.id}
-                  href={`/pages/${page.id}`}
+                  href={`/patient/story/${page.id}`}
                   className="group overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-lg"
                 >
                   {page.thumbnailUrl

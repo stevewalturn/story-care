@@ -5,7 +5,7 @@
 
 import { eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
-import { reflectionTemplatesSchema, surveyTemplatesSchema, treatmentModulesSchema } from '@/models/Schema';
+import { treatmentModulesSchema } from '@/models/Schema';
 import 'dotenv/config';
 
 // System user ID for seeded modules (Super Admin: admin@storycare.com)
@@ -287,59 +287,7 @@ export async function seedModules() {
         continue;
       }
 
-      // 1. Create reflection template
-      console.log('  📝 Creating reflection template...');
-      const [reflectionTemplate] = await db
-        .insert(reflectionTemplatesSchema)
-        .values({
-          title: `${moduleData.name} - Reflection Questions`,
-          description: `Reflection questions for the ${moduleData.name} module`,
-          category: 'narrative',
-          questions: moduleData.reflectionQuestions,
-          scope: 'system',
-          status: 'active',
-          createdBy: SYSTEM_USER_ID,
-          organizationId: null,
-          useCount: 0,
-          metadata: { moduleAssociated: true },
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .returning();
-
-      if (!reflectionTemplate) {
-        throw new Error('Failed to create reflection template');
-      }
-
-      console.log(`  ✅ Reflection template created: ${reflectionTemplate.id}`);
-
-      // 2. Create survey template
-      console.log('  📊 Creating survey template...');
-      const [surveyTemplate] = await db
-        .insert(surveyTemplatesSchema)
-        .values({
-          title: `${moduleData.name} - Survey Bundle`,
-          description: `Standard survey bundle for the ${moduleData.name} module`,
-          category: 'outcome',
-          questions: moduleData.surveyQuestions,
-          scope: 'system',
-          status: 'active',
-          createdBy: SYSTEM_USER_ID,
-          organizationId: null,
-          useCount: 0,
-          metadata: { moduleAssociated: true },
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .returning();
-
-      if (!surveyTemplate) {
-        throw new Error('Failed to create survey template');
-      }
-
-      console.log(`  ✅ Survey template created: ${surveyTemplate.id}`);
-
-      // 3. Create treatment module
+      // Create treatment module
       console.log('  🎯 Creating treatment module...');
       const [newModule] = await db
         .insert(treatmentModulesSchema)
@@ -350,8 +298,6 @@ export async function seedModules() {
           scope: 'system',
           createdBy: SYSTEM_USER_ID,
           organizationId: null,
-          reflectionTemplateIds: [reflectionTemplate.id],
-          surveyTemplateIds: [surveyTemplate.id],
           aiPromptText: moduleData.aiPrompt,
           aiPromptMetadata: {
             output_format: 'structured',

@@ -1,8 +1,9 @@
 'use client';
 
-import { X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 
@@ -20,19 +21,23 @@ type MusicOption = {
 type GenerateMusicModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  sessionId: string;
+  sessionId?: string;
+  patientId?: string;
   instrumentalOption?: MusicOption;
   lyricalOption?: MusicOption;
   user: any;
+  onComplete?: () => void;
 };
 
 export function GenerateMusicModal({
   isOpen,
   onClose,
   sessionId,
+  patientId,
   instrumentalOption,
   lyricalOption,
   user,
+  onComplete,
 }: GenerateMusicModalProps) {
   const [selectedOption, setSelectedOption] = useState<'instrumental' | 'lyrical'>('instrumental');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -42,6 +47,8 @@ export function GenerateMusicModal({
     title: string;
     status: string;
   } | null>(null);
+  const [customPrompt, setCustomPrompt] = useState('');
+  const [customDuration, setCustomDuration] = useState(120);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup interval on unmount
@@ -61,6 +68,8 @@ export function GenerateMusicModal({
     setIsGenerating(false);
     setError(null);
     setGenerationResult(null);
+    setCustomPrompt('');
+    setCustomDuration(120);
     onClose();
   };
 
@@ -68,19 +77,32 @@ export function GenerateMusicModal({
     const option = selectedOption === 'instrumental' ? instrumentalOption : lyricalOption;
     if (!option) return;
 
+    // Validation: require either sessionId or patientId
+    if (!sessionId && !patientId) {
+      setError('Either sessionId or patientId is required to generate music');
+      return;
+    }
+
     setIsGenerating(true);
     setError(null);
     setGenerationResult(null);
 
     try {
+      // Build final prompt by combining base prompt with custom prompt
+      const basePrompt = option.style_prompt || option.music_description;
+      const finalPrompt = customPrompt.trim()
+        ? `${basePrompt}\n\nAdditional details: ${customPrompt.trim()}`
+        : basePrompt;
+
       // Start the music generation
       const response = await authenticatedPost('/api/ai/generate-music', user, {
         sessionId,
+        patientId,
         instrumental: selectedOption === 'instrumental',
-        prompt: option.style_prompt || option.music_description,
+        prompt: finalPrompt,
         title: option.title,
         model: 'V4_5',
-        duration: 120,
+        duration: customDuration,
       });
 
       if (!response.ok) {
@@ -91,54 +113,15 @@ export function GenerateMusicModal({
       const data = await response.json();
       const taskId = data.taskId;
 
-      // Poll for completion
-      let attempts = 0;
-      const maxAttempts = 36; // 3 minutes max
-      
-      pollIntervalRef.current = setInterval(async () => {
-        attempts++;
+      // Close modal immediately and show success message
+      setIsGenerating(false);
+      toast.success('Music generation started! Check the Content Library in a few minutes.');
+      handleClose();
 
-        try {
-          const statusResponse = await authenticatedFetch(`/api/ai/music-task/${taskId}`, user);
-          
-          if (!statusResponse.ok) {
-            throw new Error('Failed to check music generation status');
-          }
-
-          const statusData = await statusResponse.json();
-
-          if (statusData.data.status === 'completed') {
-            if (pollIntervalRef.current) {
-              clearInterval(pollIntervalRef.current);
-              pollIntervalRef.current = null;
-            }
-            setIsGenerating(false);
-            setGenerationResult({
-              type: selectedOption,
-              title: option.title,
-              status: 'success',
-            });
-
-            // Auto-close after 2 seconds on success
-            setTimeout(() => {
-              handleClose();
-            }, 2000);
-          } else if (statusData.data.status === 'failed' || attempts >= maxAttempts) {
-            if (pollIntervalRef.current) {
-              clearInterval(pollIntervalRef.current);
-              pollIntervalRef.current = null;
-            }
-            throw new Error('Music generation failed or timed out');
-          }
-          // Continue polling if still processing
-        } catch (pollError) {
-          if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
-            pollIntervalRef.current = null;
-          }
-          throw pollError;
-        }
-      }, 5000); // Poll every 5 seconds
+      // Call onComplete callback to refresh the assets list
+      if (onComplete) {
+        onComplete();
+      }
 
     } catch (err) {
       // Clear any polling interval on error
@@ -238,27 +221,98 @@ export function GenerateMusicModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} size="lg">
-      <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-        <h2 className="text-lg font-semibold text-gray-900">Generate Therapeutic Music</h2>
-        <button
-          onClick={handleClose}
-          className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      size="lg"
+      title="Generate Therapeutic Music"
+      footer={(
+        <>
+          <Button
+            variant="secondary"
+            onClick={handleClose}
+            disabled={isGenerating}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleGenerateMusic}
+            disabled={isGenerating || (!instrumentalOption && !lyricalOption)}
+          >
+            {isGenerating ? (
+              <>
+                <svg className="mr-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                Generating & Waiting for Completion...
+              </>
+            ) : (
+              <>Generate {selectedOption === 'instrumental' ? 'Instrumental' : 'Lyrical Song'}</>
+            )}
+          </Button>
+        </>
+      )}
+    >
+      {/* Custom Inputs Section */}
+      <div className="mb-6 space-y-4">
+          {/* Custom Prompt */}
+          <div>
+            <label htmlFor="customPrompt" className="mb-1.5 block text-sm font-medium text-gray-700">
+              Custom Music Prompt <span className="text-gray-400 font-normal">(Optional)</span>
+            </label>
+            <textarea
+              id="customPrompt"
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              maxLength={500}
+              rows={3}
+              disabled={isGenerating}
+              placeholder="Add specific details to enhance the generated music. Example: 'with gentle piano and warm strings, building gradually'"
+              className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-20 disabled:bg-gray-50 disabled:text-gray-500"
+            />
+            <div className="mt-1.5 flex items-center justify-between text-xs text-gray-500">
+              <span>Add specific instruments, mood, tempo, or style details</span>
+              <span className={customPrompt.length > 450 ? 'text-amber-600 font-medium' : ''}>
+                {customPrompt.length}/500
+              </span>
+            </div>
+          </div>
 
-      <div className="p-6">
+          {/* Duration Selector */}
+          <div>
+            <label htmlFor="duration" className="mb-1.5 block text-sm font-medium text-gray-700">
+              Duration
+            </label>
+            <select
+              id="duration"
+              value={customDuration}
+              onChange={(e) => setCustomDuration(Number(e.target.value))}
+              disabled={isGenerating}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-20 disabled:bg-gray-50 disabled:text-gray-500"
+            >
+              <option value={60}>1 minute (60 seconds)</option>
+              <option value={120}>2 minutes (120 seconds)</option>
+              <option value={180}>3 minutes (180 seconds)</option>
+              <option value={240}>4 minutes (240 seconds)</option>
+            </select>
+          </div>
+        </div>
+
         {/* Options */}
-        <div className="mb-6 grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           {renderMusicOption('instrumental', instrumentalOption)}
           {renderMusicOption('lyrical', lyricalOption)}
         </div>
 
         {/* Generation Result */}
         {generationResult && (
-          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
+          <div className="mt-6 rounded-lg border border-green-200 bg-green-50 p-4">
             <div className="flex items-center gap-3">
               <div className="flex-shrink-0">
                 <svg className="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
@@ -279,7 +333,7 @@ export function GenerateMusicModal({
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
+          <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4">
             <div className="flex items-center gap-3">
               <div className="flex-shrink-0">
                 <svg className="h-5 w-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
@@ -293,38 +347,6 @@ export function GenerateMusicModal({
             </div>
           </div>
         )}
-      </div>
-
-      <div className="flex items-center justify-end gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4">
-        <Button
-          variant="secondary"
-          onClick={handleClose}
-          disabled={isGenerating}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="primary"
-          onClick={handleGenerateMusic}
-          disabled={isGenerating || (!instrumentalOption && !lyricalOption)}
-        >
-          {isGenerating ? (
-            <>
-              <svg className="mr-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              Generating & Waiting for Completion...
-            </>
-          ) : (
-            <>Generate {selectedOption === 'instrumental' ? 'Instrumental' : 'Lyrical Song'}</>
-          )}
-        </Button>
-      </div>
     </Modal>
   );
 }

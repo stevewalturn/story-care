@@ -9,12 +9,10 @@ import { Sparkles, X } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
-import type { BlockInstance } from '@/types/BuildingBlocks';
-import BuildingBlocksEditor from './BuildingBlocksEditor';
+import { JSONSchemaBuilder } from './JSONSchemaBuilder';
 
 type PromptScope = 'system' | 'organization' | 'private';
 type PromptCategory = 'analysis' | 'creative' | 'extraction' | 'reflection';
-type OutputType = 'text' | 'json';
 
 type CreatePromptModalProps = {
   scope: PromptScope;
@@ -26,10 +24,7 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
   const { user } = useAuth();
   const [name, setName] = useState('');
   const [category, setCategory] = useState<PromptCategory>('analysis');
-  const [outputType, setOutputType] = useState<OutputType>('text');
-  const [jsonSchema, setJsonSchema] = useState<object | undefined>(undefined);
-  const [blocks, setBlocks] = useState<BlockInstance[]>([]);
-  const [advancedMode, setAdvancedMode] = useState(false);
+  const [jsonSchema, setJsonSchema] = useState<any | undefined>(undefined);
   const [description, setDescription] = useState('');
   const [promptText, setPromptText] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -58,10 +53,6 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
     }
   };
 
-  const handleBlocksChange = (newBlocks: BlockInstance[], schema: object) => {
-    setBlocks(newBlocks);
-    setJsonSchema(schema);
-  };
 
   const handleCreate = async () => {
     // Validation
@@ -90,21 +81,12 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
         description: description.trim() || undefined,
         category,
         icon: 'sparkles',
-        outputType,
+        outputType: 'json', // Always JSON
       };
 
-      // Include blocks and schema if output type is json
-      if (outputType === 'json') {
-        if (!advancedMode && blocks.length > 0) {
-          requestBody.blocks = blocks;
-          requestBody.useAdvancedMode = false;
-        }
-        if (jsonSchema) {
-          requestBody.jsonSchema = jsonSchema;
-        }
-        if (advancedMode) {
-          requestBody.useAdvancedMode = true;
-        }
+      // Include JSON schema if defined
+      if (jsonSchema && Object.keys(jsonSchema.properties || {}).length > 0) {
+        requestBody.jsonSchema = jsonSchema;
       }
 
       const response = await authenticatedFetch(getApiEndpoint(), user, {
@@ -203,44 +185,19 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
                 </select>
               </div>
 
-              {/* Output Type */}
+              {/* JSON Schema Builder */}
               <div>
-                <label htmlFor="outputType" className="mb-2 block text-sm font-medium text-gray-700">
-                  Output Type
-                  {' '}
-                  <span className="text-red-500">*</span>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Output Structure (Optional)
                 </label>
-                <select
-                  id="outputType"
-                  value={outputType}
-                  onChange={e => setOutputType(e.target.value as OutputType)}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
-                  disabled={isCreating}
-                >
-                  <option value="text">📝 Text - Returns formatted text/markdown response</option>
-                  <option value="json">📊 JSON - Returns structured data (scene cards, therapeutic notes, etc.)</option>
-                </select>
+                <JSONSchemaBuilder
+                  initialSchema={jsonSchema}
+                  onChange={setJsonSchema}
+                />
                 <p className="mt-1 text-xs text-gray-500">
-                  Choose text for narrative responses or JSON for structured therapeutic data
+                  Define the structure of data the AI will generate. Properties with ⚡ <span className="font-medium">Auto-fills</span> will automatically populate nested structures.
                 </p>
               </div>
-
-              {/* Building Blocks / JSON Schema Configuration (only if JSON selected) */}
-              {outputType === 'json' && (
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">
-                    Output Structure
-                  </label>
-                  <BuildingBlocksEditor
-                    initialBlocks={blocks}
-                    onChange={handleBlocksChange}
-                    advancedMode={advancedMode}
-                    onAdvancedModeToggle={() => setAdvancedMode(!advancedMode)}
-                    jsonSchema={jsonSchema}
-                    onJsonSchemaChange={setJsonSchema}
-                  />
-                </div>
-              )}
 
               {/* Description */}
               <div>

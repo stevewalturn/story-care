@@ -738,6 +738,365 @@ export const BLOCK_DEFINITIONS: Record<BlockType, BuildingBlock> = {
       required: ['container_name'],
     },
   },
+
+  /**
+   * TEXT OUTPUT BLOCK
+   * Displays text instructions, generated content (lyrics, stories, etc.)
+   */
+  text_output: {
+    id: 'text_output',
+    type: 'text_output',
+    label: 'Text Output',
+    icon: 'file-text',
+    category: 'output',
+    description: 'Display text content or instructions as output',
+    executionMode: 'auto',
+    supportsTemplates: false,
+    outputDisplay: {
+      renderAs: 'text',
+      titleField: 'title',
+      primaryField: 'content',
+      subtitleField: 'content_type',
+      collapsible: true,
+      defaultExpanded: true,
+    },
+    fields: [
+      {
+        id: 'title',
+        label: 'Output Title',
+        type: 'text',
+        required: true,
+        placeholder: 'e.g., Generated Lyrics, Story Outline, Instructions',
+        validation: {
+          minLength: 3,
+          maxLength: 100,
+        },
+        helpText: 'Title for this text output section',
+      },
+      {
+        id: 'content_type',
+        label: 'Content Type',
+        type: 'select',
+        required: true,
+        defaultValue: 'text',
+        options: [
+          { label: 'Plain Text', value: 'text' },
+          { label: 'Markdown', value: 'markdown' },
+          { label: 'Instructions', value: 'instructions' },
+          { label: 'Lyrics', value: 'lyrics' },
+          { label: 'Story', value: 'story' },
+        ],
+        helpText: 'Format/purpose of this text output',
+      },
+      {
+        id: 'prompt_for_content',
+        label: 'Content Generation Prompt',
+        type: 'textarea',
+        required: false,
+        placeholder: 'If AI should generate this content, describe what to generate...',
+        validation: {
+          maxLength: 1000,
+        },
+        helpText: 'Leave empty to use static content, or provide a prompt for AI generation',
+      },
+      {
+        id: 'static_content',
+        label: 'Static Content',
+        type: 'textarea',
+        required: false,
+        placeholder: 'Static text to display (if not AI-generated)',
+        validation: {
+          maxLength: 5000,
+        },
+        helpText: 'Pre-written content to display',
+      },
+    ],
+    outputSchema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        content_type: { type: 'string' },
+        content: { type: 'string' },
+      },
+      required: ['title', 'content'],
+    },
+  },
+
+  /**
+   * SAVE QUOTE ACTION BLOCK
+   * Action button to save quotes to patient's media library
+   */
+  save_quote_action: {
+    id: 'save_quote_action',
+    type: 'save_quote_action',
+    label: 'Save Quote Action',
+    icon: 'bookmark-plus',
+    category: 'action',
+    description: 'Action button to save quotes from analysis to media library',
+    executionMode: 'manual',
+    supportsTemplates: true,
+    actionHandler: {
+      handlerName: 'handleSaveQuote',
+      apiEndpoint: '/api/media-library/quotes',
+      successMessage: 'Quote saved to media library',
+      errorMessage: 'Failed to save quote',
+    },
+    outputDisplay: {
+      renderAs: 'quote',
+      primaryField: 'quote_text',
+      metadataFields: ['speaker', 'therapeutic_significance'],
+    },
+    fields: [
+      {
+        id: 'button_label',
+        label: 'Button Label',
+        type: 'text',
+        required: true,
+        defaultValue: 'Save Quote',
+        placeholder: 'e.g., Save Quote, Add to Library',
+        validation: {
+          minLength: 3,
+          maxLength: 50,
+        },
+        helpText: 'Text shown on the action button',
+      },
+      {
+        id: 'quote_source',
+        label: 'Quote Source',
+        type: 'text',
+        required: true,
+        placeholder: '{{step1.quotes[0].text}} or enter directly',
+        helpText: 'Use {{variable}} to reference previous step outputs, or enter text directly',
+      },
+      {
+        id: 'speaker',
+        label: 'Speaker',
+        type: 'text',
+        required: false,
+        placeholder: '{{step1.quotes[0].speaker}} or enter name',
+        helpText: 'Who said this quote (optional)',
+      },
+      {
+        id: 'therapeutic_significance',
+        label: 'Therapeutic Significance',
+        type: 'textarea',
+        required: false,
+        placeholder: 'Why is this quote important for the patient?',
+        validation: {
+          maxLength: 500,
+        },
+        helpText: 'Explain why this quote matters therapeutically',
+      },
+      {
+        id: 'auto_save',
+        label: 'Auto-save (no button click required)',
+        type: 'boolean',
+        required: false,
+        defaultValue: false,
+        helpText: 'If true, saves automatically without user clicking button',
+      },
+    ],
+    outputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', const: 'save_quote' },
+        quote_text: { type: 'string' },
+        speaker: { type: 'string' },
+        therapeutic_significance: { type: 'string' },
+        saved: { type: 'boolean' },
+      },
+      required: ['action', 'quote_text'],
+    },
+  },
+
+  /**
+   * GENERATE IMAGE ACTION BLOCK
+   * Action button to trigger AI image generation
+   */
+  generate_image_action: {
+    id: 'generate_image_action',
+    type: 'generate_image_action',
+    label: 'Generate Image Action',
+    icon: 'wand-sparkles',
+    category: 'action',
+    description: 'Action button to generate images using AI',
+    executionMode: 'manual',
+    supportsTemplates: true,
+    actionHandler: {
+      handlerName: 'handleGenerateImage',
+      apiEndpoint: '/api/media/generate-image',
+      confirmationMessage: 'Generate image with AI? This may take a few moments.',
+      successMessage: 'Image generated successfully',
+      errorMessage: 'Failed to generate image',
+    },
+    outputDisplay: {
+      renderAs: 'image',
+      imageField: 'image_url',
+      metadataFields: ['prompt', 'style'],
+    },
+    fields: [
+      {
+        id: 'button_label',
+        label: 'Button Label',
+        type: 'text',
+        required: true,
+        defaultValue: 'Generate Image',
+        placeholder: 'e.g., Generate Image, Create Visual',
+        validation: {
+          minLength: 3,
+          maxLength: 50,
+        },
+        helpText: 'Text shown on the action button',
+      },
+      {
+        id: 'prompt_template',
+        label: 'Image Prompt Template',
+        type: 'textarea',
+        required: true,
+        placeholder: 'Generate an image of {{step1.description}}...',
+        validation: {
+          minLength: 10,
+          maxLength: 1000,
+        },
+        helpText: 'Prompt for image generation. Use {{variable}} to reference previous outputs',
+      },
+      {
+        id: 'style',
+        label: 'Style',
+        type: 'select',
+        required: false,
+        defaultValue: 'photorealistic',
+        options: [
+          { label: 'Photorealistic', value: 'photorealistic' },
+          { label: 'Artistic/Painting', value: 'artistic' },
+          { label: 'Abstract', value: 'abstract' },
+          { label: 'Watercolor', value: 'watercolor' },
+          { label: 'Digital Art', value: 'digital' },
+        ],
+        helpText: 'Visual style for generated image',
+      },
+      {
+        id: 'save_to_library',
+        label: 'Save to Media Library',
+        type: 'boolean',
+        required: false,
+        defaultValue: true,
+        helpText: 'Automatically save generated image to patient media library',
+      },
+    ],
+    outputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', const: 'generate_image' },
+        prompt: { type: 'string' },
+        style: { type: 'string' },
+        image_url: { type: 'string' },
+        generated: { type: 'boolean' },
+      },
+      required: ['action', 'prompt'],
+    },
+  },
+
+  /**
+   * GENERATE MUSIC ACTION BLOCK
+   * Action button to trigger AI music/audio generation
+   */
+  generate_music_action: {
+    id: 'generate_music_action',
+    type: 'generate_music_action',
+    label: 'Generate Music Action',
+    icon: 'music',
+    category: 'action',
+    description: 'Action button to generate music or audio using AI',
+    executionMode: 'manual',
+    supportsTemplates: true,
+    actionHandler: {
+      handlerName: 'handleGenerateMusic',
+      apiEndpoint: '/api/media/generate-music',
+      confirmationMessage: 'Generate music with AI? This may take up to 2 minutes.',
+      successMessage: 'Music generated successfully',
+      errorMessage: 'Failed to generate music',
+    },
+    outputDisplay: {
+      renderAs: 'audio',
+      audioField: 'audio_url',
+      metadataFields: ['lyrics', 'music_style', 'duration'],
+    },
+    fields: [
+      {
+        id: 'button_label',
+        label: 'Button Label',
+        type: 'text',
+        required: true,
+        defaultValue: 'Generate Music',
+        placeholder: 'e.g., Generate Music, Create Soundtrack',
+        validation: {
+          minLength: 3,
+          maxLength: 50,
+        },
+        helpText: 'Text shown on the action button',
+      },
+      {
+        id: 'music_prompt',
+        label: 'Music Prompt',
+        type: 'textarea',
+        required: true,
+        placeholder: 'Based on lyrics: {{step1.lyrics}}...',
+        validation: {
+          minLength: 10,
+          maxLength: 1000,
+        },
+        helpText: 'Description for music generation. Use {{variable}} to reference previous outputs',
+      },
+      {
+        id: 'mood',
+        label: 'Mood',
+        type: 'select',
+        required: false,
+        defaultValue: 'calm',
+        options: [
+          { label: 'Calm/Peaceful', value: 'calm' },
+          { label: 'Uplifting/Hopeful', value: 'uplifting' },
+          { label: 'Reflective/Contemplative', value: 'reflective' },
+          { label: 'Energetic/Empowering', value: 'energetic' },
+          { label: 'Gentle/Soothing', value: 'gentle' },
+        ],
+        helpText: 'Emotional tone for the music',
+      },
+      {
+        id: 'duration',
+        label: 'Duration (seconds)',
+        type: 'number',
+        required: false,
+        defaultValue: 30,
+        validation: {
+          min: 10,
+          max: 300,
+        },
+        helpText: 'Length of generated audio (10-300 seconds)',
+      },
+      {
+        id: 'save_to_library',
+        label: 'Save to Media Library',
+        type: 'boolean',
+        required: false,
+        defaultValue: true,
+        helpText: 'Automatically save generated music to patient media library',
+      },
+    ],
+    outputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', const: 'generate_music' },
+        prompt: { type: 'string' },
+        mood: { type: 'string' },
+        duration: { type: 'number' },
+        audio_url: { type: 'string' },
+        generated: { type: 'boolean' },
+      },
+      required: ['action', 'prompt'],
+    },
+  },
 };
 
 /**
@@ -746,7 +1105,6 @@ export const BLOCK_DEFINITIONS: Record<BlockType, BuildingBlock> = {
 export const VALIDATION_RULES: ValidationRule[] = [
   {
     blockType: 'scene_assembly',
-    min: 1,
     max: 1,
     requiredWith: ['video_introduction'],
   },
@@ -781,6 +1139,23 @@ export const VALIDATION_RULES: ValidationRule[] = [
   {
     blockType: 'scene_suggestion',
     max: 1,
+  },
+  // New block validation rules
+  {
+    blockType: 'text_output',
+    max: 10,
+  },
+  {
+    blockType: 'save_quote_action',
+    max: 5,
+  },
+  {
+    blockType: 'generate_image_action',
+    max: 5,
+  },
+  {
+    blockType: 'generate_music_action',
+    max: 3,
   },
 ];
 

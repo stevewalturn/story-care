@@ -14,16 +14,17 @@ import {
   ChevronUp,
   ChevronDown,
   AlertCircle,
+  Edit2,
 } from 'lucide-react';
 import type { BlockInstance, BlockField, ValidationError } from '@/types/BuildingBlocks';
 import { getBlockDefinition } from '@/config/BlockDefinitions';
-import Input from '@/components/ui/Input';
-import Button from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 
 interface BlockFormProps {
   blockId: string;
   instance: BlockInstance;
-  onChange: (values: Record<string, any>) => void;
+  onChange: (values: Record<string, any>, customLabels?: Record<string, string>) => void;
   onRemove: () => void;
   onDuplicate?: () => void;
   onCollapse?: () => void;
@@ -49,11 +50,15 @@ export default function BlockForm({
 }: BlockFormProps) {
   const definition = getBlockDefinition(instance.blockId);
   const [localValues, setLocalValues] = useState(instance.values);
+  const [customLabels, setCustomLabels] = useState<Record<string, string>>(instance.customLabels || {});
+  const [editingLabel, setEditingLabel] = useState<string | null>(null);
+  const [tempLabel, setTempLabel] = useState('');
 
   // Update local values when instance changes
   useEffect(() => {
     setLocalValues(instance.values);
-  }, [instance.values]);
+    setCustomLabels(instance.customLabels || {});
+  }, [instance.values, instance.customLabels]);
 
   if (!definition) {
     return (
@@ -66,12 +71,82 @@ export default function BlockForm({
   const handleFieldChange = (fieldId: string, value: any) => {
     const newValues = { ...localValues, [fieldId]: value };
     setLocalValues(newValues);
-    onChange(newValues);
+    onChange(newValues, customLabels);
+  };
+
+  const handleLabelEdit = (fieldId: string, currentLabel: string) => {
+    setEditingLabel(fieldId);
+    setTempLabel(customLabels[fieldId] || currentLabel);
+  };
+
+  const handleLabelSave = (fieldId: string) => {
+    const newLabels = { ...customLabels, [fieldId]: tempLabel };
+    setCustomLabels(newLabels);
+    onChange(localValues, newLabels);
+    setEditingLabel(null);
+  };
+
+  const handleLabelCancel = () => {
+    setEditingLabel(null);
+    setTempLabel('');
+  };
+
+  const getFieldLabel = (field: BlockField): string => {
+    return customLabels[field.id] || field.label;
   };
 
   const getFieldErrors = (fieldId: string): ValidationError[] => {
     return errors.filter(error => error.field === fieldId);
   };
+
+  const renderEditableLabel = (field: BlockField) => (
+    <div className="flex items-center gap-2">
+      {editingLabel === field.id ? (
+        <div className="flex flex-1 items-center gap-1">
+          <input
+            type="text"
+            value={tempLabel}
+            onChange={(e) => setTempLabel(e.target.value)}
+            className="flex-1 rounded border border-indigo-300 px-2 py-0.5 text-sm font-medium text-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleLabelSave(field.id);
+              if (e.key === 'Escape') handleLabelCancel();
+            }}
+          />
+          <button
+            onClick={() => handleLabelSave(field.id)}
+            className="rounded px-2 py-0.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+            type="button"
+          >
+            Save
+          </button>
+          <button
+            onClick={handleLabelCancel}
+            className="rounded px-2 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-100"
+            type="button"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <>
+          <label className="block text-sm font-medium text-gray-700">
+            {getFieldLabel(field)}
+            {field.required && <span className="text-red-500 ml-1">*</span>}
+          </label>
+          <button
+            onClick={() => handleLabelEdit(field.id, field.label)}
+            className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-indigo-600"
+            type="button"
+            title="Edit field label"
+          >
+            <Edit2 className="h-3 w-3" />
+          </button>
+        </>
+      )}
+    </div>
+  );
 
   const renderField = (field: BlockField) => {
     const value = localValues[field.id] ?? field.defaultValue ?? '';
@@ -82,10 +157,7 @@ export default function BlockForm({
       case 'text':
         return (
           <div key={field.id} className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">
-              {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </label>
+            {renderEditableLabel(field)}
             <Input
               type="text"
               value={value}
@@ -108,10 +180,7 @@ export default function BlockForm({
       case 'textarea':
         return (
           <div key={field.id} className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">
-              {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </label>
+            {renderEditableLabel(field)}
             <textarea
               value={value}
               onChange={(e) => handleFieldChange(field.id, e.target.value)}
@@ -141,10 +210,7 @@ export default function BlockForm({
       case 'select':
         return (
           <div key={field.id} className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">
-              {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </label>
+            {renderEditableLabel(field)}
             <select
               value={value}
               onChange={(e) => handleFieldChange(field.id, e.target.value)}
@@ -174,10 +240,7 @@ export default function BlockForm({
       case 'number':
         return (
           <div key={field.id} className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">
-              {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </label>
+            {renderEditableLabel(field)}
             <Input
               type="number"
               value={value}
@@ -202,15 +265,56 @@ export default function BlockForm({
       case 'boolean':
         return (
           <div key={field.id} className="space-y-1">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={value === true}
-                onChange={(e) => handleFieldChange(field.id, e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-sm font-medium text-gray-700">{field.label}</span>
-            </label>
+            {editingLabel === field.id ? (
+              <div className="flex items-center gap-1 mb-2">
+                <input
+                  type="text"
+                  value={tempLabel}
+                  onChange={(e) => setTempLabel(e.target.value)}
+                  className="flex-1 rounded border border-indigo-300 px-2 py-0.5 text-sm font-medium text-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleLabelSave(field.id);
+                    if (e.key === 'Escape') handleLabelCancel();
+                  }}
+                />
+                <button
+                  onClick={() => handleLabelSave(field.id)}
+                  className="rounded px-2 py-0.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+                  type="button"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={handleLabelCancel}
+                  className="rounded px-2 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-100"
+                  type="button"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : null}
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={value === true}
+                  onChange={(e) => handleFieldChange(field.id, e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-700">{getFieldLabel(field)}</span>
+              </label>
+              {editingLabel !== field.id && (
+                <button
+                  onClick={() => handleLabelEdit(field.id, field.label)}
+                  className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-indigo-600"
+                  type="button"
+                  title="Edit field label"
+                >
+                  <Edit2 className="h-3 w-3" />
+                </button>
+              )}
+            </div>
             {field.helpText && (
               <p className="text-xs text-gray-500 ml-6">{field.helpText}</p>
             )}

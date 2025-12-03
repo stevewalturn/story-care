@@ -3,8 +3,9 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { logPHIAccess } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
+import { generatePresignedUrlsForMedia } from '@/libs/GCS';
 import { requireMediaAccess } from '@/middleware/RBACMiddleware';
-import { mediaLibrary } from '@/models/Schema';
+import { mediaLibrary, musicGenerationTasks } from '@/models/Schema';
 import { handleAuthError } from '@/utils/AuthHelpers';
 
 // GET /api/media/[id]
@@ -34,7 +35,10 @@ export async function GET(
     // Log PHI access
     await logPHIAccess(user.dbUserId, 'media', id, request);
 
-    return NextResponse.json({ media });
+    // Generate fresh presigned URL (HIPAA compliant, 1-hour expiration)
+    const [mediaWithSignedUrl] = await generatePresignedUrlsForMedia([media], 1);
+
+    return NextResponse.json({ media: mediaWithSignedUrl });
   } catch (error) {
     if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('Forbidden'))) {
       return handleAuthError(error);
@@ -108,6 +112,12 @@ export async function DELETE(
 
     // Verify user has access to this media
     const user = await requireMediaAccess(request, id);
+
+    // Clear foreign key references in music_generation_tasks before deleting
+    await db
+      .update(musicGenerationTasks)
+      .set({ mediaId: null })
+      .where(eq(musicGenerationTasks.mediaId, id));
 
     const deletedMedia = await db
       .delete(mediaLibrary)

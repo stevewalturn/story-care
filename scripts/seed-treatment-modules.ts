@@ -309,8 +309,6 @@ Format as a professional clinical note suitable for medical records.`,
         'Who or what gave you a reason to try again?',
         'If that moment were a short film, what image would open it?',
       ],
-      reflectionTemplateId: null,
-      surveyTemplateId: null,
       aiPromptText: 'Read the transcript. Locate passages about struggle and choice. Identify metaphors or sensory details (weather, light, movement) connected to perseverance. Summarize the story arc of endurance in 2 sentences. Suggest 2-3 visual scenes that convey still moving. Pull 1 quote that captures personal agency.',
       aiPromptMetadata: {
         prompts: {
@@ -350,8 +348,6 @@ Format as a professional clinical note suitable for medical records.`,
         'If calm had a color or a sound, what comes to mind?',
         'Who or what helps you remember you\'re safe?',
       ],
-      reflectionTemplateId: null,
-      surveyTemplateId: null,
       aiPromptText: 'Find sensory language (body, breath, pace, warmth). Contrast tension and ease. Summarize how the patient describes returning to steadiness. Suggest imagery of stillness, rhythm, or warmth. Provide 1 quote that shows awareness of safety.',
       aiPromptMetadata: {
         prompts: {
@@ -391,8 +387,6 @@ Format as a professional clinical note suitable for medical records.`,
         'What does real safety with another person look like to you?',
         'What makes connection worth the risk?',
       ],
-      reflectionTemplateId: null,
-      surveyTemplateId: null,
       aiPromptText: 'Search transcript for relational verbs (reach, hold, trust, hide). Detect shifts from guarded to open. Note metaphors (bridge, door, circle). Summarize connection theme in 2 lines. Suggest 2 visuals showing safety or boundary. Provide one patient quote showing emerging trust.',
       aiPromptMetadata: {
         prompts: {
@@ -433,8 +427,6 @@ Format as a professional clinical note suitable for medical records.`,
         'What would forgiveness-of yourself or someone else-feel like in your body?',
         'What would freedom look like if you saw it?',
       ],
-      reflectionTemplateId: null,
-      surveyTemplateId: null,
       aiPromptText: 'Identify words of guilt, anger, or relief. Track emotional arc from tension to ease. Extract metaphors of burden and release (weight, air, water). Summarize change in 2 sentences. Suggest 2 visual ideas symbolizing freedom or peace. Pull 1 quote expressing compassion.',
       aiPromptMetadata: {
         prompts: {
@@ -474,8 +466,6 @@ Format as a professional clinical note suitable for medical records.`,
         'What\'s one small sign that you\'ve turned a corner?',
         'If this growth had a symbol, what would it be?',
       ],
-      reflectionTemplateId: null,
-      surveyTemplateId: null,
       aiPromptText: 'Find contrasts between past and present self (I used to, now I). Extract identity words and values (hopeful, calm, strong). Summarize transformation in 2 lines. Propose 2 visuals showing change or emergence. Include 1 quote showing preferred-identity language.',
       aiPromptMetadata: {
         prompts: {
@@ -515,8 +505,6 @@ Format as a professional clinical note suitable for medical records.`,
         'What would it mean to make peace with that version of you?',
         'What picture comes to mind when you think of wholeness?',
       ],
-      reflectionTemplateId: null,
-      surveyTemplateId: null,
       aiPromptText: 'Locate dialogue balancing regret and kindness. Identify imagery of blending or harmony. Summarize reconciliation in 3 sentences. Suggest imagery showing integration. Provide 2 quotes showing self-acceptance.',
       aiPromptMetadata: {
         prompts: {
@@ -556,8 +544,6 @@ Format as a professional clinical note suitable for medical records.`,
         'What direction do you hope this story is heading?',
         'Who or what helps you keep sight of what matters?',
       ],
-      reflectionTemplateId: null,
-      surveyTemplateId: null,
       aiPromptText: 'Identify value or purpose statements (matters, meaning, direction). Extract navigation metaphors (path, compass, horizon). Summarize motivational theme. Suggest visuals of forward movement or clarity. Provide therapist insight summarizing core value driver.',
       aiPromptMetadata: {
         prompts: {
@@ -596,8 +582,6 @@ Format as a professional clinical note suitable for medical records.`,
         'What practices or people keep you steady?',
         'If your future self looked back on this time, what would they thank you for?',
       ],
-      reflectionTemplateId: null,
-      surveyTemplateId: null,
       aiPromptText: 'Analyze transcript for maintenance strategies and self-trust. Identify metaphors of rhythm and continuity (heartbeat, tide, wheel). Summarize stability theme in 3 sentences. Suggest visuals showing persistence. Include 1 patient quote about ongoing growth.',
       aiPromptMetadata: {
         prompts: {

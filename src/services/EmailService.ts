@@ -14,7 +14,9 @@ export type NotificationType
     | 'module_completed'
     | 'session_reminder'
     | 'survey_reminder'
-    | 'therapist_invitation';
+    | 'therapist_invitation'
+    | 'patient_invitation'
+    | 'org_admin_invitation';
 
 export type NotificationStatus = 'pending' | 'sent' | 'failed' | 'bounced' | 'opened' | 'clicked';
 
@@ -270,6 +272,205 @@ export async function sendTherapistInvitationEmail(params: {
 
     const message: PauboxMessage = {
       recipients: [params.therapistEmail],
+      headers: {
+        subject,
+        from: `${emailSettings.fromName} <${emailSettings.fromAddress}>`,
+      },
+      content: {
+        'text/html': bodyHtml,
+        'text/plain': bodyText,
+      },
+    };
+
+    const result = await paubox.sendEmail(message, {
+      enableOpenTracking: true,
+      enableLinkTracking: true,
+    });
+
+    if (result.success && result.sourceTrackingId) {
+      // Store Paubox tracking ID and mark as sent
+      await db
+        .update(emailNotificationsSchema)
+        .set({
+          status: 'sent',
+          sentAt: new Date(),
+          externalId: result.sourceTrackingId,
+        })
+        .where(eq(emailNotificationsSchema.id, notification.id));
+    } else {
+      // Email send failed
+      await updateEmailStatus(
+        notification.id,
+        'failed',
+        undefined,
+        result.error || 'Unknown error',
+      );
+    }
+  } catch (error) {
+    console.error('Failed to send email via Paubox:', error);
+    await updateEmailStatus(
+      notification.id,
+      'failed',
+      undefined,
+      error instanceof Error ? error.message : 'Failed to send email',
+    );
+  }
+
+  return notification;
+}
+
+/**
+ * Send patient invitation email
+ */
+export async function sendPatientInvitationEmail(params: {
+  patientEmail: string;
+  patientName: string;
+  patientUserId: string;
+  therapistName: string;
+  therapistId: string;
+  therapistAvatarUrl?: string;
+  setupAccountUrl: string;
+  welcomeMessage?: string;
+}) {
+  const { subject, bodyText, bodyHtml } = generatePatientInvitationEmailContent({
+    patientName: params.patientName,
+    therapistName: params.therapistName,
+    therapistAvatarUrl: params.therapistAvatarUrl,
+    setupAccountUrl: params.setupAccountUrl,
+    welcomeMessage: params.welcomeMessage,
+  });
+
+  const [notification] = await db
+    .insert(emailNotificationsSchema)
+    .values({
+      notificationType: 'patient_invitation',
+      recipientUserId: params.patientUserId,
+      recipientEmail: params.patientEmail,
+      subject,
+      bodyText,
+      bodyHtml,
+      status: 'pending',
+      createdAt: new Date(),
+    })
+    .returning();
+
+  if (!notification) {
+    throw new Error('Failed to create email notification record');
+  }
+
+  // Get email settings from platform configuration
+  const emailSettings = await getEmailSettings();
+
+  if (!emailSettings.enabled) {
+    console.log('Email notifications are disabled in platform settings');
+    await updateEmailStatus(notification.id, 'failed', undefined, 'Email notifications disabled');
+    return notification;
+  }
+
+  // Send email via Paubox
+  try {
+    const paubox = getPauboxClient();
+
+    const message: PauboxMessage = {
+      recipients: [params.patientEmail],
+      headers: {
+        subject,
+        from: `${emailSettings.fromName} <${emailSettings.fromAddress}>`,
+      },
+      content: {
+        'text/html': bodyHtml,
+        'text/plain': bodyText,
+      },
+    };
+
+    const result = await paubox.sendEmail(message, {
+      enableOpenTracking: true,
+      enableLinkTracking: true,
+    });
+
+    if (result.success && result.sourceTrackingId) {
+      // Store Paubox tracking ID and mark as sent
+      await db
+        .update(emailNotificationsSchema)
+        .set({
+          status: 'sent',
+          sentAt: new Date(),
+          externalId: result.sourceTrackingId,
+        })
+        .where(eq(emailNotificationsSchema.id, notification.id));
+    } else {
+      // Email send failed
+      await updateEmailStatus(
+        notification.id,
+        'failed',
+        undefined,
+        result.error || 'Unknown error',
+      );
+    }
+  } catch (error) {
+    console.error('Failed to send email via Paubox:', error);
+    await updateEmailStatus(
+      notification.id,
+      'failed',
+      undefined,
+      error instanceof Error ? error.message : 'Failed to send email',
+    );
+  }
+
+  return notification;
+}
+
+/**
+ * Send org admin invitation email
+ */
+export async function sendOrgAdminInvitationEmail(params: {
+  orgAdminEmail: string;
+  orgAdminName: string;
+  orgAdminUserId: string;
+  inviterName: string;
+  organizationName: string;
+  setupAccountUrl: string;
+}) {
+  const { subject, bodyText, bodyHtml } = generateOrgAdminInvitationEmailContent({
+    orgAdminName: params.orgAdminName,
+    inviterName: params.inviterName,
+    organizationName: params.organizationName,
+    setupAccountUrl: params.setupAccountUrl,
+  });
+
+  const [notification] = await db
+    .insert(emailNotificationsSchema)
+    .values({
+      notificationType: 'org_admin_invitation',
+      recipientUserId: params.orgAdminUserId,
+      recipientEmail: params.orgAdminEmail,
+      subject,
+      bodyText,
+      bodyHtml,
+      status: 'pending',
+      createdAt: new Date(),
+    })
+    .returning();
+
+  if (!notification) {
+    throw new Error('Failed to create email notification record');
+  }
+
+  // Get email settings from platform configuration
+  const emailSettings = await getEmailSettings();
+
+  if (!emailSettings.enabled) {
+    console.log('Email notifications are disabled in platform settings');
+    await updateEmailStatus(notification.id, 'failed', undefined, 'Email notifications disabled');
+    return notification;
+  }
+
+  // Send email via Paubox
+  try {
+    const paubox = getPauboxClient();
+
+    const message: PauboxMessage = {
+      recipients: [params.orgAdminEmail],
       headers: {
         subject,
         from: `${emailSettings.fromName} <${emailSettings.fromAddress}>`,
@@ -781,6 +982,196 @@ The StoryCare Team
   </div>
 
   <div style="text-align: center; padding: 20px; font-size: 12px; color: #9CA3AF;">
+    <p>This invitation was sent by ${params.inviterName} on behalf of ${params.organizationName}.</p>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  return { subject, bodyText, bodyHtml };
+}
+
+/**
+ * Generate patient invitation email content
+ */
+function generatePatientInvitationEmailContent(params: {
+  patientName: string;
+  therapistName: string;
+  therapistAvatarUrl?: string;
+  setupAccountUrl: string;
+  welcomeMessage?: string;
+}) {
+  const subject = `Welcome to StoryCare - ${params.therapistName} has invited you`;
+
+  const bodyText = `
+Hi ${params.patientName},
+
+${params.therapistName} has invited you to join StoryCare, a digital therapeutic platform designed to help you visualize and reframe your story through personalized content.
+
+${params.welcomeMessage ? `${params.welcomeMessage}\n\n` : ''}
+To get started, please set up your account:
+${params.setupAccountUrl}
+
+Once your account is set up, you'll be able to:
+- View personalized story pages created by your therapist
+- Watch videos and explore visual content
+- Answer reflection questions
+- Track your therapeutic journey
+
+StoryCare is a secure, HIPAA-compliant platform that protects your privacy. Your information is safe with us.
+
+If you have any questions, please reach out to ${params.therapistName}.
+
+Best regards,
+The StoryCare Team
+  `.trim();
+
+  const bodyHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">Welcome to StoryCare</h1>
+  </div>
+
+  <div style="background: white; padding: 30px; border: 1px solid #E5E7EB; border-top: none; border-radius: 0 0 12px 12px;">
+    <p style="font-size: 16px; margin-bottom: 20px;">Hi <strong>${params.patientName}</strong>,</p>
+
+    <div style="background: #F9FAFB; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      ${params.therapistAvatarUrl ? `<div style="text-align: center; margin-bottom: 15px;"><img src="${params.therapistAvatarUrl}" alt="${params.therapistName}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;"></div>` : ''}
+      <p style="margin: 0; font-size: 16px; text-align: center;">
+        <strong style="color: #4F46E5; font-size: 18px;">${params.therapistName}</strong><br>
+        <span style="color: #6B7280; font-size: 14px;">has invited you to StoryCare</span>
+      </p>
+    </div>
+
+    ${params.welcomeMessage ? `<p style="font-size: 16px; margin-bottom: 20px; font-style: italic; color: #6B7280; padding: 15px; background: #F9FAFB; border-left: 4px solid #6366F1; border-radius: 4px;">"${params.welcomeMessage}"</p>` : ''}
+
+    <p style="font-size: 16px; margin-bottom: 20px;">
+      StoryCare is a digital therapeutic platform designed to help you visualize and reframe your story through personalized content created by your therapist.
+    </p>
+
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${params.setupAccountUrl}" style="background: #4F46E5; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
+        Accept Invitation & Get Started
+      </a>
+    </div>
+
+    <p style="font-size: 16px; margin-bottom: 10px;"><strong>Once your account is set up, you'll be able to:</strong></p>
+    <ul style="font-size: 16px; color: #4B5563; line-height: 1.8;">
+      <li>View personalized story pages created by your therapist</li>
+      <li>Watch videos and explore visual content</li>
+      <li>Answer reflection questions</li>
+      <li>Track your therapeutic journey</li>
+    </ul>
+
+    <p style="font-size: 14px; color: #6B7280; margin-top: 30px; padding-top: 20px; border-top: 1px solid #E5E7EB;">
+      Best regards,<br>
+      The StoryCare Team
+    </p>
+  </div>
+
+  <div style="text-align: center; padding: 20px; font-size: 12px; color: #9CA3AF;">
+    <p>This is a secure, HIPAA-compliant message. Your privacy is protected.</p>
+    <p>This invitation was sent by ${params.therapistName}.</p>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  return { subject, bodyText, bodyHtml };
+}
+
+/**
+ * Generate org admin invitation email content
+ */
+function generateOrgAdminInvitationEmailContent(params: {
+  orgAdminName: string;
+  inviterName: string;
+  organizationName: string;
+  setupAccountUrl: string;
+}) {
+  const subject = `Administrator invitation for ${params.organizationName} on StoryCare`;
+
+  const bodyText = `
+Hi ${params.orgAdminName},
+
+${params.inviterName} has invited you to be an administrator for ${params.organizationName} on StoryCare, a digital therapeutic platform that uses narrative therapy to help patients visualize and reframe their stories.
+
+To get started, please set up your account:
+${params.setupAccountUrl}
+
+As an organization administrator, you'll be able to:
+- Manage therapists in your organization
+- View organization-wide analytics and metrics
+- Configure organization settings and templates
+- Monitor platform usage and engagement
+- Ensure HIPAA compliance and data security
+
+If you have any questions, please don't hesitate to reach out to ${params.inviterName}.
+
+Best regards,
+The StoryCare Team
+  `.trim();
+
+  const bodyHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">Administrator Invitation</h1>
+  </div>
+
+  <div style="background: white; padding: 30px; border: 1px solid #E5E7EB; border-top: none; border-radius: 0 0 12px 12px;">
+    <p style="font-size: 16px; margin-bottom: 20px;">Hi <strong>${params.orgAdminName}</strong>,</p>
+
+    <p style="font-size: 16px; margin-bottom: 20px;">
+      <strong>${params.inviterName}</strong> has invited you to be an administrator for <strong>${params.organizationName}</strong> on StoryCare,
+      a digital therapeutic platform that uses narrative therapy to help patients visualize and reframe their stories.
+    </p>
+
+    <div style="background: #F9FAFB; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <h2 style="color: #4F46E5; margin: 0 0 10px 0; font-size: 20px;">${params.organizationName}</h2>
+      <p style="margin: 0; color: #6B7280; font-size: 14px;">Organization Administrator</p>
+    </div>
+
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${params.setupAccountUrl}" style="background: #4F46E5; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
+        Set Up Admin Account
+      </a>
+    </div>
+
+    <p style="font-size: 16px; margin-bottom: 10px;"><strong>As an organization administrator, you'll be able to:</strong></p>
+    <ul style="font-size: 16px; color: #4B5563; line-height: 1.8;">
+      <li>Manage therapists in your organization</li>
+      <li>View organization-wide analytics and metrics</li>
+      <li>Configure organization settings and templates</li>
+      <li>Monitor platform usage and engagement</li>
+      <li>Ensure HIPAA compliance and data security</li>
+    </ul>
+
+    <p style="font-size: 16px; margin-top: 20px;">
+      If you have any questions, please don't hesitate to reach out to ${params.inviterName}.
+    </p>
+
+    <p style="font-size: 14px; color: #6B7280; margin-top: 30px; padding-top: 20px; border-top: 1px solid #E5E7EB;">
+      Best regards,<br>
+      The StoryCare Team
+    </p>
+  </div>
+
+  <div style="text-align: center; padding: 20px; font-size: 12px; color: #9CA3AF;">
+    <p>This is a secure, HIPAA-compliant message. Your privacy is protected.</p>
     <p>This invitation was sent by ${params.inviterName} on behalf of ${params.organizationName}.</p>
   </div>
 </body>

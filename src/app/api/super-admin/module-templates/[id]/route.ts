@@ -39,7 +39,7 @@ export async function GET(
     }
 
     // 3. FETCH TEMPLATE
-    const { module: templateModule, reflectionTemplates, surveyTemplates } = await getModuleById(
+    const { module: templateModule } = await getModuleById(
       resolvedParams.id,
     );
 
@@ -53,8 +53,6 @@ export async function GET(
 
     return NextResponse.json({
       template: templateModule,
-      reflectionTemplates,
-      surveyTemplates,
     });
   } catch (error: any) {
     console.error('[Super Admin] Get template error:', error);
@@ -111,9 +109,6 @@ export async function PUT(
     const updatedTemplate = await updateModule(resolvedParams.id, {
       name: validatedData.name,
       description: validatedData.description,
-
-      reflectionTemplateIds: validatedData.reflectionTemplateIds,
-      surveyTemplateIds: validatedData.surveyTemplateIds,
       aiPromptText: validatedData.aiPromptText,
       aiPromptMetadata: validatedData.aiPromptMetadata,
       status: validatedData.status,

@@ -8,8 +8,11 @@ import type { NextRequest } from 'next/server';
 import { and, eq, ilike } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
+import { Env } from '@/libs/Env';
 import { users } from '@/models/Schema';
+import { sendPatientInvitationEmail } from '@/services/EmailService';
 import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
+import { invitePatientSchema } from '@/validations/UserValidation';
 
 /**
  * GET /api/patients - List patients in the authenticated user's organization
@@ -107,18 +110,25 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST /api/patients - Create a new patient
+ * POST /api/patients - Create/Invite a new patient
  *
  * Request Body:
  * - name: Patient name (required)
- * - email: Patient email (optional)
+ * - email: Patient email (required for invitation, optional otherwise)
+ * - dateOfBirth: Patient date of birth (optional)
  * - referenceImageUrl: Patient avatar/reference image (optional)
  * - therapistId: Therapist Firebase UID (required)
+ * - welcomeMessage: Personal message from therapist (optional)
+ * - sendInvitation: Whether to send invitation email (default: true if email provided)
  *
  * Access Control:
  * - Therapists: Can create patients assigned to themselves
  * - Org admins: Can create patients assigned to any therapist in their org
  * - Super admins: Can create patients in any organization
+ *
+ * Flow:
+ * 1. If email provided and sendInvitation=true: Creates with status='invited', sends email
+ * 2. Otherwise: Creates with status='active' (no invitation needed)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -126,37 +136,19 @@ export async function POST(request: NextRequest) {
     const authUser = await requireAuth(request);
 
     const body = await request.json();
-    const {
-      name,
-      email,
-      referenceImageUrl,
-      therapistId: therapistFirebaseUid,
-    } = body;
+    const validated = invitePatientSchema.parse(body);
 
-    // Validation
-    if (!name) {
-      return NextResponse.json(
-        { error: 'Name is required' },
-        { status: 400 },
-      );
-    }
-
-    if (!therapistFirebaseUid) {
-      return NextResponse.json(
-        { error: 'Therapist ID is required' },
-        { status: 400 },
-      );
-    }
-
-    // Fetch therapist to get database UUID and organizationId
+    // Fetch therapist to get database UUID, organizationId, and details
     const [therapist] = await db
       .select({
         id: users.id,
+        name: users.name,
+        avatarUrl: users.avatarUrl,
         organizationId: users.organizationId,
         role: users.role,
       })
       .from(users)
-      .where(eq(users.firebaseUid, therapistFirebaseUid))
+      .where(eq(users.firebaseUid, validated.therapistId))
       .limit(1);
 
     if (!therapist) {
@@ -193,17 +185,37 @@ export async function POST(request: NextRequest) {
     }
     // Super admins can create patients for any therapist
 
+    // Check if email already exists (if email provided)
+    if (validated.email) {
+      const existingUser = await db.query.users.findFirst({
+        where: (users, { eq }) => eq(users.email, validated.email),
+      });
+
+      if (existingUser) {
+        return NextResponse.json(
+          { error: 'A user with this email already exists' },
+          { status: 409 },
+        );
+      }
+    }
+
+    // Determine status: 'invited' if sending invitation, 'active' otherwise
+    const shouldSendInvitation = validated.email && validated.sendInvitation;
+    const patientStatus = shouldSendInvitation ? 'invited' : 'active';
+
     // Create patient - IMPORTANT: Inherit organizationId from therapist
     const patientResult = await db
       .insert(users)
       .values({
-        name,
-        email: email || null,
-        avatarUrl: referenceImageUrl || null,
+        name: validated.name,
+        email: validated.email || null,
+        dateOfBirth: validated.dateOfBirth ? new Date(validated.dateOfBirth) : null,
+        referenceImageUrl: validated.referenceImageUrl || null,
         role: 'patient',
         therapistId: therapist.id, // Link to therapist (database UUID)
         organizationId: therapist.organizationId, // Inherit organization from therapist
-        status: 'active', // Patients are active by default (therapist already invited them)
+        status: patientStatus,
+        firebaseUid: shouldSendInvitation ? null : undefined, // null for invited, undefined for active
         createdAt: new Date(),
         updatedAt: new Date(),
       })
@@ -218,8 +230,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ patient }, { status: 201 });
+    // Send invitation email if requested
+    let emailSent = false;
+    let emailError: string | null = null;
+
+    if (shouldSendInvitation && validated.email) {
+      try {
+        // Construct setup account URL
+        const appUrl = Env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const setupAccountUrl = `${appUrl}/setup-account?email=${encodeURIComponent(validated.email)}&type=patient`;
+
+        // Send invitation email
+        await sendPatientInvitationEmail({
+          patientEmail: validated.email,
+          patientName: patient.name,
+          patientUserId: patient.id,
+          therapistName: therapist.name,
+          therapistId: therapist.id,
+          therapistAvatarUrl: therapist.avatarUrl || undefined,
+          setupAccountUrl,
+          welcomeMessage: validated.welcomeMessage,
+        });
+
+        emailSent = true;
+      } catch (error) {
+        // Log error but don't fail the request (patient already created)
+        console.error('Failed to send patient invitation email:', error);
+        emailError = error instanceof Error ? error.message : 'Failed to send email';
+      }
+    }
+
+    return NextResponse.json(
+      {
+        patient,
+        emailSent,
+        message: emailSent
+          ? `Patient invited successfully! An invitation email has been sent to ${validated.email}`
+          : emailError
+            ? `Patient created but invitation email failed: ${emailError}`
+            : 'Patient created successfully',
+      },
+      { status: 201 },
+    );
   } catch (error) {
+    if (error instanceof Error && error.message.includes('validation')) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error('Failed to create patient:', error);
     return handleAuthError(error);
   }

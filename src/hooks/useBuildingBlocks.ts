@@ -69,13 +69,19 @@ export function useBuildingBlocks(initialBlocks: BlockInstance[] = []) {
   );
 
   /**
-   * Update block values
+   * Update block values and optionally custom labels
    */
   const updateBlock = useCallback(
-    (instanceId: string, values: Record<string, any>) => {
+    (instanceId: string, values: Record<string, any>, customLabels?: Record<string, string>) => {
       setBlocks(
         blocks.map(b =>
-          b.instanceId === instanceId ? { ...b, values: { ...b.values, ...values } } : b,
+          b.instanceId === instanceId
+            ? {
+                ...b,
+                values: { ...b.values, ...values },
+                ...(customLabels !== undefined && { customLabels }),
+              }
+            : b,
         ),
       );
     },
@@ -109,6 +115,7 @@ export function useBuildingBlocks(initialBlocks: BlockInstance[] = []) {
         instanceId: generateInstanceId(),
         order: blockToDuplicate.order + 1,
         values: { ...blockToDuplicate.values }, // Deep copy values
+        customLabels: blockToDuplicate.customLabels ? { ...blockToDuplicate.customLabels } : undefined,
       };
 
       // Insert after original

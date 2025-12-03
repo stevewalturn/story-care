@@ -24,6 +24,8 @@ const CATEGORY_LABELS: Record<BlockCategory, string> = {
   content: '📝 Content',
   interaction: '💬 Interaction',
   structure: '🏗️ Structure',
+  action: '⚡ Actions',
+  output: '📤 Output',
 };
 
 const CATEGORY_DESCRIPTIONS: Record<BlockCategory, string> = {
@@ -31,6 +33,8 @@ const CATEGORY_DESCRIPTIONS: Record<BlockCategory, string> = {
   content: 'Quotes, notes, and suggestions',
   interaction: 'Questions and surveys',
   structure: 'Scene assembly and containers',
+  action: 'Trigger actions and workflows',
+  output: 'Display generated content and results',
 };
 
 export default function BlockPalette({
@@ -76,6 +80,8 @@ export default function BlockPalette({
       content: [],
       interaction: [],
       structure: [],
+      action: [],
+      output: [],
     };
 
     filteredBlocks.forEach(block => {
@@ -85,7 +91,7 @@ export default function BlockPalette({
     return groups;
   }, [filteredBlocks]);
 
-  const categories: BlockCategory[] = ['media', 'content', 'interaction', 'structure'];
+  const categories: BlockCategory[] = ['media', 'content', 'interaction', 'structure', 'action', 'output'];
 
   if (compact) {
     return (

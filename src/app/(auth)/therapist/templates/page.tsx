@@ -9,6 +9,7 @@ import { Building, Copy, FileText, Filter, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { CopyTemplateModal } from '@/components/templates/CopyTemplateModal';
 import { CreateTemplateModal } from '@/components/templates/CreateTemplateModal';
+import { EditTemplateModal } from '@/components/templates/EditTemplateModal';
 import { ViewTemplateDetailsModal } from '@/components/templates/ViewTemplateDetailsModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
@@ -43,6 +44,7 @@ export default function TherapistTemplatesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [viewingTemplate, setViewingTemplate] = useState<Template | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [copyingTemplate, setCopyingTemplate] = useState<Template | null>(null);
 
   useEffect(() => {
@@ -306,10 +308,7 @@ export default function TherapistTemplatesPage() {
                 key={template.id}
                 template={template}
                 onView={() => setViewingTemplate(template)}
-                onEdit={viewMode === 'my_templates' ? () => {
-                  // TODO: Edit modal
-                  console.log('Edit template:', template.id);
-                } : undefined}
+                onEdit={viewMode === 'my_templates' ? () => setEditingTemplate(template) : undefined}
                 onCopy={viewMode !== 'my_templates' ? () => setCopyingTemplate(template) : undefined}
                 scope={
                   viewMode === 'my_templates'
@@ -332,6 +331,18 @@ export default function TherapistTemplatesPage() {
           onClose={() => setShowCreateModal(false)}
           onCreated={() => {
             setShowCreateModal(false);
+            fetchTemplates();
+          }}
+        />
+      )}
+
+      {/* Edit Template Modal */}
+      {editingTemplate && (
+        <EditTemplateModal
+          template={editingTemplate}
+          onClose={() => setEditingTemplate(null)}
+          onUpdated={() => {
+            setEditingTemplate(null);
             fetchTemplates();
           }}
         />

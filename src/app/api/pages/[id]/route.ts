@@ -9,9 +9,11 @@ type RouteContext = {
 };
 
 // GET /api/pages/[id] - Get page with blocks
-export async function GET(_request: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
+    const { searchParams } = new URL(request.url);
+    const patientView = searchParams.get('patientView') === 'true';
 
     const [page] = await db
       .select()
@@ -27,6 +29,38 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       .from(pageBlocks)
       .where(eq(pageBlocks.pageId, id))
       .orderBy(pageBlocks.sequenceNumber);
+
+    // If patient view, include reflection and survey questions
+    if (patientView) {
+      // Get block IDs
+      const blockIds = blocks.map(b => b.id);
+
+      // Fetch questions for all blocks
+      const allReflectionQuestions = [];
+      const allSurveyQuestions = [];
+
+      for (const blockId of blockIds) {
+        const blockReflectionQuestions = await db
+          .select()
+          .from(reflectionQuestions)
+          .where(eq(reflectionQuestions.blockId, blockId));
+
+        const blockSurveyQuestions = await db
+          .select()
+          .from(surveyQuestions)
+          .where(eq(surveyQuestions.blockId, blockId));
+
+        allReflectionQuestions.push(...blockReflectionQuestions);
+        allSurveyQuestions.push(...blockSurveyQuestions);
+      }
+
+      return NextResponse.json({
+        page,
+        blocks,
+        reflectionQuestions: allReflectionQuestions,
+        surveyQuestions: allSurveyQuestions,
+      });
+    }
 
     return NextResponse.json({ page, blocks });
   } catch (error) {

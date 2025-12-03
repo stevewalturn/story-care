@@ -91,6 +91,8 @@ export const blockTypeEnum = pgEnum('block_type', [
   'video',
   'image',
   'text',
+  'quote',
+  'scene',
   'reflection',
   'survey',
 ]);
@@ -119,6 +121,15 @@ export const musicGenerationStatusEnum = pgEnum('music_generation_status', [
   'completed',
   'failed',
 ]);
+export const transcodingJobStatusEnum = pgEnum('transcoding_job_status', [
+  'pending',
+  'running',
+  'completed',
+  'failed',
+  'cancelled',
+]);
+export const transcodingFormatEnum = pgEnum('transcoding_format', ['h264', 'h265', 'vp9', 'av1']);
+export const transcodingQualityEnum = pgEnum('transcoding_quality', ['low', 'medium', 'high', 'ultra']);
 
 // Treatment Module System Enums
 export const therapeuticDomainEnum = pgEnum('therapeutic_domain', [
@@ -135,6 +146,9 @@ export const notificationTypeEnum = pgEnum('notification_type', [
   'module_completed',
   'session_reminder',
   'survey_reminder',
+  'therapist_invitation',
+  'patient_invitation',
+  'org_admin_invitation',
 ]);
 export const notificationStatusEnum = pgEnum('notification_status', [
   'pending',
@@ -722,10 +736,6 @@ export const treatmentModulesSchema = pgTable('treatment_modules', {
     .references(() => usersSchema.id)
     .notNull(),
 
-  // Module Components - Template References (Multi-select)
-  reflectionTemplateIds: uuid('reflection_template_ids').array().default([]).notNull(), // Array of reflection template IDs
-  surveyTemplateIds: uuid('survey_template_ids').array().default([]).notNull(), // Array of survey template IDs
-
   // AI Prompts
   aiPromptText: text('ai_prompt_text').notNull(),
   aiPromptMetadata: jsonb('ai_prompt_metadata'), // { output_format: 'structured', expected_fields: [...] }
@@ -796,6 +806,50 @@ export const modulePromptLinksSchema = pgTable('module_prompt_links', {
   sortOrder: integer('sort_order').default(0).notNull(),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ============================================================================
+// WORKFLOW EXECUTIONS
+// ============================================================================
+
+// Tracks execution state of building block workflows
+export const workflowExecutionsSchema = pgTable('workflow_executions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  // Workflow Definition
+  promptId: uuid('prompt_id')
+    .references(() => moduleAiPromptsSchema.id, { onDelete: 'cascade' })
+    .notNull(),
+  blocks: jsonb('blocks').notNull(), // Array of BlockInstance[] with execution status
+
+  // Execution Context
+  context: jsonb('context').notNull(), // WorkflowContext with accumulated step outputs
+  initialContext: jsonb('initial_context'), // Original context at start
+
+  // Execution State
+  status: varchar('status', { length: 50 }).default('pending').notNull(), // 'pending', 'running', 'completed', 'failed', 'paused'
+  currentStepIndex: integer('current_step_index').default(0).notNull(),
+  error: text('error'), // Error message if failed
+
+  // Session & User Context
+  sessionId: uuid('session_id').references(() => sessionsSchema.id, {
+    onDelete: 'cascade',
+  }),
+  patientId: uuid('patient_id').references(() => usersSchema.id, {
+    onDelete: 'cascade',
+  }),
+  therapistId: uuid('therapist_id').references(() => usersSchema.id, {
+    onDelete: 'cascade',
+  }),
+  organizationId: uuid('organization_id').references(() => organizationsSchema.id, {
+    onDelete: 'cascade',
+  }),
+
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // ============================================================================
@@ -893,9 +947,12 @@ export const scenesSchema = pgTable('scenes', {
   thumbnailUrl: text('thumbnail_url'),
   durationSeconds: varchar('duration_seconds', { length: 50 }),
 
-  // Audio settings
+  // Audio settings (legacy - kept for backward compatibility)
   backgroundAudioUrl: text('background_audio_url'),
   loopAudio: boolean('loop_audio').default(false),
+
+  // New audio settings
+  fitAudioToDuration: boolean('fit_audio_to_duration').default(false),
 
   // Status
   status: sceneStatusEnum('status').default('draft'),
@@ -918,6 +975,36 @@ export const sceneClipsSchema = pgTable('scene_clips', {
     '0',
   ),
   endTimeSeconds: decimal('end_time_seconds', { precision: 10, scale: 3 }),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ============================================================================
+// SCENE AUDIO TRACKS (Multiple audio layers per scene)
+// ============================================================================
+
+export const sceneAudioTracksSchema = pgTable('scene_audio_tracks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  // Scene reference
+  sceneId: uuid('scene_id')
+    .references(() => scenesSchema.id, { onDelete: 'cascade' })
+    .notNull(),
+
+  // Audio source
+  audioId: uuid('audio_id').references(() => mediaLibrarySchema.id), // Optional FK to media library
+  audioUrl: text('audio_url').notNull(), // GCS URL or external URL
+  title: varchar('title', { length: 255 }), // Display name for the audio track
+
+  // Timeline position
+  startTimeSeconds: decimal('start_time_seconds', { precision: 10, scale: 3 }).default('0'),
+  durationSeconds: decimal('duration_seconds', { precision: 10, scale: 3 }), // Original audio duration
+
+  // Audio settings
+  volume: integer('volume').default(100), // 0-100%
+
+  // Ordering
+  sequenceNumber: integer('sequence_number').notNull(), // For z-index/layering
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
@@ -1184,6 +1271,59 @@ export const platformSettingsSchema = pgTable('platform_settings', {
 });
 
 // ============================================================================
+// VIDEO TRANSCODING JOBS (GPU Cloud Run)
+// ============================================================================
+
+export const videoTranscodingJobsSchema = pgTable('video_transcoding_jobs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  // User context
+  userId: uuid('user_id')
+    .references(() => usersSchema.id)
+    .notNull(),
+  organizationId: uuid('organization_id')
+    .references(() => organizationsSchema.id)
+    .notNull(),
+
+  // Job details
+  executionName: varchar('execution_name', { length: 255 }), // Cloud Run Job execution ID
+  status: transcodingJobStatusEnum('status').default('pending').notNull(),
+
+  // Input/Output files
+  inputFilename: varchar('input_filename', { length: 500 }).notNull(),
+  outputFilename: varchar('output_filename', { length: 500 }).notNull(),
+  inputGcsPath: text('input_gcs_path').notNull(), // gs://preprocessing-{project}/filename
+  outputGcsPath: text('output_gcs_path'), // gs://transcoded-{project}/filename
+
+  // Transcoding configuration
+  format: transcodingFormatEnum('format').default('h264').notNull(),
+  quality: transcodingQualityEnum('quality').default('high').notNull(),
+  width: integer('width'), // Target width in pixels
+  height: integer('height'), // Target height in pixels
+  fps: integer('fps'), // Target frames per second
+  customArgs: jsonb('custom_args'), // Custom FFmpeg arguments as array
+
+  // Job metadata
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  errorMessage: text('error_message'),
+
+  // Cost tracking (estimated)
+  estimatedCostUsd: decimal('estimated_cost_usd', { precision: 10, scale: 4 }),
+  durationSeconds: integer('duration_seconds'), // Job execution time
+
+  // File metadata
+  inputFileSizeBytes: bigint('input_file_size_bytes', { mode: 'number' }),
+  outputFileSizeBytes: bigint('output_file_size_bytes', { mode: 'number' }),
+
+  // Additional metadata
+  metadata: jsonb('metadata'), // Any additional info (video resolution, codec, etc.)
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================================================
 // ENGAGEMENT TRACKING
 // ============================================================================
 
@@ -1235,10 +1375,12 @@ export const therapeuticPrompts = therapeuticPromptsSchema;
 export const treatmentModules = treatmentModulesSchema;
 export const moduleAiPrompts = moduleAiPromptsSchema;
 export const modulePromptLinks = modulePromptLinksSchema;
+export const workflowExecutions = workflowExecutionsSchema;
 export const sessionModules = sessionModulesSchema;
 export const emailNotifications = emailNotificationsSchema;
 export const scenes = scenesSchema;
 export const sceneClips = sceneClipsSchema;
+export const sceneAudioTracks = sceneAudioTracksSchema;
 export const storyPages = storyPagesSchema;
 export const pageShareLinks = pageShareLinksSchema;
 export const pageBlocks = pageBlocksSchema;
@@ -1247,6 +1389,7 @@ export const surveyQuestions = surveyQuestionsSchema;
 export const reflectionResponses = reflectionResponsesSchema;
 export const surveyResponses = surveyResponsesSchema;
 export const patientPageInteractions = patientPageInteractionsSchema;
+export const videoTranscodingJobs = videoTranscodingJobsSchema;
 export const auditLogs = auditLogsSchema;
 export const platformSettings = platformSettingsSchema;
 
@@ -1311,12 +1454,13 @@ export type PromptTemplate = ModuleAiPrompt;
 // Treatment module with linked AI prompts (for frontend display)
 export type TreatmentModuleWithPrompts = TreatmentModule & {
   linkedPrompts?: Array<ModuleAiPrompt & { sortOrder: number }>;
-  reflectionTemplates?: ReflectionTemplate[];
-  surveyTemplates?: SurveyTemplate[];
 };
 
 export type ModulePromptLink = typeof modulePromptLinksSchema.$inferSelect;
 export type NewModulePromptLink = typeof modulePromptLinksSchema.$inferInsert;
+
+export type WorkflowExecutionDb = typeof workflowExecutionsSchema.$inferSelect;
+export type NewWorkflowExecutionDb = typeof workflowExecutionsSchema.$inferInsert;
 
 export type SessionModule = typeof sessionModulesSchema.$inferSelect;
 export type NewSessionModule = typeof sessionModulesSchema.$inferInsert;
@@ -1326,6 +1470,9 @@ export type NewEmailNotification = typeof emailNotificationsSchema.$inferInsert;
 
 export type Scene = typeof scenesSchema.$inferSelect;
 export type NewScene = typeof scenesSchema.$inferInsert;
+
+export type SceneAudioTrack = typeof sceneAudioTracksSchema.$inferSelect;
+export type NewSceneAudioTrack = typeof sceneAudioTracksSchema.$inferInsert;
 
 export type StoryPage = typeof storyPagesSchema.$inferSelect;
 export type NewStoryPage = typeof storyPagesSchema.$inferInsert;
@@ -1347,6 +1494,9 @@ export type NewSurveyResponse = typeof surveyResponsesSchema.$inferInsert;
 
 export type PatientPageInteraction = typeof patientPageInteractionsSchema.$inferSelect;
 export type NewPatientPageInteraction = typeof patientPageInteractionsSchema.$inferInsert;
+
+export type VideoTranscodingJob = typeof videoTranscodingJobsSchema.$inferSelect;
+export type NewVideoTranscodingJob = typeof videoTranscodingJobsSchema.$inferInsert;
 
 export type AuditLog = typeof auditLogsSchema.$inferSelect;
 export type NewAuditLog = typeof auditLogsSchema.$inferInsert;

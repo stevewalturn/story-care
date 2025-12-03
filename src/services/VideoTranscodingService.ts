@@ -209,26 +209,37 @@ export class VideoTranscodingService {
       const parent = `projects/${Env.GCS_PROJECT_ID}/locations/${this.region}`;
       const jobPath = `${parent}/jobs/${this.jobName}`;
 
-      // Note: This is a simplified example. In production, you'd use the Cloud Run Admin API
-      // to execute jobs programmatically. For now, you can use gcloud CLI or HTTP API.
-      const executionName = `${this.jobName}-${Date.now()}`;
-
       console.log('Starting transcoding job:', {
         job: this.jobName,
-        execution: executionName,
         args,
       });
 
-      // In a real implementation, you would call the Cloud Run Admin API here
-      // For now, return a pending status
+      // Run the Cloud Run Job with arguments
+      const [operation] = await this.runClient.runJob({
+        name: jobPath,
+        overrides: {
+          containerOverrides: [{
+            args,
+          }],
+        },
+      });
+
+      // Get execution name from operation metadata
+      const executionName = operation.name || `${this.jobName}-${Date.now()}`;
+
+      console.log('Transcoding job started:', {
+        execution: executionName,
+        operation: operation.name,
+      });
+
       return {
         jobName: this.jobName,
         executionName,
         status: 'PENDING',
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to start transcoding job:', error);
-      throw new Error(`Failed to start transcoding job: ${error}`);
+      throw new Error(`Failed to start transcoding job: ${error.message || error}`);
     }
   }
 
@@ -237,16 +248,35 @@ export class VideoTranscodingService {
    */
   static async getJobStatus(executionName: string): Promise<TranscodingJobStatus> {
     try {
-      // In production, query Cloud Run Admin API for execution status
-      // For now, return a mock status
+      // Get execution status from Cloud Run Admin API
+      const [execution] = await this.runClient.getExecution({
+        name: executionName,
+      });
+
+      // Map Cloud Run execution status to our status
+      let status: 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'PENDING' = 'PENDING';
+
+      if (execution.completionTime) {
+        // Execution completed
+        if (execution.failureMessage || execution.cancelledCount) {
+          status = 'FAILED';
+        } else {
+          status = 'SUCCEEDED';
+        }
+      } else if (execution.startTime) {
+        // Execution started but not completed
+        status = 'RUNNING';
+      }
+
       return {
         jobName: this.jobName,
         executionName,
-        status: 'RUNNING',
+        status,
+        error: execution.failureMessage || undefined,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to get job status:', error);
-      throw new Error(`Failed to get job status: ${error}`);
+      throw new Error(`Failed to get job status: ${error.message || error}`);
     }
   }
 

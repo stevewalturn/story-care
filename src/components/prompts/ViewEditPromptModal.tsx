@@ -13,6 +13,10 @@ import { JSONSchemaEditor } from '@/components/prompts/JSONSchemaEditor';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedDelete, authenticatedPatch } from '@/utils/AuthenticatedFetch';
+import { parseSchemaToBlocks } from '@/utils/BlockSchemaGenerator';
+import { getBlockDefinition } from '@/config/BlockDefinitions';
+import type { BlockInstance } from '@/types/BuildingBlocks';
+import { JSONSchemaTreeView } from './JSONSchemaTreeView';
 
 type ViewEditPromptModalProps = {
   prompt: PromptTemplate;
@@ -292,12 +296,7 @@ export function ViewEditPromptModal({
 
               {/* Show current JSON config when not editing */}
               {!isEditing && outputType === 'json' && jsonSchema && (
-                <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
-                  <p className="mb-2 text-sm font-medium text-purple-900">JSON Schema Configuration</p>
-                  <pre className="overflow-x-auto rounded-lg bg-white p-3 font-mono text-xs text-gray-800 shadow-inner">
-                    {JSON.stringify(jsonSchema, null, 2)}
-                  </pre>
-                </div>
+                <JSONSchemaTreeView schema={jsonSchema} title="Output Structure" />
               )}
 
               {/* Description */}

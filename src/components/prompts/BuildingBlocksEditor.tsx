@@ -7,32 +7,23 @@
  * Provides both building blocks mode and advanced JSON mode
  */
 
-import { useState, useEffect, useMemo } from 'react';
-import { Plus, Code, Blocks, AlertTriangle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Blocks, AlertTriangle } from 'lucide-react';
 import type { BlockInstance, BlockType } from '@/types/BuildingBlocks';
 import { useBuildingBlocks } from '@/hooks/useBuildingBlocks';
 import BlockPalette from './BlockPalette';
 import BlockPreview from './BlockPreview';
 import BlockForm from './BlockForm';
-import JSONSchemaEditor from './JSONSchemaEditor';
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui/Button';
 
 interface BuildingBlocksEditorProps {
   initialBlocks?: BlockInstance[];
   onChange: (blocks: BlockInstance[], schema: object) => void;
-  advancedMode: boolean;
-  onAdvancedModeToggle: () => void;
-  jsonSchema?: object;
-  onJsonSchemaChange?: (schema: object) => void;
 }
 
 export default function BuildingBlocksEditor({
   initialBlocks = [],
   onChange,
-  advancedMode,
-  onAdvancedModeToggle,
-  jsonSchema,
-  onJsonSchemaChange,
 }: BuildingBlocksEditorProps) {
   const {
     blocks,
@@ -51,15 +42,12 @@ export default function BuildingBlocksEditor({
 
   const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
   const [showPalette, setShowPalette] = useState(false);
-  const [showAdvancedWarning, setShowAdvancedWarning] = useState(false);
 
   // Notify parent of changes
   useEffect(() => {
-    if (!advancedMode) {
-      const schema = generateSchema();
-      onChange(blocks, schema);
-    }
-  }, [blocks, advancedMode, generateSchema, onChange]);
+    const schema = generateSchema();
+    onChange(blocks, schema);
+  }, [blocks, onChange]); // Removed generateSchema - onChange is now stable with useCallback
 
   const handleAddBlock = (blockType: BlockType) => {
     const instanceId = addBlock(blockType);
@@ -81,121 +69,23 @@ export default function BuildingBlocksEditor({
     }
   };
 
-  const handleAdvancedModeToggle = () => {
-    if (!advancedMode && blocks.length > 0) {
-      // Switching FROM blocks TO JSON - show warning
-      setShowAdvancedWarning(true);
-    } else {
-      onAdvancedModeToggle();
-    }
-  };
-
-  const confirmAdvancedMode = () => {
-    setShowAdvancedWarning(false);
-    onAdvancedModeToggle();
-  };
-
-  // Render advanced mode (JSON editor)
-  if (advancedMode) {
-    return (
-      <div className="space-y-4">
-        {/* Header with mode toggle */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Code className="h-5 w-5 text-gray-600" />
-            <h3 className="font-medium text-gray-900">Advanced JSON Mode</h3>
-          </div>
-          <button
-            onClick={onAdvancedModeToggle}
-            className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700"
-          >
-            <Blocks className="h-4 w-4" />
-            Switch to Building Blocks
-          </button>
-        </div>
-
-        {/* JSON Schema Editor */}
-        <JSONSchemaEditor
-          value={jsonSchema ? JSON.stringify(jsonSchema, null, 2) : ''}
-          onChange={(value) => {
-            try {
-              const parsed = JSON.parse(value);
-              onJsonSchemaChange?.(parsed);
-            } catch (error) {
-              // Invalid JSON, don't update
-            }
-          }}
-        />
-
-        {/* Info box */}
-        <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
-          <p className="text-sm text-blue-800">
-            <strong>Advanced Mode:</strong> Edit the JSON schema directly. This gives you full control
-            but requires knowledge of JSON Schema format.
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <Blocks className="h-5 w-5 text-blue-600" />
+        <div>
+          <h3 className="font-medium text-gray-900">Building Blocks</h3>
+          <p className="text-xs text-gray-500">
+            {blocks.length} block{blocks.length !== 1 ? 's' : ''}
+            {!isValid && (
+              <span className="ml-2 text-red-600">
+                • {validationErrors.length} error{validationErrors.length !== 1 ? 's' : ''}
+              </span>
+            )}
           </p>
         </div>
       </div>
-    );
-  }
-
-  // Render building blocks mode
-  return (
-    <div className="space-y-4">
-      {/* Header with mode toggle */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Blocks className="h-5 w-5 text-blue-600" />
-          <div>
-            <h3 className="font-medium text-gray-900">Building Blocks</h3>
-            <p className="text-xs text-gray-500">
-              {blocks.length} block{blocks.length !== 1 ? 's' : ''}
-              {!isValid && (
-                <span className="ml-2 text-red-600">
-                  • {validationErrors.length} error{validationErrors.length !== 1 ? 's' : ''}
-                </span>
-              )}
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={handleAdvancedModeToggle}
-          className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-700"
-        >
-          <Code className="h-4 w-4" />
-          Advanced Mode
-        </button>
-      </div>
-
-      {/* Advanced mode warning dialog */}
-      {showAdvancedWarning && (
-        <div className="rounded-lg bg-yellow-50 border border-yellow-300 p-4">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <h4 className="font-medium text-yellow-900">Switch to Advanced Mode?</h4>
-              <p className="mt-1 text-sm text-yellow-800">
-                Switching to advanced mode will convert your building blocks to JSON.
-                You'll be able to edit the JSON directly, but switching back to building blocks
-                may not preserve custom JSON structures.
-              </p>
-              <div className="mt-3 flex gap-2">
-                <Button
-                  onClick={confirmAdvancedMode}
-                  className="bg-yellow-600 hover:bg-yellow-700"
-                >
-                  Continue
-                </Button>
-                <Button
-                  onClick={() => setShowAdvancedWarning(false)}
-                  className="bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Main content */}
       <div className="flex gap-4">
@@ -241,7 +131,7 @@ export default function BuildingBlocksEditor({
                       <BlockForm
                         blockId={block.blockId}
                         instance={block}
-                        onChange={(values) => updateBlock(block.instanceId, values)}
+                        onChange={(values, customLabels) => updateBlock(block.instanceId, values, customLabels)}
                         onRemove={() => handleRemoveBlock(block.instanceId)}
                         onDuplicate={() => handleDuplicateBlock(block.instanceId)}
                         onCollapse={() => setExpandedBlockId(null)}

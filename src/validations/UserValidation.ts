@@ -39,5 +39,43 @@ export const createPatientSchema = z.object({
     .min(1, 'Therapist ID is required'),
 });
 
+/**
+ * Schema for inviting a patient to the platform
+ */
+export const invitePatientSchema = z.object({
+  name: z.string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(255, 'Name must not exceed 255 characters'),
+  email: z.string()
+    .email('Invalid email address'),
+  dateOfBirth: z.string()
+    .optional(),
+  referenceImageUrl: z.string()
+    .url('Invalid image URL')
+    .optional(),
+  therapistId: z.string()
+    .min(1, 'Therapist ID is required'),
+  welcomeMessage: z.string()
+    .max(1000, 'Welcome message must not exceed 1000 characters')
+    .optional(),
+  sendInvitation: z.boolean()
+    .default(true),
+});
+
+/**
+ * Schema for inviting an org admin to the platform
+ */
+export const inviteOrgAdminSchema = z.object({
+  name: z.string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(255, 'Name must not exceed 255 characters'),
+  email: z.string()
+    .email('Invalid email address'),
+  organizationId: z.string()
+    .min(1, 'Organization ID is required'),
+});
+
 export type InviteTherapistInput = z.infer<typeof inviteTherapistSchema>;
 export type CreatePatientInput = z.infer<typeof createPatientSchema>;
+export type InvitePatientInput = z.infer<typeof invitePatientSchema>;
+export type InviteOrgAdminInput = z.infer<typeof inviteOrgAdminSchema>;

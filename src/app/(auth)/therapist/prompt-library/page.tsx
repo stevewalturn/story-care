@@ -5,9 +5,10 @@
 
 'use client';
 
-import { FileText, MessageCircle, Plus, Search, Sparkles, Target } from 'lucide-react';
+import { Eye, FileText, MessageCircle, Plus, Search, Sparkles, Target, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { CreatePromptModal } from '@/components/prompts/CreatePromptModal';
+import { ViewEditPromptModal } from '@/components/prompts/ViewEditPromptModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -49,6 +50,9 @@ export default function PromptLibraryPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [scopeFilter, setScopeFilter] = useState<string>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'view' | 'edit'>('view');
 
   useEffect(() => {
     fetchPrompts();
@@ -67,6 +71,51 @@ export default function PromptLibraryPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewDetails = (prompt: Prompt) => {
+    setSelectedPrompt(prompt);
+    setViewMode('view');
+    setIsViewModalOpen(true);
+  };
+
+  const handleEdit = (prompt: Prompt) => {
+    setSelectedPrompt(prompt);
+    setViewMode('edit');
+    setIsViewModalOpen(true);
+  };
+
+  const handleDelete = async (prompt: Prompt) => {
+    if (!user) return;
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete "${prompt.name}"? This action cannot be undone.`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      await authenticatedFetch(`/api/therapist/prompts/${prompt.id}`, user, {
+        method: 'DELETE',
+      });
+
+      // Refresh prompts list
+      fetchPrompts();
+    } catch (error) {
+      console.error('Error deleting prompt:', error);
+      alert('Failed to delete prompt. Please try again.');
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsViewModalOpen(false);
+    setSelectedPrompt(null);
+    setViewMode('view');
+  };
+
+  const handlePromptUpdated = () => {
+    fetchPrompts();
+    handleCloseModal();
   };
 
   const filteredPrompts = prompts.filter((prompt) => {
@@ -160,7 +209,12 @@ export default function PromptLibraryPage() {
             </h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {groupedPrompts.system.map(prompt => (
-                <PromptCard key={prompt.id} prompt={prompt} onUpdate={fetchPrompts} />
+                <PromptCard
+                  key={prompt.id}
+                  prompt={prompt}
+                  onUpdate={fetchPrompts}
+                  onView={handleViewDetails}
+                />
               ))}
             </div>
           </div>
@@ -176,7 +230,12 @@ export default function PromptLibraryPage() {
             </h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {groupedPrompts.organization.map(prompt => (
-                <PromptCard key={prompt.id} prompt={prompt} onUpdate={fetchPrompts} />
+                <PromptCard
+                  key={prompt.id}
+                  prompt={prompt}
+                  onUpdate={fetchPrompts}
+                  onView={handleViewDetails}
+                />
               ))}
             </div>
           </div>
@@ -192,7 +251,15 @@ export default function PromptLibraryPage() {
             </h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {groupedPrompts.private.map(prompt => (
-                <PromptCard key={prompt.id} prompt={prompt} onUpdate={fetchPrompts} editable />
+                <PromptCard
+                  key={prompt.id}
+                  prompt={prompt}
+                  onUpdate={fetchPrompts}
+                  onView={handleViewDetails}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  editable
+                />
               ))}
             </div>
           </div>
@@ -217,6 +284,23 @@ export default function PromptLibraryPage() {
           }}
         />
       )}
+
+      {/* View/Edit Prompt Modal */}
+      {isViewModalOpen && selectedPrompt && (
+        <ViewEditPromptModal
+          prompt={selectedPrompt}
+          mode={viewMode}
+          canEdit={selectedPrompt.scope === 'private'}
+          canDelete={selectedPrompt.scope === 'private'}
+          apiEndpoint="/api/therapist/prompts"
+          onClose={handleCloseModal}
+          onUpdated={handlePromptUpdated}
+          onDeleted={() => {
+            fetchPrompts();
+            handleCloseModal();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -224,10 +308,16 @@ export default function PromptLibraryPage() {
 function PromptCard({
   prompt,
   onUpdate: _onUpdate,
+  onView,
+  onEdit,
+  onDelete,
   editable = false,
 }: {
   prompt: Prompt;
   onUpdate: () => void;
+  onView: (prompt: Prompt) => void;
+  onEdit?: (prompt: Prompt) => void;
+  onDelete?: (prompt: Prompt) => void;
   editable?: boolean;
 }) {
   const IconComponent = categoryIcons[prompt.category];
@@ -250,27 +340,37 @@ function PromptCard({
 
       <div className="flex items-center justify-between text-xs text-gray-500">
         <span className="capitalize">{prompt.category}</span>
-        <span>
-          Used
-          {prompt.useCount}
-          {' '}
-          times
-        </span>
+        <span>Used {prompt.useCount} times</span>
       </div>
 
-      {editable && (
-        <div className="mt-4 flex gap-2">
+      {/* View Details Button - Always visible */}
+      <div className="mt-4">
+        <button
+          type="button"
+          onClick={() => onView(prompt)}
+          className="w-full flex items-center justify-center gap-2 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 transition-colors"
+        >
+          <Eye className="h-4 w-4" />
+          View Details
+        </button>
+      </div>
+
+      {/* Edit/Delete Buttons - Only for editable prompts */}
+      {editable && onEdit && onDelete && (
+        <div className="mt-2 flex gap-2">
           <button
             type="button"
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            onClick={() => onEdit(prompt)}
+            className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Edit
           </button>
           <button
             type="button"
-            className="flex-1 rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50"
+            onClick={() => onDelete(prompt)}
+            className="rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 transition-colors"
           >
-            Delete
+            <Trash2 className="h-4 w-4" />
           </button>
         </div>
       )}

@@ -176,3 +176,5 @@ export function JSONSchemaEditor({
     </div>
   );
 }
+
+export default JSONSchemaEditor;

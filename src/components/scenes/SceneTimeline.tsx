@@ -142,7 +142,9 @@ export function SceneTimeline({
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -251,6 +253,31 @@ export function SceneTimeline({
     return `${mins}:${secs.toString().padStart(2, '0')}.${ms}`;
   };
 
+  const handleAudioPlayPause = (trackId: string, audioUrl: string) => {
+    const audioElement = audioRefs.current.get(trackId);
+
+    if (playingAudioId === trackId && audioElement) {
+      // Pause currently playing audio
+      audioElement.pause();
+      setPlayingAudioId(null);
+    } else {
+      // Stop any currently playing audio
+      if (playingAudioId) {
+        const currentAudio = audioRefs.current.get(playingAudioId);
+        if (currentAudio) {
+          currentAudio.pause();
+          currentAudio.currentTime = 0;
+        }
+      }
+
+      // Play new audio
+      if (audioElement) {
+        audioElement.play();
+        setPlayingAudioId(trackId);
+      }
+    }
+  };
+
   const getClipPosition = (clip: Clip) => {
     const left = (clip.startTime / totalDuration) * 100;
     const width = (clip.duration / totalDuration) * 100;
@@ -264,17 +291,11 @@ export function SceneTimeline({
       {/* Clip List (Left) - Sortable */}
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
         <div className="border-b border-gray-200 bg-gray-50 p-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium text-gray-900">
-              Clips (
-              {clips.length}
-              )
-            </h3>
-            <Button variant="secondary" size="sm" onClick={onAddClip}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Clip
-            </Button>
-          </div>
+          <h3 className="font-medium text-gray-900">
+            Clips (
+            {clips.length}
+            )
+          </h3>
           <p className="mt-1 text-xs text-gray-600">Drag to reorder clips</p>
         </div>
 
@@ -463,44 +484,70 @@ export function SceneTimeline({
                 const left = (track.startTime / totalDuration) * 100;
                 const width = (track.duration / totalDuration) * 100;
                 const isSelected = selectedAudioId === track.id;
+                const isPlaying = playingAudioId === track.id;
 
                 return (
-                  <div
-                    key={track.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedAudioId(track.id);
-                    }}
-                    style={{ left: `${left}%`, width: `${width}%` }}
-                    className={`absolute top-1 h-[calc(100%-8px)] overflow-hidden rounded border-2 transition-all ${
-                      isSelected
-                        ? 'border-purple-500 shadow-lg'
-                        : 'border-gray-300 hover:border-gray-400'
-                    }`}
-                  >
-                    {/* Audio visualization */}
-                    <div className="relative h-full w-full bg-gradient-to-br from-purple-500 to-purple-700">
-                      {/* Waveform-style bars */}
-                      <div className="flex h-full items-center justify-around px-1">
-                        {Array.from({ length: Math.min(Math.floor(width / 2), 20) }).map((_, i) => (
-                          <div
-                            key={i}
-                            className="w-0.5 bg-white/60"
-                            style={{
-                              height: `${30 + Math.random() * 70}%`,
-                            }}
-                          />
-                        ))}
-                      </div>
-                      {/* Audio icon */}
-                      <div className="absolute top-1 left-1">
-                        <Music className="h-3 w-3 text-white drop-shadow" />
-                      </div>
-                      {/* Title */}
-                      <div className="absolute right-1 bottom-1 left-1">
-                        <p className="truncate text-[10px] font-medium text-white drop-shadow">
-                          {track.title}
-                        </p>
+                  <div key={track.id}>
+                    {/* Hidden audio element */}
+                    <audio
+                      ref={(el) => {
+                        if (el) {
+                          audioRefs.current.set(track.id, el);
+                        }
+                      }}
+                      src={track.audioUrl}
+                      onEnded={() => setPlayingAudioId(null)}
+                    />
+
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedAudioId(track.id);
+                      }}
+                      style={{ left: `${left}%`, width: `${width}%` }}
+                      className={`absolute top-1 h-[calc(100%-8px)] overflow-hidden rounded border-2 transition-all ${
+                        isSelected
+                          ? 'border-purple-500 shadow-lg'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      {/* Audio visualization */}
+                      <div className="relative h-full w-full bg-gradient-to-br from-purple-500 to-purple-700">
+                        {/* Waveform-style bars */}
+                        <div className="flex h-full items-center justify-around px-1">
+                          {Array.from({ length: Math.min(Math.floor(width / 2), 20) }).map((_, i) => (
+                            <div
+                              key={i}
+                              className="w-0.5 bg-white/60"
+                              style={{
+                                height: `${30 + Math.random() * 70}%`,
+                              }}
+                            />
+                          ))}
+                        </div>
+
+                        {/* Play/Pause Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAudioPlayPause(track.id, track.audioUrl);
+                          }}
+                          className="absolute top-1 left-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-purple-600 transition-all hover:bg-white hover:shadow-lg"
+                          title={isPlaying ? 'Pause' : 'Play'}
+                        >
+                          {isPlaying ? (
+                            <Pause className="h-3 w-3" />
+                          ) : (
+                            <Play className="h-3 w-3" />
+                          )}
+                        </button>
+
+                        {/* Title */}
+                        <div className="absolute right-1 bottom-1 left-1">
+                          <p className="truncate text-[10px] font-medium text-white drop-shadow">
+                            {track.title}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>

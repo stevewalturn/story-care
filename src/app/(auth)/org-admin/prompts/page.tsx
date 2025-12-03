@@ -9,6 +9,7 @@ import type { PromptTemplate } from '@/models/Schema';
 import { AlertCircle, Edit, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { CreatePromptModal } from '@/components/prompts/CreatePromptModal';
+import { EditPromptModal } from '@/components/prompts/EditPromptModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -29,6 +30,8 @@ export default function OrgAdminPromptsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingPromptId, setEditingPromptId] = useState<string | null>(null);
 
   // Fetch prompts based on active tab
   const fetchPrompts = async () => {
@@ -66,6 +69,11 @@ export default function OrgAdminPromptsPage() {
 
   // Get unique categories
   const categories = ['all', ...new Set(prompts.map(p => p.category).filter(Boolean))];
+
+  function handleEditPrompt(promptId: string) {
+    setEditingPromptId(promptId);
+    setShowEditModal(true);
+  }
 
   async function handleDeletePrompt(promptId: string) {
     if (!confirm('Are you sure you want to delete this prompt?')) return;
@@ -210,6 +218,7 @@ export default function OrgAdminPromptsPage() {
                 key={prompt.id}
                 prompt={prompt}
                 activeTab={activeTab}
+                onEdit={handleEditPrompt}
                 onDelete={handleDeletePrompt}
               />
             ))}
@@ -228,6 +237,22 @@ export default function OrgAdminPromptsPage() {
           }}
         />
       )}
+
+      {/* Edit Prompt Modal */}
+      {showEditModal && editingPromptId && (
+        <EditPromptModal
+          promptId={editingPromptId}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingPromptId(null);
+          }}
+          onUpdated={() => {
+            setShowEditModal(false);
+            setEditingPromptId(null);
+            fetchPrompts();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -238,10 +263,11 @@ export default function OrgAdminPromptsPage() {
 type PromptCardProps = {
   prompt: PromptWithUsage;
   activeTab: TabType;
+  onEdit?: (id: string) => void;
   onDelete: (id: string) => void;
 };
 
-function PromptCard({ prompt, activeTab, onDelete }: PromptCardProps) {
+function PromptCard({ prompt, activeTab, onEdit, onDelete }: PromptCardProps) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
       {/* Header */}
@@ -293,10 +319,7 @@ function PromptCard({ prompt, activeTab, onDelete }: PromptCardProps) {
         {activeTab === 'organization' && (
           <>
             <button
-              onClick={() => {
-                // TODO: Open edit modal
-                alert('Edit prompt modal not yet implemented');
-              }}
+              onClick={() => onEdit?.(prompt.id)}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
               type="button"
             >

@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, Download, Eye, Loader2, Play, Save } from 'lucide-react';
+import { ArrowLeft, Download, Eye, Loader2, Music, Play, Save } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { MediaViewer } from '@/components/assets/MediaViewer';
@@ -57,6 +57,10 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
   const [currentSceneId, setCurrentSceneId] = useState<string | null>(initialSceneId || null);
   const [selectedPatient, setSelectedPatient] = useState<string>('');
   const [patients, setPatients] = useState<any[]>([]);
+
+  // Audio settings
+  const [loopAudio, setLoopAudio] = useState(false);
+  const [fitAudioToDuration, setFitAudioToDuration] = useState(false);
 
   // Calculate total duration automatically from both clips and audio tracks
   const totalDuration = useMemo(() => {
@@ -115,19 +119,37 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
         setSceneName(data.scene.title || 'Untitled Scene');
         setSceneDescription(data.scene.description || '');
 
-        // Transform clips from API format
+        // Load audio settings
+        setLoopAudio(data.scene.loopAudio || false);
+        setFitAudioToDuration(data.scene.fitAudioToDuration || false);
+
+        // Transform clips from API format with presigned URLs
         const transformedClips: Clip[] = data.clips.map((clip: any) => ({
           id: clip.id,
-          type: 'image', // Will be determined from media
+          type: clip.media?.mediaType || 'image',
           mediaId: clip.mediaId,
           title: `Clip ${clip.sequenceNumber}`,
-          thumbnailUrl: '', // Will be loaded from media
+          thumbnailUrl: clip.media?.thumbnailUrl || clip.media?.mediaUrl || '',
           startTime: Number.parseFloat(clip.startTimeSeconds),
           duration: Number.parseFloat(clip.endTimeSeconds) - Number.parseFloat(clip.startTimeSeconds),
         }));
 
         setClips(transformedClips);
-        // totalDuration is now auto-calculated from clips
+
+        // Load audio tracks from database
+        const audioResponse = await authenticatedFetch(`/api/scenes/${sceneId}/audio-tracks`, user);
+        if (audioResponse.ok) {
+          const audioData = await audioResponse.json();
+          const transformedAudioTracks: AudioTrack[] = audioData.audioTracks.map((track: any) => ({
+            id: track.id,
+            audioId: track.audioId || '',
+            audioUrl: track.audioUrl,
+            title: track.title || 'Audio Track',
+            startTime: Number.parseFloat(track.startTimeSeconds || '0'),
+            duration: Number.parseFloat(track.durationSeconds || '0'),
+          }));
+          setAudioTracks(transformedAudioTracks);
+        }
       }
     } catch (error) {
       console.error('Error loading scene:', error);
@@ -140,6 +162,8 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
     setSceneDescription('');
     setClips([]);
     setAudioTracks([]);
+    setLoopAudio(false);
+    setFitAudioToDuration(false);
   };
 
   const handleAddClip = (media: MediaItem, duration: number) => {
@@ -232,6 +256,8 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
           description: sceneDescription,
           durationSeconds: calculatedDuration.toString(),
           status: 'draft',
+          loopAudio,
+          fitAudioToDuration,
         });
       }
 
@@ -245,6 +271,25 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
             endTimeSeconds: (clip.startTime + clip.duration).toString(),
           })),
         });
+
+        // Save audio tracks
+        // First delete all existing tracks
+        await authenticatedFetch(`/api/scenes/${sceneId}/audio-tracks`, user, {
+          method: 'DELETE',
+        });
+
+        // Then add new tracks
+        for (const track of audioTracks) {
+          await authenticatedPost(`/api/scenes/${sceneId}/audio-tracks`, user, {
+            audioId: track.audioId,
+            audioUrl: track.audioUrl,
+            title: track.title,
+            startTimeSeconds: track.startTime,
+            durationSeconds: track.duration,
+            volume: 100, // Default volume
+            sequenceNumber: audioTracks.indexOf(track),
+          });
+        }
       }
 
       toast.success('Scene saved successfully!', { id: toastId });
@@ -311,6 +356,12 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
       // Refresh scene to get updated URL
       if (savedSceneId) {
         await loadScene(savedSceneId);
+      }
+
+      // Auto-display the exported video
+      if (data.assembledVideoUrl) {
+        setPreviewVideoUrl(data.assembledVideoUrl);
+        setIsViewerOpen(true);
       }
     } catch (error: any) {
       console.error('Export error:', error);
@@ -460,6 +511,61 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
             </Button>
           </div>
         </div>
+
+        {/* Audio Settings */}
+        {audioTracks.length > 0 && (
+          <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+            <div className="mb-2 flex items-center gap-2">
+              <Music className="h-4 w-4 text-indigo-600" />
+              <h3 className="text-sm font-semibold text-indigo-900">
+                Audio Settings ({audioTracks.length} track{audioTracks.length !== 1 ? 's' : ''})
+              </h3>
+            </div>
+            <div className="flex items-center gap-6">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={loopAudio}
+                  onChange={(e) => setLoopAudio(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  disabled={fitAudioToDuration}
+                />
+                <span className="text-sm text-gray-700">
+                  Loop audio to fit video length
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={fitAudioToDuration}
+                  onChange={(e) => setFitAudioToDuration(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  disabled={loopAudio}
+                />
+                <span className="text-sm text-gray-700">
+                  Trim/cut audio to fit video length
+                </span>
+              </label>
+            </div>
+            <p className="mt-2 text-xs text-indigo-700">
+              {loopAudio
+                ? 'Audio will repeat with smooth crossfade until video ends'
+                : fitAudioToDuration
+                  ? 'Audio will be trimmed/cut to match video duration exactly'
+                  : 'Audio will play once and stop when it ends'}
+            </p>
+          </div>
+        )}
+
+        {/* Duration Warning */}
+        {totalDuration > 60 && (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <p className="text-sm text-amber-800">
+              ⚠️ Video duration ({Math.round(totalDuration)}s) exceeds 60-second limit. Export will fail. Please reduce clip durations.
+            </p>
+          </div>
+        )}
+
         <p className="text-sm text-gray-600">
           {selectedPatient
             ? 'Assemble video scenes with images, videos, and audio for your patient\'s story'
@@ -497,7 +603,7 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
                 <div className="bg-opacity-40 absolute inset-0 flex items-center justify-center bg-black">
                   <div className="text-center text-white">
                     <Eye className="mx-auto mb-3 h-12 w-12 opacity-75" />
-                    <p className="text-sm">Click Preview to watch assembled scene</p>
+                    <p className="text-sm">Please export first</p>
                   </div>
                 </div>
               </div>

@@ -9,8 +9,6 @@ import { db } from '@/libs/DB';
 import {
   moduleAiPromptsSchema,
   modulePromptLinksSchema,
-  reflectionTemplatesSchema,
-  surveyTemplatesSchema,
   treatmentModulesSchema,
 } from '@/models/Schema';
 
@@ -32,8 +30,6 @@ export async function createModule(data: {
   scope: TemplateScope;
   createdBy: string;
   organizationId?: string | null;
-  reflectionTemplateIds?: string[];
-  surveyTemplateIds?: string[];
   aiPromptText: string;
   aiPromptMetadata?: any;
 }) {
@@ -46,8 +42,6 @@ export async function createModule(data: {
       scope: data.scope,
       createdBy: data.createdBy,
       organizationId: data.organizationId || null,
-      reflectionTemplateIds: data.reflectionTemplateIds || [],
-      surveyTemplateIds: data.surveyTemplateIds || [],
       aiPromptText: data.aiPromptText,
       aiPromptMetadata: data.aiPromptMetadata || null,
       status: 'active',
@@ -128,30 +122,8 @@ export async function getModuleById(moduleId: string) {
     throw new Error('Module not found');
   }
 
-  // Fetch linked templates (arrays now)
-  const reflectionTemplates = [];
-  const surveyTemplates = [];
-
-  if (module.reflectionTemplateIds && module.reflectionTemplateIds.length > 0) {
-    const reflections = await db
-      .select()
-      .from(reflectionTemplatesSchema)
-      .where(inArray(reflectionTemplatesSchema.id, module.reflectionTemplateIds));
-    reflectionTemplates.push(...reflections);
-  }
-
-  if (module.surveyTemplateIds && module.surveyTemplateIds.length > 0) {
-    const surveys = await db
-      .select()
-      .from(surveyTemplatesSchema)
-      .where(inArray(surveyTemplatesSchema.id, module.surveyTemplateIds));
-    surveyTemplates.push(...surveys);
-  }
-
   return {
     module,
-    reflectionTemplates,
-    surveyTemplates,
   };
 }
 
@@ -163,8 +135,6 @@ export async function updateModule(
   updates: {
     name?: string;
     description?: string;
-    reflectionTemplateIds?: string[];
-    surveyTemplateIds?: string[];
     aiPromptText?: string;
     aiPromptMetadata?: any;
     status?: ModuleStatus;
@@ -339,7 +309,7 @@ export async function listTemplates(params?: {
     .where(and(...conditions))
     .orderBy(desc(treatmentModulesSchema.createdAt));
 
-  // Fetch linked prompts and templates for all modules
+  // Fetch linked prompts for all modules
   const templatesWithPrompts = await Promise.all(
     templates.map(async (template) => {
       // Fetch linked AI prompts
@@ -362,27 +332,9 @@ export async function listTemplates(params?: {
         .where(eq(modulePromptLinksSchema.moduleId, template.id))
         .orderBy(modulePromptLinksSchema.sortOrder);
 
-      // Fetch reflection templates
-      const reflectionTemplates = template.reflectionTemplateIds.length > 0
-        ? await db
-            .select()
-            .from(reflectionTemplatesSchema)
-            .where(inArray(reflectionTemplatesSchema.id, template.reflectionTemplateIds))
-        : [];
-
-      // Fetch survey templates
-      const surveyTemplates = template.surveyTemplateIds.length > 0
-        ? await db
-            .select()
-            .from(surveyTemplatesSchema)
-            .where(inArray(surveyTemplatesSchema.id, template.surveyTemplateIds))
-        : [];
-
       return {
         ...template,
         linkedPrompts: linkedPrompts.filter(p => p.isActive),
-        reflectionTemplates,
-        surveyTemplates,
       };
     }),
   );
@@ -399,9 +351,6 @@ export async function createTemplate(data: {
   domain: TherapeuticDomain;
   description: string;
   createdBy: string;
-
-  reflectionTemplateIds?: string[];
-  surveyTemplateIds?: string[];
   aiPromptText: string;
   aiPromptMetadata?: any;
 }) {
@@ -486,9 +435,6 @@ export async function createOrgModule(data: {
   description: string;
   organizationId: string;
   createdBy: string;
-
-  reflectionTemplateIds?: string[];
-  surveyTemplateIds?: string[];
   aiPromptText: string;
   aiPromptMetadata?: any;
 }) {
@@ -524,9 +470,6 @@ export async function copyTemplateToOrg(
     description: template.description,
     organizationId,
     createdBy: userId,
-
-    reflectionTemplateIds: template.reflectionTemplateIds,
-    surveyTemplateIds: template.surveyTemplateIds,
     aiPromptText: template.aiPromptText,
     aiPromptMetadata: template.aiPromptMetadata,
   });
@@ -610,9 +553,6 @@ export async function createTherapistModule(data: {
   domain: TherapeuticDomain;
   description: string;
   createdBy: string;
-
-  reflectionTemplateIds?: string[];
-  surveyTemplateIds?: string[];
   aiPromptText: string;
   aiPromptMetadata?: any;
 }) {

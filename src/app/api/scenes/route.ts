@@ -3,7 +3,8 @@ import { and, desc, eq, ilike } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
-import { scenes, sessions, usersSchema } from '@/models/Schema';
+import { generatePresignedUrl } from '@/libs/GCS';
+import { mediaLibrary, sceneClips, scenes, sessions, usersSchema } from '@/models/Schema';
 
 // GET /api/scenes - List scenes
 export async function GET(request: NextRequest) {
@@ -45,7 +46,49 @@ export async function GET(request: NextRequest) {
 
     const scenesList = await query.orderBy(desc(scenes.updatedAt));
 
-    return NextResponse.json({ scenes: scenesList });
+    // Generate presigned URLs and populate thumbnails from first clip
+    const scenesWithSignedUrls = await Promise.all(
+      scenesList.map(async (scene) => {
+        // Generate presigned URL for assembled video
+        const assembledVideoUrl = scene.assembledVideoUrl
+          ? await generatePresignedUrl(scene.assembledVideoUrl, 1)
+          : null;
+
+        // Get first clip's thumbnail if scene has no thumbnail
+        let thumbnailUrl = scene.thumbnailUrl;
+
+        if (!thumbnailUrl) {
+          // Query first clip's media for this scene
+          const [firstClip] = await db
+            .select({
+              media: mediaLibrary,
+            })
+            .from(sceneClips)
+            .leftJoin(mediaLibrary, eq(sceneClips.mediaId, mediaLibrary.id))
+            .where(eq(sceneClips.sceneId, scene.id))
+            .orderBy(sceneClips.sequenceNumber)
+            .limit(1);
+
+          if (firstClip?.media) {
+            // Use first clip's thumbnail or mediaUrl as fallback
+            thumbnailUrl = firstClip.media.thumbnailUrl || firstClip.media.mediaUrl;
+          }
+        }
+
+        // Generate presigned URL for thumbnail
+        const signedThumbnailUrl = thumbnailUrl
+          ? await generatePresignedUrl(thumbnailUrl, 1)
+          : null;
+
+        return {
+          ...scene,
+          assembledVideoUrl,
+          thumbnailUrl: signedThumbnailUrl,
+        };
+      }),
+    );
+
+    return NextResponse.json({ scenes: scenesWithSignedUrls });
   } catch (error) {
     console.error('Error fetching scenes:', error);
     return NextResponse.json(

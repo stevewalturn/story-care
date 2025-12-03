@@ -54,6 +54,8 @@ export const Input = ({ ref, label, error, helperText, leftIcon, rightIcon, clas
 
 Input.displayName = 'Input';
 
+export default Input;
+
 // Textarea variant
 type TextareaProps = {
   label?: string;

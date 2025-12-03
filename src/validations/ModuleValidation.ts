@@ -29,8 +29,6 @@ export const createModuleSchema = z.object({
   domain: therapeuticDomainSchema,
   description: z.string().min(10).max(5000),
   scope: templateScopeSchema.default('private'),
-  reflectionTemplateIds: z.array(z.string().uuid()).default([]),
-  surveyTemplateIds: z.array(z.string().uuid()).default([]),
   aiPromptText: z.string().min(50).max(10000),
   aiPromptMetadata: z.record(z.string(), z.any()).optional(),
   linkedPromptIds: z.array(z.string().uuid()).default([]),
@@ -42,8 +40,6 @@ export const createModuleSchema = z.object({
 export const updateModuleSchema = z.object({
   name: z.string().min(3).max(255).optional(),
   description: z.string().min(10).max(5000).optional(),
-  reflectionTemplateIds: z.array(z.string().uuid()).optional(),
-  surveyTemplateIds: z.array(z.string().uuid()).optional(),
   aiPromptText: z.string().min(50).max(10000).optional(),
   aiPromptMetadata: z.record(z.string(), z.any()).optional(),
   linkedPromptIds: z.array(z.string().uuid()).optional(),

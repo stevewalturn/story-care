@@ -11,7 +11,6 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { PromptSelector } from '../prompts/PromptSelector';
-import { TemplateSelector } from '../templates/TemplateSelector';
 
 type ModuleEditorProps = {
   module: TreatmentModule | null;
@@ -31,9 +30,6 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
   const [name, setName] = useState('');
   const [domain, setDomain] = useState<TherapeuticDomain>('self_strength');
   const [description, setDescription] = useState('');
-  // Template IDs - multi-select arrays
-  const [reflectionTemplateIds, setReflectionTemplateIds] = useState<string[]>([]);
-  const [surveyTemplateIds, setSurveyTemplateIds] = useState<string[]>([]);
 
   // AI Prompts state - inline prompt and library prompts
   const [aiPromptText, setAiPromptText] = useState('');
@@ -48,10 +44,6 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
       setName(module.name);
       setDomain(module.domain as TherapeuticDomain);
       setDescription(module.description);
-
-      // Load template IDs arrays
-      setReflectionTemplateIds((module as any).reflectionTemplateIds || []);
-      setSurveyTemplateIds((module as any).surveyTemplateIds || []);
 
       // Load inline AI prompt text
       setAiPromptText(module.aiPromptText || '');
@@ -73,10 +65,6 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
         domain,
         description,
         scope,
-
-        // Template ID arrays from library
-        reflectionTemplateIds,
-        surveyTemplateIds,
 
         // AI Prompts: inline prompt text + linked prompts from library
         aiPromptText,
@@ -194,22 +182,6 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                 </div>
               </div>
 
-              {/* Reflection Questions Template */}
-              <TemplateSelector
-                selectedTemplateIds={reflectionTemplateIds}
-                onChange={setReflectionTemplateIds}
-                templateType="reflection"
-                apiEndpoint={
-                  scope === 'system'
-                    ? '/api/super-admin/templates'
-                    : scope === 'organization'
-                      ? '/api/org-admin/templates'
-                      : '/api/therapist/templates'
-                }
-                label="Reflection Questions (Qualitative Data)"
-                description="Post-session questions for patients in Story Pages. These collect qualitative narrative responses."
-              />
-
               {/* Module AI Prompt (Inline) - Required */}
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-900">
@@ -253,22 +225,6 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                 }
                 label="AI Analysis Prompts"
                 description="Select AI prompts from the library to use for analyzing transcripts with this module"
-              />
-
-              {/* Survey Questions Template */}
-              <TemplateSelector
-                selectedTemplateIds={surveyTemplateIds}
-                onChange={setSurveyTemplateIds}
-                templateType="survey"
-                apiEndpoint={
-                  scope === 'system'
-                    ? '/api/super-admin/templates'
-                    : scope === 'organization'
-                      ? '/api/org-admin/templates'
-                      : '/api/therapist/templates'
-                }
-                label="Survey Questions (Quantitative Data)"
-                description="Structured survey questions for patients in Story Pages. These collect quantitative outcome data."
               />
 
               {/* Error */}

@@ -79,7 +79,7 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
         id: item.id,
         type: item.mediaType,
         title: item.title,
-        thumbnailUrl: item.thumbnailUrl || '',
+        thumbnailUrl: item.thumbnailUrl || (item.mediaType === 'image' ? item.mediaUrl : '') || '',
         duration: item.durationSeconds,
       }));
 
