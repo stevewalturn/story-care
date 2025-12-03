@@ -41,8 +41,6 @@ yarn-error.log*
 # local folder
 local
 
-# vercel
-.vercel
 
 # typescript
 *.tsbuildinfo
