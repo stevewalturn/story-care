@@ -74,7 +74,9 @@ export function extractTemplateVariables(template: string): string[] {
   let match;
 
   while ((match = regex.exec(template)) !== null) {
-    matches.push(match[1].trim());
+    if (match[1]) {
+      matches.push(match[1].trim());
+    }
   }
 
   return matches;

@@ -21,7 +21,7 @@ import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     // HIPAA: Require super admin authentication
@@ -35,7 +35,7 @@ export async function POST(
       );
     }
 
-    const orgAdminId = params.id;
+    const { id: orgAdminId } = await params;
 
     // Fetch org admin
     const [orgAdmin] = await db
@@ -113,7 +113,7 @@ export async function POST(
         orgAdminEmail: orgAdmin.email,
         orgAdminName: orgAdmin.name,
         orgAdminUserId: orgAdmin.id,
-        inviterName: authUser.name || 'Super Admin',
+        inviterName: 'Super Admin',
         organizationName: organization.name,
         setupAccountUrl,
       });

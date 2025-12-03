@@ -138,6 +138,7 @@ export function useBuildingBlocks(initialBlocks: BlockInstance[] = []) {
     (startIndex: number, endIndex: number) => {
       const result = Array.from(blocks);
       const [removed] = result.splice(startIndex, 1);
+      if (!removed) return;
       result.splice(endIndex, 0, removed);
 
       // Update order property

@@ -36,7 +36,7 @@ interface BlockFormProps {
 }
 
 export default function BlockForm({
-  blockId,
+  blockId: _blockId,
   instance,
   onChange,
   onRemove,
@@ -168,7 +168,7 @@ export default function BlockForm({
             {field.helpText && !hasError && (
               <p className="text-xs text-gray-500">{field.helpText}</p>
             )}
-            {hasError && (
+            {hasError && fieldErrors[0] && (
               <div className="flex items-start gap-1 text-xs text-red-600">
                 <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
                 <span>{fieldErrors[0].message}</span>
@@ -198,7 +198,7 @@ export default function BlockForm({
             {field.helpText && !hasError && (
               <p className="text-xs text-gray-500">{field.helpText}</p>
             )}
-            {hasError && (
+            {hasError && fieldErrors[0] && (
               <div className="flex items-start gap-1 text-xs text-red-600">
                 <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
                 <span>{fieldErrors[0].message}</span>
@@ -228,7 +228,7 @@ export default function BlockForm({
             {field.helpText && !hasError && (
               <p className="text-xs text-gray-500">{field.helpText}</p>
             )}
-            {hasError && (
+            {hasError && fieldErrors[0] && (
               <div className="flex items-start gap-1 text-xs text-red-600">
                 <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
                 <span>{fieldErrors[0].message}</span>
@@ -253,7 +253,7 @@ export default function BlockForm({
             {field.helpText && !hasError && (
               <p className="text-xs text-gray-500">{field.helpText}</p>
             )}
-            {hasError && (
+            {hasError && fieldErrors[0] && (
               <div className="flex items-start gap-1 text-xs text-red-600">
                 <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
                 <span>{fieldErrors[0].message}</span>

@@ -86,7 +86,7 @@ export function ActionButtonRenderer({
         <Button
           onClick={handleClick}
           disabled={status === 'processing' || status === 'completed'}
-          variant={status === 'completed' ? 'success' : status === 'failed' ? 'danger' : 'primary'}
+          variant={status === 'failed' ? 'secondary' : 'primary'}
           size="md"
         >
           {status === 'processing' && (

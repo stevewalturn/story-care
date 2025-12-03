@@ -8,7 +8,7 @@
  */
 
 import { getBlockDefinition } from '@/config/BlockDefinitions';
-import type { ActionExecutionRequest, ActionExecutionResult, BlockType } from '@/types/BuildingBlocks';
+import type { ActionExecutionRequest, ActionExecutionResult } from '@/types/BuildingBlocks';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { interpolateObject } from '@/utils/TemplateInterpolation';
 

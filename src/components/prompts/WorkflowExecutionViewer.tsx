@@ -17,7 +17,6 @@ import type {
 import { getBlockDefinition } from '@/config/BlockDefinitions';
 import { ActionButtonRenderer } from './ActionButtonRenderer';
 import { Play, Pause, CheckCircle, XCircle, Clock, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
 
 interface WorkflowExecutionViewerProps {
   execution: WorkflowExecution;

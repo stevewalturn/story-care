@@ -27,7 +27,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   try {
     // Require authentication
     const authUser = await requireAuth(request);
-    const { id: pageId } = await context.params;
+    const { id: _pageId } = await context.params;
 
     const body = await request.json();
     const { reflectionResponses: reflectionData = [], surveyResponses: surveyData = [] } = body;
@@ -39,8 +39,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
           await db.insert(reflectionResponses).values({
             questionId: response.questionId,
             patientId: authUser.dbUserId,
+            pageId: response.pageId,
             responseText: response.responseText,
-            respondedAt: new Date(),
           });
         }
       }
@@ -53,8 +53,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
           await db.insert(surveyResponses).values({
             questionId: response.questionId,
             patientId: authUser.dbUserId,
-            response: typeof response.response === 'number' ? response.response : String(response.response),
-            respondedAt: new Date(),
+            pageId: response.pageId,
+            responseValue: typeof response.response === 'number' ? String(response.response) : String(response.response),
+            responseNumeric: typeof response.response === 'number' ? response.response : null,
           });
         }
       }

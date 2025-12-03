@@ -34,7 +34,7 @@ export default function BuildingBlocksEditor({
     moveBlockUp,
     moveBlockDown,
     generateSchema,
-    validate,
+    validate: _validate,
     isValid,
     validationErrors,
     getBlockErrors,

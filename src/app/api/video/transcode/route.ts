@@ -105,6 +105,10 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
+    if (!dbJob) {
+      throw new Error('Failed to create job in database');
+    }
+
     console.log('[TRANSCODE] Job created in database:', dbJob.id);
 
     return NextResponse.json({

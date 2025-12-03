@@ -19,7 +19,7 @@ interface BlockPreviewProps {
 }
 
 export default function BlockPreview({
-  blockId,
+  blockId: _blockId,
   instance,
   onExpand,
   errors = [],

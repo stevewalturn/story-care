@@ -253,7 +253,7 @@ export function SceneTimeline({
     return `${mins}:${secs.toString().padStart(2, '0')}.${ms}`;
   };
 
-  const handleAudioPlayPause = (trackId: string, audioUrl: string) => {
+  const handleAudioPlayPause = (trackId: string, _audioUrl: string) => {
     const audioElement = audioRefs.current.get(trackId);
 
     if (playingAudioId === trackId && audioElement) {

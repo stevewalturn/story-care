@@ -22,13 +22,13 @@ import { handleAuthError, requireAdmin } from '@/utils/AuthHelpers';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     // HIPAA: Require admin authentication
     const authUser = await requireAdmin(request);
 
-    const therapistId = params.id;
+    const { id: therapistId } = await params;
 
     // Fetch therapist
     const [therapist] = await db
@@ -109,7 +109,7 @@ export async function POST(
         therapistEmail: therapist.email,
         therapistName: therapist.name,
         therapistUserId: therapist.id,
-        inviterName: authUser.name || 'Admin',
+        inviterName: 'Admin',
         organizationName,
         setupAccountUrl,
       });

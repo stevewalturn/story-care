@@ -40,7 +40,7 @@ const executeActionSchema = z.object({
   executionId: z.string().uuid(),
   blockInstanceId: z.string(),
   blockType: z.string(),
-  values: z.record(z.any()),
+  values: z.record(z.string(), z.any()),
 });
 
 /**
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
+        { error: 'Invalid request data', details: error.issues },
         { status: 400 },
       );
     }
@@ -155,7 +155,7 @@ export async function PUT(request: NextRequest) {
       .where(eq(workflowExecutions.id, validated.executionId))
       .limit(1);
 
-    if (!existingExecutions.length) {
+    if (!existingExecutions.length || !existingExecutions[0]) {
       return NextResponse.json({ error: 'Execution not found' }, { status: 404 });
     }
 
@@ -207,7 +207,7 @@ export async function PUT(request: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
+        { error: 'Invalid request data', details: error.issues },
         { status: 400 },
       );
     }
@@ -249,7 +249,7 @@ export async function GET(request: NextRequest) {
       .where(eq(workflowExecutions.id, executionId))
       .limit(1);
 
-    if (!executions.length) {
+    if (!executions.length || !executions[0]) {
       return NextResponse.json({ error: 'Execution not found' }, { status: 404 });
     }
 

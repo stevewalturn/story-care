@@ -10,7 +10,7 @@
 import { useState, useMemo } from 'react';
 import { Search, X } from 'lucide-react';
 import type { BlockType, BlockCategory } from '@/types/BuildingBlocks';
-import { getAllBlockDefinitions, getBlockDefinitionsByCategory } from '@/config/BlockDefinitions';
+import { getAllBlockDefinitions } from '@/config/BlockDefinitions';
 
 interface BlockPaletteProps {
   onSelectBlock: (blockType: BlockType) => void;
@@ -28,14 +28,6 @@ const CATEGORY_LABELS: Record<BlockCategory, string> = {
   output: '📤 Output',
 };
 
-const CATEGORY_DESCRIPTIONS: Record<BlockCategory, string> = {
-  media: 'Images, videos, and music',
-  content: 'Quotes, notes, and suggestions',
-  interaction: 'Questions and surveys',
-  structure: 'Scene assembly and containers',
-  action: 'Trigger actions and workflows',
-  output: 'Display generated content and results',
-};
 
 export default function BlockPalette({
   onSelectBlock,

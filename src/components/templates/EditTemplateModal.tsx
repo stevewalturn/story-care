@@ -33,7 +33,7 @@ type Template = {
   type: TemplateType;
   scope: TemplateScope;
   title: string;
-  description?: string;
+  description: string | null;
   category: TemplateCategory;
   questions: Question[];
 };

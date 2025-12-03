@@ -15,7 +15,7 @@ export const runtime = 'nodejs';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { jobId: string } },
+  { params }: { params: Promise<{ jobId: string }> },
 ) {
   try {
     // Authentication
@@ -32,7 +32,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const { jobId } = params;
+    const { jobId } = await params;
 
     // Get job from database
     const [job] = await db

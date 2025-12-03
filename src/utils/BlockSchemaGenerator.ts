@@ -106,16 +106,16 @@ function generateKnownSchema(schemaType: string, blocks: BlockInstance[]): objec
       return generateReflectionQuestionsSchema(blocks);
 
     case 'quote_extraction':
-      return generateQuoteExtractionSchema(blocks[0]);
+      return blocks[0] ? generateQuoteExtractionSchema(blocks[0]) : generateCustomSchema(blocks);
 
     case 'therapeutic_note':
-      return generateTherapeuticNoteSchema(blocks[0]);
+      return blocks[0] ? generateTherapeuticNoteSchema(blocks[0]) : generateCustomSchema(blocks);
 
     case 'music_generation':
-      return generateMusicGenerationSchema(blocks[0]);
+      return blocks[0] ? generateMusicGenerationSchema(blocks[0]) : generateCustomSchema(blocks);
 
     case 'scene_suggestions':
-      return generateSceneSuggestionsSchema(blocks[0]);
+      return blocks[0] ? generateSceneSuggestionsSchema(blocks[0]) : generateCustomSchema(blocks);
 
     default:
       return generateCustomSchema(blocks);

@@ -125,6 +125,8 @@ export function AssetsClient() {
       // Cleanup interval on unmount or when dependencies change
       return () => clearInterval(interval);
     }
+
+    return undefined;
   }, [selectedPatient, activeTab]);
 
   const loadPatients = async () => {
@@ -1539,7 +1541,7 @@ export function AssetsClient() {
         <GenerateImageModal
           isOpen={showGenerateImageModal}
           onClose={() => setShowGenerateImageModal(false)}
-          onGenerate={async (imageUrl, prompt) => {
+          onGenerate={async (_imageUrl, _prompt) => {
             // Image is already saved to DB by the modal's API call
             // Just refresh the media list and show success message
             await loadMedia();

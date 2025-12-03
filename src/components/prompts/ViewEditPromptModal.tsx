@@ -13,9 +13,6 @@ import { JSONSchemaEditor } from '@/components/prompts/JSONSchemaEditor';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedDelete, authenticatedPatch } from '@/utils/AuthenticatedFetch';
-import { parseSchemaToBlocks } from '@/utils/BlockSchemaGenerator';
-import { getBlockDefinition } from '@/config/BlockDefinitions';
-import type { BlockInstance } from '@/types/BuildingBlocks';
 import { JSONSchemaTreeView } from './JSONSchemaTreeView';
 
 type ViewEditPromptModalProps = {

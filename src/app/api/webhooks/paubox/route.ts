@@ -185,7 +185,7 @@ function hashEmail(email: string): string {
   // Simple hash for demonstration
   // In production, use: crypto.createHash('sha256').update(email).digest('hex')
   const parts = email.split('@');
-  if (parts.length !== 2)
+  if (parts.length !== 2 || !parts[0])
     return '***';
   return `${parts[0].substring(0, 2)}***@${parts[1]}`;
 }

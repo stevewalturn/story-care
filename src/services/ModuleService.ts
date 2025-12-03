@@ -4,7 +4,7 @@
  */
 
 import type { TemplateScope } from '@/types/Organization';
-import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, desc, eq, or, sql } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import {
   moduleAiPromptsSchema,

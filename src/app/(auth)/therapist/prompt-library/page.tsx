@@ -24,8 +24,12 @@ type Prompt = {
   createdBy: string;
   useCount: number;
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date;
+  updatedAt: Date;
+  outputType: 'json' | 'text';
+  jsonSchema: any | null;
+  blocks: any | null;
+  useAdvancedMode: boolean;
 };
 
 const categoryIcons = {
@@ -52,7 +56,6 @@ export default function PromptLibraryPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'view' | 'edit'>('view');
 
   useEffect(() => {
     fetchPrompts();
@@ -75,13 +78,11 @@ export default function PromptLibraryPage() {
 
   const handleViewDetails = (prompt: Prompt) => {
     setSelectedPrompt(prompt);
-    setViewMode('view');
     setIsViewModalOpen(true);
   };
 
   const handleEdit = (prompt: Prompt) => {
     setSelectedPrompt(prompt);
-    setViewMode('edit');
     setIsViewModalOpen(true);
   };
 
@@ -110,7 +111,6 @@ export default function PromptLibraryPage() {
   const handleCloseModal = () => {
     setIsViewModalOpen(false);
     setSelectedPrompt(null);
-    setViewMode('view');
   };
 
   const handlePromptUpdated = () => {
@@ -289,12 +289,11 @@ export default function PromptLibraryPage() {
       {isViewModalOpen && selectedPrompt && (
         <ViewEditPromptModal
           prompt={selectedPrompt}
-          mode={viewMode}
           canEdit={selectedPrompt.scope === 'private'}
           canDelete={selectedPrompt.scope === 'private'}
           apiEndpoint="/api/therapist/prompts"
           onClose={handleCloseModal}
-          onUpdated={handlePromptUpdated}
+          onSaved={handlePromptUpdated}
           onDeleted={() => {
             fetchPrompts();
             handleCloseModal();

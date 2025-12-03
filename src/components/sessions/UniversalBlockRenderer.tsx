@@ -18,7 +18,6 @@ import {
   FileText,
   Image as ImageIcon,
   Music,
-  Video,
   Bookmark,
   Sparkles,
   Quote as QuoteIcon,
@@ -31,7 +30,6 @@ import {
 } from 'lucide-react';
 import type { BlockInstance, WorkflowContext, ActionExecutionRequest } from '@/types/BuildingBlocks';
 import { getBlockDefinition } from '@/config/BlockDefinitions';
-import { Button } from '@/components/ui/Button';
 
 interface UniversalBlockRendererProps {
   blocks: BlockInstance[];

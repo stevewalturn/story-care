@@ -16,6 +16,8 @@ export type MusicTask = {
   progress: number;
   mediaId?: string;
   error?: string;
+  title?: string;
+  prompt?: string;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -44,7 +46,7 @@ export const MusicTaskService = {
    * Create a new music generation task in database
    */
   async createTask(params: CreateMusicTaskParams): Promise<MusicTask> {
-    const [task] = await db
+    const result = await db
       .insert(musicGenerationTasks)
       .values({
         taskId: params.taskId,
@@ -68,6 +70,11 @@ export const MusicTaskService = {
       })
       .returning();
 
+    const task = Array.isArray(result) ? result[0] : undefined;
+    if (!task) {
+      throw new Error('Failed to create music task');
+    }
+
     return {
       id: task.id,
       taskId: task.taskId,
@@ -76,6 +83,8 @@ export const MusicTaskService = {
       progress: task.progress,
       mediaId: task.mediaId || undefined,
       error: task.error || undefined,
+      title: task.title || undefined,
+      prompt: task.prompt || undefined,
       createdAt: task.createdAt!,
       updatedAt: task.updatedAt!,
     };
@@ -99,6 +108,8 @@ export const MusicTaskService = {
       progress: task.progress,
       mediaId: task.mediaId || undefined,
       error: task.error || undefined,
+      title: task.title || undefined,
+      prompt: task.prompt || undefined,
       createdAt: task.createdAt!,
       updatedAt: task.updatedAt!,
     };
@@ -162,7 +173,7 @@ export const MusicTaskService = {
 
     // Delete completed or failed tasks older than 7 days
     // Keep pending/processing tasks to avoid orphaning active generations
-    const result = await db
+    await db
       .delete(musicGenerationTasks)
       .where(eq(musicGenerationTasks.createdAt, sevenDaysAgo));
 

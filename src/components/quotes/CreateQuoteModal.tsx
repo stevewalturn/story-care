@@ -21,7 +21,7 @@ type CreateQuoteModalProps = {
 export function CreateQuoteModal({
   isOpen,
   onClose,
-  patientId,
+  patientId: _patientId,
   onSave,
 }: CreateQuoteModalProps) {
   const [quoteText, setQuoteText] = useState('');

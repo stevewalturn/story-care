@@ -14,38 +14,53 @@ import { ViewTemplateDetailsModal } from '@/components/templates/ViewTemplateDet
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
-type TemplateType = 'all' | 'reflection' | 'survey';
+type TemplateFilter = 'all' | 'reflection' | 'survey';
 type TemplateCategory = 'all' | 'screening' | 'outcome' | 'satisfaction' | 'custom' | 'narrative' | 'emotion' | 'goal-setting';
 type ViewMode = 'my_templates' | 'org_templates' | 'system_templates';
 
-type Template = {
+type Question = {
+  id: string;
+  questionText: string;
+  questionType: 'open_text' | 'multiple_choice' | 'scale' | 'emotion';
+  required: boolean;
+  order: number;
+  options?: string[];
+  scaleMin?: number;
+  scaleMax?: number;
+  scaleMinLabel?: string;
+  scaleMaxLabel?: string;
+};
+
+type TemplateType = {
   id: string;
   title: string;
   description: string | null;
-  category: string;
+  category: 'screening' | 'outcome' | 'satisfaction' | 'custom' | 'narrative' | 'emotion' | 'goal-setting';
   type: 'reflection' | 'survey';
-  scope: string;
-  questions: any[];
+  scope: 'system' | 'organization' | 'private';
+  questions: Question[];
   useCount: number;
   createdAt: string;
   updatedAt: string;
+  organizationId?: string | null;
+  createdBy?: string;
 };
 
 export default function TherapistTemplatesPage() {
   const { user, dbUser } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>('my_templates');
-  const [activeType, setActiveType] = useState<TemplateType>('all');
+  const [activeType, setActiveType] = useState<TemplateFilter>('all');
   const [activeCategory, setActiveCategory] = useState<TemplateCategory>('all');
-  const [myTemplates, setMyTemplates] = useState<Template[]>([]);
-  const [orgTemplates, setOrgTemplates] = useState<Template[]>([]);
-  const [systemTemplates, setSystemTemplates] = useState<Template[]>([]);
+  const [myTemplates, setMyTemplates] = useState<TemplateType[]>([]);
+  const [orgTemplates, setOrgTemplates] = useState<TemplateType[]>([]);
+  const [systemTemplates, setSystemTemplates] = useState<TemplateType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [viewingTemplate, setViewingTemplate] = useState<Template | null>(null);
-  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
-  const [copyingTemplate, setCopyingTemplate] = useState<Template | null>(null);
+  const [viewingTemplate, setViewingTemplate] = useState<TemplateType | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<TemplateType | null>(null);
+  const [copyingTemplate, setCopyingTemplate] = useState<TemplateType | null>(null);
 
   useEffect(() => {
     fetchTemplates();
@@ -98,9 +113,9 @@ export default function TherapistTemplatesPage() {
   });
 
   // Get counts
-  const getTypeCount = (type: TemplateType) => {
-    if (type === 'all') return currentItems.length;
-    return currentItems.filter(t => t.type === type).length;
+  const getTypeCount = (filterType: TemplateFilter) => {
+    if (filterType === 'all') return currentItems.length;
+    return currentItems.filter(t => t.type === filterType).length;
   };
 
   const getCategoryCount = (category: TemplateCategory) => {
@@ -108,7 +123,7 @@ export default function TherapistTemplatesPage() {
     return currentItems.filter(t => t.category === category).length;
   };
 
-  const typeOptions: { id: TemplateType; label: string }[] = [
+  const typeOptions: { id: TemplateFilter; label: string }[] = [
     { id: 'all', label: 'All Templates' },
     { id: 'reflection', label: 'Reflection' },
     { id: 'survey', label: 'Survey' },
@@ -226,7 +241,7 @@ export default function TherapistTemplatesPage() {
               <Filter className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <select
                 value={activeType}
-                onChange={e => setActiveType(e.target.value as TemplateType)}
+                onChange={e => setActiveType(e.target.value as TemplateFilter)}
                 className="appearance-none rounded-lg border border-gray-300 py-2 pr-8 pl-9 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
               >
                 {typeOptions.map(type => (
@@ -382,7 +397,7 @@ export default function TherapistTemplatesPage() {
  * Template Card Component
  */
 type TemplateCardProps = {
-  template: Template;
+  template: TemplateType;
   onView: () => void;
   onEdit?: () => void;
   onCopy?: () => void;

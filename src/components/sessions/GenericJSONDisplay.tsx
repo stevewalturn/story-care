@@ -18,8 +18,6 @@ import { useState } from 'react';
 import {
   ChevronDown,
   ChevronUp,
-  Image as ImageIcon,
-  Music,
   FileText,
   List,
   Code,
@@ -237,7 +235,7 @@ function ObjectDisplay({ obj, title, level = 0 }: { obj: Record<string, any>; ti
             <div key={key}>
               <div className="text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">{key}:</div>
               <div className="pl-3">
-                <GenericJSONDisplay data={value} fieldName={key} level={level + 1} />
+                <GenericJSONDisplay data={value} level={level + 1} />
               </div>
             </div>
           ))}
@@ -267,7 +265,7 @@ export function GenericJSONDisplay({ data, title, level = 0, maxDepth = 10 }: Ge
 
   // Handle arrays
   if (Array.isArray(data)) {
-    return <ArrayDisplay array={data} fieldName={title} level={level} />;
+    return <ArrayDisplay array={data} level={level} />;
   }
 
   // Handle objects
@@ -276,7 +274,7 @@ export function GenericJSONDisplay({ data, title, level = 0, maxDepth = 10 }: Ge
   }
 
   // Handle primitives
-  return <PrimitiveValue value={data} fieldName={title} />;
+  return <PrimitiveValue value={data} />;
 }
 
 /**

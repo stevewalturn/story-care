@@ -124,7 +124,7 @@ export function filterSlashCommands(query: string): SlashCommand[] {
     cmd =>
       cmd.trigger.toLowerCase().includes(lowerQuery) ||
       cmd.label.toLowerCase().includes(lowerQuery) ||
-      cmd.description.toLowerCase().includes(lowerQuery),
+      cmd.description?.toLowerCase().includes(lowerQuery),
   );
 }
 

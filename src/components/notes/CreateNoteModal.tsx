@@ -18,7 +18,7 @@ type CreateNoteModalProps = {
 export function CreateNoteModal({
   isOpen,
   onClose,
-  patientId,
+  patientId: _patientId,
   onSave,
 }: CreateNoteModalProps) {
   const [title, setTitle] = useState('');

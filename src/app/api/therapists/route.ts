@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
         therapistEmail: therapist.email,
         therapistName: therapist.name,
         therapistUserId: therapist.id,
-        inviterName: authUser.name || 'Admin',
+        inviterName: 'Admin',
         organizationName,
         setupAccountUrl,
       });

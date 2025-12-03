@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       model = 'V4_5',
       instrumental = true,
       customMode = false,
-      duration = 120,
+      duration: _duration = 120,
 
       // Advanced V5 params
       personaId,

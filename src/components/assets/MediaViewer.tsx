@@ -44,7 +44,7 @@ export function MediaViewer({ item, onClose }: MediaViewerProps) {
     try {
       // Get file extension from URL or default based on type
       const urlPath = item.url.split('?')[0]; // Remove query params
-      const urlExtension = urlPath.split('.').pop()?.toLowerCase();
+      const urlExtension = urlPath?.split('.').pop()?.toLowerCase();
 
       let extension = urlExtension || 'mp4';
       if (!urlExtension) {

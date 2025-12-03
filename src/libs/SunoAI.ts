@@ -176,7 +176,7 @@ export function createTherapeuticMusicOptions(params: {
     title,
     instrumental = true,
     duration: _duration = 120,
-    model = 'V4_5',
+    model: _model = 'V4_5',
   } = params;
 
   if (!prompt) {

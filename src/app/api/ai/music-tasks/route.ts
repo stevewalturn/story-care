@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { musicGenerationTasksSchema } from '@/models/Schema';
 import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
-import { downloadAndSaveAudio } from '@/app/api/webhooks/suno/route';
+import { downloadAndSaveAudio } from '@/utils/SunoAudioUtils';
 
 /**
  * Map Suno API status to our internal status and progress

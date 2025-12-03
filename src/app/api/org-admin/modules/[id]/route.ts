@@ -47,7 +47,7 @@ export async function GET(
     }
 
     // 4. FETCH MODULE
-    const { module: orgModule, reflectionTemplates, surveyTemplates } = await getModuleById(
+    const { module: orgModule } = await getModuleById(
       resolvedParams.id,
     );
 
@@ -71,8 +71,6 @@ export async function GET(
 
     return NextResponse.json({
       module: orgModule,
-      reflectionTemplates,
-      surveyTemplates,
     });
   } catch (error: any) {
     console.error('[Org Admin] Get module error:', error);

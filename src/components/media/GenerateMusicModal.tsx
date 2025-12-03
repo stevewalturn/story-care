@@ -3,9 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
-import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
+import { authenticatedPost } from '@/utils/AuthenticatedFetch';
 
 type MusicOption = {
   title: string;
@@ -110,8 +109,7 @@ export function GenerateMusicModal({
         throw new Error(data.error || 'Failed to generate music');
       }
 
-      const data = await response.json();
-      const taskId = data.taskId;
+      await response.json();
 
       // Close modal immediately and show success message
       setIsGenerating(false);

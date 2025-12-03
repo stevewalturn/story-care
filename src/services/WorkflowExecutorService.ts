@@ -14,10 +14,9 @@ import type {
   WorkflowExecution,
 } from '@/types/BuildingBlocks';
 import { getBlockDefinition } from '@/config/BlockDefinitions';
-import { interpolateObject, interpolateTemplate } from '@/utils/TemplateInterpolation';
+import { interpolateObject } from '@/utils/TemplateInterpolation';
 import { db } from '@/libs/DB';
 import { mediaLibrary, quotes } from '@/models/Schema';
-import { eq } from 'drizzle-orm';
 
 /**
  * Workflow Executor
@@ -42,6 +41,8 @@ export class WorkflowExecutor {
       // Process blocks in order
       for (let i = this.execution.currentStepIndex; i < this.execution.blocks.length; i++) {
         const block = this.execution.blocks[i];
+        if (!block) continue;
+
         const blockDef = getBlockDefinition(block.blockId);
 
         if (!blockDef) {
@@ -153,7 +154,7 @@ export class WorkflowExecutor {
    * Execute output blocks (text_output)
    */
   private async executeOutputBlock(
-    block: BlockInstance,
+    _block: BlockInstance,
     values: Record<string, any>,
   ): Promise<any> {
     // If prompt_for_content is provided, generate content with AI
@@ -179,7 +180,7 @@ export class WorkflowExecutor {
    * Execute content/media blocks
    */
   private async executeContentBlock(
-    block: BlockInstance,
+    _block: BlockInstance,
     values: Record<string, any>,
   ): Promise<any> {
     // For content blocks, we typically just return the structured data
@@ -233,19 +234,28 @@ export class WorkflowExecutor {
         throw new Error('Patient ID is required to save quote');
       }
 
+      if (!context.therapistId) {
+        throw new Error('Therapist ID is required to save quote');
+      }
+
       // Save quote to database
-      const [savedQuote] = await db
+      const result = await db
         .insert(quotes)
         .values({
-          text: quote_source,
-          speaker: speaker || null,
-          therapeuticSignificance: therapeutic_significance || null,
+          quoteText: quote_source,
+          speakerId: speaker || null,
           patientId: context.patientId,
           sessionId: context.sessionId || null,
-          extractedByAi: true,
+          createdByTherapistId: context.therapistId,
+          notes: therapeutic_significance || null,
           createdAt: new Date(),
         })
         .returning();
+
+      const savedQuote = Array.isArray(result) ? result[0] : undefined;
+      if (!savedQuote) {
+        throw new Error('Failed to save quote');
+      }
 
       return {
         success: true,
@@ -285,7 +295,7 @@ export class WorkflowExecutor {
 
       // Save to media library if requested
       if (save_to_library && context.patientId) {
-        const [savedMedia] = await db
+        const result = await db
           .insert(mediaLibrary)
           .values({
             patientId: context.patientId,
@@ -299,6 +309,11 @@ export class WorkflowExecutor {
             createdAt: new Date(),
           })
           .returning();
+
+        const savedMedia = Array.isArray(result) ? result[0] : undefined;
+        if (!savedMedia) {
+          throw new Error('Failed to save media');
+        }
 
         mediaId = savedMedia.id;
       }
@@ -341,7 +356,7 @@ export class WorkflowExecutor {
 
       // Save to media library if requested
       if (save_to_library && context.patientId) {
-        const [savedMedia] = await db
+        const result = await db
           .insert(mediaLibrary)
           .values({
             patientId: context.patientId,
@@ -355,6 +370,11 @@ export class WorkflowExecutor {
             createdAt: new Date(),
           })
           .returning();
+
+        const savedMedia = Array.isArray(result) ? result[0] : undefined;
+        if (!savedMedia) {
+          throw new Error('Failed to save media');
+        }
 
         mediaId = savedMedia.id;
       }

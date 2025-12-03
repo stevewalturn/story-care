@@ -2,10 +2,10 @@ import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { mediaLibrary, musicGenerationTasksSchema } from '@/models/Schema';
+import { musicGenerationTasksSchema } from '@/models/Schema';
 import { MusicTaskService } from '@/services/MusicTaskService';
 import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
-import { downloadAndSaveAudio } from '@/app/api/webhooks/suno/route';
+import { downloadAndSaveAudio } from '@/utils/SunoAudioUtils';
 
 type RouteContext = {
   params: Promise<{ taskId: string }>;

@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
         orgAdminEmail: orgAdmin.email,
         orgAdminName: orgAdmin.name,
         orgAdminUserId: orgAdmin.id,
-        inviterName: authUser.name || 'Super Admin',
+        inviterName: 'Super Admin',
         organizationName: organization.name,
         setupAccountUrl,
       });
