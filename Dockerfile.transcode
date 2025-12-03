@@ -2,7 +2,7 @@
 # Based on Google Cloud's official FFmpeg GPU tutorial
 # Uses NVIDIA L4 GPU for hardware-accelerated video encoding
 
-FROM nvidia/cuda:12.2.0-base-ubuntu22.04
+FROM nvidia/cuda:12.2.0-devel-ubuntu22.04
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
