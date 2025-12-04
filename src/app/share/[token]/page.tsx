@@ -296,7 +296,9 @@ export default function PublicSharePage({ params }: Props) {
                     </div>
                     {block.settings?.mediaUrl && (
                       <div className="aspect-video overflow-hidden rounded-lg bg-gray-900">
-                        <Video className="h-full w-full text-white opacity-50" />
+                        <video src={block.settings.mediaUrl} controls className="h-full w-full">
+                          Your browser does not support the video tag.
+                        </video>
                       </div>
                     )}
                   </div>
