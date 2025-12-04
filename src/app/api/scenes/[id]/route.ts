@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { generatePresignedUrlsForMedia } from '@/libs/GCS';
+import { extractGcsPath, generatePresignedUrl, generatePresignedUrlsForMedia } from '@/libs/GCS';
 import { mediaLibrary, sceneClips, scenes } from '@/models/Schema';
 
 type RouteContext = {
@@ -31,6 +31,21 @@ export async function GET(
       );
     }
 
+    // Generate presigned URLs for scene's video and thumbnail
+    const assembledVideoUrl = scene.assembledVideoUrl
+      ? await generatePresignedUrl(scene.assembledVideoUrl, 1)
+      : null;
+    const thumbnailUrl = scene.thumbnailUrl
+      ? await generatePresignedUrl(scene.thumbnailUrl, 1)
+      : null;
+
+    // Update scene with presigned URLs
+    const sceneWithSignedUrls = {
+      ...scene,
+      assembledVideoUrl: assembledVideoUrl || scene.assembledVideoUrl,
+      thumbnailUrl: thumbnailUrl || scene.thumbnailUrl,
+    };
+
     // Get clips for this scene with media details
     const clipsWithMedia = await db
       .select({
@@ -57,7 +72,7 @@ export async function GET(
       media: media ? mediaMap.get(media.id) : null,
     }));
 
-    return NextResponse.json({ scene, clips });
+    return NextResponse.json({ scene: sceneWithSignedUrls, clips });
   } catch (error) {
     console.error('Error fetching scene:', error);
     return NextResponse.json(
@@ -95,7 +110,9 @@ export async function PUT(
       updateData.description = description;
     }
     if (assembledVideoUrl !== undefined) {
-      updateData.assembledVideoUrl = assembledVideoUrl;
+      // Extract raw GCS path from presigned URL (if applicable)
+      const gcsPath = extractGcsPath(assembledVideoUrl);
+      updateData.assembledVideoUrl = gcsPath || assembledVideoUrl;
     }
     if (durationSeconds !== undefined) {
       updateData.durationSeconds = durationSeconds;

@@ -79,6 +79,10 @@ export class PauboxClient {
         // Check if error is retryable
         if (!this.isRetryableError(error)) {
           // Non-retryable error (4xx client errors)
+          console.error('❌ Paubox: Non-retryable error encountered:', {
+            error: this.extractErrorMessage(error),
+            errorCode: this.extractErrorCode(error),
+          });
           return {
             success: false,
             error: this.extractErrorMessage(error),
@@ -88,15 +92,31 @@ export class PauboxClient {
 
         // Don't retry if we've exhausted attempts
         if (attempt >= this.maxRetries) {
+          console.error('❌ Paubox: Max retries exhausted:', {
+            attempts: attempt,
+            maxRetries: this.maxRetries,
+            lastError: lastError?.message,
+          });
           break;
         }
 
         // Wait with exponential backoff before retrying
-        await this.sleep(this.calculateBackoff(attempt));
+        const backoffDelay = this.calculateBackoff(attempt);
+        console.warn('⚠️ Paubox: Retrying request after error:', {
+          attempt: attempt + 1,
+          maxRetries: this.maxRetries,
+          backoffDelay: `${backoffDelay}ms`,
+          error: this.extractErrorMessage(error),
+        });
+        await this.sleep(backoffDelay);
       }
     }
 
     // All retries exhausted
+    console.error('❌ Paubox: All retries exhausted:', {
+      maxRetries: this.maxRetries,
+      finalError: lastError?.message || 'Failed to send email after multiple attempts',
+    });
     return {
       success: false,
       error: lastError?.message || 'Failed to send email after multiple attempts',
@@ -140,6 +160,19 @@ export class PauboxClient {
       'Accept': 'application/json',
     };
 
+    // Log request details
+    console.log('🔵 Paubox API Request:', {
+      attempt: attempt + 1,
+      maxRetries: this.maxRetries,
+      method,
+      url,
+      headers: {
+        ...headers,
+        Authorization: `Token token=${'*'.repeat(8)}...`, // Mask API key
+      },
+      body: body ? JSON.stringify(body, null, 2) : undefined,
+    });
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
@@ -156,6 +189,15 @@ export class PauboxClient {
       // Check for HTTP errors
       if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
+
+        // Log error response
+        console.error('❌ Paubox API Response (Error):', {
+          statusCode: response.status,
+          statusText: response.statusText,
+          url,
+          errorBody,
+        });
+
         throw new PauboxApiError(
           response.status,
           response.statusText,
@@ -164,13 +206,31 @@ export class PauboxClient {
       }
 
       const data = await response.json();
+
+      // Log successful response
+      console.log('✅ Paubox API Response (Success):', {
+        statusCode: response.status,
+        url,
+        response: data,
+      });
+
       return data as T;
     } catch (error) {
       clearTimeout(timeoutId);
 
       // Handle timeout
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error(`Request timeout after ${this.timeout}ms (attempt ${attempt + 1}/${this.maxRetries})`);
+        const timeoutError = `Request timeout after ${this.timeout}ms (attempt ${attempt + 1}/${this.maxRetries})`;
+        console.error('⏱️ Paubox API Timeout:', { error: timeoutError, url });
+        throw new Error(timeoutError);
+      }
+
+      // Log other errors
+      if (!(error instanceof PauboxApiError)) {
+        console.error('❌ Paubox API Error (Network/Other):', {
+          error: error instanceof Error ? error.message : String(error),
+          url,
+        });
       }
 
       throw error;

@@ -34,42 +34,48 @@ function isAuthPage(pathname: string): boolean {
 export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Check if the route is protected
-  if (isProtectedRoute(pathname)) {
-    // Get the session token from cookies
-    const sessionToken = request.cookies.get('session')?.value;
+  // Skip auth checks for API routes - they handle their own authentication
+  // But still apply security headers at the end
+  const isApiRoute = pathname.startsWith('/api/');
 
-    if (!sessionToken) {
-      // Redirect to sign-in if no session token
-      const signInUrl = new URL('/sign-in', request.url);
-      signInUrl.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(signInUrl);
+  if (!isApiRoute) {
+    // Check if the route is protected
+    if (isProtectedRoute(pathname)) {
+      // Get the session token from cookies
+      const sessionToken = request.cookies.get('session')?.value;
+
+      if (!sessionToken) {
+        // Redirect to sign-in if no session token
+        const signInUrl = new URL('/sign-in', request.url);
+        signInUrl.searchParams.set('redirect', pathname);
+        return NextResponse.redirect(signInUrl);
+      }
+
+      // HIPAA COMPLIANCE: Verify token is valid, not expired, and not revoked
+      try {
+        await verifyIdToken(sessionToken);
+        // Token is valid, allow access
+      } catch (error) {
+        // Token is expired, invalid, or revoked - force re-authentication
+        console.error('Invalid session token:', error);
+        const response = NextResponse.redirect(new URL('/sign-in', request.url));
+        // Delete the invalid session cookie
+        response.cookies.delete('session');
+        return response;
+      }
     }
 
-    // HIPAA COMPLIANCE: Verify token is valid, not expired, and not revoked
-    try {
-      await verifyIdToken(sessionToken);
-      // Token is valid, allow access
-    } catch (error) {
-      // Token is expired, invalid, or revoked - force re-authentication
-      console.error('Invalid session token:', error);
-      const response = NextResponse.redirect(new URL('/sign-in', request.url));
-      // Delete the invalid session cookie
-      response.cookies.delete('session');
-      return response;
+    // If user is authenticated and trying to access auth pages, redirect to dashboard
+    if (isAuthPage(pathname)) {
+      const sessionToken = request.cookies.get('session')?.value;
+
+      if (sessionToken) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
     }
   }
 
-  // If user is authenticated and trying to access auth pages, redirect to dashboard
-  if (isAuthPage(pathname)) {
-    const sessionToken = request.cookies.get('session')?.value;
-
-    if (sessionToken) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-  }
-
-  // Add HIPAA-compliant security headers to all responses
+  // Add HIPAA-compliant security headers to all responses (including API routes)
   const response = NextResponse.next();
 
   // Prevent clickjacking attacks

@@ -62,6 +62,9 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
   const [loopAudio, setLoopAudio] = useState(false);
   const [fitAudioToDuration, setFitAudioToDuration] = useState(false);
 
+  // Assembled video URL
+  const [assembledVideoUrl, setAssembledVideoUrl] = useState<string | null>(null);
+
   // Calculate total duration automatically from both clips and audio tracks
   const totalDuration = useMemo(() => {
     const clipsEndTime = clips.reduce((max, clip) =>
@@ -150,6 +153,18 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
           }));
           setAudioTracks(transformedAudioTracks);
         }
+
+        // Load assembled video URL if it exists
+        if (data.scene.assembledVideoUrl) {
+          // Fetch presigned URL for the assembled video
+          const assembleStatusResponse = await authenticatedFetch(`/api/scenes/${sceneId}/assemble`, user);
+          if (assembleStatusResponse.ok) {
+            const assembleData = await assembleStatusResponse.json();
+            setAssembledVideoUrl(assembleData.assembledVideoUrl);
+          }
+        } else {
+          setAssembledVideoUrl(null);
+        }
       }
     } catch (error) {
       console.error('Error loading scene:', error);
@@ -164,6 +179,7 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
     setAudioTracks([]);
     setLoopAudio(false);
     setFitAudioToDuration(false);
+    setAssembledVideoUrl(null);
   };
 
   const handleAddClip = (media: MediaItem, duration: number) => {
@@ -352,6 +368,11 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
         `Scene assembled successfully! Duration: ${Math.round(data.durationSeconds)}s, ${data.clipCount} clips`,
         { id: toastId, duration: 5000 },
       );
+
+      // Update assembled video URL immediately
+      if (data.assembledVideoUrl) {
+        setAssembledVideoUrl(data.assembledVideoUrl);
+      }
 
       // Refresh scene to get updated URL
       if (savedSceneId) {
@@ -592,22 +613,35 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
         <div className="col-span-2 flex h-full flex-col gap-6">
           {/* Preview Area */}
           <div className="flex aspect-video items-center justify-center overflow-hidden rounded-lg bg-gray-900">
-            {clips.length > 0 && clips[0] ? (
+            {assembledVideoUrl ? (
+              // Show assembled video player
               <div className="relative h-full w-full">
-                {/* Show first clip as preview */}
+                <video
+                  src={assembledVideoUrl}
+                  controls
+                  className="h-full w-full object-contain"
+                />
+              </div>
+            ) : clips.length > 0 && clips[0] ? (
+              // Show first clip as preview with "Please export first" overlay
+              <div className="relative h-full w-full">
                 <img
                   src={clips[0].thumbnailUrl}
                   alt="Scene preview"
                   className="h-full w-full object-cover"
                 />
                 <div className="bg-opacity-40 absolute inset-0 flex items-center justify-center bg-black">
-                  <div className="text-center text-white">
+                  <div className="max-w-xs text-center text-white">
                     <Eye className="mx-auto mb-3 h-12 w-12 opacity-75" />
-                    <p className="text-sm">Please export first</p>
+                    <p className="mb-2 text-sm font-semibold">Please Export</p>
+                    <p className="text-xs opacity-90">
+                      Click the "Export" button to assemble your scene. After export completes, the preview will refresh automatically.
+                    </p>
                   </div>
                 </div>
               </div>
             ) : (
+              // Show empty state
               <div className="text-center text-gray-400">
                 <p className="mb-2">Scene Preview</p>
                 <p className="text-sm">Add clips from the library to start building your scene</p>

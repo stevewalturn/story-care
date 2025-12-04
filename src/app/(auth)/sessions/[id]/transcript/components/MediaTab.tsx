@@ -77,11 +77,6 @@ export function MediaTab({
     return `${Math.floor(diffDays / 365)} years ago`;
   };
 
-  // Get counts by type
-  const videosCount = media.filter(m => m.mediaType === 'video').length;
-  const imagesCount = media.filter(m => m.mediaType === 'image').length;
-  const audioCount = media.filter(m => m.mediaType === 'audio').length;
-
   return (
     <>
       {/* Controls */}
@@ -155,33 +150,25 @@ export function MediaTab({
             onClick={() => setFilterType('all')}
             className={filterType === 'all' ? 'font-medium text-indigo-600' : 'text-gray-500 hover:text-gray-700'}
           >
-            All (
-            {media.length}
-            )
+            All
           </button>
           <button
             onClick={() => setFilterType('video')}
             className={filterType === 'video' ? 'font-medium text-indigo-600' : 'text-gray-500 hover:text-gray-700'}
           >
-            Videos (
-            {videosCount}
-            )
+            Videos
           </button>
           <button
             onClick={() => setFilterType('image')}
             className={filterType === 'image' ? 'font-medium text-indigo-600' : 'text-gray-500 hover:text-gray-700'}
           >
-            Images (
-            {imagesCount}
-            )
+            Images
           </button>
           <button
             onClick={() => setFilterType('audio')}
             className={filterType === 'audio' ? 'font-medium text-indigo-600' : 'text-gray-500 hover:text-gray-700'}
           >
-            Music (
-            {audioCount}
-            )
+            Music
           </button>
         </div>
       </div>

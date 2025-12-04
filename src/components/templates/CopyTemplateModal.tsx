@@ -31,7 +31,7 @@ type CopyTemplateModalProps = {
 };
 
 export function CopyTemplateModal({ template, onClose, onCopied }: CopyTemplateModalProps) {
-  const { user } = useAuth();
+  const { user, dbUser } = useAuth();
   const [customName, setCustomName] = useState(`${template.title} (Copy)`);
   const [customDescription, setCustomDescription] = useState(template.description || '');
   const [isCopying, setIsCopying] = useState(false);
@@ -178,7 +178,9 @@ export function CopyTemplateModal({ template, onClose, onCopied }: CopyTemplateM
                   <div>
                     <h4 className="text-sm font-semibold text-indigo-900">About Copying</h4>
                     <p className="mt-1 text-xs text-indigo-700">
-                      This will create a private copy that only you can use and edit. All questions and settings will be copied. Changes to your copy won't affect the original template.
+                      {dbUser?.role === 'org_admin'
+                        ? 'This will create an organization copy that all therapists in your organization can use. All questions and settings will be copied. Changes to your copy won\'t affect the original template.'
+                        : 'This will create a private copy that only you can use and edit. All questions and settings will be copied. Changes to your copy won\'t affect the original template.'}
                     </p>
                   </div>
                 </div>

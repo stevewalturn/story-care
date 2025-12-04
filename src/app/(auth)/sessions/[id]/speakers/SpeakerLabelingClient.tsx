@@ -11,6 +11,7 @@ type Speaker = {
   label: string;
   type: 'therapist' | 'patient' | 'group_member' | null;
   name: string;
+  avatarUrl?: string;
   sampleAudioUrl?: string;
   utteranceCount: number;
   totalDuration: number;
@@ -48,6 +49,7 @@ export function SpeakerLabelingClient({
           label: speaker.speakerLabel || `Speaker ${speaker.id}`,
           type: speaker.speakerType,
           name: speaker.speakerName || '',
+          avatarUrl: speaker.avatarUrl,
           utteranceCount: speaker.totalUtterances || 0,
           totalDuration: speaker.totalDurationSeconds || 0,
           sampleAudioUrl: speaker.sampleAudioUrl,

@@ -84,6 +84,16 @@ export async function generateImageWithAtlas(
   }
 
   // Step 1: Start image generation
+  console.log('[AtlasCloud] Starting image generation with request:', {
+    url: 'https://api.atlascloud.ai/api/v1/model/generateImage',
+    model: atlasModel,
+    prompt: options.prompt.substring(0, 100) + (options.prompt.length > 100 ? '...' : ''),
+    size: requestBody.size,
+    numImages: requestBody.num_images,
+    hasReferenceImage: !!options.referenceImage,
+    requestBody,
+  });
+
   const generateResponse = await fetch(
     'https://api.atlascloud.ai/api/v1/model/generateImage',
     {
@@ -96,21 +106,41 @@ export async function generateImageWithAtlas(
     },
   );
 
+  console.log('[AtlasCloud] Response status:', generateResponse.status, generateResponse.statusText);
+
   if (!generateResponse.ok) {
     const error = await generateResponse.json().catch(() => ({ msg: 'Unknown error' }));
+    console.error('[AtlasCloud] Error response:', {
+      status: generateResponse.status,
+      statusText: generateResponse.statusText,
+      error,
+      headers: Object.fromEntries(generateResponse.headers.entries()),
+    });
     throw new Error(`Atlas Cloud error: ${error.msg || generateResponse.statusText}`);
   }
 
   const generateResult: AtlasPredictionResponse = await generateResponse.json();
 
+  console.log('[AtlasCloud] Generate result:', {
+    code: generateResult.code,
+    msg: generateResult.msg,
+    predictionId: generateResult.data?.id,
+    status: generateResult.data?.status,
+  });
+
   if (generateResult.code !== 200) {
+    console.error('[AtlasCloud] Non-200 code in response:', generateResult);
     throw new Error(`Atlas Cloud error: ${generateResult.msg}`);
   }
 
   const predictionId = generateResult.data.id;
 
+  console.log('[AtlasCloud] Polling for result with prediction ID:', predictionId);
+
   // Step 2: Poll for result
   const imageUrl = await pollAtlasStatus(predictionId, apiKey, 'image');
+
+  console.log('[AtlasCloud] Image generation successful:', imageUrl);
 
   return {
     imageUrl,

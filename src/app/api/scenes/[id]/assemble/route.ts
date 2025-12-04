@@ -124,7 +124,25 @@ export async function POST(
     // Transform audio tracks with presigned URLs
     const audioTracks = await Promise.all(
       audioTracksData.map(async (track) => {
-        const presignedUrl = await generatePresignedUrl(track.audioUrl, 1);
+        let gcsPath = track.audioUrl;
+
+        // If audioId is provided, look up the GCS path from media_library
+        // This prevents double-encoding of already-presigned URLs
+        if (track.audioId) {
+          const [media] = await db
+            .select({ mediaUrl: mediaLibrary.mediaUrl })
+            .from(mediaLibrary)
+            .where(eq(mediaLibrary.id, track.audioId))
+            .limit(1);
+
+          if (media?.mediaUrl) {
+            gcsPath = media.mediaUrl;
+          }
+        }
+
+        // Generate presigned URL from GCS path
+        const presignedUrl = await generatePresignedUrl(gcsPath, 1);
+
         return {
           audioUrl: presignedUrl || track.audioUrl,
           volume: track.volume || 100,

@@ -32,9 +32,10 @@ export const createPatientSchema = z.object({
   email: z.string()
     .email('Invalid email address')
     .optional(),
-  referenceImageUrl: z.string()
-    .url('Invalid image URL')
-    .optional(),
+  referenceImageUrl: z.union([
+    z.string().url('Invalid image URL'),
+    z.literal(''),
+  ]).optional(),
   therapistId: z.string()
     .min(1, 'Therapist ID is required'),
 });
@@ -50,9 +51,10 @@ export const invitePatientSchema = z.object({
     .email('Invalid email address'),
   dateOfBirth: z.string()
     .optional(),
-  referenceImageUrl: z.string()
-    .url('Invalid image URL')
-    .optional(),
+  referenceImageUrl: z.union([
+    z.string().url('Invalid image URL'),
+    z.literal(''),
+  ]).optional(),
   therapistId: z.string()
     .min(1, 'Therapist ID is required'),
   welcomeMessage: z.string()

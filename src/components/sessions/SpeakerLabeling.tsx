@@ -13,6 +13,7 @@ type Speaker = {
   label: string; // e.g., "Speaker 1", "Speaker 2"
   type: 'therapist' | 'patient' | 'group_member' | null;
   name: string;
+  avatarUrl?: string;
   sampleAudioUrl?: string;
   utteranceCount: number;
   totalDuration: number; // in seconds
@@ -37,7 +38,12 @@ export function SpeakerLabeling({
   const [mergeMode, setMergeMode] = useState(false);
   const [selectedForMerge, setSelectedForMerge] = useState<string[]>([]);
   const [loadingAudio, setLoadingAudio] = useState<string | null>(null);
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const handleImageError = (speakerId: string) => {
+    setImageErrors(prev => new Set(prev).add(speakerId));
+  };
 
   const speakerTypeOptions = [
     { value: 'therapist', label: 'Therapist' },
@@ -235,20 +241,29 @@ export function SpeakerLabeling({
             >
               <div className="flex items-start gap-4">
                 {/* Avatar */}
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gray-100">
-                  {speaker.type === 'therapist'
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 overflow-hidden">
+                  {speaker.avatarUrl && !imageErrors.has(speaker.id)
                     ? (
-                        <User className="h-6 w-6 text-gray-600" />
+                        <img
+                          src={speaker.avatarUrl}
+                          alt={speaker.name || speaker.label}
+                          className="h-full w-full object-cover"
+                          onError={() => handleImageError(speaker.id)}
+                        />
                       )
-                    : speaker.type === 'group_member'
+                    : speaker.type === 'therapist'
                       ? (
-                          <Users className="h-6 w-6 text-gray-600" />
+                          <User className="h-6 w-6 text-gray-600" />
                         )
-                      : (
-                          <span className="text-lg font-semibold text-gray-600">
-                            {speaker.label.replace('Speaker ', 'S')}
-                          </span>
-                        )}
+                      : speaker.type === 'group_member'
+                        ? (
+                            <Users className="h-6 w-6 text-gray-600" />
+                          )
+                        : (
+                            <span className="text-lg font-semibold text-gray-600">
+                              {speaker.label.replace('Speaker ', 'S')}
+                            </span>
+                          )}
                 </div>
 
                 {/* Speaker Info */}

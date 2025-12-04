@@ -7,7 +7,8 @@ import type { NextRequest } from 'next/server';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { pageBlocks, pageShareLinks, reflectionQuestions, storyPages, surveyQuestions, users } from '@/models/Schema';
+import { generatePresignedUrl } from '@/libs/GCS';
+import { pageBlocks, pageShareLinks, reflectionQuestions, scenes, storyPages, surveyQuestions, users } from '@/models/Schema';
 
 type RouteContext = {
   params: Promise<{ token: string }>;
@@ -79,13 +80,66 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       .where(eq(pageBlocks.pageId, page.id))
       .orderBy(pageBlocks.sequenceNumber);
 
+    // Generate presigned URLs for media in blocks
+    const blocksWithSignedUrls = await Promise.all(
+      blocks.map(async (block) => {
+        const settings = block.settings as any;
+
+        // Handle blocks with mediaUrl (image, video blocks)
+        if (settings && settings.mediaUrl) {
+          try {
+            const signedUrl = await generatePresignedUrl(settings.mediaUrl, 1);
+            return {
+              ...block,
+              settings: {
+                ...settings,
+                mediaUrl: signedUrl || settings.mediaUrl,
+              },
+            };
+          } catch (error) {
+            console.error('Error generating presigned URL for media:', error);
+            return block;
+          }
+        }
+
+        // Handle scene blocks - fetch scene and generate presigned URL for assembled video
+        if (block.blockType === 'scene' && block.sceneId) {
+          try {
+            const [scene] = await db
+              .select()
+              .from(scenes)
+              .where(eq(scenes.id, block.sceneId))
+              .limit(1);
+
+            if (scene && scene.assembledVideoUrl) {
+              const signedUrl = await generatePresignedUrl(scene.assembledVideoUrl, 1);
+              return {
+                ...block,
+                settings: {
+                  ...settings,
+                  mediaUrl: signedUrl || scene.assembledVideoUrl,
+                  sceneTitle: scene.title,
+                  sceneDuration: scene.durationSeconds,
+                },
+              };
+            }
+          } catch (error) {
+            console.error('Error generating presigned URL for scene:', error);
+            return block;
+          }
+        }
+
+        return block;
+      }),
+    );
+
     // Get reflection block IDs
-    const reflectionBlockIds = blocks
+    const reflectionBlockIds = blocksWithSignedUrls
       .filter((b: any) => b.blockType === 'reflection')
       .map((b: any) => b.id);
 
     // Get survey block IDs
-    const surveyBlockIds = blocks
+    const surveyBlockIds = blocksWithSignedUrls
       .filter((b: any) => b.blockType === 'survey')
       .map((b: any) => b.id);
 
@@ -144,7 +198,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         status: page.status,
         patientName: patient?.name || 'Patient',
       },
-      blocks,
+      blocks: blocksWithSignedUrls,
       reflectionQuestions: reflectionQuestionsData,
       surveyQuestions: surveyQuestionsData,
       shareLink: {

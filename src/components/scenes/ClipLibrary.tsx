@@ -1,7 +1,7 @@
 'use client';
 
-import { Image as ImageIcon, Music, Plus, Search, Video } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Image as ImageIcon, Music, Pause, Play, Plus, Search, Video } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,6 +12,7 @@ type MediaItem = {
   type: 'video' | 'image' | 'audio';
   title: string;
   thumbnailUrl: string;
+  mediaUrl?: string;
   duration?: number;
 };
 
@@ -26,6 +27,10 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
   const [filterType, setFilterType] = useState<'all' | 'image' | 'video' | 'audio'>('all');
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Audio playback state
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
 
   // Fetch media from API
   useEffect(() => {
@@ -80,6 +85,7 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
         type: item.mediaType,
         title: item.title,
         thumbnailUrl: item.thumbnailUrl || (item.mediaType === 'image' ? item.mediaUrl : '') || '',
+        mediaUrl: item.mediaUrl,
         duration: item.durationSeconds,
       }));
 
@@ -121,6 +127,31 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Audio playback handler
+  const handleAudioPlayPause = (audioId: string) => {
+    const audioElement = audioRefs.current.get(audioId);
+    if (!audioElement) return;
+
+    if (playingAudioId === audioId) {
+      // Pause currently playing audio
+      audioElement.pause();
+      setPlayingAudioId(null);
+    } else {
+      // Stop any currently playing audio
+      if (playingAudioId) {
+        const currentAudio = audioRefs.current.get(playingAudioId);
+        if (currentAudio) {
+          currentAudio.pause();
+          currentAudio.currentTime = 0;
+        }
+      }
+
+      // Play new audio
+      audioElement.play();
+      setPlayingAudioId(audioId);
+    }
   };
 
   return (
@@ -180,6 +211,22 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
         </button>
       </div>
 
+      {/* Hidden audio elements for playback */}
+      {filteredMedia
+        .filter(item => item.type === 'audio' && item.mediaUrl)
+        .map(item => (
+          <audio
+            key={item.id}
+            ref={(el) => {
+              if (el) {
+                audioRefs.current.set(item.id, el);
+              }
+            }}
+            src={item.mediaUrl}
+            onEnded={() => setPlayingAudioId(null)}
+          />
+        ))}
+
       {/* Media Grid */}
       <div className="flex-1 overflow-y-auto p-4">
         {loading ? (
@@ -195,11 +242,32 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
               >
                 <div className="flex items-center gap-3 p-3">
                   {/* Thumbnail */}
-                  <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-gradient-to-br from-gray-100 to-gray-200">
+                  <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-gradient-to-br from-gray-100 to-gray-200">
                     {item.type === 'audio'
                       ? (
-                          <div className="flex h-full w-full items-center justify-center">
-                            <Music className="h-6 w-6 text-gray-400" />
+                          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-purple-500 to-purple-600">
+                            <Music className="h-6 w-6 text-white/60" />
+                            {/* Play/Pause button overlay */}
+                            {item.mediaUrl && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAudioPlayPause(item.id);
+                                }}
+                                className="absolute inset-0 flex items-center justify-center bg-black/20 transition-all hover:bg-black/30"
+                                title={playingAudioId === item.id ? 'Pause' : 'Play'}
+                              >
+                                <div className="rounded-full bg-white p-2 shadow-lg">
+                                  {playingAudioId === item.id
+                                    ? (
+                                        <Pause className="h-4 w-4 text-purple-600" />
+                                      )
+                                    : (
+                                        <Play className="h-4 w-4 text-purple-600" />
+                                      )}
+                                </div>
+                              </button>
+                            )}
                           </div>
                         )
                       : item.type === 'video'

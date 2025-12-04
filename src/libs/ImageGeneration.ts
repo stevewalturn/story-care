@@ -41,6 +41,17 @@ export async function generateImage(
 ): Promise<ImageGenerationResult> {
   const { model, prompt } = options;
 
+  console.log('[ImageGeneration] Generating image with options:', {
+    model,
+    promptLength: prompt.length,
+    width: options.width,
+    height: options.height,
+    aspectRatio: options.aspectRatio,
+    hasReferenceImage: !!options.referenceImage,
+    style: options.style,
+    quality: options.quality,
+  });
+
   // Route to Google Gemini (Image-to-Image)
   if (model === 'gemini-2.5-flash-image') {
     const { generateImageWithGemini } = await import('./providers/GeminiImage');
@@ -70,11 +81,18 @@ export async function generateImage(
 
   // Route to Atlas Cloud (Flux models)
   if (model === 'flux-dev' || model === 'flux-schnell' || model === 'flux-redux-dev') {
+    console.log('[ImageGeneration] Routing to Atlas Cloud provider');
     const { generateImageWithAtlas } = await import('./providers/AtlasCloud');
     // Convert dimensions to Atlas format (e.g., "1024*1024")
     const size = options.width && options.height
       ? `${options.width}*${options.height}`
       : '1024*1024';
+    console.log('[ImageGeneration] Calling generateImageWithAtlas with:', {
+      model,
+      size,
+      seed: options.seed,
+      hasReferenceImage: !!options.referenceImage,
+    });
     return await generateImageWithAtlas({
       prompt,
       model: model as AtlasImageModel,

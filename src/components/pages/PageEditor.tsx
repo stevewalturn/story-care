@@ -4,11 +4,13 @@ import type { TreatmentModule } from '@/models/Schema';
 import { Clapperboard, Eye, FileText, GripVertical, Image as ImageIcon, ListChecks, MessageCircle, Sparkles, Trash2, Type, Video, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { AssetPickerModal } from '@/components/pages/AssetPickerModal';
+import { BrowseSceneModal } from '@/components/pages/BrowseSceneModal';
 import { ModulePageGenerator } from '@/components/pages/ModulePageGenerator';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
+import { extractGcsPath } from '@/utils/GCSUtils';
 
 type BlockType = 'text' | 'image' | 'video' | 'quote' | 'scene' | 'reflection' | 'survey';
 
@@ -124,10 +126,12 @@ export function PageEditor({
   const [assetPickerBlockId, setAssetPickerBlockId] = useState<string | null>(null);
   const [assetPickerFilterType, setAssetPickerFilterType] = useState<'image' | 'video' | 'text' | 'all'>('all');
 
+  // Scene picker modal
+  const [showScenePicker, setShowScenePicker] = useState(false);
+  const [scenePickerBlockId, setScenePickerBlockId] = useState<string | null>(null);
+
   // Module generator modal
   const [showModuleGenerator, setShowModuleGenerator] = useState(false);
-  const [showSessionDropdown, setShowSessionDropdown] = useState(false);
-  const [availableSessions, setAvailableSessions] = useState<SessionWithModule[]>([]);
   const [selectedSessionForGenerator, setSelectedSessionForGenerator] = useState<SessionWithModule | null>(null);
 
   const blockTypes: Array<{ value: BlockType; label: string; icon: any }> = [
@@ -182,14 +186,13 @@ export function PageEditor({
     try {
       const response = await authenticatedFetch(`/api/sessions?patientId=${selectedPatientId}`, user);
       if (response.ok) {
-        const data = await response.json();
-        // Filter sessions that have modules assigned
-        const sessionsWithModules = (data.sessions as SessionWithModule[])
-          .filter(session => session.moduleId && session.module)
-          .filter((session): session is SessionWithModule & { module: NonNullable<SessionWithModule['module']> } =>
-            session.module !== null,
-          );
-        setAvailableSessions(sessionsWithModules);
+        // TODO: Add UI to display and select sessions for module page generation
+        // const data = await response.json();
+        // const sessionsWithModules = (data.sessions as SessionWithModule[])
+        //   .filter(session => session.moduleId && session.module)
+        //   .filter((session): session is SessionWithModule & { module: NonNullable<SessionWithModule['module']> } =>
+        //     session.module !== null,
+        //   );
       }
     } catch (error) {
       console.error('Failed to fetch patient sessions:', error);
@@ -315,12 +318,36 @@ export function PageEditor({
     setAssetPickerBlockId(null);
   };
 
-  const handleOpenModuleGenerator = (session: SessionWithModule) => {
-    if (session.module) {
-      setSelectedSessionForGenerator(session);
-      setShowModuleGenerator(true);
-    }
+  const openScenePicker = (blockId: string) => {
+    setScenePickerBlockId(blockId);
+    setShowScenePicker(true);
   };
+
+  const handleSceneSelect = (scene: any) => {
+    if (!scenePickerBlockId) return;
+
+    // Extract raw GCS path from presigned URL
+    const sceneMediaUrl = scene.videoUrl || scene.thumbnailUrl;
+    const gcsPath = sceneMediaUrl ? extractGcsPath(sceneMediaUrl) : null;
+
+    updateBlockContent(scenePickerBlockId, {
+      sceneId: scene.id,
+      sceneTitle: scene.title,
+      mediaUrl: gcsPath || sceneMediaUrl, // Store raw path, not presigned URL
+    });
+
+    // Close modal
+    setShowScenePicker(false);
+    setScenePickerBlockId(null);
+  };
+
+  // TODO: Add UI to trigger module page generation from sessions
+  // const handleOpenModuleGenerator = (session: SessionWithModule) => {
+  //   if (session.module) {
+  //     setSelectedSessionForGenerator(session);
+  //     setShowModuleGenerator(true);
+  //   }
+  // };
 
   const handlePageGenerated = async (pageId: string) => {
     // Fetch the generated page content and populate blocks
@@ -499,7 +526,7 @@ export function PageEditor({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => openAssetPicker(block.id, 'all')}
+              onClick={() => openScenePicker(block.id)}
               className="w-full"
             >
               <Clapperboard className="mr-2 h-4 w-4" />
@@ -745,48 +772,6 @@ export function PageEditor({
             placeholder="Page title..."
           />
           <div className="flex items-center gap-2">
-            {/* Generate from Module Button */}
-            {selectedPatientId && availableSessions.length > 0 && (
-              <div className="relative">
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    // If only one session, open directly
-                    if (availableSessions.length === 1 && availableSessions[0]) {
-                      handleOpenModuleGenerator(availableSessions[0]);
-                    } else {
-                      // Multiple sessions: toggle dropdown
-                      setShowSessionDropdown(!showSessionDropdown);
-                    }
-                  }}
-                  className="border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-                >
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Generate from Module
-                </Button>
-                {/* Show dropdown if multiple sessions */}
-                {availableSessions.length > 1 && showSessionDropdown && (
-                  <div className="absolute top-full right-0 z-10 mt-1 w-64 rounded-lg border border-gray-200 bg-white shadow-lg">
-                    <div className="p-2">
-                      <p className="mb-2 px-2 text-xs font-medium text-gray-500">Select a session:</p>
-                      {availableSessions.map(session => (
-                        <button
-                          key={session.id}
-                          onClick={() => {
-                            handleOpenModuleGenerator(session);
-                            setShowSessionDropdown(false);
-                          }}
-                          className="w-full rounded p-2 text-left text-sm hover:bg-gray-100"
-                        >
-                          {session.title}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
             <Button
               variant="ghost"
               onClick={() => setShowPreview(!showPreview)}
@@ -1211,6 +1196,17 @@ export function PageEditor({
         }}
         onSelect={handleAssetSelect}
         filterType={assetPickerFilterType}
+        patientId={selectedPatientId || undefined}
+      />
+
+      {/* Scene Picker Modal */}
+      <BrowseSceneModal
+        isOpen={showScenePicker}
+        onClose={() => {
+          setShowScenePicker(false);
+          setScenePickerBlockId(null);
+        }}
+        onSelect={handleSceneSelect}
         patientId={selectedPatientId || undefined}
       />
 

@@ -1,0 +1,120 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy" to confirm production deployment'
+        required: true
+        default: ''
+
+env:
+  GCP_REGION: us-central1
+  SERVICE_NAME: storycare-app
+
+jobs:
+  deploy:
+    name: Deploy to Cloud Run (Production)
+    runs-on: ubuntu-latest
+
+    # Only run if confirmation is correct
+    if: github.event.inputs.confirm == 'deploy'
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (Prod)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_PROD }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_PROD }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID_PROD }}
+
+      - name: Configure Docker for GCR
+        run: |
+          gcloud auth configure-docker gcr.io
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --build-arg ENV_FILE="${{ secrets.ENV_FILE_PROD }}" \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.SERVICE_NAME }}:latest \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.SERVICE_NAME }}:prod-$(date +%Y%m%d-%H%M%S) \
+            .
+
+      - name: Push Docker image to GCR
+        run: |
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.SERVICE_NAME }}:latest
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.SERVICE_NAME }}:prod-$(date +%Y%m%d-%H%M%S)
+
+      - name: Deploy to Cloud Run (Production)
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            --region ${{ env.GCP_REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --memory 4Gi \
+            --cpu 2 \
+            --max-instances 100 \
+            --min-instances 1 \
+            --port 8080 \
+            --set-env-vars "NODE_ENV=production" \
+            --timeout 300 \
+            --concurrency 80
+
+      - name: Get service URL
+        id: get-url
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.GCP_REGION }} \
+            --format 'value(status.url)')
+          echo "SERVICE_URL=$SERVICE_URL" >> $GITHUB_OUTPUT
+          echo "### 🚀 Production Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Service URL:** $SERVICE_URL" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** gcr.io/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.SERVICE_NAME }}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed at:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+
+      - name: Health check
+        run: |
+          echo "Waiting for service to be ready..."
+          sleep 15
+          SERVICE_URL="${{ steps.get-url.outputs.SERVICE_URL }}"
+
+          MAX_RETRIES=5
+          RETRY_COUNT=0
+
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if curl -f -s "${SERVICE_URL}/api/health" > /dev/null; then
+              echo "✅ Health check passed!"
+              exit 0
+            fi
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "Health check attempt $RETRY_COUNT/$MAX_RETRIES failed. Retrying in 10 seconds..."
+            sleep 10
+          done
+
+          echo "⚠️ Health check failed after $MAX_RETRIES attempts."
+          exit 1
+
+      - name: Notify deployment
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Production deployment completed successfully!"
+          else
+            echo "❌ Production deployment failed!"
+          fi

@@ -1,5 +1,6 @@
 import type { TherapeuticDomain } from '@/models/Schema';
 import { Calendar, Folder, Layers, Trash2, User, Users } from 'lucide-react';
+import { useState } from 'react';
 import { ModuleBadge } from '@/components/modules/ModuleBadge';
 import { Card } from '@/components/ui/Card';
 import { extractFilename } from '@/utils/Helpers';
@@ -10,6 +11,8 @@ type SessionCardProps = {
   date: string;
   type: 'individual' | 'group';
   patientName?: string;
+  patientAvatarUrl?: string;
+  patientReferenceImageUrl?: string;
   groupName?: string;
   sessionCount?: number;
   moduleName?: string;
@@ -24,6 +27,8 @@ export function SessionCard({
   date,
   type,
   patientName,
+  patientAvatarUrl,
+  patientReferenceImageUrl,
   groupName,
   sessionCount: _sessionCount,
   moduleName,
@@ -32,6 +37,8 @@ export function SessionCard({
   onDelete,
   onAssignModule,
 }: SessionCardProps) {
+  const [imageError, setImageError] = useState(false);
+
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
     if (onDelete) {
@@ -46,22 +53,39 @@ export function SessionCard({
     }
   };
 
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
   // Clean up title: extract filename if it's a path
   const displayTitle = extractFilename(title);
+
+  // Determine which image to show (prioritize referenceImageUrl over avatarUrl like patient page does)
+  const patientImageUrl = patientReferenceImageUrl || patientAvatarUrl;
+  const showImage = type === 'individual' && patientImageUrl && !imageError;
 
   return (
     <Card hover onClick={onClick}>
       <div className="p-6">
         <div className="flex items-start gap-4">
           {/* Avatar/Icon */}
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-indigo-50">
-            {type === 'individual'
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-indigo-50 overflow-hidden">
+            {showImage
               ? (
-                  <User className="h-6 w-6 text-indigo-600" />
+                  <img
+                    src={patientImageUrl}
+                    alt={patientName || 'Patient'}
+                    className="h-full w-full object-cover"
+                    onError={handleImageError}
+                  />
                 )
-              : (
-                  <Users className="h-6 w-6 text-indigo-600" />
-                )}
+              : type === 'individual'
+                ? (
+                    <User className="h-6 w-6 text-indigo-600" />
+                  )
+                : (
+                    <Users className="h-6 w-6 text-indigo-600" />
+                  )}
           </div>
 
           {/* Content */}

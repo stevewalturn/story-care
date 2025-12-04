@@ -34,7 +34,7 @@ function SignInForm() {
   // Mock accounts for testing
   const mockAccounts = [
     {
-      email: 'zharfan@entryway.health',
+      email: 'zharfan@walturn.com',
       password: 'securepassword',
       role: 'Super Admin',
       color: 'bg-purple-100 text-purple-700 border-purple-300',
@@ -205,7 +205,7 @@ function SignInForm() {
             <div className="grid grid-cols-2 gap-2">
               {mockAccounts.map(account => (
                 <button
-                  key={account.email}
+                  key={`${account.email}-${account.role}`}
                   type="button"
                   onClick={() => handleMockAccountClick(account.email, account.password)}
                   className={`rounded-lg border-2 ${account.color} px-3 py-2 text-left transition-all hover:shadow-md active:scale-95`}

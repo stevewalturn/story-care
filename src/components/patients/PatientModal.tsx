@@ -16,6 +16,7 @@ type Patient = {
 };
 
 type Therapist = {
+  id: string;
   firebaseUid: string;
   name: string;
   patientCount: number;
@@ -198,7 +199,7 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
                 >
                   <option value="">Select a therapist</option>
                   {therapists.map(therapist => (
-                    <option key={therapist.firebaseUid} value={therapist.firebaseUid}>
+                    <option key={therapist.id} value={therapist.id}>
                       {therapist.name}
                       {' '}
                       (

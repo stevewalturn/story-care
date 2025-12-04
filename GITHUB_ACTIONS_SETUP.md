@@ -1,260 +1,269 @@
-# GitHub Actions Setup for Cloud Run
+# GitHub Actions Setup for Cloud Run - Dev & Production
 
-This guide shows you how to set up GitHub Actions to automatically deploy StoryCare to Google Cloud Run when you push to the `main` branch.
+This guide shows you how to set up GitHub Actions to deploy StoryCare to Google Cloud Run with separate development and production environments.
 
 ## 🎯 Overview
 
-GitHub Actions will:
-- ✅ Build Docker image with all environment variables
-- ✅ Push image to Google Container Registry
+**Two Separate Workflows:**
+
+### Development Workflow (`deploy-dev.yml`)
+- ✅ **Trigger:** Automatic on push to `main` branch
+- ✅ **GCP Project:** `storycare-dev-479511`
+- ✅ **Service:** `storycare-app-dev`
+- ✅ **Purpose:** Continuous deployment for testing
+
+### Production Workflow (`deploy-prod.yml`)
+- ✅ **Trigger:** Manual only (workflow_dispatch)
+- ✅ **GCP Project:** `storycare-478114`
+- ✅ **Service:** `storycare-app`
+- ✅ **Purpose:** Controlled production releases
+
+Both workflows:
+- ✅ Build Docker image with environment variables from GitHub Secrets
+- ✅ Push image to Google Container Registry (gcr.io)
 - ✅ Deploy to Cloud Run
 - ✅ Run health checks
-- ✅ Show deployment URL in GitHub Actions logs
-
-Already configured workflows:
-- **`CI.yml`** - Existing comprehensive CI checks (lint, test, build, E2E)
-- **`deploy-cloud-run.yml`** - New Cloud Run deployment workflow (created)
+- ✅ Show deployment URL in logs
 
 ---
 
-## 🚀 Quick Setup (5 minutes)
+## 🚀 Setup Guide
 
-### Option A: Using Service Account Key (Fastest - Less Secure)
+### Step 1: Set Up Workload Identity Federation (WIF)
 
-#### Step 1: Create Service Account
+You'll need to set up WIF for **both** GCP projects.
 
-```bash
-# Set your project ID
-export PROJECT_ID=storycare-478114
-
-# Create service account
-gcloud iam service-accounts create github-actions \
-  --description="GitHub Actions deployment" \
-  --display-name="GitHub Actions"
-
-# Grant necessary roles
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/run.admin"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/storage.admin"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/iam.serviceAccountUser"
-```
-
-#### Step 2: Create and Download Key
+#### Development Project Setup
 
 ```bash
-# Create key
-gcloud iam service-accounts keys create github-actions-key.json \
-  --iam-account=github-actions@${PROJECT_ID}.iam.gserviceaccount.com
-
-# IMPORTANT: This file contains sensitive credentials!
-# Copy the contents - you'll add it to GitHub Secrets
-cat github-actions-key.json
-
-# Delete the file after copying (security best practice)
-rm github-actions-key.json
-```
-
-#### Step 3: Add Secrets to GitHub
-
-1. Go to your GitHub repository
-2. Navigate to **Settings** → **Secrets and variables** → **Actions**
-3. Click **New repository secret**
-4. Add the following secrets:
-
-**Required Secrets:**
-
-| Secret Name | Value | Description |
-|------------|-------|-------------|
-| `GCP_PROJECT_ID` | Your GCP project ID | e.g., `storycare-prod-123456` |
-| `GCP_SA_KEY` | Contents of `github-actions-key.json` | The entire JSON file contents |
-
-**Build-Time Secrets (for Docker build):**
-
-| Secret Name | Source |
-|------------|--------|
-| `NEXT_PUBLIC_FIREBASE_API_KEY` | From your .env |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | From your .env |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | From your .env |
-| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | From your .env |
-| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | From your .env |
-| `NEXT_PUBLIC_FIREBASE_APP_ID` | From your .env |
-| `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` | From your .env |
-| `NEXT_PUBLIC_APP_URL` | Your Cloud Run URL |
-| `DATABASE_URL` | Your Neon database URL |
-
-**Optional (Monitoring):**
-
-| Secret Name | Source |
-|------------|--------|
-| `NEXT_PUBLIC_SENTRY_DSN` | From your .env |
-| `NEXT_PUBLIC_POSTHOG_KEY` | From your .env |
-| `NEXT_PUBLIC_POSTHOG_HOST` | From your .env |
-| `NEXT_PUBLIC_BETTER_STACK_SOURCE_TOKEN` | From your .env |
-
-**Note:** Runtime secrets (Firebase private keys, API keys, etc.) are loaded from GCP Secret Manager, not GitHub Secrets.
-
-#### Step 4: Deploy!
-
-```bash
-git add .
-git commit -m "feat: add GitHub Actions deployment"
-git push origin main
-```
-
-Watch the deployment in **Actions** tab on GitHub!
-
----
-
-### Option B: Using Workload Identity Federation (Recommended - More Secure)
-
-Workload Identity Federation allows GitHub Actions to authenticate without storing long-lived credentials.
-
-#### Step 1: Create Workload Identity Pool
-
-```bash
-export PROJECT_ID=storycare-478114
-export PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)")
+# Set development project variables
+export DEV_PROJECT_ID=storycare-dev-479511
+export DEV_PROJECT_NUMBER=$(gcloud projects describe $DEV_PROJECT_ID --format="value(projectNumber)")
 
 # Create workload identity pool
 gcloud iam workload-identity-pools create "github-actions-pool" \
-  --project="${PROJECT_ID}" \
+  --project="${DEV_PROJECT_ID}" \
   --location="global" \
-  --display-name="GitHub Actions Pool"
+  --display-name="GitHub Actions Pool (Dev)"
 
 # Create workload identity provider
 gcloud iam workload-identity-pools providers create-oidc "github-actions-provider" \
-  --project="${PROJECT_ID}" \
+  --project="${DEV_PROJECT_ID}" \
   --location="global" \
   --workload-identity-pool="github-actions-pool" \
-  --display-name="GitHub Actions Provider" \
+  --display-name="GitHub Actions Provider (Dev)" \
   --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository,attribute.repository_owner=assertion.repository_owner" \
   --attribute-condition="assertion.repository_owner == 'akbar904'" \
   --issuer-uri="https://token.actions.githubusercontent.com"
-```
 
-#### Step 2: Create Service Account
-
-```bash
 # Create service account
-gcloud iam service-accounts create github-actions \
-  --display-name="GitHub Actions"
+gcloud iam service-accounts create github-actions-dev \
+  --project="${DEV_PROJECT_ID}" \
+  --display-name="GitHub Actions (Dev)"
 
 # Grant necessary roles
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:github-actions-dev@${DEV_PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/run.admin"
 
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:github-actions-dev@${DEV_PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/storage.admin"
 
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:github-actions-dev@${DEV_PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/iam.serviceAccountUser"
 
 # Allow GitHub Actions to impersonate the service account
 gcloud iam service-accounts add-iam-policy-binding \
-  "github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --project="${PROJECT_ID}" \
+  "github-actions-dev@${DEV_PROJECT_ID}.iam.gserviceaccount.com" \
+  --project="${DEV_PROJECT_ID}" \
   --role="roles/iam.workloadIdentityUser" \
-  --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github-actions-pool/attribute.repository/akbar904/story-care"
-```
+  --member="principalSet://iam.googleapis.com/projects/${DEV_PROJECT_NUMBER}/locations/global/workloadIdentityPools/github-actions-pool/attribute.repository/akbar904/story-care"
 
-#### Step 3: Get Workload Identity Provider
-
-```bash
-# Get the full provider name
+# Get the WIF provider (save this for GitHub Secrets)
+echo "Copy this for GCP_WORKLOAD_IDENTITY_PROVIDER_DEV:"
 gcloud iam workload-identity-pools providers describe "github-actions-provider" \
-  --project="${PROJECT_ID}" \
+  --project="${DEV_PROJECT_ID}" \
   --location="global" \
   --workload-identity-pool="github-actions-pool" \
   --format="value(name)"
-
-# Output will be something like:
-# projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
 ```
 
-#### Step 4: Add Secrets to GitHub
+#### Production Project Setup
 
-Add these secrets to GitHub (Settings → Secrets → Actions):
+```bash
+# Set production project variables
+export PROD_PROJECT_ID=storycare-478114
+export PROD_PROJECT_NUMBER=$(gcloud projects describe $PROD_PROJECT_ID --format="value(projectNumber)")
 
-| Secret Name | Value |
-|------------|-------|
-| `GCP_PROJECT_ID` | Your project ID |
-| `WIF_PROVIDER` | The full provider name from Step 3 |
-| `WIF_SERVICE_ACCOUNT` | `github-actions@YOUR_PROJECT_ID.iam.gserviceaccount.com` |
+# Create workload identity pool
+gcloud iam workload-identity-pools create "github-actions-pool" \
+  --project="${PROD_PROJECT_ID}" \
+  --location="global" \
+  --display-name="GitHub Actions Pool (Prod)"
 
-Plus all the build-time secrets from Option A.
+# Create workload identity provider
+gcloud iam workload-identity-pools providers create-oidc "github-actions-provider" \
+  --project="${PROD_PROJECT_ID}" \
+  --location="global" \
+  --workload-identity-pool="github-actions-pool" \
+  --display-name="GitHub Actions Provider (Prod)" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository,attribute.repository_owner=assertion.repository_owner" \
+  --attribute-condition="assertion.repository_owner == 'akbar904'" \
+  --issuer-uri="https://token.actions.githubusercontent.com"
 
-#### Step 5: Update Workflow
+# Create service account
+gcloud iam service-accounts create github-actions-prod \
+  --project="${PROD_PROJECT_ID}" \
+  --display-name="GitHub Actions (Prod)"
 
-In `.github/workflows/deploy-cloud-run.yml`, uncomment the Workload Identity section and comment out the Service Account section:
+# Grant necessary roles
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:github-actions-prod@${PROD_PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/run.admin"
 
-```yaml
-# Option 1: Authenticate via Workload Identity Federation (Recommended)
-- name: Authenticate to Google Cloud (Workload Identity)
-  uses: google-github-actions/auth@v2
-  with:
-    workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-    service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:github-actions-prod@${PROD_PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/storage.admin"
 
-# Option 2: Authenticate via Service Account Key (Quick Setup)
-# Comment this out when using Workload Identity
-# - name: Authenticate to Google Cloud (Service Account)
-#   uses: google-github-actions/auth@v2
-#   with:
-#     credentials_json: ${{ secrets.GCP_SA_KEY }}
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:github-actions-prod@${PROD_PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/iam.serviceAccountUser"
+
+# Allow GitHub Actions to impersonate the service account
+gcloud iam service-accounts add-iam-policy-binding \
+  "github-actions-prod@${PROD_PROJECT_ID}.iam.gserviceaccount.com" \
+  --project="${PROD_PROJECT_ID}" \
+  --role="roles/iam.workloadIdentityUser" \
+  --member="principalSet://iam.googleapis.com/projects/${PROD_PROJECT_NUMBER}/locations/global/workloadIdentityPools/github-actions-pool/attribute.repository/akbar904/story-care"
+
+# Get the WIF provider (save this for GitHub Secrets)
+echo "Copy this for GCP_WORKLOAD_IDENTITY_PROVIDER_PROD:"
+gcloud iam workload-identity-pools providers describe "github-actions-provider" \
+  --project="${PROD_PROJECT_ID}" \
+  --location="global" \
+  --workload-identity-pool="github-actions-pool" \
+  --format="value(name)"
 ```
 
-#### Step 6: Deploy!
+---
+
+### Step 2: Prepare Environment Files
+
+#### Development Environment File
+
+Create a complete `.env.dev` file with all your development environment variables:
+
+```bash
+# Example structure (use your actual values)
+# Firebase Authentication (Dev)
+NEXT_PUBLIC_FIREBASE_API_KEY=your_dev_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=storycare-dev-479511.firebaseapp.com
+# ... all other dev environment variables
+
+# Database
+DATABASE_URL=postgresql://user:pass@dev-host:5432/db
+
+# API Keys
+DEEPGRAM_API_KEY=your_dev_key
+OPENAI_API_KEY=your_dev_key
+# ... etc
+```
+
+#### Production Environment File
+
+Create a complete `.env.production` file with all your production environment variables:
+
+```bash
+# Example structure (use your actual values)
+# Firebase Authentication (Prod)
+NEXT_PUBLIC_FIREBASE_API_KEY=your_prod_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=storycare-478114.firebaseapp.com
+# ... all other prod environment variables
+
+# Database
+DATABASE_URL=postgresql://user:pass@prod-host:5432/db
+
+# API Keys
+DEEPGRAM_API_KEY=your_prod_key
+OPENAI_API_KEY=your_prod_key
+# ... etc
+```
+
+---
+
+### Step 3: Add Secrets to GitHub
+
+Go to your GitHub repository → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
+
+#### Development Secrets
+
+| Secret Name | Value | Description |
+|------------|-------|-------------|
+| `ENV_FILE_DEV` | Entire contents of `.env.dev` | All dev environment variables as one secret |
+| `GCP_PROJECT_ID_DEV` | `storycare-dev-479511` | Development GCP project ID |
+| `GCP_SERVICE_ACCOUNT_DEV` | `github-actions-dev@storycare-dev-479511.iam.gserviceaccount.com` | Dev service account email |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER_DEV` | `projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider` | From Step 1 dev setup |
+
+#### Production Secrets
+
+| Secret Name | Value | Description |
+|------------|-------|-------------|
+| `ENV_FILE_PROD` | Entire contents of `.env.production` | All prod environment variables as one secret |
+| `GCP_PROJECT_ID_PROD` | `storycare-478114` | Production GCP project ID |
+| `GCP_SERVICE_ACCOUNT_PROD` | `github-actions-prod@storycare-478114.iam.gserviceaccount.com` | Prod service account email |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER_PROD` | `projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider` | From Step 1 prod setup |
+
+**Important:** For multi-line private keys in `ENV_FILE_DEV` and `ENV_FILE_PROD`, keep the `\n` characters intact:
+```
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvQI...\n-----END PRIVATE KEY-----\n"
+```
+
+---
+
+### Step 4: Deploy!
+
+#### Development Deployment (Automatic)
+
+Development deploys automatically when you push to the `main` branch:
 
 ```bash
 git add .
-git commit -m "feat: enable Workload Identity Federation"
+git commit -m "feat: your changes"
 git push origin main
 ```
+
+Watch the deployment in GitHub **Actions** tab → **Deploy to Development**
+
+#### Production Deployment (Manual)
+
+Production deployments are manual for safety:
+
+1. Go to your GitHub repository
+2. Click **Actions** tab
+3. Click **Deploy to Production** workflow
+4. Click **Run workflow** button
+5. Type `deploy` in the confirmation field
+6. Click **Run workflow**
+
+Watch the deployment progress in real-time!
 
 ---
 
 ## 📋 GitHub Secrets Checklist
 
-Here's the complete list of secrets you need to add to GitHub:
+### Development Environment
+- [ ] `ENV_FILE_DEV` - Complete .env file for development
+- [ ] `GCP_PROJECT_ID_DEV` - `storycare-dev-479511`
+- [ ] `GCP_SERVICE_ACCOUNT_DEV` - Service account email
+- [ ] `GCP_WORKLOAD_IDENTITY_PROVIDER_DEV` - Full WIF provider path
 
-### Core Secrets
-- [ ] `GCP_PROJECT_ID`
-- [ ] `GCP_SA_KEY` (Option A) OR `WIF_PROVIDER` + `WIF_SERVICE_ACCOUNT` (Option B)
-
-### Build-Time Environment Variables
-- [ ] `NEXT_PUBLIC_FIREBASE_API_KEY`
-- [ ] `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-- [ ] `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-- [ ] `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-- [ ] `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-- [ ] `NEXT_PUBLIC_FIREBASE_APP_ID`
-- [ ] `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`
-- [ ] `NEXT_PUBLIC_APP_URL`
-- [ ] `DATABASE_URL`
-
-### Optional (Monitoring)
-- [ ] `NEXT_PUBLIC_SENTRY_DSN`
-- [ ] `NEXT_PUBLIC_POSTHOG_KEY`
-- [ ] `NEXT_PUBLIC_POSTHOG_HOST`
-- [ ] `NEXT_PUBLIC_BETTER_STACK_SOURCE_TOKEN`
+### Production Environment
+- [ ] `ENV_FILE_PROD` - Complete .env file for production
+- [ ] `GCP_PROJECT_ID_PROD` - `storycare-478114`
+- [ ] `GCP_SERVICE_ACCOUNT_PROD` - Service account email
+- [ ] `GCP_WORKLOAD_IDENTITY_PROVIDER_PROD` - Full WIF provider path
 
 ---
 
@@ -266,49 +275,73 @@ Here's the complete list of secrets you need to add to GitHub:
 2. Click **Actions** tab
 3. Click on the latest workflow run
 4. Expand steps to see detailed logs
+5. Check the summary for deployment URL
 
-### Check Deployment URL
+### Check Service URLs
 
-The deployment URL will be shown in the workflow logs under the "Show deployment URL" step.
+After deployment, get your service URLs:
 
-### Manual Trigger
+```bash
+# Development
+gcloud run services describe storycare-app-dev \
+  --project=storycare-dev-479511 \
+  --region=us-central1 \
+  --format='value(status.url)'
 
-You can manually trigger a deployment:
-
-1. Go to **Actions** tab
-2. Click **Deploy to Cloud Run** workflow
-3. Click **Run workflow** button
-4. Select `main` branch
-5. Click **Run workflow**
+# Production
+gcloud run services describe storycare-app \
+  --project=storycare-478114 \
+  --region=us-central1 \
+  --format='value(status.url)'
+```
 
 ---
 
 ## 🔒 Security Best Practices
 
-### Service Account Key (Option A)
-- ✅ Never commit `GCP_SA_KEY` to git
-- ✅ Store only in GitHub Secrets
-- ✅ Rotate keys periodically (every 90 days)
-- ✅ Delete downloaded JSON files after adding to GitHub
-- ⚠️ Service account keys are long-lived credentials
-
-### Workload Identity Federation (Option B)
-- ✅ No long-lived credentials stored
+### Workload Identity Federation Benefits
+- ✅ No long-lived credentials stored in GitHub
 - ✅ Automatic credential rotation
+- ✅ Short-lived tokens only
 - ✅ More secure than service account keys
-- ✅ Recommended for production
-- ✅ Credentials are short-lived tokens
+- ✅ Google's recommended approach
 
 ### Additional Security
-- ✅ Use branch protection rules for `main` branch
+- ✅ Separate dev and prod projects (isolation)
+- ✅ Manual production deployments (control)
+- ✅ Confirmation required for prod (`deploy` keyword)
+- ✅ Environment-specific service accounts
+- ✅ Minimal required IAM roles
+- ✅ Repository owner verification in WIF
+
+### Recommended
+- ✅ Enable branch protection for `main` branch
 - ✅ Require pull request reviews before merging
 - ✅ Enable required status checks (CI must pass)
-- ✅ Use environment protection rules for production
 - ✅ Regularly audit service account permissions
+- ✅ Monitor deployment logs for anomalies
 
 ---
 
 ## 🐛 Troubleshooting
+
+### Error: "Workload Identity Federation failed"
+
+**Problem:** WIF not configured correctly.
+
+**Solution:**
+1. Verify provider name matches GitHub secret
+2. Check service account email is correct
+3. Ensure repository owner matches (`akbar904`)
+4. Confirm pool and provider names are correct
+
+```bash
+# Check WIF configuration for dev
+gcloud iam workload-identity-pools providers describe "github-actions-provider" \
+  --project="storycare-dev-479511" \
+  --location="global" \
+  --workload-identity-pool="github-actions-pool"
+```
 
 ### Error: "Permission denied"
 
@@ -316,76 +349,62 @@ You can manually trigger a deployment:
 
 **Solution:**
 ```bash
-# Re-grant permissions
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
+# Re-grant permissions (dev example)
+gcloud projects add-iam-policy-binding storycare-dev-479511 \
+  --member="serviceAccount:github-actions-dev@storycare-dev-479511.iam.gserviceaccount.com" \
   --role="roles/run.admin"
 ```
 
-### Error: "Invalid credentials"
+### Error: "Invalid ENV_FILE format"
 
-**Problem:** `GCP_SA_KEY` is malformed.
-
-**Solution:**
-1. Ensure you copied the entire JSON file contents
-2. No extra spaces or line breaks
-3. Should start with `{` and end with `}`
-
-### Error: "Secret not found"
-
-**Problem:** GitHub secret name doesn't match workflow.
+**Problem:** Multi-line secret formatting issue.
 
 **Solution:**
-1. Check secret names in GitHub Settings → Secrets
-2. Names are case-sensitive
-3. Must match exactly what's in the workflow YAML
+1. Ensure entire .env file is copied as-is
+2. Keep `\n` characters in private keys
+3. Don't add extra quotes or escaping
+4. Use GitHub's secret editor (paste entire file content)
 
-### Error: "Build argument not provided"
+### Error: "Health check failed"
 
-**Problem:** Missing build-time environment variable in GitHub Secrets.
-
-**Solution:**
-Add the missing secret to GitHub repository secrets.
-
-### Error: "Workload Identity Federation failed"
-
-**Problem:** WIF not configured correctly.
+**Problem:** Service isn't responding at `/api/health`.
 
 **Solution:**
-1. Verify provider name is correct
-2. Check service account email is correct
-3. Ensure repository owner condition matches (`akbar904`)
+1. Check Cloud Run logs in GCP Console
+2. Verify environment variables are correct
+3. Ensure database connectivity
+4. Check for startup errors in logs
 
----
+### Production Workflow Doesn't Run
 
-## 🆚 GitHub Actions vs Cloud Build
+**Problem:** Forgot to type `deploy` in confirmation field.
 
-You can use both! They serve different purposes:
-
-| Feature | GitHub Actions | Cloud Build |
-|---------|---------------|-------------|
-| **Trigger** | Push to GitHub | Push to GitHub or manual |
-| **Visibility** | In GitHub UI | In GCP Console |
-| **Secrets** | GitHub Secrets | GCP Secret Manager |
-| **Speed** | ~5-8 minutes | ~5-8 minutes |
-| **Cost** | 2,000 free min/month | 120 free min/day |
-| **Best for** | GitHub-centric teams | GCP-centric teams |
-
-**Recommendation:** Use GitHub Actions for better visibility and integration with your development workflow.
+**Solution:**
+Re-run workflow and type exactly `deploy` (case-sensitive) in the confirmation field.
 
 ---
 
 ## 📊 Workflow Features
 
-The GitHub Actions workflow includes:
+### Development Workflow
+- ✅ Automatic trigger on `main` push
+- ✅ Builds with `ENV_FILE_DEV`
+- ✅ Deploys to `storycare-app-dev`
+- ✅ Lower resource limits (0-10 instances)
+- ✅ NODE_ENV=development
+- ✅ Health check with retry
+- ✅ Deployment summary in GitHub
 
-- ✅ **Multi-stage Docker build** - Optimized image size
-- ✅ **Health checks** - Verifies deployment succeeded
-- ✅ **Automatic rollback** - If health check fails
-- ✅ **Environment variables** - From GitHub Secrets and GCP Secret Manager
-- ✅ **Deployment URL** - Shown in workflow logs
-- ✅ **Build caching** - Faster subsequent builds
-- ✅ **Manual trigger** - Deploy on-demand via GitHub UI
+### Production Workflow
+- ✅ Manual trigger only (workflow_dispatch)
+- ✅ Requires "deploy" confirmation
+- ✅ Builds with `ENV_FILE_PROD`
+- ✅ Deploys to `storycare-app`
+- ✅ Higher resource limits (1-100 instances)
+- ✅ NODE_ENV=production
+- ✅ Strict health checks (fails on error)
+- ✅ Timestamped image tags
+- ✅ Deployment notification
 
 ---
 
@@ -394,35 +413,43 @@ The GitHub Actions workflow includes:
 After GitHub Actions is working:
 
 1. **Set up branch protection:**
-   - Settings → Branches → Add rule
-   - Branch name pattern: `main`
+   - Settings → Branches → Add rule for `main`
    - Require pull request reviews
-   - Require status checks (CI must pass)
+   - Require status checks to pass
 
-2. **Enable environment protection:**
-   - Settings → Environments → New environment
-   - Name: `production`
-   - Add required reviewers
-   - Update workflow to use environment
+2. **Configure custom domains:**
+   - Set up custom domain in Cloud Run
+   - Update `NEXT_PUBLIC_APP_URL` in environment files
+   - Configure SSL certificates
 
-3. **Set up notifications:**
-   - Settings → Webhooks
-   - Add Slack/Discord webhook for deployment notifications
+3. **Set up monitoring:**
+   - Enable Cloud Run logging
+   - Configure error alerting in GCP
+   - Set up Sentry for error tracking
+   - Monitor PostHog analytics
 
-4. **Monitor costs:**
-   - GitHub Actions usage: Settings → Billing
-   - GCP costs: Cloud Console → Billing
+4. **Optimize resources:**
+   - Review Cloud Run instance counts
+   - Adjust memory/CPU based on usage
+   - Configure autoscaling parameters
 
 ---
 
 ## 📚 Additional Resources
 
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)
-- [Google Cloud Run GitHub Action](https://github.com/google-github-actions/deploy-cloudrun)
 - [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation)
+- [Cloud Run Documentation](https://cloud.google.com/run/docs)
 - [GitHub Actions Security](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions)
 
 ---
 
-**Last Updated:** 2025-01-15
-**Version:** 1.0.0
+## 🔄 Updating Environment Variables
+
+See `.github/DEPLOYMENT.md` for instructions on updating `ENV_FILE_DEV` and `ENV_FILE_PROD` secrets.
+
+---
+
+**Last Updated:** 2025-12-03
+**Version:** 2.0.0
+**Authors:** Development Team

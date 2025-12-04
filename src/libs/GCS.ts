@@ -1,4 +1,5 @@
 import { Storage } from '@google-cloud/storage';
+import { extractGcsPath as extractGcsPathUtil, isPresignedUrl as isPresignedUrlUtil } from '@/utils/GCSUtils';
 
 // Initialize GCS client with explicit credentials for signing
 // Cloud Run: Uses service account credentials
@@ -103,40 +104,9 @@ export async function listFiles(prefix: string): Promise<string[]> {
   return files.map(file => file.name);
 }
 
-/**
- * Extract GCS path from a full URL
- * Supports various GCS URL formats:
- * - https://storage.googleapis.com/bucket-name/path/to/file.jpg
- * - gs://bucket-name/path/to/file.jpg
- * - https://storage.cloud.google.com/bucket-name/path/to/file.jpg
- *
- * @param url - Full GCS URL or already a path
- * @returns GCS path or null if invalid
- */
-export function extractGcsPath(url: string | null | undefined): string | null {
-  if (!url) return null;
-
-  // If it's already a path (no protocol), return as-is
-  if (!url.startsWith('http') && !url.startsWith('gs://')) {
-    return url;
-  }
-
-  // Handle gs:// protocol
-  if (url.startsWith('gs://')) {
-    const match = url.match(/^gs:\/\/[^/]+\/(.+)$/);
-    return match ? match[1] || null : null;
-  }
-
-  // Handle https:// URLs from GCS
-  const storageMatch = url.match(/storage\.googleapis\.com\/[^/]+\/(.+)/);
-  if (storageMatch) return storageMatch[1] || null;
-
-  const cloudMatch = url.match(/storage\.cloud\.google\.com\/[^/]+\/(.+)/);
-  if (cloudMatch) return cloudMatch[1] || null;
-
-  // If no match, return null
-  return null;
-}
+// Re-export client-safe utilities from GCSUtils
+export const extractGcsPath = extractGcsPathUtil;
+export const isPresignedUrl = isPresignedUrlUtil;
 
 /**
  * Generate presigned URL for a single URL/path
@@ -152,15 +122,24 @@ export async function generatePresignedUrl(
 ): Promise<string | null> {
   if (!urlOrPath) return null;
 
-  // If it's already a signed URL (contains X-Goog-Signature), return as-is
-  if (urlOrPath.includes('X-Goog-Signature')) {
-    return urlOrPath;
+  // Decode URL in case it's been encoded multiple times
+  let decodedUrl = urlOrPath;
+  try {
+    decodedUrl = decodeURIComponent(urlOrPath);
+  } catch (e) {
+    // If decoding fails, use original
+    decodedUrl = urlOrPath;
   }
 
-  const path = extractGcsPath(urlOrPath);
+  // If it's already a signed URL (contains Google Cloud signature parameters), return as-is
+  if (isPresignedUrlUtil(decodedUrl)) {
+    return urlOrPath; // Return original (not decoded) to preserve signature
+  }
+
+  const path = extractGcsPath(decodedUrl);
   if (!path) {
     // If we can't extract a path, return original URL
-    console.warn(`[GCS] Could not extract path from URL: ${urlOrPath}`);
+    console.warn(`[GCS] Could not extract path from URL: ${decodedUrl}`);
     return urlOrPath;
   }
 

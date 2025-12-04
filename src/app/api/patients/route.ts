@@ -5,7 +5,7 @@
  */
 
 import type { NextRequest } from 'next/server';
-import { and, eq, ilike } from 'drizzle-orm';
+import { and, eq, ilike, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { Env } from '@/libs/Env';
@@ -36,7 +36,10 @@ export async function GET(request: NextRequest) {
     const therapistFirebaseUid = searchParams.get('therapistId');
 
     // Build query conditions
-    const conditions = [eq(users.role, 'patient')];
+    const conditions = [
+      eq(users.role, 'patient'),
+      isNull(users.deletedAt), // Exclude soft-deleted patients
+    ];
 
     // Organization boundary enforcement
     if (authUser.role === 'org_admin') {
@@ -117,7 +120,7 @@ export async function GET(request: NextRequest) {
  * - email: Patient email (required for invitation, optional otherwise)
  * - dateOfBirth: Patient date of birth (optional)
  * - referenceImageUrl: Patient avatar/reference image (optional)
- * - therapistId: Therapist Firebase UID (required)
+ * - therapistId: Therapist database ID (UUID) (required)
  * - welcomeMessage: Personal message from therapist (optional)
  * - sendInvitation: Whether to send invitation email (default: true if email provided)
  *
@@ -148,7 +151,7 @@ export async function POST(request: NextRequest) {
         role: users.role,
       })
       .from(users)
-      .where(eq(users.firebaseUid, validated.therapistId))
+      .where(eq(users.id, validated.therapistId))
       .limit(1);
 
     if (!therapist) {

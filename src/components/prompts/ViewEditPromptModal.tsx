@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedDelete, authenticatedPatch } from '@/utils/AuthenticatedFetch';
 import { JSONSchemaTreeView } from './JSONSchemaTreeView';
+import { PromptPreviewPanel } from './PromptPreviewPanel';
 
 type ViewEditPromptModalProps = {
   prompt: PromptTemplate;
@@ -64,6 +65,7 @@ export function ViewEditPromptModal({
   const [outputType, setOutputType] = useState<'text' | 'json'>((prompt.outputType as 'text' | 'json') || 'text');
   const [jsonSchema, setJsonSchema] = useState(prompt.jsonSchema || null);
   const [showJsonEditor, setShowJsonEditor] = useState(false);
+  const [activeTab, setActiveTab] = useState<'details' | 'preview'>('details');
 
   const handleSave = async () => {
     if (!name.trim() || !promptText.trim() || !category) {
@@ -173,8 +175,39 @@ export function ViewEditPromptModal({
             </button>
           </div>
 
+          {/* Tabs Navigation */}
+          {outputType === 'json' && jsonSchema && (
+            <div className="border-b border-gray-200 px-6">
+              <div className="flex space-x-4">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('details')}
+                  className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+                    activeTab === 'details'
+                      ? 'border-indigo-600 text-indigo-600'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  }`}
+                >
+                  Details
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('preview')}
+                  className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+                    activeTab === 'preview'
+                      ? 'border-indigo-600 text-indigo-600'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  }`}
+                >
+                  Preview
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Content */}
           <div className="p-6">
+            {activeTab === 'details' && (
             <div className="space-y-4">
               {/* Name */}
               <div>
@@ -393,6 +426,14 @@ export function ViewEditPromptModal({
                 </div>
               </div>
             </div>
+            )}
+
+            {/* Preview Tab */}
+            {activeTab === 'preview' && outputType === 'json' && jsonSchema && (
+              <div className="space-y-4">
+                <PromptPreviewPanel jsonString={JSON.stringify(jsonSchema, null, 2)} />
+              </div>
+            )}
           </div>
 
           {/* Footer */}

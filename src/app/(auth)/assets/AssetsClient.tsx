@@ -542,11 +542,6 @@ export function AssetsClient() {
     return `${Math.floor(diffSeconds / 3600)}h ago`;
   };
 
-  // Get counts by type
-  const videosCount = media.filter(m => m.mediaType === 'video').length;
-  const imagesCount = media.filter(m => m.mediaType === 'image').length;
-  const audioCount = media.filter(m => m.mediaType === 'audio').length;
-
   const selectedPatientData = patients.find(p => p.id === selectedPatient);
 
   // Empty state when no patients
@@ -742,33 +737,25 @@ export function AssetsClient() {
                 onClick={() => setFilterType('all')}
                 className={filterType === 'all' ? 'font-medium text-indigo-600' : 'text-gray-500 hover:text-gray-700'}
               >
-                All (
-                {media.length}
-                )
+                All
               </button>
               <button
                 onClick={() => setFilterType('video')}
                 className={filterType === 'video' ? 'font-medium text-indigo-600' : 'text-gray-500 hover:text-gray-700'}
               >
-                Videos (
-                {videosCount}
-                )
+                Videos
               </button>
               <button
                 onClick={() => setFilterType('image')}
                 className={filterType === 'image' ? 'font-medium text-indigo-600' : 'text-gray-500 hover:text-gray-700'}
               >
-                Images (
-                {imagesCount}
-                )
+                Images
               </button>
               <button
                 onClick={() => setFilterType('audio')}
                 className={filterType === 'audio' ? 'font-medium text-indigo-600' : 'text-gray-500 hover:text-gray-700'}
               >
-                Music (
-                {audioCount}
-                )
+                Music
               </button>
             </div>
           </div>
@@ -1549,6 +1536,8 @@ export function AssetsClient() {
             setShowGenerateImageModal(false);
           }}
           patients={patients}
+          user={user}
+          patientId={selectedPatient}
         />
       )}
 

@@ -4,11 +4,13 @@ import { Check, Image as ImageIcon, Loader2, Sparkles, User, X } from 'lucide-re
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { getAvailableImageModels } from '@/libs/ModelMetadata';
+import { authenticatedPost } from '@/utils/AuthenticatedFetch';
 
 type Patient = {
   id: string;
   name: string;
   avatarUrl?: string;
+  referenceImageUrl?: string; // For AI generation (priority)
 };
 
 type GenerateImageModalProps = {
@@ -16,12 +18,14 @@ type GenerateImageModalProps = {
   onClose: () => void;
   onGenerate: (imageUrl: string, prompt: string) => void;
   patients?: Patient[];
+  user: any;
+  patientId?: string; // Current patient ID (for assets page)
 };
 
 // Get models from centralized metadata (Atlas models appear first)
 const IMAGE_MODELS_RAW = getAvailableImageModels();
 
-// Convert to UI format with descriptions
+// Convert to UI format with descriptions (keep supportsReference flag)
 const IMAGE_MODELS = Object.entries(IMAGE_MODELS_RAW).reduce(
   (acc, [provider, models]) => {
     acc[provider] = models.map(m => ({
@@ -29,10 +33,11 @@ const IMAGE_MODELS = Object.entries(IMAGE_MODELS_RAW).reduce(
       name: m.label,
       description: m.label.includes('$') ? m.label : `${m.label} - High quality generation`,
       maxLength: 10000,
+      supportsReference: m.supportsReference,
     }));
     return acc;
   },
-  {} as Record<string, Array<{ id: string; name: string; description: string; maxLength: number }>>,
+  {} as Record<string, Array<{ id: string; name: string; description: string; maxLength: number; supportsReference: boolean }>>,
 );
 
 const IMAGE_SIZES = [
@@ -51,12 +56,15 @@ export function GenerateImageModal({
   onClose,
   onGenerate,
   patients = [],
+  user,
+  patientId,
 }: GenerateImageModalProps) {
   const [prompt, setPrompt] = useState('');
   const [selectedModel, setSelectedModel] = useState('flux-schnell'); // Atlas Cloud default
   const [selectedSize, setSelectedSize] = useState('1024x1024');
   const [selectedStyle, setSelectedStyle] = useState('vivid');
   const [selectedPatients, setSelectedPatients] = useState<string[]>([]);
+  const [uploadedReferenceImage, setUploadedReferenceImage] = useState<string | null>(null); // Base64 or URL
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +76,30 @@ export function GenerateImageModal({
         : [...prev, patientId],
     );
   };
+
+  const handleReferenceImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setUploadedReferenceImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Check if we have an actual reference image source (uploaded OR patient with image)
+  const selectedPatientWithAvatar = selectedPatients.length > 0
+    ? patients.find(p => p.id === selectedPatients[0])
+    : null;
+
+  // Check BOTH referenceImageUrl (priority) and avatarUrl (fallback)
+  const patientImageUrl = selectedPatientWithAvatar?.referenceImageUrl || selectedPatientWithAvatar?.avatarUrl;
+
+  const hasReferenceImage = uploadedReferenceImage !== null || !!patientImageUrl;
 
   const enhancePromptWithPatients = (basePrompt: string) => {
     if (selectedPatients.length === 0) {
@@ -94,16 +126,24 @@ export function GenerateImageModal({
     try {
       const enhancedPrompt = enhancePromptWithPatients(prompt);
 
-      const response = await fetch('/api/ai/generate-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: enhancedPrompt,
-          model: selectedModel,
-          size: selectedSize,
-          style: selectedStyle,
-          patientIds: selectedPatients,
-        }),
+      // Get reference image (from upload or first selected patient)
+      let referenceImage: string | undefined;
+      if (uploadedReferenceImage) {
+        referenceImage = uploadedReferenceImage;
+      } else if (selectedPatients.length > 0) {
+        const firstPatient = patients.find(p => p.id === selectedPatients[0]);
+        // Check both referenceImageUrl (priority) and avatarUrl (fallback)
+        referenceImage = firstPatient?.referenceImageUrl || firstPatient?.avatarUrl;
+      }
+
+      const response = await authenticatedPost('/api/ai/generate-image', user, {
+        prompt: enhancedPrompt,
+        model: selectedModel,
+        size: selectedSize,
+        style: selectedStyle,
+        patientId, // Pass the current patient ID
+        patientIds: selectedPatients, // Also pass selected patients for reference
+        referenceImage, // Pass reference image to API
       });
 
       const data = await response.json();
@@ -112,7 +152,14 @@ export function GenerateImageModal({
         throw new Error(data.error || 'Failed to generate image');
       }
 
-      setGeneratedImage(data.imageUrl);
+      console.log('[GenerateImageModal] Received image data:', {
+        hasMedia: !!data.media,
+        mediaUrlPreview: data.media?.mediaUrl ? `${data.media.mediaUrl.substring(0, 100)}...` : null,
+        isPresigned: data.media?.mediaUrl ? (data.media.mediaUrl.includes('X-Goog-Signature') || data.media.mediaUrl.includes('GoogleAccessId')) : false,
+      });
+
+      // API returns media object with mediaUrl
+      setGeneratedImage(data.media?.mediaUrl || null);
     } catch (err: any) {
       setError(err.message || 'Failed to generate image');
     } finally {
@@ -130,6 +177,7 @@ export function GenerateImageModal({
   const handleClose = () => {
     setPrompt('');
     setSelectedPatients([]);
+    setUploadedReferenceImage(null);
     setGeneratedImage(null);
     setError(null);
     onClose();
@@ -200,6 +248,77 @@ export function GenerateImageModal({
               </div>
             </div>
 
+            {/* Reference Image Upload */}
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-gray-700">
+                Reference Image (Optional)
+              </label>
+              <p className="text-xs text-gray-600">
+                {uploadedReferenceImage
+                  ? 'Using uploaded reference image'
+                  : patientImageUrl
+                    ? `Using ${selectedPatientWithAvatar?.name}'s image`
+                    : 'Upload a reference image for image-to-image generation'}
+              </p>
+              <div className="relative">
+                {uploadedReferenceImage
+                  ? (
+                      <div className="relative">
+                        <img
+                          src={uploadedReferenceImage}
+                          alt="Reference"
+                          className="h-32 w-full rounded-lg object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setUploadedReferenceImage(null)}
+                          className="absolute top-2 right-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )
+                  : patientImageUrl
+                    ? (
+                        <div className="relative">
+                          <img
+                            src={patientImageUrl}
+                            alt={`${selectedPatientWithAvatar!.name}'s reference`}
+                            className="h-32 w-full rounded-lg object-cover"
+                          />
+                          <div className="absolute bottom-2 left-2 rounded-md bg-black bg-opacity-70 px-2 py-1 text-xs text-white">
+                            {selectedPatientWithAvatar!.name}
+                          </div>
+                        </div>
+                      )
+                    : (
+                        <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-4 transition-colors hover:border-indigo-500">
+                          <ImageIcon className="mb-2 h-8 w-8 text-gray-400" />
+                          <span className="text-sm text-gray-600">Click to upload</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleReferenceImageUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+              </div>
+              {/* Show upload option even when patient is selected */}
+              {!uploadedReferenceImage && patientImageUrl && (
+                <label className="flex cursor-pointer items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 transition-colors hover:border-indigo-500 hover:bg-gray-50">
+                  <ImageIcon className="mr-2 h-4 w-4" />
+                  <span>Or upload a different reference image</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleReferenceImageUpload}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+
             {/* Reference Patients */}
             {patients.length > 0 && (
               <div className="space-y-3">
@@ -221,10 +340,10 @@ export function GenerateImageModal({
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
-                      {patient.avatarUrl
+                      {patient.referenceImageUrl || patient.avatarUrl
                         ? (
                             <img
-                              src={patient.avatarUrl}
+                              src={patient.referenceImageUrl || patient.avatarUrl}
                               alt={patient.name}
                               className="h-8 w-8 rounded-full object-cover"
                             />
@@ -243,6 +362,14 @@ export function GenerateImageModal({
                     </button>
                   ))}
                 </div>
+                {/* Show warning if patient selected but no image */}
+                {selectedPatients.length > 0 && !patientImageUrl && (
+                  <div className="rounded-md bg-yellow-50 p-3">
+                    <p className="text-xs text-yellow-800">
+                      <strong>Note:</strong> This patient doesn't have a reference image set. Image-to-image models won't be available. Please upload a reference image above or select a patient with an avatar.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -250,15 +377,29 @@ export function GenerateImageModal({
             <div className="space-y-3">
               <label className="block text-sm font-medium text-gray-700">
                 AI Model
+                {hasReferenceImage && (
+                  <span className="ml-2 text-xs text-indigo-600">(Showing image-to-image models only)</span>
+                )}
               </label>
               <div className="max-h-96 space-y-4 overflow-y-auto rounded-lg border border-gray-200 p-3">
-                {Object.entries(IMAGE_MODELS).map(([provider, models]) => (
-                  <div key={provider} className="space-y-2">
-                    <div className="text-xs font-semibold tracking-wide text-gray-500 uppercase">
-                      {provider}
-                    </div>
-                    <div className="space-y-2">
-                      {models.map(model => (
+                {Object.entries(IMAGE_MODELS).map(([provider, models]) => {
+                  // Filter models based on reference image
+                  const filteredModels = hasReferenceImage
+                    ? models.filter(m => m.supportsReference === true)
+                    : models;
+
+                  // Skip provider if no models match
+                  if (filteredModels.length === 0) {
+                    return null;
+                  }
+
+                  return (
+                    <div key={provider} className="space-y-2">
+                      <div className="text-xs font-semibold tracking-wide text-gray-500 uppercase">
+                        {provider}
+                      </div>
+                      <div className="space-y-2">
+                        {filteredModels.map(model => (
                         <button
                           key={model.id}
                           type="button"
@@ -272,10 +413,11 @@ export function GenerateImageModal({
                           <div className="font-medium text-gray-900">{model.name}</div>
                           <div className="text-xs text-gray-600">{model.description}</div>
                         </button>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -404,6 +546,13 @@ export function GenerateImageModal({
                   className="w-full"
                 >
                   Generate Another
+                </Button>
+                <Button
+                  onClick={handleClose}
+                  variant="secondary"
+                  className="w-full"
+                >
+                  Close
                 </Button>
               </div>
             )}

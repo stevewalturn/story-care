@@ -63,3 +63,5 @@ build-archive.log
 .env.example
 .env.production
 /admin_organizational_docs
+.env.dev
+.env.production

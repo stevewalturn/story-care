@@ -3,27 +3,31 @@
 /**
  * Organization Admin Templates Library
  * Manage organization reflection and survey templates + view system templates
+ * Redesigned to match Prompts Library UI pattern
  */
 
 import { Copy, FileText, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { CopyTemplateModal } from '@/components/templates/CopyTemplateModal';
 import { CreateTemplateModal } from '@/components/templates/CreateTemplateModal';
+import { EditTemplateModal } from '@/components/templates/EditTemplateModal';
 import { ViewTemplateDetailsModal } from '@/components/templates/ViewTemplateDetailsModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type TemplateType = 'all' | 'reflection' | 'survey';
-type TemplateCategory = 'all' | 'screening' | 'outcome' | 'satisfaction' | 'custom' | 'narrative' | 'emotion' | 'goal-setting';
-type ViewMode = 'my_templates' | 'system_templates';
+type TemplateCategory = 'screening' | 'outcome' | 'satisfaction' | 'custom' | 'narrative' | 'emotion' | 'goal-setting';
+type TemplateCategoryFilter = 'all' | TemplateCategory;
+type ActiveTab = 'my_templates' | 'system_templates';
+type TemplateScope = 'system' | 'organization' | 'private';
 
 type Template = {
   id: string;
   title: string;
   description: string | null;
-  category: string;
+  category: TemplateCategory;
   type: 'reflection' | 'survey';
-  scope: string;
+  scope: TemplateScope;
   questions: any[];
   useCount: number;
   createdAt: string;
@@ -31,10 +35,10 @@ type Template = {
 };
 
 export default function OrgAdminTemplatesPage() {
-  const { user, dbUser } = useAuth();
-  const [viewMode, setViewMode] = useState<ViewMode>('my_templates');
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<ActiveTab>('my_templates');
   const [activeType, setActiveType] = useState<TemplateType>('all');
-  const [activeCategory, setActiveCategory] = useState<TemplateCategory>('all');
+  const [activeCategory, setActiveCategory] = useState<TemplateCategoryFilter>('all');
   const [myTemplates, setMyTemplates] = useState<Template[]>([]);
   const [systemTemplates, setSystemTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +47,7 @@ export default function OrgAdminTemplatesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [viewingTemplate, setViewingTemplate] = useState<Template | null>(null);
   const [copyingTemplate, setCopyingTemplate] = useState<Template | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
 
   useEffect(() => {
     fetchTemplates();
@@ -75,8 +80,8 @@ export default function OrgAdminTemplatesPage() {
     }
   };
 
-  // Get current items based on view mode
-  const currentItems = viewMode === 'my_templates' ? myTemplates : systemTemplates;
+  // Get current items based on active tab
+  const currentItems = activeTab === 'my_templates' ? myTemplates : systemTemplates;
 
   // Filter templates
   const filteredTemplates = currentItems.filter((template) => {
@@ -88,24 +93,13 @@ export default function OrgAdminTemplatesPage() {
     return matchesType && matchesCategory && matchesSearch;
   });
 
-  // Get counts
-  const getTypeCount = (type: TemplateType) => {
-    if (type === 'all') return currentItems.length;
-    return currentItems.filter(t => t.type === type).length;
-  };
-
-  const getCategoryCount = (category: TemplateCategory) => {
-    if (category === 'all') return currentItems.length;
-    return currentItems.filter(t => t.category === category).length;
-  };
-
   const typeOptions: { id: TemplateType; label: string }[] = [
-    { id: 'all', label: 'All Templates' },
+    { id: 'all', label: 'All Types' },
     { id: 'reflection', label: 'Reflection' },
     { id: 'survey', label: 'Survey' },
   ];
 
-  const categoryOptions: { id: TemplateCategory; label: string }[] = [
+  const categoryOptions: { id: TemplateCategoryFilter; label: string }[] = [
     { id: 'all', label: 'All Categories' },
     { id: 'narrative', label: 'Narrative' },
     { id: 'emotion', label: 'Emotion' },
@@ -119,140 +113,96 @@ export default function OrgAdminTemplatesPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="mx-auto max-w-7xl">
-        {/* Header */}
+        {/* Header - No action button */}
         <div className="mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600">
-                <FileText className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Templates Library</h1>
-                <p className="text-sm text-gray-600">Manage reflection and survey question templates</p>
-              </div>
+          <div className="flex items-start">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100">
+              <FileText className="h-6 w-6 text-indigo-600" />
             </div>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-              type="button"
-            >
-              <Plus className="h-4 w-4" />
-              Create Template
-            </button>
+            <div className="ml-4">
+              <h1 className="text-2xl font-bold text-gray-900">Templates Library</h1>
+              <p className="text-sm text-gray-600">Manage reflection and survey question templates</p>
+            </div>
           </div>
         </div>
 
-        {/* View Mode Tabs */}
-        <div className="mb-6 flex gap-2 overflow-x-auto border-b border-gray-200">
+        {/* Single Tab Row - Following Prompts Pattern */}
+        <div className="mb-6 flex gap-2 border-b border-gray-200">
           <button
-            onClick={() => setViewMode('my_templates')}
-            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
-              viewMode === 'my_templates'
+            onClick={() => setActiveTab('my_templates')}
+            className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+              activeTab === 'my_templates'
                 ? 'border-indigo-600 text-indigo-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
             }`}
             type="button"
           >
             My Templates
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs ${
-                viewMode === 'my_templates'
-                  ? 'bg-indigo-100 text-indigo-600'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              {myTemplates.length}
-            </span>
           </button>
           <button
-            onClick={() => setViewMode('system_templates')}
-            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
-              viewMode === 'system_templates'
+            onClick={() => setActiveTab('system_templates')}
+            className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+              activeTab === 'system_templates'
                 ? 'border-indigo-600 text-indigo-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
             }`}
             type="button"
           >
-            <Copy className="h-4 w-4" />
             System Templates
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs ${
-                viewMode === 'system_templates'
-                  ? 'bg-indigo-100 text-indigo-600'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              {systemTemplates.length}
-            </span>
           </button>
         </div>
 
-        {/* Type Tabs */}
-        <div className="mb-6 flex gap-2 overflow-x-auto border-b border-gray-200">
-          {typeOptions.map(type => (
-            <button
-              key={type.id}
-              onClick={() => setActiveType(type.id)}
-              className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
-                activeType === type.id
-                  ? 'border-indigo-600 text-indigo-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-              type="button"
-            >
-              {type.label}
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs ${
-                  activeType === type.id
-                    ? 'bg-indigo-100 text-indigo-600'
-                    : 'bg-gray-100 text-gray-600'
-                }`}
-              >
-                {getTypeCount(type.id)}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {/* Category Tabs */}
-        <div className="mb-6 flex gap-2 overflow-x-auto border-b border-gray-200">
-          {categoryOptions.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
-                activeCategory === cat.id
-                  ? 'border-purple-600 text-purple-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-              type="button"
-            >
-              {cat.label}
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs ${
-                  activeCategory === cat.id
-                    ? 'bg-purple-100 text-purple-600'
-                    : 'bg-gray-100 text-gray-600'
-                }`}
-              >
-                {getCategoryCount(cat.id)}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {/* Search */}
-        <div className="mb-6">
-          <div className="relative max-w-md">
+        {/* Unified Controls Row - Following Prompts Pattern */}
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          {/* Search - flex-1 */}
+          <div className="relative max-w-md flex-1">
             <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder={viewMode === 'my_templates' ? 'Search my templates...' : 'Search system templates...'}
+              placeholder={activeTab === 'my_templates' ? 'Search my templates...' : 'Search system templates...'}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-9 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
             />
           </div>
+
+          {/* Type Filter Dropdown */}
+          <select
+            value={activeType}
+            onChange={e => setActiveType(e.target.value as TemplateType)}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+          >
+            {typeOptions.map(type => (
+              <option key={type.id} value={type.id}>
+                {type.label}
+              </option>
+            ))}
+          </select>
+
+          {/* Category Filter Dropdown */}
+          <select
+            value={activeCategory}
+            onChange={e => setActiveCategory(e.target.value as TemplateCategory)}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+          >
+            {categoryOptions.map(cat => (
+              <option key={cat.id} value={cat.id}>
+                {cat.label}
+              </option>
+            ))}
+          </select>
+
+          {/* Contextual Create Button - Only show in My Templates tab */}
+          {activeTab === 'my_templates' && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 whitespace-nowrap"
+              type="button"
+            >
+              <Plus className="h-4 w-4" />
+              Create Template
+            </button>
+          )}
         </div>
 
         {/* Content */}
@@ -270,10 +220,10 @@ export default function OrgAdminTemplatesPage() {
             <h3 className="mb-1 text-lg font-semibold text-gray-900">No templates found</h3>
             <p className="text-sm text-gray-600">
               {searchQuery
-                ? 'Try adjusting your search'
-                : viewMode === 'my_templates'
+                ? 'Try adjusting your search or filters'
+                : activeTab === 'my_templates'
                   ? 'Create your first template to get started'
-                  : 'No system templates available in this category'}
+                  : 'No system templates available with the current filters'}
             </p>
           </div>
         ) : (
@@ -282,14 +232,10 @@ export default function OrgAdminTemplatesPage() {
               <TemplateCard
                 key={template.id}
                 template={template}
+                activeTab={activeTab}
                 onView={() => setViewingTemplate(template)}
-                onEdit={viewMode === 'my_templates' ? () => {
-                  // TODO: Edit modal
-                  console.log('Edit template:', template.id);
-                } : undefined}
-                onCopy={viewMode === 'system_templates' ? () => setCopyingTemplate(template) : undefined}
-                isSystemTemplate={viewMode === 'system_templates'}
-                isSuperAdmin={dbUser?.role === 'super_admin'}
+                onEdit={activeTab === 'my_templates' ? () => setEditingTemplate(template) : undefined}
+                onCopy={activeTab === 'system_templates' ? () => setCopyingTemplate(template) : undefined}
               />
             ))}
           </div>
@@ -313,9 +259,11 @@ export default function OrgAdminTemplatesPage() {
         <ViewTemplateDetailsModal
           template={viewingTemplate}
           scopeLabel={
-            viewingTemplate.scope === 'organization'
-              ? 'Organization'
-              : 'System'
+            viewingTemplate.scope === 'system'
+              ? 'System'
+              : viewingTemplate.scope === 'organization'
+                ? 'Organization'
+                : 'Private'
           }
           onClose={() => setViewingTemplate(null)}
         />
@@ -332,23 +280,34 @@ export default function OrgAdminTemplatesPage() {
           }}
         />
       )}
+
+      {/* Edit Template Modal */}
+      {editingTemplate && (
+        <EditTemplateModal
+          template={editingTemplate}
+          onClose={() => setEditingTemplate(null)}
+          onUpdated={() => {
+            setEditingTemplate(null);
+            fetchTemplates();
+          }}
+        />
+      )}
     </div>
   );
 }
 
 /**
- * Template Card Component
+ * Template Card Component - Simplified Design
  */
 type TemplateCardProps = {
   template: Template;
+  activeTab: ActiveTab;
   onView: () => void;
   onEdit?: () => void;
   onCopy?: () => void;
-  isSystemTemplate?: boolean;
-  isSuperAdmin?: boolean;
 };
 
-function TemplateCard({ template, onView, onEdit, onCopy, isSystemTemplate, isSuperAdmin }: TemplateCardProps) {
+function TemplateCard({ template, activeTab, onView, onEdit, onCopy }: TemplateCardProps) {
   const categoryColors: Record<string, string> = {
     'narrative': 'bg-purple-100 text-purple-700',
     'emotion': 'bg-pink-100 text-pink-700',
@@ -359,42 +318,30 @@ function TemplateCard({ template, onView, onEdit, onCopy, isSystemTemplate, isSu
     'custom': 'bg-gray-100 text-gray-700',
   };
 
-  // Category-specific card border colors for visual differentiation
-  const categoryBorderColors: Record<string, string> = {
-    'narrative': 'border-l-4 border-l-purple-500',
-    'emotion': 'border-l-4 border-l-pink-500',
-    'screening': 'border-l-4 border-l-blue-500',
-    'outcome': 'border-l-4 border-l-green-500',
-    'satisfaction': 'border-l-4 border-l-yellow-500',
-    'goal-setting': 'border-l-4 border-l-orange-500',
-    'custom': 'border-l-4 border-l-gray-500',
+  // Format category name for display
+  const formatCategoryName = (category: string) => {
+    return category
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   };
 
   return (
-    <div className={`rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md ${categoryBorderColors[template.category] || ''}`}>
+    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
       {/* Header */}
       <div className="mb-3 flex items-start justify-between">
         <div className="flex-1">
           <h3 className="font-semibold text-gray-900">{template.title}</h3>
-          <div className="mt-1 flex items-center gap-2">
-            <span
-              className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                template.type === 'reflection'
-                  ? 'bg-indigo-100 text-indigo-700'
-                  : 'bg-green-100 text-green-700'
-              }`}
-            >
-              {template.type}
-            </span>
+          <div className="mt-2 flex items-center gap-2">
             <span
               className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
                 categoryColors[template.category] || 'bg-gray-100 text-gray-700'
               }`}
             >
-              {template.category}
+              {formatCategoryName(template.category)}
             </span>
             <span className="text-xs text-gray-500">
-              {isSystemTemplate ? 'System' : 'Organization'}
+              {template.scope === 'system' ? 'System' : template.scope === 'organization' ? 'Organization' : 'Private'}
             </span>
           </div>
         </div>
@@ -408,47 +355,53 @@ function TemplateCard({ template, onView, onEdit, onCopy, isSystemTemplate, isSu
       )}
 
       {/* Metadata */}
-      <div className="mb-4 space-y-1 text-xs text-gray-500">
+      <div className="mb-4 flex items-center gap-4 text-xs text-gray-500">
         <div>
-          Questions:
-          {template.questions?.length || 0}
+          <span className="font-medium text-gray-700">{template.type === 'reflection' ? 'Reflection' : 'Survey'}</span>
         </div>
-        {isSuperAdmin && (
-          <div>
-            Used:
-            {template.useCount}
-            {' '}
-            times
-          </div>
-        )}
+        <div>
+          {template.questions?.length || 0}
+          {' '}
+          questions
+        </div>
+        <div>
+          Used:
+          {' '}
+          {template.useCount}
+          x
+        </div>
       </div>
 
-      {/* Actions */}
+      {/* Conditional Actions Based on Active Tab */}
       <div className="flex gap-2">
-        <button
-          onClick={onView}
-          className="flex-1 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
-          type="button"
-        >
-          View Details
-        </button>
-        {onEdit && (
-          <button
-            onClick={onEdit}
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-            type="button"
-          >
-            Edit
-          </button>
+        {activeTab === 'my_templates' && (
+          <>
+            <button
+              onClick={onView}
+              className="flex-1 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+              type="button"
+            >
+              View Details
+            </button>
+            {onEdit && (
+              <button
+                onClick={onEdit}
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                type="button"
+              >
+                Edit
+              </button>
+            )}
+          </>
         )}
-        {onCopy && (
+        {activeTab === 'system_templates' && onCopy && (
           <button
             onClick={onCopy}
-            className="flex items-center justify-center gap-1 rounded-lg border border-purple-300 bg-purple-50 px-3 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100"
+            className="flex w-full items-center justify-center gap-1 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
             type="button"
           >
             <Copy className="h-3 w-3" />
-            Copy
+            Copy to My Templates
           </button>
         )}
       </div>

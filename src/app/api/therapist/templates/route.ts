@@ -1,7 +1,7 @@
 /**
  * Therapist Templates API
- * GET: Fetch private + organization + system templates
- * POST: Create new private template
+ * GET: Fetch private + organization + system templates (therapist & org_admin)
+ * POST: Create new template (private for therapist, organization for org_admin)
  */
 
 import { eq, or } from 'drizzle-orm';
@@ -25,12 +25,12 @@ export async function GET(request: Request) {
     const decodedToken = await verifyIdToken(token);
     const firebaseUid = decodedToken.uid;
 
-    // Get user and verify therapist role
+    // Get user and verify therapist or org_admin role
     const user = await db.query.usersSchema.findFirst({
       where: eq(usersSchema.firebaseUid, firebaseUid),
     });
 
-    if (!user || user.role !== 'therapist') {
+    if (!user || (user.role !== 'therapist' && user.role !== 'org_admin')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -123,12 +123,12 @@ export async function POST(request: Request) {
     const decodedToken = await verifyIdToken(token);
     const firebaseUid = decodedToken.uid;
 
-    // Get user and verify therapist role
+    // Get user and verify therapist or org_admin role
     const user = await db.query.usersSchema.findFirst({
       where: eq(usersSchema.firebaseUid, firebaseUid),
     });
 
-    if (!user || user.role !== 'therapist') {
+    if (!user || (user.role !== 'therapist' && user.role !== 'org_admin')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -143,12 +143,13 @@ export async function POST(request: Request) {
     }
 
     // Create template in appropriate table
+    // Set scope based on user role: organization for org_admins, private for therapists
     const templateData = {
       title,
       description: description || null,
       category: category || 'custom',
       questions,
-      scope: 'private' as const,
+      scope: (user.role === 'org_admin' ? 'organization' : 'private') as 'organization' | 'private',
       organizationId: user.organizationId,
       createdBy: user.id,
       status: 'active' as const,

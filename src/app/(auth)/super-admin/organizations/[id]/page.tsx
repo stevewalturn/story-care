@@ -5,7 +5,7 @@
 
 'use client';
 
-import { ArrowLeft, Building2, Calendar, Edit2, Key, Mail, Trash2, Users } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar, Edit2, Mail, Send, Users } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
@@ -25,7 +25,6 @@ type OrganizationDetails = {
   slug: string;
   contactEmail: string;
   status: 'active' | 'suspended';
-  joinCode: string;
   createdAt: string;
   updatedAt: string;
   admins: OrganizationAdmin[];
@@ -45,6 +44,10 @@ export default function OrganizationDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [showResendModal, setShowResendModal] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<OrganizationAdmin | null>(null);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     contactEmail: '',
@@ -117,30 +120,47 @@ export default function OrganizationDetailPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this organization? This action cannot be undone.')) {
+  const handleResendInvitation = async () => {
+    if (!selectedAdmin)
       return;
-    }
+
+    setResendLoading(true);
+    setError('');
+    setSuccessMessage('');
 
     try {
       const idToken = await user?.getIdToken();
-      const response = await fetch(`/api/organizations/${params.id}`, {
-        method: 'DELETE',
+      const response = await fetch(`/api/org-admins/${selectedAdmin.id}/resend-invitation`, {
+        method: 'POST',
         headers: {
           Authorization: `Bearer ${idToken}`,
         },
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        router.push('/super-admin/organizations');
+        setSuccessMessage(`Invitation email resent successfully to ${selectedAdmin.email}`);
+        setShowResendModal(false);
+        setSelectedAdmin(null);
       } else {
-        const data = await response.json();
-        setError(data.error || 'Failed to delete organization');
+        setError(data.error || 'Failed to resend invitation');
+        setShowResendModal(false);
       }
     } catch (err) {
-      setError('Error deleting organization');
+      setError('Error resending invitation');
       console.error(err);
+      setShowResendModal(false);
+    } finally {
+      setResendLoading(false);
     }
+  };
+
+  const openResendModal = (admin: OrganizationAdmin) => {
+    setSelectedAdmin(admin);
+    setShowResendModal(true);
+    setError('');
+    setSuccessMessage('');
   };
 
   if (loading) {
@@ -189,24 +209,21 @@ export default function OrganizationDetailPage() {
 
           <div className="flex gap-2">
             {!isEditing && (
-              <>
-                <Button variant="secondary" onClick={() => setIsEditing(true)}>
-                  <Edit2 className="mr-2 h-4 w-4" />
-                  Edit
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={handleDelete}
-                  className="border-red-200 text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </Button>
-              </>
+              <Button variant="secondary" onClick={() => setIsEditing(true)}>
+                <Edit2 className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
             )}
           </div>
         </div>
       </div>
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-green-700">
+          {successMessage}
+        </div>
+      )}
 
       {/* Error Message */}
       {error && (
@@ -350,29 +367,56 @@ export default function OrganizationDetailPage() {
                       <dd className="mt-1 space-y-2">
                         {organization.admins && organization.admins.length > 0
                           ? (
-                              organization.admins.map(admin => (
-                                <div key={admin.id} className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 p-2">
-                                  <div>
-                                    <div className="flex items-center text-sm font-medium text-gray-900">
-                                      <Mail className="mr-2 h-4 w-4 text-gray-400" />
-                                      {admin.email}
+                              organization.admins.map((admin) => (
+                                  <div key={admin.id} className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 p-2">
+                                    <div className="flex-1">
+                                      <div className="flex items-center text-sm font-medium text-gray-900">
+                                        <Mail className="mr-2 h-4 w-4 text-gray-400" />
+                                        {admin.email}
+                                      </div>
+                                      <div className="ml-6 text-xs text-gray-600">
+                                        {admin.name}
+                                      </div>
                                     </div>
-                                    <div className="ml-6 text-xs text-gray-600">
-                                      {admin.name}
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                          admin.status === 'active'
+                                            ? 'bg-green-100 text-green-700'
+                                            : admin.status === 'pending_approval'
+                                              ? 'bg-yellow-100 text-yellow-700'
+                                              : admin.status === 'invited'
+                                                ? 'bg-blue-100 text-blue-700'
+                                                : admin.status === 'suspended'
+                                                  ? 'bg-red-100 text-red-700'
+                                                  : 'bg-gray-100 text-gray-700'
+                                        }`}
+                                        title={
+                                          admin.status === 'active'
+                                            ? 'User has completed account setup and can access the platform'
+                                            : admin.status === 'invited'
+                                              ? 'User has been sent an invitation email but hasn\'t set up their account yet'
+                                              : admin.status === 'pending_approval'
+                                                ? 'User has submitted for approval and is awaiting admin review'
+                                                : admin.status === 'suspended'
+                                                  ? 'User account has been temporarily disabled'
+                                                  : 'Unknown status'
+                                        }
+                                      >
+                                        {admin.status === 'pending_approval' ? 'Pending' : admin.status}
+                                      </span>
+                                      {admin.status === 'invited' && (
+                                        <button
+                                          type="button"
+                                          onClick={() => openResendModal(admin)}
+                                          className="rounded-md p-1.5 text-indigo-600 transition-colors hover:bg-indigo-50"
+                                          title="Resend invitation email"
+                                        >
+                                          <Send className="h-4 w-4" />
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
-                                  <span
-                                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                                      admin.status === 'active'
-                                        ? 'bg-green-100 text-green-700'
-                                        : admin.status === 'pending_approval'
-                                          ? 'bg-yellow-100 text-yellow-700'
-                                          : 'bg-gray-100 text-gray-700'
-                                    }`}
-                                  >
-                                    {admin.status === 'pending_approval' ? 'Pending' : admin.status}
-                                  </span>
-                                </div>
                               ))
                             )
                           : (
@@ -384,12 +428,24 @@ export default function OrganizationDetailPage() {
                     </div>
 
                     <div>
-                      <dt className="text-sm font-medium text-gray-500">Join Code</dt>
-                      <dd className="mt-1 flex items-center text-sm text-gray-900">
-                        <Key className="mr-2 h-4 w-4 text-gray-400" />
-                        <code className="rounded bg-gray-100 px-2 py-1 font-mono text-xs">
-                          {organization.joinCode}
-                        </code>
+                      <dt className="text-sm font-medium text-gray-500">Status</dt>
+                      <dd className="mt-1">
+                        {organization.status === 'active' && (
+                          <span
+                            className="inline-flex items-center rounded-full border border-green-200 bg-green-100 px-3 py-1 text-xs font-medium text-green-700"
+                            title="Organization is active and operational"
+                          >
+                            Active
+                          </span>
+                        )}
+                        {organization.status === 'suspended' && (
+                          <span
+                            className="inline-flex items-center rounded-full border border-red-200 bg-red-100 px-3 py-1 text-xs font-medium text-red-700"
+                            title="Organization has been temporarily suspended"
+                          >
+                            Suspended
+                          </span>
+                        )}
                       </dd>
                     </div>
 
@@ -453,12 +509,18 @@ export default function OrganizationDetailPage() {
             </h2>
             <div className="flex items-center">
               {organization.status === 'active' && (
-                <span className="inline-flex items-center rounded-full border border-green-200 bg-green-100 px-3 py-1 text-sm font-medium text-green-700">
+                <span
+                  className="inline-flex items-center rounded-full border border-green-200 bg-green-100 px-3 py-1 text-sm font-medium text-green-700"
+                  title="Organization is active and operational"
+                >
                   Active
                 </span>
               )}
               {organization.status === 'suspended' && (
-                <span className="inline-flex items-center rounded-full border border-red-200 bg-red-100 px-3 py-1 text-sm font-medium text-red-700">
+                <span
+                  className="inline-flex items-center rounded-full border border-red-200 bg-red-100 px-3 py-1 text-sm font-medium text-red-700"
+                  title="Organization has been temporarily suspended"
+                >
                   Suspended
                 </span>
               )}
@@ -466,6 +528,45 @@ export default function OrganizationDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Resend Invitation Confirmation Modal */}
+      {showResendModal && selectedAdmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <h3 className="mb-4 text-lg font-semibold text-gray-900">
+              Resend Invitation?
+            </h3>
+            <p className="mb-2 text-sm text-gray-700">
+              Are you sure you want to resend the invitation email to:
+            </p>
+            <div className="mb-6 rounded-md border border-gray-200 bg-gray-50 p-3">
+              <p className="text-sm font-medium text-gray-900">{selectedAdmin.name}</p>
+              <p className="text-xs text-gray-600">{selectedAdmin.email}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="primary"
+                onClick={handleResendInvitation}
+                disabled={resendLoading}
+                className="flex-1"
+              >
+                {resendLoading ? 'Sending...' : 'Yes, Resend'}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowResendModal(false);
+                  setSelectedAdmin(null);
+                }}
+                disabled={resendLoading}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

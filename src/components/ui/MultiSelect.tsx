@@ -119,13 +119,21 @@ export function MultiSelect({
                     >
                       {option.label}
                       {!disabled && (
-                        <button
-                          type="button"
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Remove ${option.label}`}
                           onClick={e => handleRemoveOption(option.value, e)}
-                          className="rounded hover:bg-indigo-200"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleRemoveOption(option.value, e as any);
+                            }
+                          }}
+                          className="rounded hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 cursor-pointer"
                         >
                           <X className="h-3 w-3" />
-                        </button>
+                        </span>
                       )}
                     </span>
                   ))}

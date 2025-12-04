@@ -19,6 +19,7 @@ type Patient = {
 };
 
 type Therapist = {
+  id: string;
   firebaseUid: string;
   name: string;
   patientCount: number;
@@ -51,7 +52,7 @@ export default function PatientsPage() {
 
     try {
       setLoading(true);
-      const response = await authenticatedFetch(`/api/patients?therapistId=${user.uid}`, user);
+      const response = await authenticatedFetch('/api/patients', user);
       if (response.ok) {
         const data = await response.json();
         setPatients(data.patients || []);

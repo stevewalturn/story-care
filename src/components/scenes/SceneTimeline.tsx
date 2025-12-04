@@ -489,15 +489,17 @@ export function SceneTimeline({
                 return (
                   <div key={track.id}>
                     {/* Hidden audio element */}
-                    <audio
-                      ref={(el) => {
-                        if (el) {
-                          audioRefs.current.set(track.id, el);
-                        }
-                      }}
-                      src={track.audioUrl}
-                      onEnded={() => setPlayingAudioId(null)}
-                    />
+                    {track.audioUrl && (
+                      <audio
+                        ref={(el) => {
+                          if (el) {
+                            audioRefs.current.set(track.id, el);
+                          }
+                        }}
+                        src={track.audioUrl}
+                        onEnded={() => setPlayingAudioId(null)}
+                      />
+                    )}
 
                     <div
                       onClick={(e) => {

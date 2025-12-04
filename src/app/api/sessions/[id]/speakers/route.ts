@@ -2,7 +2,8 @@ import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { speakers, transcripts } from '@/models/Schema';
+import { generatePresignedUrl } from '@/libs/GCS';
+import { speakers, transcripts, users } from '@/models/Schema';
 
 // GET /api/sessions/[id]/speakers - Get speakers for a session
 export async function GET(
@@ -23,13 +24,40 @@ export async function GET(
       return NextResponse.json({ speakers: [] });
     }
 
+    // Fetch speakers with user avatar data
     const speakersList = await db
-      .select()
+      .select({
+        id: speakers.id,
+        transcriptId: speakers.transcriptId,
+        speakerLabel: speakers.speakerLabel,
+        speakerType: speakers.speakerType,
+        speakerName: speakers.speakerName,
+        userId: speakers.userId,
+        totalUtterances: speakers.totalUtterances,
+        totalDurationSeconds: speakers.totalDurationSeconds,
+        createdAt: speakers.createdAt,
+        userAvatarUrl: users.avatarUrl,
+      })
       .from(speakers)
+      .leftJoin(users, eq(speakers.userId, users.id))
       .where(eq(speakers.transcriptId, transcript.id))
       .orderBy(speakers.speakerLabel);
 
-    return NextResponse.json({ speakers: speakersList });
+    // Generate presigned URLs for avatars
+    const speakersWithSignedUrls = await Promise.all(
+      speakersList.map(async (speaker) => {
+        const signedAvatarUrl = speaker.userAvatarUrl
+          ? await generatePresignedUrl(speaker.userAvatarUrl, 1).catch(() => null)
+          : null;
+
+        return {
+          ...speaker,
+          avatarUrl: signedAvatarUrl || speaker.userAvatarUrl,
+        };
+      }),
+    );
+
+    return NextResponse.json({ speakers: speakersWithSignedUrls });
   } catch (error) {
     console.error('Error fetching speakers:', error);
     return NextResponse.json(
@@ -92,14 +120,40 @@ export async function PUT(
       );
     }
 
-    // Fetch updated speakers
+    // Fetch updated speakers with avatar data
     const updatedSpeakers = await db
-      .select()
+      .select({
+        id: speakers.id,
+        transcriptId: speakers.transcriptId,
+        speakerLabel: speakers.speakerLabel,
+        speakerType: speakers.speakerType,
+        speakerName: speakers.speakerName,
+        userId: speakers.userId,
+        totalUtterances: speakers.totalUtterances,
+        totalDurationSeconds: speakers.totalDurationSeconds,
+        createdAt: speakers.createdAt,
+        userAvatarUrl: users.avatarUrl,
+      })
       .from(speakers)
+      .leftJoin(users, eq(speakers.userId, users.id))
       .where(eq(speakers.transcriptId, transcript.id))
       .orderBy(speakers.speakerLabel);
 
-    return NextResponse.json({ speakers: updatedSpeakers });
+    // Generate presigned URLs for avatars
+    const speakersWithSignedUrls = await Promise.all(
+      updatedSpeakers.map(async (speaker) => {
+        const signedAvatarUrl = speaker.userAvatarUrl
+          ? await generatePresignedUrl(speaker.userAvatarUrl, 1).catch(() => null)
+          : null;
+
+        return {
+          ...speaker,
+          avatarUrl: signedAvatarUrl || speaker.userAvatarUrl,
+        };
+      }),
+    );
+
+    return NextResponse.json({ speakers: speakersWithSignedUrls });
   } catch (error) {
     console.error('Error saving speakers:', error);
     return NextResponse.json(

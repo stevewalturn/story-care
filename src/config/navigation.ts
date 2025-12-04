@@ -87,12 +87,6 @@ export const navigationConfig: NavigationConfig = {
       icon: ClipboardList,
       description: 'Security and access logs',
     },
-    {
-      name: 'System Settings',
-      href: '/super-admin/settings',
-      icon: Settings,
-      description: 'Platform configuration',
-    },
   ],
 
   /**

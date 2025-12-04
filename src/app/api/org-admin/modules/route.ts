@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
       const { module: newModule, copiedFrom } = await copyTemplateToOrg(
         body.copyFromTemplateId,
         user.organizationId,
-        user.uid,
+        user.dbUserId,
         body.name, // Pass custom name if provided
       );
 

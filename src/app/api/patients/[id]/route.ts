@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { logPHIAccess } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
@@ -21,7 +21,10 @@ export async function GET(
     const [patient] = await db
       .select()
       .from(users)
-      .where(eq(users.id, id))
+      .where(and(
+        eq(users.id, id),
+        isNull(users.deletedAt), // Exclude soft-deleted patients
+      ))
       .limit(1);
 
     if (!patient) {
@@ -56,7 +59,7 @@ export async function PUT(
     const user = await requirePatientAccess(request, id);
 
     const body = await request.json();
-    const { name, email, referenceImageUrl, avatarUrl } = body;
+    const { name, email, referenceImageUrl, avatarUrl, therapistId } = body;
 
     // Build update object with only provided fields that exist in schema
     // Note: phone and notes fields don't exist in the users table
@@ -73,13 +76,49 @@ export async function PUT(
     if (avatarUrl !== undefined) {
       updateData.avatarUrl = avatarUrl;
     }
+    if (therapistId !== undefined) {
+      // Validate therapist exists and belongs to the same organization (for org_admin)
+      if (therapistId !== null && therapistId !== '') {
+        const [therapist] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, therapistId))
+          .limit(1);
+
+        if (!therapist) {
+          return NextResponse.json(
+            { error: 'Therapist not found' },
+            { status: 400 },
+          );
+        }
+
+        if (therapist.role !== 'therapist') {
+          return NextResponse.json(
+            { error: 'Selected user is not a therapist' },
+            { status: 400 },
+          );
+        }
+
+        // For org_admin, ensure therapist is in the same organization
+        if (user.role === 'org_admin' && therapist.organizationId !== user.organizationId) {
+          return NextResponse.json(
+            { error: 'Cannot assign patient to therapist from different organization' },
+            { status: 403 },
+          );
+        }
+      }
+      updateData.therapistId = therapistId || null;
+    }
 
     updateData.updatedAt = new Date();
 
     const [updatedPatient] = await db
       .update(users)
       .set(updateData)
-      .where(eq(users.id, id))
+      .where(and(
+        eq(users.id, id),
+        isNull(users.deletedAt), // Cannot update soft-deleted patients
+      ))
       .returning();
 
     if (!updatedPatient) {
@@ -105,7 +144,7 @@ export async function PUT(
   }
 }
 
-// DELETE /api/patients/[id] - Delete patient
+// DELETE /api/patients/[id] - Soft delete patient (HIPAA-compliant)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -124,19 +163,29 @@ export async function DELETE(
       );
     }
 
-    const deletedPatient = await db
-      .delete(users)
-      .where(eq(users.id, id))
+    // Soft delete: Set deleted_at timestamp instead of hard delete
+    // This preserves audit trails and related records for HIPAA compliance
+    const [deletedPatient] = await db
+      .update(users)
+      .set({
+        deletedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(users.id, id),
+        isNull(users.deletedAt), // Only delete if not already deleted
+      ))
       .returning();
 
-    if (!deletedPatient || !Array.isArray(deletedPatient) || deletedPatient.length === 0) {
-      return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
+    if (!deletedPatient) {
+      return NextResponse.json({ error: 'Patient not found or already deleted' }, { status: 404 });
     }
 
-    // Log PHI deletion
+    // Log PHI deletion (soft delete)
     const { logPHIDelete } = await import('@/libs/AuditLogger');
     await logPHIDelete(user.dbUserId, 'user', id, request, {
       deletedBy: user.email,
+      softDelete: true,
     });
 
     return NextResponse.json({ message: 'Patient deleted successfully' });

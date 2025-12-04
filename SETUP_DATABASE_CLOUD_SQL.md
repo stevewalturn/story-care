@@ -6,7 +6,7 @@ Complete guide for connecting to your existing Cloud SQL PostgreSQL instance.
 
 ```
 Instance Name: storycare-dev
-Connection Name: storycare-478114:us-central1:storycare-dev
+Connection Name: storycare-dev-479511:us-central1:storycare-dev
 Public IP: 34.9.78.204
 Region: us-central1-c
 Database Version: PostgreSQL 17
@@ -48,7 +48,7 @@ sudo mv cloud-sql-proxy /usr/local/bin/
 gcloud auth login
 
 # Set your project
-gcloud config set project storycare-478114
+gcloud config set project storycare-dev-479511
 
 # Generate application credentials
 gcloud auth application-default login
@@ -58,7 +58,7 @@ gcloud auth application-default login
 
 ```bash
 # Start Cloud SQL Auth Proxy (keep this running!)
-cloud-sql-proxy storycare-478114:us-central1:storycare-dev
+cloud-sql-proxy storycare-dev-479511:us-central1:storycare-dev
 ```
 
 You should see:
@@ -163,7 +163,7 @@ Every time you start development:
 **Terminal 1:**
 ```bash
 # Start Cloud SQL Auth Proxy
-cloud-sql-proxy storycare-478114:us-central1:storycare-dev
+cloud-sql-proxy storycare-dev-479511:us-central1:storycare-dev
 ```
 
 **Terminal 2:**
@@ -190,7 +190,7 @@ if pgrep -x "cloud-sql-proxy" > /dev/null; then
 fi
 
 echo "Starting Cloud SQL Proxy..."
-cloud-sql-proxy storycare-478114:us-central1:storycare-dev \
+cloud-sql-proxy storycare-dev-479511:us-central1:storycare-dev \
   --port 5432 \
   > /tmp/cloud-sql-proxy.log 2>&1 &
 

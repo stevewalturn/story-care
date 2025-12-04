@@ -5,8 +5,9 @@
  * Modal for editing existing survey and reflection question templates
  */
 
-import { FileText, Plus, Trash2, X } from 'lucide-react';
+import { FileText, Plus, Save, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -49,7 +50,13 @@ export function EditTemplateModal({ template, onClose, onUpdated }: EditTemplate
   const [title, setTitle] = useState(template.title);
   const [description, setDescription] = useState(template.description || '');
   const [category, setCategory] = useState<TemplateCategory>(template.category);
-  const [questions, setQuestions] = useState<Question[]>(template.questions);
+  const [questions, setQuestions] = useState<Question[]>(() =>
+    template.questions.map((q, index) => ({
+      ...q,
+      id: q.id || crypto.randomUUID(),
+      order: index,
+    })),
+  );
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -141,6 +148,7 @@ export function EditTemplateModal({ template, onClose, onUpdated }: EditTemplate
         throw new Error(data.error || 'Failed to update template');
       }
 
+      toast.success('Template updated successfully');
       onUpdated();
     }
     catch (err) {
@@ -447,9 +455,10 @@ export function EditTemplateModal({ template, onClose, onUpdated }: EditTemplate
             <button
               onClick={handleUpdate}
               type="button"
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
               disabled={isUpdating || !title.trim() || questions.length === 0}
             >
+              <Save className="h-4 w-4" />
               {isUpdating ? 'Saving...' : 'Save Changes'}
             </button>
           </div>

@@ -17,6 +17,8 @@ type Session = {
   date: string;
   type: 'individual' | 'group';
   patientName?: string;
+  patientAvatarUrl?: string;
+  patientReferenceImageUrl?: string;
   groupName?: string;
   sessionCount?: number;
   moduleName?: string;
@@ -62,12 +64,22 @@ export default function SessionsPage() {
           date: new Date(session.sessionDate).toLocaleDateString(),
           type: session.sessionType,
           patientName: session.patient?.name,
+          patientAvatarUrl: session.patient?.avatarUrl,
+          patientReferenceImageUrl: session.patient?.referenceImageUrl,
           groupName: session.group?.name,
           sessionCount: 1, // TODO: Calculate from database
           moduleId: session.moduleId,
           moduleName: session.module?.name,
           moduleDomain: session.module?.domain,
         }));
+
+        // Debug: Log first session to check if images are being received
+        if (formattedSessions.length > 0) {
+          console.log('Sample session data:', formattedSessions[0]);
+          console.log('Patient avatar URL:', formattedSessions[0].patientAvatarUrl);
+          console.log('Patient reference image URL:', formattedSessions[0].patientReferenceImageUrl);
+        }
+
         setSessions(formattedSessions);
       }
     } catch (error) {

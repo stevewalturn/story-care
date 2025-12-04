@@ -192,7 +192,7 @@ export function PagesClient() {
         if (block.blockType === 'scene' && block.sceneId && scenesData[block.sceneId]) {
           const scene = scenesData[block.sceneId];
           baseBlock.content.sceneTitle = scene.title;
-          baseBlock.content.mediaUrl = scene.videoUrl || scene.thumbnailUrl || baseBlock.content.mediaUrl;
+          baseBlock.content.mediaUrl = scene.assembledVideoUrl || scene.thumbnailUrl || baseBlock.content.mediaUrl;
         }
 
         // Add reflection questions if this is a reflection block
@@ -226,7 +226,7 @@ export function PagesClient() {
               scaleMax: q.scaleMax,
               scaleMinLabel: q.scaleMinLabel,
               scaleMaxLabel: q.scaleMaxLabel,
-              options: q.options ? JSON.parse(q.options) : undefined,
+              options: q.options,
             }));
 
           baseBlock.content.surveyQuestions = blockQuestions.length > 0

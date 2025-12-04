@@ -467,6 +467,14 @@ export async function sendOrgAdminInvitationEmail(params: {
 
   // Send email via Paubox
   try {
+    console.log('📧 EmailService: Preparing to send org admin invitation email:', {
+      recipientEmail: params.orgAdminEmail,
+      recipientName: params.orgAdminName,
+      organizationName: params.organizationName,
+      inviterName: params.inviterName,
+      notificationId: notification.id,
+    });
+
     const paubox = getPauboxClient();
 
     const message: PauboxMessage = {
@@ -481,9 +489,25 @@ export async function sendOrgAdminInvitationEmail(params: {
       },
     };
 
+    console.log('📧 EmailService: Paubox message constructed:', {
+      recipients: message.recipients,
+      subject: message.headers.subject,
+      from: message.headers.from,
+      hasHtmlContent: !!message.content['text/html'],
+      hasTextContent: !!message.content['text/plain'],
+    });
+
+    console.log('📧 EmailService: Calling Paubox API...');
     const result = await paubox.sendEmail(message, {
       enableOpenTracking: true,
       enableLinkTracking: true,
+    });
+
+    console.log('📧 EmailService: Paubox API call completed:', {
+      success: result.success,
+      sourceTrackingId: result.sourceTrackingId,
+      error: result.error,
+      errorCode: result.errorCode,
     });
 
     if (result.success && result.sourceTrackingId) {
@@ -496,8 +520,21 @@ export async function sendOrgAdminInvitationEmail(params: {
           externalId: result.sourceTrackingId,
         })
         .where(eq(emailNotificationsSchema.id, notification.id));
+
+      console.log('✅ EmailService: Email marked as sent in database:', {
+        notificationId: notification.id,
+        trackingId: result.sourceTrackingId,
+        recipientEmail: params.orgAdminEmail,
+      });
     } else {
       // Email send failed
+      console.error('❌ EmailService: Email send failed:', {
+        notificationId: notification.id,
+        recipientEmail: params.orgAdminEmail,
+        error: result.error,
+        errorCode: result.errorCode,
+      });
+
       await updateEmailStatus(
         notification.id,
         'failed',
@@ -506,7 +543,13 @@ export async function sendOrgAdminInvitationEmail(params: {
       );
     }
   } catch (error) {
-    console.error('Failed to send email via Paubox:', error);
+    console.error('❌ EmailService: Exception while sending email via Paubox:', {
+      notificationId: notification.id,
+      recipientEmail: params.orgAdminEmail,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
     await updateEmailStatus(
       notification.id,
       'failed',

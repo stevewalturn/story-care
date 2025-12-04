@@ -8,20 +8,23 @@
 import { FileText, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { CreateTemplateModal } from '@/components/templates/CreateTemplateModal';
+import { EditTemplateModal } from '@/components/templates/EditTemplateModal';
 import { ViewTemplateDetailsModal } from '@/components/templates/ViewTemplateDetailsModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type TemplateType = 'all' | 'reflection' | 'survey';
-type TemplateCategory = 'all' | 'screening' | 'outcome' | 'satisfaction' | 'custom' | 'narrative' | 'emotion' | 'goal-setting';
+type TemplateCategory = 'screening' | 'outcome' | 'satisfaction' | 'custom' | 'narrative' | 'emotion' | 'goal-setting';
+type TemplateCategoryFilter = 'all' | TemplateCategory;
+type TemplateScope = 'system' | 'organization' | 'private';
 
 type Template = {
   id: string;
   title: string;
   description: string | null;
-  category: string;
+  category: TemplateCategory;
   type: 'reflection' | 'survey';
-  scope: string;
+  scope: TemplateScope;
   questions: any[];
   useCount: number;
   createdAt: string;
@@ -31,13 +34,14 @@ type Template = {
 export default function SuperAdminTemplatesPage() {
   const { user } = useAuth();
   const [activeType, setActiveType] = useState<TemplateType>('all');
-  const [activeCategory, setActiveCategory] = useState<TemplateCategory>('all');
+  const [activeCategory, setActiveCategory] = useState<TemplateCategoryFilter>('all');
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [viewingTemplate, setViewingTemplate] = useState<Template | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
 
   useEffect(() => {
     fetchTemplates();
@@ -63,6 +67,17 @@ export default function SuperAdminTemplatesPage() {
     }
   };
 
+  const handleEdit = (template: Template) => {
+    console.log('[Templates Page] Opening template editor:', template);
+    setEditingTemplate(template);
+  };
+
+  const handleEditComplete = () => {
+    console.log('[Templates Page] Template updated, refreshing list');
+    setEditingTemplate(null);
+    fetchTemplates();
+  };
+
   // Filter templates
   const filteredTemplates = templates.filter((template) => {
     const matchesType = activeType === 'all' || template.type === activeType;
@@ -79,7 +94,7 @@ export default function SuperAdminTemplatesPage() {
     return templates.filter(t => t.type === type).length;
   };
 
-  const getCategoryCount = (category: TemplateCategory) => {
+  const getCategoryCount = (category: TemplateCategoryFilter) => {
     if (category === 'all') return templates.length;
     return templates.filter(t => t.category === category).length;
   };
@@ -90,7 +105,7 @@ export default function SuperAdminTemplatesPage() {
     { id: 'survey', label: 'Survey' },
   ];
 
-  const categoryOptions: { id: TemplateCategory; label: string }[] = [
+  const categoryOptions: { id: TemplateCategoryFilter; label: string }[] = [
     { id: 'all', label: 'All Categories' },
     { id: 'narrative', label: 'Narrative' },
     { id: 'emotion', label: 'Emotion' },
@@ -224,6 +239,7 @@ export default function SuperAdminTemplatesPage() {
                   console.log('[Templates Page] Opening template details:', template);
                   setViewingTemplate(template);
                 }}
+                onEdit={() => handleEdit(template)}
               />
             ))}
           </div>
@@ -250,6 +266,15 @@ export default function SuperAdminTemplatesPage() {
           onClose={() => setViewingTemplate(null)}
         />
       )}
+
+      {/* Edit Template Modal */}
+      {editingTemplate && (
+        <EditTemplateModal
+          template={editingTemplate}
+          onClose={() => setEditingTemplate(null)}
+          onUpdated={handleEditComplete}
+        />
+      )}
     </div>
   );
 }
@@ -260,9 +285,10 @@ export default function SuperAdminTemplatesPage() {
 type TemplateCardProps = {
   template: Template;
   onView: () => void;
+  onEdit: () => void;
 };
 
-function TemplateCard({ template, onView }: TemplateCardProps) {
+function TemplateCard({ template, onView, onEdit }: TemplateCardProps) {
   const categoryColors: Record<string, string> = {
     'narrative': 'bg-purple-100 text-purple-700',
     'emotion': 'bg-pink-100 text-pink-700',
@@ -334,16 +360,28 @@ function TemplateCard({ template, onView }: TemplateCardProps) {
       </div>
 
       {/* Actions */}
-      <button
-        onClick={() => {
-          console.log('[TemplateCard] View Details clicked for:', template.title);
-          onView();
-        }}
-        className="w-full rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
-        type="button"
-      >
-        View Details
-      </button>
+      <div className="flex gap-2">
+        <button
+          onClick={() => {
+            console.log('[TemplateCard] View Details clicked for:', template.title);
+            onView();
+          }}
+          className="flex-1 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+          type="button"
+        >
+          View Details
+        </button>
+        <button
+          onClick={() => {
+            console.log('[TemplateCard] Edit clicked for:', template.title);
+            onEdit();
+          }}
+          className="flex-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+          type="button"
+        >
+          Edit
+        </button>
+      </div>
     </div>
   );
 }

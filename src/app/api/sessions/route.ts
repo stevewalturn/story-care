@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
       whereConditions.push(isNull(sessions.deletedAt)); // Org/Super Admin sees all sessions
     } else {
       whereConditions.push(eq(sessions.therapistId, user.dbUserId)); // Therapist sees only their sessions
+      whereConditions.push(isNull(sessions.deletedAt)); // Filter out soft-deleted sessions
     }
 
     // Optional patient filter
@@ -48,6 +49,7 @@ export async function GET(request: NextRequest) {
           id: users.id,
           name: users.name,
           avatarUrl: users.avatarUrl,
+          referenceImageUrl: users.referenceImageUrl,
         },
         // Module data from session_modules join
         moduleId: sessionModules.moduleId,
@@ -68,9 +70,10 @@ export async function GET(request: NextRequest) {
     // 5. GENERATE PRESIGNED URLS: HIPAA compliant (1-hour expiration)
     const sessionsWithSignedUrls = await Promise.all(
       sessionsList.map(async (session) => {
-        const [signedAudioUrl, signedAvatarUrl] = await Promise.all([
+        const [signedAudioUrl, signedAvatarUrl, signedReferenceImageUrl] = await Promise.all([
           session.audioUrl ? generatePresignedUrl(session.audioUrl, 1) : null,
           session.patient?.avatarUrl ? generatePresignedUrl(session.patient.avatarUrl, 1) : null,
+          session.patient?.referenceImageUrl ? generatePresignedUrl(session.patient.referenceImageUrl, 1) : null,
         ]);
 
         return {
@@ -79,6 +82,7 @@ export async function GET(request: NextRequest) {
           patient: session.patient ? {
             ...session.patient,
             avatarUrl: signedAvatarUrl || session.patient.avatarUrl,
+            referenceImageUrl: signedReferenceImageUrl || session.patient.referenceImageUrl,
           } : null,
         };
       }),

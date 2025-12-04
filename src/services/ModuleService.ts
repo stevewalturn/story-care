@@ -43,7 +43,7 @@ export async function createModule(data: {
       createdBy: data.createdBy,
       organizationId: data.organizationId || null,
       aiPromptText: data.aiPromptText,
-      aiPromptMetadata: data.aiPromptMetadata || null,
+      aiPromptMetadata: (data.aiPromptMetadata && data.aiPromptMetadata !== '') ? data.aiPromptMetadata : null,
       status: 'active',
       useCount: 0,
       createdAt: new Date(),
@@ -471,7 +471,7 @@ export async function copyTemplateToOrg(
     organizationId,
     createdBy: userId,
     aiPromptText: template.aiPromptText,
-    aiPromptMetadata: template.aiPromptMetadata,
+    aiPromptMetadata: (template.aiPromptMetadata && template.aiPromptMetadata !== '') ? template.aiPromptMetadata : null,
   });
 
   return {

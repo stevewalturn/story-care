@@ -2,7 +2,8 @@ import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { pageBlocks, reflectionQuestions, storyPages, surveyQuestions } from '@/models/Schema';
+import { extractGcsPath, generatePresignedUrl } from '@/libs/GCS';
+import { pageBlocks, patientPageInteractions, reflectionQuestions, reflectionResponses, storyPages, surveyQuestions, surveyResponses } from '@/models/Schema';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -30,10 +31,34 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .where(eq(pageBlocks.pageId, id))
       .orderBy(pageBlocks.sequenceNumber);
 
+    // Generate presigned URLs for media in blocks
+    const blocksWithSignedUrls = await Promise.all(
+      blocks.map(async (block) => {
+        const settings = block.settings as any;
+        if (settings && settings.mediaUrl) {
+          // Generate presigned URL from raw GCS path
+          try {
+            const signedUrl = await generatePresignedUrl(settings.mediaUrl, 1);
+            return {
+              ...block,
+              settings: {
+                ...settings,
+                mediaUrl: signedUrl || settings.mediaUrl,
+              },
+            };
+          } catch (error) {
+            console.error('Error generating presigned URL:', error);
+            return block;
+          }
+        }
+        return block;
+      }),
+    );
+
     // If patient view, include reflection and survey questions
     if (patientView) {
       // Get block IDs
-      const blockIds = blocks.map(b => b.id);
+      const blockIds = blocksWithSignedUrls.map(b => b.id);
 
       // Fetch questions for all blocks
       const allReflectionQuestions = [];
@@ -56,13 +81,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
       return NextResponse.json({
         page,
-        blocks,
+        blocks: blocksWithSignedUrls,
         reflectionQuestions: allReflectionQuestions,
         surveyQuestions: allSurveyQuestions,
       });
     }
 
-    return NextResponse.json({ page, blocks });
+    return NextResponse.json({ page, blocks: blocksWithSignedUrls });
   } catch (error) {
     console.error('Error fetching page:', error);
     return NextResponse.json(
@@ -111,6 +136,15 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
       // Create new blocks
       for (const [index, block] of blocks.entries()) {
+        // Extract GCS path from mediaUrl if present (convert presigned URL to raw path)
+        const blockSettings = block.settings || block.content || null;
+        if (blockSettings && blockSettings.mediaUrl) {
+          const gcsPath = extractGcsPath(blockSettings.mediaUrl);
+          if (gcsPath) {
+            blockSettings.mediaUrl = gcsPath;
+          }
+        }
+
         const [createdBlock] = await db.insert(pageBlocks).values({
           pageId: id,
           blockType: block.type,
@@ -118,7 +152,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
           mediaId: block.mediaId || block.content?.mediaId || null,
           sceneId: block.sceneId || block.content?.sceneId || null,
           textContent: block.textContent || block.content?.text || null,
-          settings: block.settings || block.content || null,
+          settings: blockSettings,
         }).returning();
 
         // If this is a reflection block with questions, create reflection question rows
@@ -171,10 +205,48 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
 
-    // Delete blocks first
+    // Get block IDs for this page to delete associated responses
+    const blocks = await db
+      .select({ id: pageBlocks.id })
+      .from(pageBlocks)
+      .where(eq(pageBlocks.pageId, id));
+
+    const blockIds = blocks.map(b => b.id);
+
+    // Delete in correct order to avoid foreign key constraint violations:
+    // 1. Delete reflection responses (references reflection_questions)
+    if (blockIds.length > 0) {
+      for (const blockId of blockIds) {
+        const questions = await db
+          .select({ id: reflectionQuestions.id })
+          .from(reflectionQuestions)
+          .where(eq(reflectionQuestions.blockId, blockId));
+
+        for (const question of questions) {
+          await db.delete(reflectionResponses).where(eq(reflectionResponses.questionId, question.id));
+        }
+      }
+
+      // 2. Delete survey responses (references survey_questions)
+      for (const blockId of blockIds) {
+        const questions = await db
+          .select({ id: surveyQuestions.id })
+          .from(surveyQuestions)
+          .where(eq(surveyQuestions.blockId, blockId));
+
+        for (const question of questions) {
+          await db.delete(surveyResponses).where(eq(surveyResponses.questionId, question.id));
+        }
+      }
+    }
+
+    // 3. Delete patient page interactions (references story_pages)
+    await db.delete(patientPageInteractions).where(eq(patientPageInteractions.pageId, id));
+
+    // 4. Delete blocks (cascades to reflection_questions and survey_questions)
     await db.delete(pageBlocks).where(eq(pageBlocks.pageId, id));
 
-    // Delete page
+    // 5. Delete page
     await db.delete(storyPages).where(eq(storyPages.id, id));
 
     return NextResponse.json({ success: true });

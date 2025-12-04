@@ -6,11 +6,13 @@
 import type { OrganizationSettings } from '@/types/Organization';
 import { and, count, desc, eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
+import { Env } from '@/libs/Env';
 import {
   organizationsSchema,
   sessions,
   users,
 } from '@/models/Schema';
+import { sendOrgAdminInvitationEmail } from './EmailService';
 
 /**
  * Create a new organization with an org_admin user
@@ -110,6 +112,33 @@ export async function createOrganization(data: {
       .returning();
 
     const adminUser = Array.isArray(adminUserResult) ? adminUserResult[0] : undefined;
+
+    // Send invitation email to the org admin
+    if (adminUser) {
+      try {
+        const appUrl = Env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const setupAccountUrl = `${appUrl}/setup-account?email=${encodeURIComponent(data.adminEmail)}&type=org_admin`;
+
+        await sendOrgAdminInvitationEmail({
+          orgAdminEmail: data.adminEmail,
+          orgAdminName: data.adminName,
+          orgAdminUserId: adminUser.id,
+          inviterName: creatorUser.name,
+          organizationName: organization.name,
+          setupAccountUrl,
+        });
+
+        console.log('OrganizationService.createOrganization - Invitation email sent successfully to', data.adminEmail);
+      } catch (emailError) {
+        // Log email error but don't fail organization creation
+        console.error('OrganizationService.createOrganization - Failed to send invitation email:', {
+          error: emailError,
+          adminEmail: data.adminEmail,
+          organizationId: organization.id,
+        });
+        // Continue - the invitation can be resent later via the resend button
+      }
+    }
 
     return {
       organization,

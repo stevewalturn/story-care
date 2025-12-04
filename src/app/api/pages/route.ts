@@ -3,6 +3,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
+import { extractGcsPath } from '@/libs/GCS';
 import { pageBlocks, reflectionQuestions, storyPages, surveyQuestions, users } from '@/models/Schema';
 
 // GET /api/pages - List story pages
@@ -154,6 +155,15 @@ export async function POST(request: NextRequest) {
     // Create blocks if provided
     if (blocks && Array.isArray(blocks)) {
       for (const [index, block] of blocks.entries()) {
+        // Extract GCS path from mediaUrl if present (convert presigned URL to raw path)
+        const blockSettings = block.settings || block.content || null;
+        if (blockSettings && blockSettings.mediaUrl) {
+          const gcsPath = extractGcsPath(blockSettings.mediaUrl);
+          if (gcsPath) {
+            blockSettings.mediaUrl = gcsPath;
+          }
+        }
+
         const [createdBlock] = await db.insert(pageBlocks).values({
           pageId: page.id,
           blockType: block.type,
@@ -161,7 +171,7 @@ export async function POST(request: NextRequest) {
           mediaId: block.mediaId || block.content?.mediaId || null,
           sceneId: block.sceneId || block.content?.sceneId || null,
           textContent: block.textContent || block.content?.text || null,
-          settings: block.settings || block.content || null,
+          settings: blockSettings,
         }).returning();
 
         // If this is a reflection block with questions, create reflection question rows

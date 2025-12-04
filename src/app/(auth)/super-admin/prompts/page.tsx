@@ -241,13 +241,36 @@ type SystemPromptCardProps = {
 };
 
 function SystemPromptCard({ prompt, onView, onDelete }: SystemPromptCardProps) {
+  // Extract schema type from jsonSchema
+  const getSchemaType = (): string | null => {
+    if (!prompt.jsonSchema) return null;
+    try {
+      const schema = typeof prompt.jsonSchema === 'string'
+        ? JSON.parse(prompt.jsonSchema)
+        : prompt.jsonSchema;
+      return schema.schemaType || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const schemaType = getSchemaType();
+
+  // Format schema type for display
+  const formatSchemaType = (type: string): string => {
+    return type
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
       {/* Header */}
       <div className="mb-3 flex items-start justify-between">
         <div className="flex-1">
           <h3 className="font-semibold text-gray-900">{prompt.name}</h3>
-          <div className="mt-1 flex items-center gap-2">
+          <div className="mt-1 flex flex-wrap items-center gap-2">
             {prompt.category && (
               <span className="inline-block rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
                 {prompt.category}
@@ -266,9 +289,9 @@ function SystemPromptCard({ prompt, onView, onDelete }: SystemPromptCardProps) {
                 {prompt.outputType}
               </span>
             )}
-            {!!prompt.jsonSchema && (
-              <span className="inline-block rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
-                JSON Schema
+            {schemaType && (
+              <span className="inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                📋 {formatSchemaType(schemaType)}
               </span>
             )}
             <span className="text-xs text-gray-500">System</span>

@@ -2,7 +2,8 @@ import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { sceneAudioTracks } from '@/models/Schema';
+import { extractGcsPath, generatePresignedUrl } from '@/libs/GCS';
+import { mediaLibrary, sceneAudioTracks } from '@/models/Schema';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -22,10 +23,36 @@ export async function GET(
       .where(eq(sceneAudioTracks.sceneId, sceneId))
       .orderBy(sceneAudioTracks.sequenceNumber);
 
+    // Generate presigned URLs for frontend audio playback
+    const tracksWithUrls = await Promise.all(
+      tracks.map(async (track) => {
+        let audioUrl = track.audioUrl;
+
+        // If we have audioId, fetch GCS path from media_library and generate presigned URL
+        // This prevents double-encoding and ensures fresh URLs for playback
+        if (track.audioId) {
+          const [media] = await db
+            .select({ mediaUrl: mediaLibrary.mediaUrl })
+            .from(mediaLibrary)
+            .where(eq(mediaLibrary.id, track.audioId))
+            .limit(1);
+
+          if (media?.mediaUrl) {
+            audioUrl = await generatePresignedUrl(media.mediaUrl, 1) || media.mediaUrl;
+          }
+        }
+
+        return {
+          ...track,
+          audioUrl,
+        };
+      }),
+    );
+
     return NextResponse.json({
       sceneId,
-      audioTracks: tracks,
-      count: tracks.length,
+      audioTracks: tracksWithUrls,
+      count: tracksWithUrls.length,
     });
   } catch (error) {
     console.error('Error fetching audio tracks:', error);
@@ -62,6 +89,10 @@ export async function POST(
       );
     }
 
+    // Extract raw GCS path from presigned URL (if applicable)
+    const gcsPath = extractGcsPath(audioUrl);
+    const finalAudioUrl = gcsPath || audioUrl;
+
     // Get next sequence number if not provided
     let seq = sequenceNumber;
     if (seq === undefined || seq === null) {
@@ -78,7 +109,7 @@ export async function POST(
       .values({
         sceneId,
         audioId: audioId || null,
-        audioUrl,
+        audioUrl: finalAudioUrl, // Store raw path, not presigned URL
         title: title || null,
         startTimeSeconds: startTimeSeconds.toString(),
         durationSeconds: durationSeconds ? durationSeconds.toString() : null,

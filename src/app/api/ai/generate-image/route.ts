@@ -3,7 +3,7 @@ import type { ImageGenModel } from '@/libs/ImageGeneration';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { uploadFile } from '@/libs/GCS';
+import { generatePresignedUrl, uploadFile } from '@/libs/GCS';
 import { generateImage } from '@/libs/ImageGeneration';
 import { mediaLibrary, sessions } from '@/models/Schema';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
@@ -31,12 +31,32 @@ export async function POST(request: NextRequest) {
       referenceImage, // Base64 or URL for image-to-image
     } = body;
 
+    console.log('[API /api/ai/generate-image] Request received:', {
+      userId: user.dbUserId,
+      model,
+      promptLength: prompt?.length,
+      width,
+      height,
+      aspectRatio,
+      seed,
+      quality,
+      style,
+      sessionId,
+      patientId: patientId || 'from patientIds array',
+      title,
+      hasReferenceImage: !!referenceImage,
+      patientIds: body.patientIds,
+      size: body.size,
+    });
+
     if (!prompt) {
       return NextResponse.json(
         { error: 'Prompt is required' },
         { status: 400 },
       );
     }
+
+    console.log('[API /api/ai/generate-image] Calling generateImage with model:', model);
 
     // Generate image using the unified service
     const { imageUrl, model: usedModel } = await generateImage({
@@ -50,6 +70,12 @@ export async function POST(request: NextRequest) {
       quality,
       style,
       referenceImage,
+    });
+
+    console.log('[API /api/ai/generate-image] Image generated successfully:', {
+      usedModel,
+      imageUrlType: imageUrl.startsWith('data:') ? 'base64' : 'url',
+      imageUrlLength: imageUrl.length,
     });
 
     // Handle base64 or URL images
@@ -133,13 +159,33 @@ export async function POST(request: NextRequest) {
 
     const media = (result as any[])[0];
 
+    // Generate presigned URL for frontend preview (1-hour expiration)
+    const presignedUrl = media?.mediaUrl
+      ? await generatePresignedUrl(media.mediaUrl, 1)
+      : null;
+
+    console.log('[API /api/ai/generate-image] Presigned URL generation:', {
+      originalPath: media?.mediaUrl,
+      presignedUrlPreview: presignedUrl ? `${presignedUrl.substring(0, 100)}...` : null,
+      hasPresignedUrl: !!presignedUrl,
+      isAlreadySigned: presignedUrl ? (presignedUrl.includes('X-Goog-Signature') || presignedUrl.includes('GoogleAccessId')) : false,
+    });
+
     return NextResponse.json({
-      media,
+      media: {
+        ...media,
+        mediaUrl: presignedUrl || media.mediaUrl,
+      },
       prompt,
       model: usedModel,
     });
   } catch (error) {
-    console.error('Image generation error:', error);
+    console.error('[API /api/ai/generate-image] Error occurred:', {
+      error,
+      errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      errorStack: error instanceof Error ? error.stack : undefined,
+      errorName: error instanceof Error ? error.name : typeof error,
+    });
     return handleAuthError(error);
   }
 }

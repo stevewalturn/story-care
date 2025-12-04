@@ -247,18 +247,18 @@ export class VideoService {
 
     for (let i = 0; i < audioTracks.length; i++) {
       const track = audioTracks[i]!;
-      const audioFilename = `audio-track-${i}.mp3`;
+      const audioFilename = `audio-track-${i}.m4a`;
       const audioPath = await this.downloadMedia(track.audioUrl, audioFilename);
       downloadedPaths.push(audioPath);
       volumes.push(track.volume);
     }
 
     // Merge audio tracks if multiple
-    const mergedPath = path.join(this.tempDir, 'audio-merged.mp3');
+    const mergedPath = path.join(this.tempDir, 'audio-merged.m4a');
     await this.mergeAudioTracks(downloadedPaths, volumes, mergedPath);
 
     // Apply loop or fit if requested
-    const finalAudioPath = path.join(this.tempDir, 'audio-final.mp3');
+    const finalAudioPath = path.join(this.tempDir, 'audio-final.m4a');
 
     if (loopAudio) {
       await this.loopAudioToFit(mergedPath, videoDuration, finalAudioPath);
@@ -379,7 +379,7 @@ export class VideoService {
         }
       } else if (audioTrack) {
         // Legacy approach: single audio track
-        const audioPath = await this.downloadMedia(audioTrack, 'audio-track.mp3');
+        const audioPath = await this.downloadMedia(audioTrack, 'audio-track.m4a');
         await this.addAudioTrack(tempOutputPath, audioPath, outputPath);
       } else {
         // No audio

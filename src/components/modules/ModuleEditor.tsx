@@ -11,6 +11,9 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { PromptSelector } from '../prompts/PromptSelector';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 
 type ModuleEditorProps = {
   module: TreatmentModule | null;
@@ -22,52 +25,80 @@ type ModuleEditorProps = {
 
 type TherapeuticDomain = 'self_strength' | 'relationships_repair' | 'identity_transformation' | 'purpose_future';
 
+// Create a schema without defaults for the form (defaults will be set in defaultValues)
+const moduleFormSchema = z.object({
+  name: z.string().min(3, 'Name must be at least 3 characters').max(255, 'Name must be at most 255 characters'),
+  domain: z.enum(['self_strength', 'relationships_repair', 'identity_transformation', 'purpose_future']),
+  description: z.string().min(10, 'Description must be at least 10 characters').max(5000, 'Description must be at most 5000 characters'),
+  scope: z.enum(['system', 'organization', 'private']),
+  aiPromptText: z.string().min(50, 'AI prompt must be at least 50 characters').max(10000, 'AI prompt must be at most 10000 characters'),
+  linkedPromptIds: z.array(z.string().uuid()),
+  aiPromptMetadata: z.record(z.string(), z.any()).optional(),
+});
+
+type ModuleFormData = z.infer<typeof moduleFormSchema>;
+
 export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/modules', scope = 'private' }: ModuleEditorProps) {
   const { user } = useAuth();
   const isEdit = !!module;
 
-  // Form state
-  const [name, setName] = useState('');
-  const [domain, setDomain] = useState<TherapeuticDomain>('self_strength');
-  const [description, setDescription] = useState('');
-
-  // AI Prompts state - inline prompt and library prompts
-  const [aiPromptText, setAiPromptText] = useState('');
+  // Linked prompts state (separate from form as it uses custom selector)
   const [selectedPromptIds, setSelectedPromptIds] = useState<string[]>([]);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Initialize React Hook Form with Zod validation
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isValid },
+    watch,
+    reset,
+  } = useForm<ModuleFormData>({
+    resolver: zodResolver(moduleFormSchema),
+    mode: 'onChange', // Validate on change for real-time feedback
+    defaultValues: {
+      name: '',
+      domain: 'self_strength' as TherapeuticDomain,
+      description: '',
+      scope,
+      aiPromptText: '',
+      linkedPromptIds: [],
+    },
+  });
+
+  // Watch field values for character counters
+  const watchName = watch('name');
+  const watchDescription = watch('description');
+  const watchAiPromptText = watch('aiPromptText');
+
   // Initialize form with module data if editing
   useEffect(() => {
     if (module) {
-      setName(module.name);
-      setDomain(module.domain as TherapeuticDomain);
-      setDescription(module.description);
-
-      // Load inline AI prompt text
-      setAiPromptText(module.aiPromptText || '');
+      reset({
+        name: module.name,
+        domain: module.domain as TherapeuticDomain,
+        description: module.description,
+        scope,
+        aiPromptText: module.aiPromptText || '',
+        linkedPromptIds: [],
+      });
 
       // Load linked prompt IDs from junction table
       const linkedPromptIds = (module as any).linkedPrompts?.map((p: any) => p.id) || [];
       setSelectedPromptIds(linkedPromptIds);
     }
-  }, [module]);
+  }, [module, reset, scope]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: ModuleFormData) => {
     setError(null);
     setSaving(true);
 
     try {
       const payload = {
-        name,
-        domain,
-        description,
-        scope,
-
+        ...data,
         // AI Prompts: inline prompt text + linked prompts from library
-        aiPromptText,
         linkedPromptIds: selectedPromptIds,
       };
 
@@ -89,6 +120,23 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
     } finally {
       setSaving(false);
     }
+  };
+
+  // Helper component for character counter
+  const CharacterCounter = ({ current, min, max }: { current: number; min: number; max: number }) => {
+    const isValid = current >= min && current <= max;
+    const isTooShort = current < min;
+
+    return (
+      <div className="mt-1 flex items-center justify-between">
+        <p className={`text-xs ${isTooShort ? 'text-red-600' : 'text-gray-500'}`}>
+          {min}-{max.toLocaleString()} characters required
+        </p>
+        <p className={`text-xs font-medium ${isValid ? 'text-green-600' : isTooShort ? 'text-red-600' : 'text-gray-400'}`}>
+          {current}/{max.toLocaleString()}
+        </p>
+      </div>
+    );
   };
 
   return (
@@ -114,7 +162,7 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="p-6">
             <div className="space-y-6">
               {/* Title */}
               <div>
@@ -125,34 +173,43 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                 </label>
                 <input
                   type="text"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  required
-                  maxLength={255}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                  {...register('name')}
+                  className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:ring-2 focus:outline-none ${
+                    errors.name
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20'
+                      : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20'
+                  }`}
                   placeholder="e.g., Self-Resilience & Re-Authoring"
                 />
-                <p className="mt-1 text-xs text-gray-500">
-                  3-255 characters required
-                </p>
+                {errors.name && (
+                  <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>
+                )}
+                <CharacterCounter current={watchName?.length || 0} min={3} max={255} />
               </div>
 
               {/* Domain */}
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-900">
                   Domain
+                  {' '}
+                  <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={domain}
-                  onChange={e => setDomain(e.target.value as TherapeuticDomain)}
-                  required
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                  {...register('domain')}
+                  className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:ring-2 focus:outline-none ${
+                    errors.domain
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20'
+                      : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20'
+                  }`}
                 >
                   <option value="self_strength">Self & Strength</option>
                   <option value="relationships_repair">Relationships & Repair</option>
                   <option value="identity_transformation">Identity & Transformation</option>
                   <option value="purpose_future">Purpose & Future</option>
                 </select>
+                {errors.domain && (
+                  <p className="mt-1 text-xs text-red-600">{errors.domain.message}</p>
+                )}
               </div>
 
               {/* Description */}
@@ -163,23 +220,19 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                   <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                  value={description}
-                  onChange={e => setDescription(e.target.value)}
-                  required
-                  maxLength={5000}
+                  {...register('description')}
                   rows={3}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                  className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:ring-2 focus:outline-none ${
+                    errors.description
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20'
+                      : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20'
+                  }`}
                   placeholder="Help people re-tell stories of survival and rediscover agency."
                 />
-                <div className="mt-1 flex items-center justify-between">
-                  <p className="text-xs text-gray-500">
-                    10-5,000 characters required
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {description.length}
-                    /5000
-                  </p>
-                </div>
+                {errors.description && (
+                  <p className="mt-1 text-xs text-red-600">{errors.description.message}</p>
+                )}
+                <CharacterCounter current={watchDescription?.length || 0} min={10} max={5000} />
               </div>
 
               {/* Module AI Prompt (Inline) - Required */}
@@ -193,23 +246,22 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                   Core AI prompt for this module. This is always used for transcript analysis.
                 </p>
                 <textarea
-                  value={aiPromptText}
-                  onChange={e => setAiPromptText(e.target.value)}
-                  required
-                  maxLength={10000}
+                  {...register('aiPromptText')}
                   rows={8}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 font-mono text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                  className={`w-full rounded-lg border px-4 py-2.5 font-mono text-sm focus:ring-2 focus:outline-none ${
+                    errors.aiPromptText
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20'
+                      : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20'
+                  }`}
                   placeholder="You are a narrative therapy AI assistant analyzing session transcripts. Focus on identifying therapeutic themes, patterns, and insights..."
                 />
-                <div className="mt-1 flex items-center justify-between">
-                  <p className="text-xs text-gray-500">
-                    50-10,000 characters required. This prompt is stored directly on the module and is always executed during analysis.
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {aiPromptText.length}
-                    /10000
-                  </p>
-                </div>
+                {errors.aiPromptText && (
+                  <p className="mt-1 text-xs text-red-600">{errors.aiPromptText.message}</p>
+                )}
+                <CharacterCounter current={watchAiPromptText?.length || 0} min={50} max={10000} />
+                <p className="mt-1 text-xs text-gray-500">
+                  This prompt is stored directly on the module and is always executed during analysis.
+                </p>
               </div>
 
               {/* Linked AI Prompts from Library - Optional */}
@@ -248,7 +300,7 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
               <button
                 type="submit"
                 className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={saving}
+                disabled={saving || !isValid}
               >
                 {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Module'}
               </button>
