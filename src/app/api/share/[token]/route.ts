@@ -116,7 +116,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
               return {
                 ...block,
                 settings: {
-                  ...settings,
+                  ...(settings || {}),
                   mediaUrl: signedUrl || scene.assembledVideoUrl,
                   sceneTitle: scene.title,
                   sceneDuration: scene.durationSeconds,

@@ -5,7 +5,7 @@
 
 'use client';
 
-import { Clapperboard, FileText, MessageCircle, Video } from 'lucide-react';
+import { Clapperboard, FileText, MessageCircle } from 'lucide-react';
 import { use, useEffect, useState } from 'react';
 
 type PageData = {
