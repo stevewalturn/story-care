@@ -43,10 +43,16 @@ jobs:
         run: |
           gcloud auth configure-docker gcr.io
 
+      - name: Create .env file from secret
+        run: |
+          cat > .env.build << 'EOF'
+          ${{ secrets.ENV_FILE_PROD }}
+          EOF
+
       - name: Build Docker image
         run: |
           docker build \
-            --build-arg ENV_FILE="${{ secrets.ENV_FILE_PROD }}" \
+            --build-arg ENV_FILE="$(cat .env.build)" \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.SERVICE_NAME }}:latest \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.SERVICE_NAME }}:prod-$(date +%Y%m%d-%H%M%S) \
