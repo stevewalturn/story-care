@@ -45,16 +45,22 @@ jobs:
 
       # Authenticate via Workload Identity Federation
       - name: Authenticate to Google Cloud (Workload Identity)
+        id: auth
         uses: google-github-actions/auth@v2
         with:
+          token_format: access_token
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_DEV }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_DEV }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker us-docker.pkg.dev,gcr.io
+      - name: Login to GCR
+        uses: docker/login-action@v3
+        with:
+          registry: gcr.io
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
 
       - name: Build Docker image with env file
         run: |
