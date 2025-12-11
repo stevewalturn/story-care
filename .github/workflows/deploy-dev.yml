@@ -1,24 +1,20 @@
-name: Deploy to Cloud Run (Dev)
+name: Deploy to Development
 
-# Trigger on push to main branch (automatic dev deployment)
 on:
   push:
     branches:
       - main
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch:
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID_DEV }}
+  GCP_REGION: us-central1
   SERVICE_NAME: storycare-app-dev
-  REGION: us-central1
 
 jobs:
   deploy:
-    name: Build and Deploy to Cloud Run (Development)
+    name: Deploy to Cloud Run (Development)
     runs-on: ubuntu-latest
-    environment: development # GitHub environment for dev
 
-    # Required for Workload Identity Federation
     permissions:
       contents: read
       id-token: write
@@ -26,106 +22,101 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Fetch all history for proper git operations
 
-      - name: Debug - List checked out files
-        run: |
-          echo "Checking if DeleteConfirmationDialog exists:"
-          ls -la src/components/ui/DeleteConfirmationDialog.tsx || echo "File NOT found!"
-          echo "Listing src/components/ui/:"
-          ls -la src/components/ui/ | head -20
-
-      # Load environment variables from ENV_FILE_DEV secret
       - name: Create .env file from secret
         run: |
           cat > .env.build << 'EOF'
           ${{ secrets.ENV_FILE_DEV }}
           EOF
 
-      # Authenticate via Workload Identity Federation
-      - name: Authenticate to Google Cloud (Workload Identity)
-        id: auth
+      - name: Authenticate to Google Cloud (Dev)
         uses: google-github-actions/auth@v2
         with:
-          token_format: access_token
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_DEV }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_DEV }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
-
-      - name: Docker Auth to GCR
-        uses: docker/login-action@v3
         with:
-          username: oauth2accesstoken
-          password: ${{ steps.auth.outputs.access_token }}
-          registry: gcr.io
+          project_id: ${{ secrets.GCP_PROJECT_ID_DEV }}
 
-      # Source - https://stackoverflow.com/a/77471234
-      # Posted by Aditi Sharma
-      # Retrieved 2025-12-11, License - CC BY-SA 4.0
-      - name: Authenticate Docker to GCR (gcloud method)
+      - name: Configure Docker for GCR
         run: |
-          gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://gcr.io
+          gcloud auth configure-docker gcr.io
 
-      - name: Build Docker image with env file
+      - name: Build Docker image
         run: |
-          # Build with env file
           docker build \
             --build-arg ENV_FILE="$(cat .env.build)" \
-            -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-            -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:dev-latest \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID_DEV }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID_DEV }}/${{ env.SERVICE_NAME }}:dev-latest \
             .
 
       - name: Push Docker image to GCR
         run: |
-          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:dev-latest
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID_DEV }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID_DEV }}/${{ env.SERVICE_NAME }}:dev-latest
 
-      - name: Deploy to Cloud Run (Dev)
-        id: deploy
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: ${{ env.SERVICE_NAME }}
-          region: ${{ env.REGION }}
-          image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-          flags: |
-            --platform=managed
-            --allow-unauthenticated
-            --memory=2Gi
-            --cpu=1
-            --timeout=300
-            --max-instances=5
-            --min-instances=0
-            --port=8080
-            --add-cloudsql-instances=storycare-478114:us-central1:storycare-dev
-            --set-env-vars=NODE_ENV=development,NEXT_TELEMETRY_DISABLED=1
-            --update-secrets=DATABASE_URL=DATABASE_URL_DEV:latest
-
-      - name: Show deployment URL
+      - name: Deploy to Cloud Run (Development)
         run: |
-          echo "🚀 Deployed to Development: ${{ steps.deploy.outputs.url }}"
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID_DEV }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            --region ${{ env.GCP_REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --memory 2Gi \
+            --cpu 1 \
+            --max-instances 10 \
+            --min-instances 0 \
+            --port 8080 \
+            --add-cloudsql-instances=storycare-478114:us-central1:storycare-dev \
+            --set-env-vars "NODE_ENV=development" \
+            --update-secrets=DATABASE_URL=DATABASE_URL_DEV:latest \
+            --timeout 300 \
+            --concurrency 80
+
+      - name: Get service URL
+        id: get-url
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.GCP_REGION }} \
+            --format 'value(status.url)')
+          echo "SERVICE_URL=$SERVICE_URL" >> $GITHUB_OUTPUT
+          echo "### 🚀 Development Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Service URL:** $SERVICE_URL" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** gcr.io/${{ secrets.GCP_PROJECT_ID_DEV }}/${{ env.SERVICE_NAME }}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed at:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
 
       - name: Health check
         run: |
-          echo "⏳ Waiting for service to be ready..."
+          echo "Waiting for service to be ready..."
           sleep 15
-          echo "🏥 Running health check..."
-          curl -f ${{ steps.deploy.outputs.url }}/api/health || exit 1
-          echo "✅ Health check passed!"
+          SERVICE_URL="${{ steps.get-url.outputs.SERVICE_URL }}"
 
-      - name: Deployment summary
+          MAX_RETRIES=5
+          RETRY_COUNT=0
+
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if curl -f -s "${SERVICE_URL}/api/health" > /dev/null; then
+              echo "✅ Health check passed!"
+              exit 0
+            fi
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "Health check attempt $RETRY_COUNT/$MAX_RETRIES failed. Retrying in 10 seconds..."
+            sleep 10
+          done
+
+          echo "⚠️ Health check failed after $MAX_RETRIES attempts."
+          exit 1
+
+      - name: Notify deployment
+        if: always()
         run: |
-          echo "=========================================="
-          echo "🎉 Development Deployment Successful!"
-          echo "=========================================="
-          echo ""
-          echo "Service: ${{ env.SERVICE_NAME }}"
-          echo "Region: ${{ env.REGION }}"
-          echo "URL: ${{ steps.deploy.outputs.url }}"
-          echo "Image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
-          echo "Branch: ${{ github.ref_name }}"
-          echo "Commit: ${{ github.sha }}"
-          echo ""
-          echo "=========================================="
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Development deployment completed successfully!"
+          else
+            echo "❌ Development deployment failed!"
+          fi
