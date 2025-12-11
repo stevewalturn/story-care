@@ -42,13 +42,22 @@ export async function POST(request: Request) {
 
       if (userByEmail) {
         // Update existing user with Firebase UID
+        // If user was invited (status='invited'), activate them
         await db
           .update(users)
           .set({
             firebaseUid: uid,
+            status: userByEmail.status === 'invited' ? 'active' : userByEmail.status,
             lastLoginAt: new Date(),
           })
           .where(eq(users.id, userByEmail.id));
+
+        console.log('✅ Linked Firebase UID to existing user:', {
+          userId: userByEmail.id,
+          email: userByEmail.email,
+          previousStatus: userByEmail.status,
+          newStatus: userByEmail.status === 'invited' ? 'active' : userByEmail.status,
+        });
       } else {
         // Create new user in database
         await db.insert(users).values({

@@ -1,0 +1,42 @@
+
+> build
+> run-s db:migrate build:next
+
+
+> db:migrate
+> drizzle-kit migrate
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/Users/lpt-799/Code/walturn/story-care/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] applying migrations...[2K[1G[⣯] applying migrations...[2K[1G[⣟] applying migrations...[2K[1G[⡿] applying migrations...[2K[1G[⢿] applying migrations...[2K[1G[⣻] applying migrations...[2K[1G[⣽] applying migrations...[2K[1G[⣷] applying migrations...[2K[1G[⣯] applying migrations...[2K[1G[⣟] applying migrations...[2K[1G[⡿] applying migrations...[2K[1G[⢿] applying migrations...[2K[1G[⣻] applying migrations...[2K[1G[⣽] applying migrations...[2K[1G[⣷] applying migrations...[2K[1G[⣯] applying migrations...[2K[1G[⣟] applying migrations...[2K[1G[⡿] applying migrations...[2K[1G[⢿] applying migrations...[2K[1G[⣻] applying migrations...[2K[1G[✓] migrations applied successfully!
+> build:next
+> next build --webpack
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+   ▲ Next.js 16.0.1 (webpack)
+   - Environments: .env.local, .env.production, .env
+   - Experiments (use with caution):
+     · proxyClientMaxBodySize: 524288000
+
+ ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+   Creating an optimized production build ...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ ✓ Compiled successfully in 12.8s
+   Running TypeScript ...
+Failed to compile.
+
+./src/app/api/scenes/[id]/assemble-async/route.ts:21:28
+Type error: 'request' is declared but its value is never read.
+
+[0m [90m 19 |[39m [90m * Create async video processing job for scene assembly[39m
+ [90m 20 |[39m [90m */[39m
+[31m[1m>[22m[39m[90m 21 |[39m [36mexport[39m [36masync[39m [36mfunction[39m [33mPOST[39m(request[33m:[39m [33mNextRequest[39m[33m,[39m context[33m:[39m [33mRouteContext[39m) {
+ [90m    |[39m                            [31m[1m^[22m[39m
+ [90m 22 |[39m   [36mtry[39m {
+ [90m 23 |[39m     [36mconst[39m { id[33m:[39m sceneId } [33m=[39m [36mawait[39m context[33m.[39mparams[33m;[39m
+ [90m 24 |[39m[0m
+Next.js build worker exited with code: 1 and signal: null
+ERROR: "build:next" exited with 1.

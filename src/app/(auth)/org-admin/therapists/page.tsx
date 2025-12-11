@@ -6,6 +6,7 @@
 'use client';
 
 import { Search, User, UserPlus } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { InviteTherapistModal } from '@/components/org-admin/InviteTherapistModal';
 import { Button } from '@/components/ui/Button';
@@ -155,9 +156,11 @@ export default function TherapistsPage() {
                   </div>
 
                   <div className="mt-4 flex gap-2">
-                    <Button variant="secondary" className="flex-1 text-sm">
-                      View Profile
-                    </Button>
+                    <Link href={`/org-admin/therapists/${therapist.id}`} className="flex-1">
+                      <Button variant="secondary" className="w-full text-sm">
+                        View Profile
+                      </Button>
+                    </Link>
                     <Button variant="secondary" className="text-sm">
                       •••
                     </Button>

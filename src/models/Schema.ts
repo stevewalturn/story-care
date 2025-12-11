@@ -87,6 +87,17 @@ export const sceneStatusEnum = pgEnum('scene_status', [
   'completed',
   'failed',
 ]);
+export const jobStatusEnum = pgEnum('job_status', [
+  'pending',
+  'processing',
+  'completed',
+  'failed',
+]);
+export const jobTypeEnum = pgEnum('job_type', [
+  'scene_assembly',
+  'video_generation',
+  'transcoding',
+]);
 export const blockTypeEnum = pgEnum('block_type', [
   'video',
   'image',
@@ -98,6 +109,22 @@ export const blockTypeEnum = pgEnum('block_type', [
 ]);
 export const pageStatusEnum = pgEnum('page_status', ['draft', 'published', 'archived']);
 export const visibilityEnum = pgEnum('visibility', ['private', 'patient_only']);
+// Reflection questions only support qualitative data types
+export const reflectionQuestionTypeEnum = pgEnum('reflection_question_type', [
+  'open_text',
+  'scale',
+  'emotion',
+]);
+
+// Survey questions support all types including multiple choice
+export const surveyQuestionTypeEnum = pgEnum('survey_question_type', [
+  'open_text',
+  'multiple_choice',
+  'scale',
+  'emotion',
+]);
+
+// Legacy enum - kept for backward compatibility, will be removed after migration
 export const questionTypeEnum = pgEnum('question_type', [
   'open_text',
   'multiple_choice',
@@ -1111,12 +1138,9 @@ export const reflectionQuestionsSchema = pgTable('reflection_questions', {
     .references(() => pageBlocksSchema.id, { onDelete: 'cascade' })
     .notNull(),
 
-  // Question
+  // Question - only qualitative types allowed (no multiple_choice)
   questionText: text('question_text').notNull(),
-  questionType: questionTypeEnum('question_type').default('open_text'),
-
-  // Options (for multiple_choice) - JSON array
-  options: jsonb('options'),
+  questionType: reflectionQuestionTypeEnum('question_type').default('open_text').notNull(),
 
   // Position
   sequenceNumber: integer('sequence_number').notNull(),
@@ -1130,9 +1154,9 @@ export const surveyQuestionsSchema = pgTable('survey_questions', {
     .references(() => pageBlocksSchema.id, { onDelete: 'cascade' })
     .notNull(),
 
-  // Question
+  // Question - supports all types including multiple_choice
   questionText: text('question_text').notNull(),
-  questionType: questionTypeEnum('question_type').notNull(),
+  questionType: surveyQuestionTypeEnum('question_type').notNull(),
 
   // Scale settings
   scaleMin: integer('scale_min'),
@@ -1324,6 +1348,54 @@ export const videoTranscodingJobsSchema = pgTable('video_transcoding_jobs', {
 });
 
 // ============================================================================
+// VIDEO PROCESSING JOBS (Async FFmpeg Scene Assembly)
+// ============================================================================
+
+export const videoProcessingJobsSchema = pgTable('video_processing_jobs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  // Job metadata
+  jobType: jobTypeEnum('job_type').notNull(),
+  status: jobStatusEnum('status').default('pending').notNull(),
+
+  // Resource references
+  sceneId: uuid('scene_id').references(() => scenesSchema.id, { onDelete: 'cascade' }),
+  mediaId: uuid('media_id').references(() => mediaLibrarySchema.id, {
+    onDelete: 'set null',
+  }),
+
+  // Job progress
+  progress: integer('progress').default(0).notNull(), // 0-100
+  currentStep: varchar('current_step', { length: 255 }), // e.g., "Downloading clips", "Encoding video"
+
+  // Input/Output data
+  inputData: jsonb('input_data'), // Clips, audio tracks, settings
+  outputUrl: text('output_url'), // Final video URL in GCS
+  thumbnailUrl: text('thumbnail_url'),
+
+  // Error handling
+  errorMessage: text('error_message'),
+  retryCount: integer('retry_count').default(0).notNull(),
+  maxRetries: integer('max_retries').default(3).notNull(),
+
+  // Cloud Run tracking
+  cloudRunJobId: varchar('cloud_run_job_id', { length: 255 }), // Cloud Run execution ID
+  cloudRunLogUrl: text('cloud_run_log_url'),
+
+  // Performance metrics
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  durationSeconds: integer('duration_seconds'),
+
+  // User tracking
+  createdByUserId: uuid('created_by_user_id').references(() => usersSchema.id),
+
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================================================
 // ENGAGEMENT TRACKING
 // ============================================================================
 
@@ -1390,6 +1462,7 @@ export const reflectionResponses = reflectionResponsesSchema;
 export const surveyResponses = surveyResponsesSchema;
 export const patientPageInteractions = patientPageInteractionsSchema;
 export const videoTranscodingJobs = videoTranscodingJobsSchema;
+export const videoProcessingJobs = videoProcessingJobsSchema;
 export const auditLogs = auditLogsSchema;
 export const platformSettings = platformSettingsSchema;
 
@@ -1497,6 +1570,9 @@ export type NewPatientPageInteraction = typeof patientPageInteractionsSchema.$in
 
 export type VideoTranscodingJob = typeof videoTranscodingJobsSchema.$inferSelect;
 export type NewVideoTranscodingJob = typeof videoTranscodingJobsSchema.$inferInsert;
+
+export type VideoProcessingJob = typeof videoProcessingJobsSchema.$inferSelect;
+export type NewVideoProcessingJob = typeof videoProcessingJobsSchema.$inferInsert;
 
 export type AuditLog = typeof auditLogsSchema.$inferSelect;
 export type NewAuditLog = typeof auditLogsSchema.$inferInsert;

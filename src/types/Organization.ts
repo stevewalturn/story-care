@@ -9,6 +9,7 @@ import type { Organization, User } from '@/models/Schema';
 export type AuthenticatedUser = {
   uid: string; // Firebase UID
   dbUserId: string; // Database UUID
+  name: string; // User's display name
   organizationId: string | null; // null for super_admin
   email: string | null;
   emailVerified: boolean;

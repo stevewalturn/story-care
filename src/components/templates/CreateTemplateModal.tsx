@@ -66,6 +66,26 @@ export function CreateTemplateModal({ scope, onClose, onCreated }: CreateTemplat
     }
   };
 
+  // Get available question types based on template type
+  const getAvailableQuestionTypes = (): Array<{ value: QuestionType; label: string }> => {
+    const baseTypes = [
+      { value: 'open_text' as QuestionType, label: 'Open Text' },
+      { value: 'scale' as QuestionType, label: 'Scale' },
+      { value: 'emotion' as QuestionType, label: 'Emotion' },
+    ];
+
+    // Only survey templates can use multiple choice
+    if (type === 'survey') {
+      return [
+        ...baseTypes.slice(0, 1),
+        { value: 'multiple_choice' as QuestionType, label: 'Multiple Choice' },
+        ...baseTypes.slice(1),
+      ];
+    }
+
+    return baseTypes;
+  };
+
   const addQuestion = () => {
     const newQuestion: Question = {
       id: crypto.randomUUID(),
@@ -100,6 +120,15 @@ export function CreateTemplateModal({ scope, onClose, onCreated }: CreateTemplat
     if (invalidQuestion) {
       setError('All questions must have text');
       return;
+    }
+
+    // Validate that reflection templates don't have multiple choice questions
+    if (type === 'reflection') {
+      const multipleChoiceQuestion = questions.find(q => q.questionType === 'multiple_choice');
+      if (multipleChoiceQuestion) {
+        setError('Reflection questions can only use qualitative types (Open Text, Scale, Emotion). Please remove multiple choice questions.');
+        return;
+      }
     }
 
     setIsCreating(true);
@@ -308,10 +337,11 @@ export function CreateTemplateModal({ scope, onClose, onCreated }: CreateTemplat
                               className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                               disabled={isCreating}
                             >
-                              <option value="open_text">Open Text</option>
-                              <option value="multiple_choice">Multiple Choice</option>
-                              <option value="scale">Scale</option>
-                              <option value="emotion">Emotion</option>
+                              {getAvailableQuestionTypes().map(qt => (
+                                <option key={qt.value} value={qt.value}>
+                                  {qt.label}
+                                </option>
+                              ))}
                             </select>
 
                             {/* Required Toggle */}
@@ -327,8 +357,8 @@ export function CreateTemplateModal({ scope, onClose, onCreated }: CreateTemplat
                             </label>
                           </div>
 
-                          {/* Multiple Choice Options */}
-                          {question.questionType === 'multiple_choice' && (
+                          {/* Multiple Choice Options - Only for survey templates */}
+                          {question.questionType === 'multiple_choice' && type === 'survey' && (
                             <div>
                               <label className="mb-1 block text-xs text-gray-600">
                                 Options (comma-separated)

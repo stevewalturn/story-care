@@ -57,6 +57,7 @@ gcloud auth application-default login
 #### Step 3: Start the Proxy
 
 ```bash
+cloud-sql-proxy storycare-478114:us-central1:storycare-dev
 # Start Cloud SQL Auth Proxy (keep this running!)
 cloud-sql-proxy storycare-dev-479511:us-central1:storycare-dev
 ```

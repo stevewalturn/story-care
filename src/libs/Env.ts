@@ -26,6 +26,10 @@ export const Env = createEnv({
     // Email Service (Paubox)
     PAUBOX_API_KEY: z.string().min(1).optional(),
     PAUBOX_API_USERNAME: z.string().min(1).optional(),
+
+    // Video Processing (Cloud Run)
+    VIDEO_PROCESSOR_URL: z.string().url().optional(),
+    WEBHOOK_SECRET: z.string().min(1).optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().optional(),
@@ -71,6 +75,10 @@ export const Env = createEnv({
     // Email Service (Paubox)
     PAUBOX_API_KEY: process.env.PAUBOX_API_KEY,
     PAUBOX_API_USERNAME: process.env.PAUBOX_API_USERNAME,
+
+    // Video Processing (Cloud Run)
+    VIDEO_PROCESSOR_URL: process.env.VIDEO_PROCESSOR_URL,
+    WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
 
     // Client vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,

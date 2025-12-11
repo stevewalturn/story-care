@@ -52,6 +52,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+
+    // Validate with schema - this will automatically reject multiple_choice questions
     const validated = createReflectionTemplateSchema.parse(body);
 
     const template = await createReflectionTemplate({

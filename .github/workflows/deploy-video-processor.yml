@@ -1,0 +1,118 @@
+name: Deploy Video Processor to Cloud Run
+
+# Trigger on push to main (after main app deployment) or manual trigger
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'jobs/video-processor/**'
+      - 'src/services/VideoService.ts'
+      - '.github/workflows/deploy-video-processor.yml'
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  SERVICE_NAME: storycare-video-processor
+  REGION: us-central1
+
+jobs:
+  deploy:
+    name: Build and Deploy Video Processor to Cloud Run
+    runs-on: ubuntu-latest
+    environment: development
+
+    # Required for Workload Identity Federation
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -f jobs/video-processor/Dockerfile \
+            -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest \
+            .
+
+      - name: Push Docker image to GCR
+        run: |
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          flags: |
+            --platform=managed
+            --allow-unauthenticated
+            --memory=4Gi
+            --cpu=2
+            --timeout=900
+            --max-instances=10
+            --min-instances=0
+            --port=8080
+            --set-env-vars=NODE_ENV=production
+            --update-secrets=WEBHOOK_SECRET=WEBHOOK_SECRET:latest
+
+      - name: Show deployment URL
+        run: |
+          echo "🚀 Video Processor deployed: ${{ steps.deploy.outputs.url }}"
+          echo "VIDEO_PROCESSOR_URL=${{ steps.deploy.outputs.url }}" >> $GITHUB_ENV
+
+      - name: Health check
+        run: |
+          echo "⏳ Waiting for service to be ready..."
+          sleep 10
+          echo "🏥 Running health check..."
+          curl -f ${{ steps.deploy.outputs.url }}/health || exit 1
+          echo "✅ Health check passed!"
+
+      - name: Update main app environment (optional)
+        run: |
+          echo "=========================================="
+          echo "🎉 Video Processor Deployment Successful!"
+          echo "=========================================="
+          echo ""
+          echo "Service: ${{ env.SERVICE_NAME }}"
+          echo "Region: ${{ env.REGION }}"
+          echo "URL: ${{ steps.deploy.outputs.url }}"
+          echo ""
+          echo "⚠️  IMPORTANT: Update the main app's environment variables:"
+          echo "   VIDEO_PROCESSOR_URL=${{ steps.deploy.outputs.url }}"
+          echo ""
+          echo "   Add this to:"
+          echo "   - Vercel environment variables (for main app)"
+          echo "   - Cloud Run environment variables (for main app)"
+          echo "   - GitHub Secrets as VIDEO_PROCESSOR_URL"
+          echo ""
+          echo "=========================================="
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Video processor deployment completed successfully!"
+          else
+            echo "❌ Video processor deployment failed!"
+          fi

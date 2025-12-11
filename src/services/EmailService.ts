@@ -64,8 +64,15 @@ export async function sendStoryPageNotification(params: {
   // Get email settings from platform configuration
   const emailSettings = await getEmailSettings();
 
+  console.log('📧 Email settings retrieved:', {
+    enabled: emailSettings.enabled,
+    fromName: emailSettings.fromName,
+    fromAddress: emailSettings.fromAddress,
+    provider: emailSettings.provider,
+  });
+
   if (!emailSettings.enabled) {
-    console.log('Email notifications are disabled in platform settings');
+    console.warn('⚠️ Email notifications are disabled in platform settings');
     await updateEmailStatus(notification.id, 'failed', undefined, 'Email notifications disabled');
     return notification;
   }
@@ -162,8 +169,15 @@ export async function sendModuleCompletionNotification(params: {
   // Get email settings from platform configuration
   const emailSettings = await getEmailSettings();
 
+  console.log('📧 Email settings retrieved:', {
+    enabled: emailSettings.enabled,
+    fromName: emailSettings.fromName,
+    fromAddress: emailSettings.fromAddress,
+    provider: emailSettings.provider,
+  });
+
   if (!emailSettings.enabled) {
-    console.log('Email notifications are disabled in platform settings');
+    console.warn('⚠️ Email notifications are disabled in platform settings');
     await updateEmailStatus(notification.id, 'failed', undefined, 'Email notifications disabled');
     return notification;
   }
@@ -260,8 +274,15 @@ export async function sendTherapistInvitationEmail(params: {
   // Get email settings from platform configuration
   const emailSettings = await getEmailSettings();
 
+  console.log('📧 Email settings retrieved:', {
+    enabled: emailSettings.enabled,
+    fromName: emailSettings.fromName,
+    fromAddress: emailSettings.fromAddress,
+    provider: emailSettings.provider,
+  });
+
   if (!emailSettings.enabled) {
-    console.log('Email notifications are disabled in platform settings');
+    console.warn('⚠️ Email notifications are disabled in platform settings');
     await updateEmailStatus(notification.id, 'failed', undefined, 'Email notifications disabled');
     return notification;
   }
@@ -361,8 +382,15 @@ export async function sendPatientInvitationEmail(params: {
   // Get email settings from platform configuration
   const emailSettings = await getEmailSettings();
 
+  console.log('📧 Email settings retrieved:', {
+    enabled: emailSettings.enabled,
+    fromName: emailSettings.fromName,
+    fromAddress: emailSettings.fromAddress,
+    provider: emailSettings.provider,
+  });
+
   if (!emailSettings.enabled) {
-    console.log('Email notifications are disabled in platform settings');
+    console.warn('⚠️ Email notifications are disabled in platform settings');
     await updateEmailStatus(notification.id, 'failed', undefined, 'Email notifications disabled');
     return notification;
   }
@@ -459,8 +487,15 @@ export async function sendOrgAdminInvitationEmail(params: {
   // Get email settings from platform configuration
   const emailSettings = await getEmailSettings();
 
+  console.log('📧 Email settings retrieved:', {
+    enabled: emailSettings.enabled,
+    fromName: emailSettings.fromName,
+    fromAddress: emailSettings.fromAddress,
+    provider: emailSettings.provider,
+  });
+
   if (!emailSettings.enabled) {
-    console.log('Email notifications are disabled in platform settings');
+    console.warn('⚠️ Email notifications are disabled in platform settings');
     await updateEmailStatus(notification.id, 'failed', undefined, 'Email notifications disabled');
     return notification;
   }
@@ -602,8 +637,15 @@ export async function sendSessionReminderEmail(params: {
   // Get email settings from platform configuration
   const emailSettings = await getEmailSettings();
 
+  console.log('📧 Email settings retrieved:', {
+    enabled: emailSettings.enabled,
+    fromName: emailSettings.fromName,
+    fromAddress: emailSettings.fromAddress,
+    provider: emailSettings.provider,
+  });
+
   if (!emailSettings.enabled) {
-    console.log('Email notifications are disabled in platform settings');
+    console.warn('⚠️ Email notifications are disabled in platform settings');
     await updateEmailStatus(notification.id, 'failed', undefined, 'Email notifications disabled');
     return notification;
   }
@@ -702,8 +744,15 @@ export async function sendSurveyReminderEmail(params: {
   // Get email settings from platform configuration
   const emailSettings = await getEmailSettings();
 
+  console.log('📧 Email settings retrieved:', {
+    enabled: emailSettings.enabled,
+    fromName: emailSettings.fromName,
+    fromAddress: emailSettings.fromAddress,
+    provider: emailSettings.provider,
+  });
+
   if (!emailSettings.enabled) {
-    console.log('Email notifications are disabled in platform settings');
+    console.warn('⚠️ Email notifications are disabled in platform settings');
     await updateEmailStatus(notification.id, 'failed', undefined, 'Email notifications disabled');
     return notification;
   }
@@ -794,17 +843,36 @@ export async function updateEmailStatus(
  * Get platform email settings
  */
 export async function getEmailSettings() {
-  const [settings] = await db.select().from(platformSettingsSchema).limit(1);
+  try {
+    const [settings] = await db.select().from(platformSettingsSchema).limit(1);
 
-  return {
-    fromName: settings?.emailFromName || 'StoryCare',
-    fromAddress: settings?.emailFromAddress || 'notifications@storycare.app',
-    footerText:
-      settings?.emailFooterText
-      || 'You received this because you are a patient in the StoryCare platform.',
-    provider: settings?.smtpProvider || 'sendgrid',
-    enabled: settings?.enableEmailNotifications ?? true,
-  };
+    if (!settings) {
+      console.warn('⚠️ No platform settings found in database. Using default email configuration.');
+      console.warn('⚠️ To fix this, run the database migration: npm run db:migrate');
+    }
+
+    return {
+      fromName: settings?.emailFromName || 'StoryCare',
+      fromAddress: settings?.emailFromAddress || 'notifications@storycare.app',
+      footerText:
+        settings?.emailFooterText
+        || 'You received this because you are a user in the StoryCare platform.',
+      provider: settings?.smtpProvider || 'paubox',
+      enabled: settings?.enableEmailNotifications ?? true, // Default to enabled if not set
+    };
+  } catch (error) {
+    console.error('❌ Failed to fetch platform settings:', error);
+    console.warn('⚠️ Using default email configuration as fallback');
+
+    // Return defaults if database query fails
+    return {
+      fromName: 'StoryCare',
+      fromAddress: 'notifications@storycare.app',
+      footerText: 'You received this because you are a user in the StoryCare platform.',
+      provider: 'paubox',
+      enabled: true, // Default to enabled
+    };
+  }
 }
 
 /**

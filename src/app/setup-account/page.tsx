@@ -86,6 +86,35 @@ export default function SetupAccountPage() {
       }
 
       if (user) {
+        // Link Firebase UID to invited user account
+        try {
+          const idToken = await user.getIdToken();
+          const linkResponse = await fetch('/api/auth/link-firebase-uid', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ email }),
+          });
+
+          const linkData = await linkResponse.json();
+
+          if (!linkResponse.ok) {
+            console.error('Failed to link Firebase UID:', linkData);
+            setError(linkData.error || 'Failed to activate account. Please contact support.');
+            setLoading(false);
+            return;
+          }
+
+          console.log('✅ Account linked and activated:', linkData);
+        } catch (linkError) {
+          console.error('Error linking Firebase UID:', linkError);
+          setError('Failed to complete account setup. Please contact support.');
+          setLoading(false);
+          return;
+        }
+
         // Success! Move to completion step
         setCurrentStep(3);
 

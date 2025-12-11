@@ -49,6 +49,7 @@ export async function verifyIdToken(token: string) {
       where: eq(users.firebaseUid, decodedToken.uid),
       columns: {
         id: true,
+        name: true, // Include name for inviter identification
         role: true,
         organizationId: true,
         firebaseUid: true,
@@ -65,6 +66,7 @@ export async function verifyIdToken(token: string) {
         ),
         columns: {
           id: true,
+          name: true, // Include name for inviter identification
           role: true,
           organizationId: true,
           firebaseUid: true,
@@ -84,6 +86,7 @@ export async function verifyIdToken(token: string) {
           .where(eq(users.id, invitedUser.id))
           .returning({
             id: users.id,
+            name: users.name,
             role: users.role,
             organizationId: users.organizationId,
             firebaseUid: users.firebaseUid,
@@ -102,6 +105,7 @@ export async function verifyIdToken(token: string) {
     return {
       uid: decodedToken.uid,
       dbUserId: dbUser.id, // Database UUID
+      name: dbUser.name, // User's display name
       organizationId: dbUser.organizationId,
       email: decodedToken.email || null,
       emailVerified: decodedToken.email_verified || false,
