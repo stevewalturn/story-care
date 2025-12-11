@@ -1,5 +1,5 @@
-# Video Processing Service - Async FFmpeg Scene Assembly for Cloud Run
-# Optimized for long-running video assembly jobs
+# Video Processing Job - Async FFmpeg Scene Assembly for Cloud Run Jobs
+# Optimized for long-running video assembly tasks
 
 FROM node:20-alpine
 
@@ -9,7 +9,8 @@ RUN apk add --no-cache \
     ffprobe \
     bash \
     curl \
-    ca-certificates
+    ca-certificates \
+    postgresql-client
 
 # Set working directory
 WORKDIR /app
@@ -37,7 +38,6 @@ RUN mkdir -p /tmp/video-assembly && \
 
 # Set environment
 ENV NODE_ENV=production \
-    PORT=8080 \
     TEMP_DIR=/tmp/video-assembly
 
 # Run as non-root user
@@ -47,12 +47,5 @@ RUN addgroup -g 1001 -S nodejs && \
 
 USER nodejs
 
-# Expose port
-EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:8080/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
-
-# Start server
-CMD ["node", "jobs/video-processor/server.js"]
+# Execute job (one-time execution, then exit)
+CMD ["node", "jobs/video-processor/execute.js"]

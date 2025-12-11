@@ -7,7 +7,6 @@
 
 import { useVideoJobPolling } from '@/hooks/useVideoJobPolling';
 import { CheckCircle, Loader2, XCircle } from 'lucide-react';
-import React from 'react';
 
 interface VideoProcessingStatusProps {
   sceneId: string;

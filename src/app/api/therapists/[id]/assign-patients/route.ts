@@ -69,7 +69,7 @@ export async function POST(
 
     // Fetch patients to be assigned
     const patients = await db.query.users.findMany({
-      where: (users, { inArray, eq }) => inArray(users.id, validated.patientIds),
+      where: (users, { inArray }) => inArray(users.id, validated.patientIds),
     });
 
     if (patients.length !== validated.patientIds.length) {
@@ -120,7 +120,7 @@ export async function POST(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: error.errors[0]?.message || 'Validation error' },
+        { error: error.issues[0]?.message || 'Validation error' },
         { status: 400 },
       );
     }

@@ -5,7 +5,7 @@
 
 'use client';
 
-import { Building2, Calendar, FileText, Image, Mail, Users, Video } from 'lucide-react';
+import { Building2, Calendar, FileText, Image, Mail, Users } from 'lucide-react';
 
 type TherapistOverviewProps = {
   therapist: {

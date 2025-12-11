@@ -153,39 +153,45 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       })
       .where(eq(scenes.id, sceneId));
 
-    // Trigger Cloud Run service
-    const videoProcessorUrl = Env.VIDEO_PROCESSOR_URL || 'http://localhost:8080';
-    const webhookSecret = Env.WEBHOOK_SECRET || 'your-webhook-secret';
-    const webhookUrl = `${Env.NEXT_PUBLIC_APP_URL}/api/video-jobs/${job.id}/webhook`;
+    // Trigger Cloud Run Job using Google Cloud Run API
+    const projectId = Env.GCS_PROJECT_ID || 'storycare-478114';
+    const region = 'us-central1';
+    const jobName = 'storycare-video-processor';
 
     try {
-      const response = await fetch(`${videoProcessorUrl}/process`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${webhookSecret}`,
+      // Import Google Cloud Run client
+      const { JobsClient } = require('@google-cloud/run').v2;
+
+      const client = new JobsClient();
+      const parent = `projects/${projectId}/locations/${region}`;
+      const jobPath = `${parent}/jobs/${jobName}`;
+
+      console.log(`🎬 Triggering Cloud Run Job: ${jobPath}`);
+
+      // Execute the job with environment variables
+      const [operation] = await client.runJob({
+        name: jobPath,
+        overrides: {
+          containerOverrides: [{
+            env: [
+              { name: 'JOB_ID', value: job.id },
+              { name: 'SCENE_ID', value: sceneId },
+              { name: 'INPUT_DATA', value: JSON.stringify(inputData) },
+            ],
+          }],
         },
-        body: JSON.stringify({
-          jobId: job.id,
-          sceneId,
-          inputData,
-          webhookUrl,
-        }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Cloud Run service returned ${response.status}`);
-      }
+      // Get execution name from operation
+      const executionName = operation.name;
+      console.log(`✅ Job ${job.id} execution started: ${executionName}`);
 
-      const result = await response.json();
-      console.log(`✅ Job ${job.id} accepted by Cloud Run:`, result);
-
-      // Update job with Cloud Run info
+      // Update job with Cloud Run execution info
       await db
         .update(videoProcessingJobs)
         .set({
           status: 'processing',
-          cloudRunJobId: result.executionId || null,
+          cloudRunJobId: executionName || null,
           startedAt: new Date(),
         })
         .where(eq(videoProcessingJobs.id, job.id));
@@ -195,20 +201,21 @@ export async function POST(_request: NextRequest, context: RouteContext) {
           success: true,
           jobId: job.id,
           sceneId,
+          executionName,
           status: 'processing',
           message: 'Video processing job created and triggered',
         },
         { status: 202 }
       );
     } catch (error: any) {
-      console.error(`❌ Failed to trigger Cloud Run for job ${job.id}:`, error);
+      console.error(`❌ Failed to trigger Cloud Run Job for ${job.id}:`, error);
 
       // Mark job and scene as failed
       await db
         .update(videoProcessingJobs)
         .set({
           status: 'failed',
-          errorMessage: `Failed to trigger Cloud Run: ${error.message}`,
+          errorMessage: `Failed to trigger Cloud Run Job: ${error.message}`,
         })
         .where(eq(videoProcessingJobs.id, job.id));
 

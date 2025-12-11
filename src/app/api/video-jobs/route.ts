@@ -6,7 +6,7 @@
 import { db } from '@/libs/DB';
 import { Env } from '@/libs/Env';
 import { videoProcessingJobs } from '@/models/Schema';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -20,15 +20,8 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const limit = Number.parseInt(searchParams.get('limit') || '50', 10);
 
-    // Build query
-    let query = db
-      .select()
-      .from(videoProcessingJobs)
-      .orderBy(desc(videoProcessingJobs.createdAt))
-      .limit(limit);
-
-    // Apply filters
-    const filters: any[] = [];
+    // Build query with filters
+    const filters = [];
     if (sceneId) {
       filters.push(eq(videoProcessingJobs.sceneId, sceneId));
     }
@@ -36,9 +29,12 @@ export async function GET(request: NextRequest) {
       filters.push(eq(videoProcessingJobs.status, status as any));
     }
 
-    if (filters.length > 0) {
-      query = query.where(filters[0]);
-    }
+    const query = db
+      .select()
+      .from(videoProcessingJobs)
+      .where(filters.length > 0 ? and(...filters) : undefined)
+      .orderBy(desc(videoProcessingJobs.createdAt))
+      .limit(limit);
 
     const jobs = await query;
 
@@ -79,7 +75,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create job in database
-    const [job] = await db
+    const jobResult = await db
       .insert(videoProcessingJobs)
       .values({
         sceneId,
@@ -90,6 +86,14 @@ export async function POST(request: NextRequest) {
         currentStep: 'Initializing',
       })
       .returning();
+
+    const job = jobResult[0];
+    if (!job) {
+      return NextResponse.json(
+        { error: 'Failed to create video processing job' },
+        { status: 500 },
+      );
+    }
 
     // Trigger Cloud Run service
     const videoProcessorUrl = Env.VIDEO_PROCESSOR_URL || 'http://localhost:8080';

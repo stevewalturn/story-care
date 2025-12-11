@@ -106,50 +106,59 @@ else
 fi
 echo ""
 
-# Deploy to Cloud Run
-echo -e "${YELLOW}🚀 Deploying to Cloud Run...${NC}"
-gcloud run deploy $SERVICE_NAME \
-  --image gcr.io/$PROJECT_ID/$SERVICE_NAME:latest \
-  --region $REGION \
-  --platform managed \
-  --allow-unauthenticated \
-  --memory 4Gi \
-  --cpu 2 \
-  --timeout 900 \
-  --max-instances 10 \
-  --min-instances 0 \
-  --port 8080 \
-  --set-env-vars NODE_ENV=production \
-  --update-secrets WEBHOOK_SECRET=WEBHOOK_SECRET:latest \
-  --project $PROJECT_ID
+# Deploy as Cloud Run Job
+echo -e "${YELLOW}🚀 Deploying as Cloud Run Job...${NC}"
+
+# Check if job exists
+if gcloud run jobs describe $SERVICE_NAME \
+    --region $REGION \
+    --project $PROJECT_ID &> /dev/null; then
+    echo -e "${YELLOW}📝 Updating existing Cloud Run Job...${NC}"
+
+    gcloud run jobs update $SERVICE_NAME \
+      --image gcr.io/$PROJECT_ID/$SERVICE_NAME:latest \
+      --region $REGION \
+      --project $PROJECT_ID \
+      --memory 4Gi \
+      --cpu 2 \
+      --task-timeout 3600 \
+      --max-retries 3 \
+      --parallelism 1 \
+      --tasks 1 \
+      --set-env-vars NODE_ENV=production \
+      --update-secrets DATABASE_URL=DATABASE_URL_DEV:latest \
+      --update-secrets GCS_PROJECT_ID=GCS_PROJECT_ID:latest \
+      --update-secrets GCS_CLIENT_EMAIL=GCS_CLIENT_EMAIL:latest \
+      --update-secrets GCS_PRIVATE_KEY=GCS_PRIVATE_KEY:latest \
+      --update-secrets GCS_BUCKET_NAME=GCS_BUCKET_NAME:latest
+else
+    echo -e "${YELLOW}🆕 Creating new Cloud Run Job...${NC}"
+
+    gcloud run jobs create $SERVICE_NAME \
+      --image gcr.io/$PROJECT_ID/$SERVICE_NAME:latest \
+      --region $REGION \
+      --project $PROJECT_ID \
+      --memory 4Gi \
+      --cpu 2 \
+      --task-timeout 3600 \
+      --max-retries 3 \
+      --parallelism 1 \
+      --tasks 1 \
+      --set-env-vars NODE_ENV=production \
+      --set-secrets DATABASE_URL=DATABASE_URL_DEV:latest \
+      --set-secrets GCS_PROJECT_ID=GCS_PROJECT_ID:latest \
+      --set-secrets GCS_CLIENT_EMAIL=GCS_CLIENT_EMAIL:latest \
+      --set-secrets GCS_PRIVATE_KEY=GCS_PRIVATE_KEY:latest \
+      --set-secrets GCS_BUCKET_NAME=GCS_BUCKET_NAME:latest
+fi
 
 if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Cloud Run deployment failed${NC}"
+    echo -e "${RED}❌ Cloud Run Job deployment failed${NC}"
     exit 1
 fi
 echo ""
 
-# Get service URL
-echo -e "${YELLOW}🔗 Getting service URL...${NC}"
-SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
-  --region $REGION \
-  --format 'value(status.url)' \
-  --project $PROJECT_ID)
-
-echo -e "${GREEN}✅ Service deployed successfully!${NC}"
-echo ""
-
-# Health check
-echo -e "${YELLOW}🏥 Running health check...${NC}"
-sleep 5
-
-HEALTH_RESPONSE=$(curl -s $SERVICE_URL/health)
-if echo "$HEALTH_RESPONSE" | grep -q "healthy"; then
-    echo -e "${GREEN}✅ Health check passed${NC}"
-else
-    echo -e "${RED}⚠️  Health check failed${NC}"
-    echo "   Response: $HEALTH_RESPONSE"
-fi
+echo -e "${GREEN}✅ Cloud Run Job deployed successfully!${NC}"
 echo ""
 
 # Summary
@@ -157,26 +166,33 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  Deployment Successful! 🎉${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
+echo -e "${YELLOW}📝 Job Details:${NC}"
+echo ""
+echo "   Job Name: $SERVICE_NAME"
+echo "   Region: $REGION"
+echo "   Memory: 4Gi"
+echo "   CPU: 2"
+echo "   Timeout: 3600s (1 hour)"
+echo "   Max Retries: 3"
+echo ""
 echo -e "${YELLOW}📝 Next Steps:${NC}"
 echo ""
-echo "1. Update main app environment:"
-echo -e "   ${GREEN}export VIDEO_PROCESSOR_URL='$SERVICE_URL'${NC}"
+echo "1. Install Google Cloud Run SDK in main app:"
+echo "   npm install @google-cloud/run"
 echo ""
-echo "2. Update Cloud Run main app:"
-echo "   gcloud run services update storycare-app-dev \\"
+echo "2. Main app will trigger jobs via Cloud Run Jobs API"
+echo "   (No URL needed - jobs don't expose HTTP endpoints)"
+echo ""
+echo "3. Monitor job executions:"
+echo "   gcloud run jobs executions list --job=$SERVICE_NAME --region=$REGION"
+echo ""
+echo "4. View logs for a specific execution:"
+echo "   gcloud run jobs executions logs read [EXECUTION_NAME] --job=$SERVICE_NAME --region=$REGION"
+echo ""
+echo "5. Test manual execution:"
+echo "   gcloud run jobs execute $SERVICE_NAME \\"
 echo "     --region $REGION \\"
-echo "     --set-env-vars VIDEO_PROCESSOR_URL=$SERVICE_URL \\"
-echo "     --update-secrets WEBHOOK_SECRET=WEBHOOK_SECRET:latest"
-echo ""
-echo "3. For local development, add to .env.local:"
-echo "   VIDEO_PROCESSOR_URL=$SERVICE_URL"
-echo "   WEBHOOK_SECRET=<get from Secret Manager>"
-echo ""
-echo "4. Test the service:"
-echo "   curl $SERVICE_URL/health"
+echo "     --update-env-vars JOB_ID=test-id,SCENE_ID=test-scene-id"
 echo ""
 echo -e "${GREEN}========================================${NC}"
-echo ""
-echo "Service URL: $SERVICE_URL"
-echo "Logs: gcloud run services logs tail $SERVICE_NAME --region $REGION"
 echo ""

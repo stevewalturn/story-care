@@ -22,7 +22,6 @@ type TherapistHeaderProps = {
   onResendInvitation?: () => void;
   onAssignPatients?: () => void;
   onGenerateReport?: () => void;
-  onViewActivityLog?: () => void;
 };
 
 export function TherapistDetailHeader({
@@ -30,7 +29,6 @@ export function TherapistDetailHeader({
   onResendInvitation,
   onAssignPatients,
   onGenerateReport,
-  onViewActivityLog,
 }: TherapistHeaderProps) {
   const router = useRouter();
 

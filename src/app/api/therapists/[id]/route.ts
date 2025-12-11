@@ -8,7 +8,7 @@ import type { NextRequest } from 'next/server';
 import { and, count, desc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { auditLogs, mediaLibrary, organizationsSchema, sessions, storyPages, users } from '@/models/Schema';
+import { auditLogs, mediaLibrary, sessions, storyPages, users } from '@/models/Schema';
 import { handleAuthError, requireAdmin } from '@/utils/AuthHelpers';
 
 /**
@@ -61,7 +61,7 @@ export async function GET(
     // Fetch organization details
     let organization = null;
     if (therapist.organizationId) {
-      organization = await db.query.organizationsSchema.findFirst({
+      organization = await db.query.organizations.findFirst({
         where: (orgs, { eq }) => eq(orgs.id, therapist.organizationId!),
       });
     }

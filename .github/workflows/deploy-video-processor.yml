@@ -56,55 +56,88 @@ jobs:
           docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
           docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
 
-      - name: Deploy to Cloud Run
+      - name: Create or Update Cloud Run Job
         id: deploy
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: ${{ env.SERVICE_NAME }}
-          region: ${{ env.REGION }}
-          image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-          flags: |
-            --platform=managed
-            --allow-unauthenticated
-            --memory=4Gi
-            --cpu=2
-            --timeout=900
-            --max-instances=10
-            --min-instances=0
-            --port=8080
-            --set-env-vars=NODE_ENV=production
-            --update-secrets=WEBHOOK_SECRET=WEBHOOK_SECRET:latest
-
-      - name: Show deployment URL
         run: |
-          echo "🚀 Video Processor deployed: ${{ steps.deploy.outputs.url }}"
-          echo "VIDEO_PROCESSOR_URL=${{ steps.deploy.outputs.url }}" >> $GITHUB_ENV
+          # Check if job exists
+          if gcloud run jobs describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} &> /dev/null; then
+            echo "📝 Updating existing Cloud Run Job..."
 
-      - name: Health check
+            gcloud run jobs update ${{ env.SERVICE_NAME }} \
+              --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+              --region ${{ env.REGION }} \
+              --project ${{ env.PROJECT_ID }} \
+              --memory 4Gi \
+              --cpu 2 \
+              --task-timeout 3600 \
+              --max-retries 3 \
+              --parallelism 1 \
+              --tasks 1 \
+              --set-env-vars NODE_ENV=production \
+              --update-secrets DATABASE_URL=DATABASE_URL_DEV:latest \
+              --update-secrets GCS_PROJECT_ID=GCS_PROJECT_ID:latest \
+              --update-secrets GCS_CLIENT_EMAIL=GCS_CLIENT_EMAIL:latest \
+              --update-secrets GCS_PRIVATE_KEY=GCS_PRIVATE_KEY:latest \
+              --update-secrets GCS_BUCKET_NAME=GCS_BUCKET_NAME:latest
+          else
+            echo "🆕 Creating new Cloud Run Job..."
+
+            gcloud run jobs create ${{ env.SERVICE_NAME }} \
+              --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+              --region ${{ env.REGION }} \
+              --project ${{ env.PROJECT_ID }} \
+              --memory 4Gi \
+              --cpu 2 \
+              --task-timeout 3600 \
+              --max-retries 3 \
+              --parallelism 1 \
+              --tasks 1 \
+              --set-env-vars NODE_ENV=production \
+              --set-secrets DATABASE_URL=DATABASE_URL_DEV:latest \
+              --set-secrets GCS_PROJECT_ID=GCS_PROJECT_ID:latest \
+              --set-secrets GCS_CLIENT_EMAIL=GCS_CLIENT_EMAIL:latest \
+              --set-secrets GCS_PRIVATE_KEY=GCS_PRIVATE_KEY:latest \
+              --set-secrets GCS_BUCKET_NAME=GCS_BUCKET_NAME:latest
+          fi
+
+      - name: Verify Job Deployment
         run: |
-          echo "⏳ Waiting for service to be ready..."
-          sleep 10
-          echo "🏥 Running health check..."
-          curl -f ${{ steps.deploy.outputs.url }}/health || exit 1
-          echo "✅ Health check passed!"
+          echo "🔍 Verifying Cloud Run Job deployment..."
+          gcloud run jobs describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }}
 
-      - name: Update main app environment (optional)
+      - name: Test Job Execution (Optional)
+        run: |
+          echo "⚠️  Skipping test execution (requires valid JOB_ID)"
+          echo "   To test manually, run:"
+          echo "   gcloud run jobs execute ${{ env.SERVICE_NAME }} \\"
+          echo "     --region ${{ env.REGION }} \\"
+          echo "     --project ${{ env.PROJECT_ID }} \\"
+          echo "     --update-env-vars JOB_ID=test-job-id,SCENE_ID=test-scene-id"
+
+      - name: Deployment Summary
         run: |
           echo "=========================================="
-          echo "🎉 Video Processor Deployment Successful!"
+          echo "🎉 Video Processor Job Deployment Successful!"
           echo "=========================================="
           echo ""
-          echo "Service: ${{ env.SERVICE_NAME }}"
+          echo "Job Name: ${{ env.SERVICE_NAME }}"
           echo "Region: ${{ env.REGION }}"
-          echo "URL: ${{ steps.deploy.outputs.url }}"
+          echo "Image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
           echo ""
-          echo "⚠️  IMPORTANT: Update the main app's environment variables:"
-          echo "   VIDEO_PROCESSOR_URL=${{ steps.deploy.outputs.url }}"
+          echo "📋 Job Configuration:"
+          echo "   Memory: 4Gi"
+          echo "   CPU: 2"
+          echo "   Timeout: 3600s (1 hour)"
+          echo "   Max Retries: 3"
           echo ""
-          echo "   Add this to:"
-          echo "   - Vercel environment variables (for main app)"
-          echo "   - Cloud Run environment variables (for main app)"
-          echo "   - GitHub Secrets as VIDEO_PROCESSOR_URL"
+          echo "📝 Next Steps:"
+          echo "   1. Main app will trigger this job via Cloud Run Jobs API"
+          echo "   2. No URL needed (jobs don't expose HTTP endpoints)"
+          echo "   3. Monitor executions: gcloud run jobs executions list --job=${{ env.SERVICE_NAME }}"
           echo ""
           echo "=========================================="
 

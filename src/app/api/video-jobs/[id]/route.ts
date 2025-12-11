@@ -16,7 +16,7 @@ interface RouteContext {
  * GET /api/video-jobs/[id]
  * Get video processing job status
  */
-export async function GET(request: NextRequest, context: RouteContext) {
+export async function GET(_request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
 
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
  * DELETE /api/video-jobs/[id]
  * Cancel a pending/processing job (if possible)
  */
-export async function DELETE(request: NextRequest, context: RouteContext) {
+export async function DELETE(_request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
 
