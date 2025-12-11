@@ -40,27 +40,27 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID_DEV }}
 
-      - name: Configure Docker for GCR
+      - name: Configure Docker for Artifact Registry
         run: |
-          gcloud auth configure-docker gcr.io
+          gcloud auth configure-docker us-docker.pkg.dev
 
       - name: Build Docker image
         run: |
           docker build \
             --build-arg ENV_FILE="$(cat .env.build)" \
-            -t gcr.io/${{ secrets.GCP_PROJECT_ID_DEV }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-            -t gcr.io/${{ secrets.GCP_PROJECT_ID_DEV }}/${{ env.SERVICE_NAME }}:dev-latest \
+            -t us-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_DEV }}/gcr.io/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            -t us-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_DEV }}/gcr.io/${{ env.SERVICE_NAME }}:dev-latest \
             .
 
-      - name: Push Docker image to GCR
+      - name: Push Docker image to Artifact Registry
         run: |
-          docker push gcr.io/${{ secrets.GCP_PROJECT_ID_DEV }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-          docker push gcr.io/${{ secrets.GCP_PROJECT_ID_DEV }}/${{ env.SERVICE_NAME }}:dev-latest
+          docker push us-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_DEV }}/gcr.io/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          docker push us-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_DEV }}/gcr.io/${{ env.SERVICE_NAME }}:dev-latest
 
       - name: Deploy to Cloud Run (Development)
         run: |
           gcloud run deploy ${{ env.SERVICE_NAME }} \
-            --image gcr.io/${{ secrets.GCP_PROJECT_ID_DEV }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            --image us-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID_DEV }}/gcr.io/${{ env.SERVICE_NAME }}:${{ github.sha }} \
             --region ${{ env.GCP_REGION }} \
             --platform managed \
             --allow-unauthenticated \
