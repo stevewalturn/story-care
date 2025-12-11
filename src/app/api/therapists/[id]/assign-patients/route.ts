@@ -5,7 +5,7 @@
  */
 
 import type { NextRequest } from 'next/server';
-import { eq, inArray } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/libs/DB';
