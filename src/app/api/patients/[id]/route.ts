@@ -3,6 +3,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { logPHIAccess } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
+import { generatePresignedUrl } from '@/libs/GCS';
 import { requirePatientAccess } from '@/middleware/RBACMiddleware';
 import { users } from '@/models/Schema';
 import { handleAuthError } from '@/utils/AuthHelpers';
@@ -31,10 +32,21 @@ export async function GET(
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
 
+    // Generate presigned URLs for patient images (HIPAA compliant, 1-hour expiration)
+    const patientWithSignedUrls = {
+      ...patient,
+      referenceImageUrl: patient.referenceImageUrl
+        ? await generatePresignedUrl(patient.referenceImageUrl, 1).catch(() => patient.referenceImageUrl)
+        : patient.referenceImageUrl,
+      avatarUrl: patient.avatarUrl
+        ? await generatePresignedUrl(patient.avatarUrl, 1).catch(() => patient.avatarUrl)
+        : patient.avatarUrl,
+    };
+
     // Log PHI access
     await logPHIAccess(user.dbUserId, 'user', id, request);
 
-    return NextResponse.json({ patient });
+    return NextResponse.json({ patient: patientWithSignedUrls });
   } catch (error) {
     if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('Forbidden'))) {
       return handleAuthError(error);

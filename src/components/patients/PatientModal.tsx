@@ -119,11 +119,13 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
         throw new Error(error.error || 'Upload failed');
       }
 
-      const { url } = await response.json();
+      const { url, path } = await response.json();
       setUploadProgress(100);
 
-      // Update form data with GCS URL
-      setFormData({ ...formData, referenceImageUrl: url });
+      // Update form data with GCS path (permanent) for database
+      // Keep url for preview display (temporary presigned URL)
+      setFormData({ ...formData, referenceImageUrl: path });
+      setImagePreview(url);
     } catch (error) {
       console.error('Error uploading image:', error);
       alert(error instanceof Error ? error.message : 'Failed to upload image');

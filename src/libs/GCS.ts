@@ -182,4 +182,34 @@ export async function generatePresignedUrlsForMedia<T extends { mediaUrl?: strin
   return results;
 }
 
+/**
+ * Batch generate presigned URLs for patient reference images
+ * Processes referenceImageUrl and avatarUrl fields
+ *
+ * @param items - Array of items with referenceImageUrl and/or avatarUrl fields
+ * @param expiresInHours - Expiration time (default: 1 hour)
+ * @returns Items with presigned URLs
+ */
+export async function generatePresignedUrlsForPatients<T extends { referenceImageUrl?: string | null; avatarUrl?: string | null }>(
+  items: T[],
+  expiresInHours = 1,
+): Promise<T[]> {
+  const results = await Promise.all(
+    items.map(async (item) => {
+      const [signedReferenceUrl, signedAvatarUrl] = await Promise.all([
+        item.referenceImageUrl ? generatePresignedUrl(item.referenceImageUrl, expiresInHours) : null,
+        item.avatarUrl ? generatePresignedUrl(item.avatarUrl, expiresInHours) : null,
+      ]);
+
+      return {
+        ...item,
+        referenceImageUrl: signedReferenceUrl || item.referenceImageUrl,
+        avatarUrl: signedAvatarUrl || item.avatarUrl,
+      };
+    }),
+  );
+
+  return results;
+}
+
 export { bucket, storage };

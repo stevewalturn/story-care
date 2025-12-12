@@ -9,6 +9,7 @@ import { and, eq, ilike, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { Env } from '@/libs/Env';
+import { generatePresignedUrlsForPatients } from '@/libs/GCS';
 import { users } from '@/models/Schema';
 import { sendPatientInvitationEmail } from '@/services/EmailService';
 import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
@@ -105,7 +106,10 @@ export async function GET(request: NextRequest) {
       .from(users)
       .where(and(...conditions));
 
-    return NextResponse.json({ patients: patientsList });
+    // Generate presigned URLs for patient images (HIPAA compliant, 1-hour expiration)
+    const patientsWithSignedUrls = await generatePresignedUrlsForPatients(patientsList, 1);
+
+    return NextResponse.json({ patients: patientsWithSignedUrls });
   } catch (error) {
     console.error('Failed to fetch patients:', error);
     return handleAuthError(error);
