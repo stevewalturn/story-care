@@ -7,7 +7,7 @@ import { db } from '@/libs/DB';
 import { Env } from '@/libs/Env';
 import { generatePresignedUrl } from '@/libs/GCS';
 import { mediaLibrary, sceneAudioTracks, sceneClips, scenes, videoProcessingJobs } from '@/models/Schema';
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
 type RouteContext = {
@@ -275,12 +275,12 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   try {
     const { id: sceneId } = await context.params;
 
-    // Get the latest job for this scene
+    // Get the latest job for this scene (newest first)
     const [job] = await db
       .select()
       .from(videoProcessingJobs)
       .where(eq(videoProcessingJobs.sceneId, sceneId))
-      .orderBy(videoProcessingJobs.createdAt)
+      .orderBy(desc(videoProcessingJobs.createdAt))
       .limit(1);
 
     if (!job) {

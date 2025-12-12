@@ -68,6 +68,7 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
 
   // Video job polling state
   const [pollingEnabled, setPollingEnabled] = useState(false);
+  const [lastFailedJob, setLastFailedJob] = useState<{ errorMessage: string; jobId: string } | null>(null);
 
   // Use video job polling hook
   const { job: videoJob, isProcessing } = useVideoJobPolling({
@@ -149,6 +150,14 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
               'Video assembly in progress... Detected ongoing job.',
               { id: 'processing-toast' },
             );
+          }
+
+          // If job failed, show the error
+          if (data.status === 'failed' && data.errorMessage) {
+            setLastFailedJob({
+              errorMessage: data.errorMessage,
+              jobId: data.jobId,
+            });
           }
         }
       } catch (error) {
@@ -252,6 +261,14 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
                 'Video assembly in progress...',
                 { id: 'processing-toast' },
               );
+            }
+
+            // If job failed, show the error
+            if (jobData.status === 'failed' && jobData.errorMessage) {
+              setLastFailedJob({
+                errorMessage: jobData.errorMessage,
+                jobId: jobData.jobId,
+              });
             }
           }
         } catch (jobError) {
@@ -460,6 +477,7 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
       // Check if job was created successfully
       if (data.jobId) {
         setPollingEnabled(true);
+        setLastFailedJob(null); // Clear any previous failed job
 
         toast.success(
           'Video assembly started! Processing in the background...',
@@ -717,6 +735,35 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
                   ? 'Audio will be trimmed/cut to match video duration exactly'
                   : 'Audio will play once and stop when it ends'}
             </p>
+          </div>
+        )}
+
+        {/* Last Export Failed Warning */}
+        {lastFailedJob && !isProcessingOrExporting && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-red-900">
+                ❌ Last Export Failed
+              </h3>
+              <button
+                onClick={() => setLastFailedJob(null)}
+                className="text-xs text-red-600 hover:text-red-800"
+              >
+                Dismiss
+              </button>
+            </div>
+            <p className="text-sm text-red-800">
+              {lastFailedJob.errorMessage}
+            </p>
+            <p className="mt-1 text-xs text-red-600">
+              Job ID: {lastFailedJob.jobId.substring(0, 12)}...
+            </p>
+            <button
+              onClick={handleExport}
+              className="mt-3 rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700"
+            >
+              Retry Export
+            </button>
           </div>
         )}
 

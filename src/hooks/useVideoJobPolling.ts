@@ -6,6 +6,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 interface VideoJob {
   jobId: string;
@@ -38,13 +40,14 @@ export function useVideoJobPolling({
   onComplete,
   onError,
 }: UseVideoJobPollingOptions) {
+  const { user } = useAuth();
   const [job, setJob] = useState<VideoJob | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Don't poll if not enabled or no ID provided
-    if (!enabled || (!jobId && !sceneId)) {
+    // Don't poll if not enabled, no ID provided, or no user
+    if (!enabled || (!jobId && !sceneId) || !user) {
       return;
     }
 
@@ -65,7 +68,7 @@ export function useVideoJobPolling({
           ? `/api/video-jobs/${jobId}`
           : `/api/scenes/${sceneId}/assemble-async`;
 
-        const response = await fetch(endpoint);
+        const response = await authenticatedFetch(endpoint, user);
 
         if (!response.ok) {
           throw new Error(`Failed to fetch job status: ${response.statusText}`);
@@ -112,7 +115,7 @@ export function useVideoJobPolling({
       isSubscribed = false;
       clearInterval(intervalId);
     };
-  }, [jobId, sceneId, enabled, job?.status, pollInterval, onComplete, onError]);
+  }, [jobId, sceneId, enabled, job?.status, pollInterval, onComplete, onError, user]);
 
   return {
     job,

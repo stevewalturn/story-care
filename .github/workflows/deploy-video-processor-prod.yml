@@ -97,7 +97,7 @@ jobs:
               --max-retries 3 \
               --parallelism 1 \
               --tasks 1 \
-              --add-cloudsql-instances=storycare-478114:us-central1:storycare-prod \
+              --set-cloudsql-instances=storycare-478114:us-central1:storycare-prod \
               --update-secrets=DATABASE_URL=DATABASE_URL_PROD:latest,GCS_PRIVATE_KEY=GCS_PRIVATE_KEY_PROD:latest \
               --set-env-vars NODE_ENV=production,GCS_PROJECT_ID=${{ secrets.GCS_PROJECT_ID_PROD }},GCS_CLIENT_EMAIL=${{ secrets.GCS_CLIENT_EMAIL_PROD }},GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME_PROD }}
           else
@@ -113,7 +113,7 @@ jobs:
               --max-retries 3 \
               --parallelism 1 \
               --tasks 1 \
-              --add-cloudsql-instances=storycare-478114:us-central1:storycare-prod \
+              --set-cloudsql-instances=storycare-478114:us-central1:storycare-prod \
               --update-secrets=DATABASE_URL=DATABASE_URL_PROD:latest,GCS_PRIVATE_KEY=GCS_PRIVATE_KEY_PROD:latest \
               --set-env-vars NODE_ENV=production,GCS_PROJECT_ID=${{ secrets.GCS_PROJECT_ID_PROD }},GCS_CLIENT_EMAIL=${{ secrets.GCS_CLIENT_EMAIL_PROD }},GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME_PROD }}
           fi
