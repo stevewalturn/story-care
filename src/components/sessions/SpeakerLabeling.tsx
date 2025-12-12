@@ -19,9 +19,16 @@ type Speaker = {
   totalDuration: number; // in seconds
 };
 
+type SessionContext = {
+  sessionType: 'individual' | 'group';
+  therapistName: string;
+  patientName: string;
+};
+
 type SpeakerLabelingProps = {
   sessionId: string;
   speakers: Speaker[];
+  sessionContext: SessionContext;
   onSave: (speakers: Speaker[]) => void;
   onCancel: () => void;
 };
@@ -29,11 +36,69 @@ type SpeakerLabelingProps = {
 export function SpeakerLabeling({
   sessionId,
   speakers: initialSpeakers,
+  sessionContext,
   onSave,
   onCancel,
 }: SpeakerLabelingProps) {
   const { user } = useAuth();
-  const [speakers, setSpeakers] = useState<Speaker[]>(initialSpeakers);
+
+  // Smart auto-assignment for individual sessions
+  const getAutoAssignedSpeakers = (speakers: Speaker[]): Speaker[] => {
+    // Only auto-assign for individual sessions with exactly 2 speakers
+    if (sessionContext.sessionType === 'individual' && speakers.length === 2) {
+      return speakers.map((speaker, index) => {
+        // Check if already assigned
+        if (speaker.type && speaker.name) {
+          return speaker;
+        }
+
+        // Auto-assign: Speaker 1 = Therapist, Speaker 2 = Patient
+        if (index === 0) {
+          return {
+            ...speaker,
+            type: 'therapist' as const,
+            name: speaker.name || sessionContext.therapistName,
+          };
+        } else {
+          return {
+            ...speaker,
+            type: 'patient' as const,
+            name: speaker.name || sessionContext.patientName,
+          };
+        }
+      });
+    }
+
+    // For group sessions, auto-assign Speaker 1 as therapist
+    if (sessionContext.sessionType === 'group' && speakers.length > 0) {
+      return speakers.map((speaker, index) => {
+        // Check if already assigned
+        if (speaker.type && speaker.name) {
+          return speaker;
+        }
+
+        if (index === 0) {
+          return {
+            ...speaker,
+            type: 'therapist' as const,
+            name: speaker.name || sessionContext.therapistName,
+          };
+        } else {
+          return {
+            ...speaker,
+            type: speaker.type || ('group_member' as const),
+            name: speaker.name || `Group Member ${index}`,
+          };
+        }
+      });
+    }
+
+    return speakers;
+  };
+
+  const [speakers, setSpeakers] = useState<Speaker[]>(() =>
+    getAutoAssignedSpeakers(initialSpeakers)
+  );
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [mergeMode, setMergeMode] = useState(false);
   const [selectedForMerge, setSelectedForMerge] = useState<string[]>([]);
@@ -51,13 +116,54 @@ export function SpeakerLabeling({
     { value: 'group_member', label: 'Group Member' },
   ];
 
+  // Generate name options based on speaker type
+  const getNameOptions = (speakerType: Speaker['type']) => {
+    if (speakerType === 'therapist') {
+      return [
+        { value: sessionContext.therapistName, label: sessionContext.therapistName },
+      ];
+    }
+
+    if (speakerType === 'patient') {
+      return [
+        { value: sessionContext.patientName, label: sessionContext.patientName },
+      ];
+    }
+
+    if (speakerType === 'group_member') {
+      // For group members, generate numbered options
+      const groupMemberCount = speakers.filter(s => s.type === 'group_member').length;
+      return Array.from({ length: Math.max(groupMemberCount, 5) }, (_, i) => ({
+        value: `Group Member ${i + 1}`,
+        label: `Group Member ${i + 1}`,
+      }));
+    }
+
+    return [];
+  };
+
   const handleTypeChange = (speakerId: string, type: string) => {
     setSpeakers(prev =>
-      prev.map(s =>
-        s.id === speakerId
-          ? { ...s, type: type as Speaker['type'] }
-          : s,
-      ),
+      prev.map(s => {
+        if (s.id === speakerId) {
+          const newType = type as Speaker['type'];
+          // Auto-populate name when type changes
+          let newName = s.name;
+
+          if (newType === 'therapist') {
+            newName = sessionContext.therapistName;
+          } else if (newType === 'patient') {
+            newName = sessionContext.patientName;
+          } else if (newType === 'group_member' && !s.name) {
+            // Find next available group member number
+            const existingGroupMembers = prev.filter(sp => sp.type === 'group_member' && sp.id !== speakerId);
+            newName = `Group Member ${existingGroupMembers.length + 1}`;
+          }
+
+          return { ...s, type: newType, name: newName };
+        }
+        return s;
+      }),
     );
   };
 
@@ -230,12 +336,12 @@ export function SpeakerLabeling({
           return (
             <div
               key={speaker.id}
-              className={`rounded-lg border p-4 transition-all ${
+              className={`rounded-lg border p-4 transition-all duration-200 ${
                 mergeMode
                   ? isSelected
-                    ? 'border-indigo-500 bg-indigo-50'
-                    : 'cursor-pointer border-gray-200 hover:border-gray-300'
-                  : 'border-gray-200'
+                    ? 'border-indigo-500 bg-indigo-50 shadow-md'
+                    : 'cursor-pointer border-gray-200 hover:border-indigo-300 hover:shadow-sm'
+                  : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
               }`}
               onClick={() => mergeMode && toggleMergeSelection(speaker.id)}
             >
@@ -289,37 +395,53 @@ export function SpeakerLabeling({
                         options={speakerTypeOptions}
                         placeholder="Select type..."
                       />
-                      <Input
-                        value={speaker.name}
-                        onChange={e => handleNameChange(speaker.id, e.target.value)}
-                        placeholder="Enter name..."
-                      />
+                      {speaker.type
+                        ? (
+                            <Dropdown
+                              value={speaker.name}
+                              onChange={value => handleNameChange(speaker.id, value)}
+                              options={getNameOptions(speaker.type)}
+                              placeholder="Select name..."
+                            />
+                          )
+                        : (
+                            <Input
+                              value={speaker.name}
+                              onChange={e => handleNameChange(speaker.id, e.target.value)}
+                              placeholder="Enter name..."
+                              disabled
+                            />
+                          )}
                     </div>
                   )}
                 </div>
 
-                {/* Play Sample Button */}
+                {/* Play Sample Button - Enhanced */}
                 {!mergeMode && (
-                  <Button
-                    variant="icon"
+                  <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       handlePlayPause(speaker.id, speaker.sampleAudioUrl);
                     }}
                     disabled={loadingAudio === speaker.id}
+                    className="group relative flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 transition-all hover:scale-110 hover:bg-indigo-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+                    title="Play audio sample"
                   >
                     {loadingAudio === speaker.id
                       ? (
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" />
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
                         )
                       : playingId === speaker.id
                         ? (
-                            <Pause className="h-4 w-4" />
+                            <Pause className="h-5 w-5" />
                           )
                         : (
-                            <Play className="h-4 w-4" />
+                            <Play className="h-5 w-5 ml-0.5" />
                           )}
-                  </Button>
+                    {/* Ripple effect on hover */}
+                    <span className="absolute inset-0 rounded-full bg-indigo-600 opacity-0 transition-opacity group-hover:opacity-10" />
+                  </button>
                 )}
               </div>
             </div>

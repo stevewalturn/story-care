@@ -17,6 +17,12 @@ type Speaker = {
   totalDuration: number;
 };
 
+type SessionContext = {
+  sessionType: 'individual' | 'group';
+  therapistName: string;
+  patientName: string;
+};
+
 type SpeakerLabelingClientProps = {
   sessionId: string;
 };
@@ -27,10 +33,15 @@ export function SpeakerLabelingClient({
   const router = useRouter();
   const { user } = useAuth();
   const [speakers, setSpeakers] = useState<Speaker[]>([]);
+  const [sessionContext, setSessionContext] = useState<SessionContext>({
+    sessionType: 'individual',
+    therapistName: 'Therapist',
+    patientName: 'Patient',
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch speakers from API
+  // Fetch speakers and session context from API
   useEffect(() => {
     const fetchSpeakers = async () => {
       try {
@@ -42,6 +53,11 @@ export function SpeakerLabelingClient({
         }
 
         const data = await response.json();
+
+        // Set session context from API response
+        if (data.sessionContext) {
+          setSessionContext(data.sessionContext);
+        }
 
         // Transform API data to match component interface
         const transformedSpeakers: Speaker[] = data.speakers.map((speaker: any) => ({
@@ -65,7 +81,7 @@ export function SpeakerLabelingClient({
     };
 
     fetchSpeakers();
-  }, [sessionId]);
+  }, [sessionId, user]);
 
   const handleSave = async (updatedSpeakers: Speaker[]) => {
     try {
@@ -130,6 +146,7 @@ export function SpeakerLabelingClient({
       <SpeakerLabeling
         sessionId={sessionId}
         speakers={speakers}
+        sessionContext={sessionContext}
         onSave={handleSave}
         onCancel={handleCancel}
       />

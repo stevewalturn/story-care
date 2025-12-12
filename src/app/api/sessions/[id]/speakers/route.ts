@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { generatePresignedUrl } from '@/libs/GCS';
-import { speakers, transcripts, users } from '@/models/Schema';
+import { sessionsSchema, speakers, transcripts, users } from '@/models/Schema';
 
 // GET /api/sessions/[id]/speakers - Get speakers for a session
 export async function GET(
@@ -13,7 +13,44 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // First get the transcript for this session
+    // Get session details including type and related users
+    const [session] = await db
+      .select({
+        id: sessionsSchema.id,
+        sessionType: sessionsSchema.sessionType,
+        therapistId: sessionsSchema.therapistId,
+        patientId: sessionsSchema.patientId,
+        groupId: sessionsSchema.groupId,
+      })
+      .from(sessionsSchema)
+      .where(eq(sessionsSchema.id, id))
+      .limit(1);
+
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Session not found' },
+        { status: 404 },
+      );
+    }
+
+    // Get therapist name
+    const [therapist] = await db
+      .select({ name: users.name })
+      .from(users)
+      .where(eq(users.id, session.therapistId))
+      .limit(1);
+
+    // Get patient name if individual session
+    let patient = null;
+    if (session.patientId) {
+      [patient] = await db
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.id, session.patientId))
+        .limit(1);
+    }
+
+    // Get the transcript for this session
     const [transcript] = await db
       .select()
       .from(transcripts)
@@ -21,7 +58,14 @@ export async function GET(
       .limit(1);
 
     if (!transcript) {
-      return NextResponse.json({ speakers: [] });
+      return NextResponse.json({
+        speakers: [],
+        sessionContext: {
+          sessionType: session.sessionType,
+          therapistName: therapist?.name || 'Therapist',
+          patientName: patient?.name || 'Patient',
+        },
+      });
     }
 
     // Fetch speakers with user avatar data
@@ -57,7 +101,14 @@ export async function GET(
       }),
     );
 
-    return NextResponse.json({ speakers: speakersWithSignedUrls });
+    return NextResponse.json({
+      speakers: speakersWithSignedUrls,
+      sessionContext: {
+        sessionType: session.sessionType,
+        therapistName: therapist?.name || 'Therapist',
+        patientName: patient?.name || 'Patient',
+      },
+    });
   } catch (error) {
     console.error('Error fetching speakers:', error);
     return NextResponse.json(
