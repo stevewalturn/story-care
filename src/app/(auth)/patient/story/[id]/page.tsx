@@ -8,6 +8,8 @@
 import { Clapperboard, FileText, MessageCircle } from 'lucide-react';
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import { auth } from '@/libs/Firebase';
 
 type PageData = {
   page: {
@@ -29,6 +31,7 @@ type Props = {
 export default function PatientStoryPage({ params }: Props) {
   const { id } = use(params);
   const router = useRouter();
+  const { user } = useAuth();
   const [pageData, setPageData] = useState<PageData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,10 +46,19 @@ export default function PatientStoryPage({ params }: Props) {
 
   const fetchPageData = async () => {
     try {
+      // Get Firebase ID token for authentication
+      const idToken = user ? await user.getIdToken() : null;
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (idToken) {
+        headers.Authorization = `Bearer ${idToken}`;
+      }
+
       const response = await fetch(`/api/pages/${id}?patientView=true`, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         credentials: 'include',
       });
 
@@ -78,6 +90,17 @@ export default function PatientStoryPage({ params }: Props) {
     setIsSubmitting(true);
 
     try {
+      // Get Firebase ID token for authentication
+      const idToken = user ? await user.getIdToken() : null;
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (idToken) {
+        headers.Authorization = `Bearer ${idToken}`;
+      }
+
       // Prepare reflection responses
       const reflectionResponses = reflectionAnswers
         ? Object.entries(reflectionAnswers).map(([questionId, answer]) => ({
@@ -96,9 +119,7 @@ export default function PatientStoryPage({ params }: Props) {
 
       const response = await fetch(`/api/pages/${id}/responses`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         credentials: 'include',
         body: JSON.stringify({
           reflectionResponses,
