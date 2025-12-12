@@ -85,9 +85,37 @@ export async function POST(request: NextRequest) {
       stack: error instanceof Error ? error.stack : undefined,
     });
 
+    // Handle validation errors
     if (error instanceof Error && error.message.includes('validation')) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+
+    // Handle database constraint violations (like duplicate keys)
+    if (error instanceof Error && 'code' in error) {
+      const dbError = error as any;
+
+      // PostgreSQL duplicate key error code
+      if (dbError.code === '23505') {
+        const constraintName = dbError.constraint || '';
+        let message = 'A record with this value already exists.';
+
+        if (constraintName.includes('email')) {
+          message = 'This email address is already registered in the system.';
+        } else if (constraintName.includes('slug')) {
+          message = 'This organization slug is already taken. Please choose a different one.';
+        }
+
+        return NextResponse.json({ error: message }, { status: 409 });
+      }
+
+      // PostgreSQL foreign key constraint error
+      if (dbError.code === '23503') {
+        return NextResponse.json({
+          error: 'Referenced record does not exist.'
+        }, { status: 400 });
+      }
+    }
+
     return handleRBACError(error);
   }
 }

@@ -19,7 +19,7 @@ async function seedTreatmentModules() {
   const existingUsers = await db
     .select()
     .from(usersSchema)
-    .where(eq(usersSchema.email, 'system@storycare.app'))
+    .where(eq(usersSchema.email, 'system@storycare.health'))
     .limit(1);
 
   let systemUser = existingUsers[0];
@@ -29,7 +29,7 @@ async function seedTreatmentModules() {
     const newUsers = await db
       .insert(usersSchema)
       .values({
-        email: 'system@storycare.app',
+        email: 'system@storycare.health',
         name: 'System',
         role: 'super_admin',
         status: 'active',

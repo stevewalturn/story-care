@@ -506,20 +506,18 @@ export function TranscriptViewerClient({
   return (
     <>
       <div className="flex h-screen bg-gray-50">
-        {/* Left Panel - Transcript */}
-        <div className="flex w-[320px] flex-col border-r border-gray-200 bg-white">
-          <TranscriptPanel
-            sessionId={sessionId}
-            sessionTitle={sessionTitle}
-            utterances={utterances}
-            audioUrl={audioUrl}
-            onTextSelection={handleTextSelection}
-            user={user}
-          />
-        </div>
+        {/* Left Panel - Transcript (manages its own width: 320px expanded, 48px collapsed) */}
+        <TranscriptPanel
+          sessionId={sessionId}
+          sessionTitle={sessionTitle}
+          utterances={utterances}
+          audioUrl={audioUrl}
+          onTextSelection={handleTextSelection}
+          user={user}
+        />
 
         {/* Center Panel - AI Assistant */}
-        <div className="flex max-w-[800px] flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col">
           <AIAssistantPanel
             sessionId={sessionId}
             patientName={patientName}
@@ -536,16 +534,14 @@ export function TranscriptViewerClient({
           />
         </div>
 
-        {/* Right Panel - Library */}
-        <div className="flex w-[380px] flex-col border-l border-gray-200 bg-white">
-          <LibraryPanel
-            sessionId={sessionId}
-            user={user}
-            sessionData={sessionData}
-            onOpenUpload={() => setShowMediaUploadModal(true)}
-            refreshKey={mediaRefreshKey}
-          />
-        </div>
+        {/* Right Panel - Library (manages its own width: 384px expanded, 48px collapsed) */}
+        <LibraryPanel
+          sessionId={sessionId}
+          user={user}
+          sessionData={sessionData}
+          onOpenUpload={() => setShowMediaUploadModal(true)}
+          refreshKey={mediaRefreshKey}
+        />
       </div>
 
       {/* Modals */}

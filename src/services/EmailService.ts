@@ -853,7 +853,7 @@ export async function getEmailSettings() {
 
     return {
       fromName: settings?.emailFromName || 'StoryCare',
-      fromAddress: settings?.emailFromAddress || 'notifications@storycare.app',
+      fromAddress: settings?.emailFromAddress || 'notifications@storycare.health',
       footerText:
         settings?.emailFooterText
         || 'You received this because you are a user in the StoryCare platform.',
@@ -867,7 +867,7 @@ export async function getEmailSettings() {
     // Return defaults if database query fails
     return {
       fromName: 'StoryCare',
-      fromAddress: 'notifications@storycare.app',
+      fromAddress: 'notifications@storycare.health',
       footerText: 'You received this because you are a user in the StoryCare platform.',
       provider: 'paubox',
       enabled: true, // Default to enabled

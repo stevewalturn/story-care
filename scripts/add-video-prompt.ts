@@ -84,7 +84,7 @@ async function addVideoPrompt() {
     const [systemUser] = await db
       .select()
       .from(usersSchema)
-      .where(eq(usersSchema.email, 'system@storycare.app'))
+      .where(eq(usersSchema.email, 'system@storycare.health'))
       .limit(1);
 
     if (!systemUser) {

@@ -102,12 +102,6 @@ export function MediaTab({
               </svg>
               Upload
             </button>
-            <button className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Create
-            </button>
           </div>
         </div>
 
@@ -174,7 +168,7 @@ export function MediaTab({
       </div>
 
       {/* Media Grid */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto bg-gray-50 p-4">
         {isLoading ? (
           <div className="py-12 text-center">
             <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
@@ -182,13 +176,13 @@ export function MediaTab({
           </div>
         ) : media.length === 0 ? (
           <div className="py-12 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
-              <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-200">
+              <svg className="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <p className="text-sm text-gray-500">No media yet for this session</p>
-            <p className="mt-1 text-xs text-gray-400">Generated content will appear here</p>
+            <p className="text-sm text-gray-600">No media yet for this session</p>
+            <p className="mt-1 text-xs text-gray-500">Generated content will appear here</p>
           </div>
         ) : (
           <div className="space-y-3">

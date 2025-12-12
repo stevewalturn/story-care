@@ -22,7 +22,7 @@ INSERT INTO platform_settings (
 VALUES (
   gen_random_uuid(),
   'StoryCare',
-  'support@storycare.app',
+  'support@storycare.health',
   1000,
   'dall-e-3',
   10737418240, -- 10GB in bytes
@@ -31,7 +31,7 @@ VALUES (
   true,
   15,
   'StoryCare',
-  'notifications@storycare.app',
+  'notifications@storycare.health',
   'You received this because you are a user in the StoryCare platform.',
   'paubox',
   true, -- CRITICAL: Enable email notifications
@@ -44,7 +44,7 @@ UPDATE platform_settings
 SET
   enable_email_notifications = true,
   email_from_name = 'StoryCare',
-  email_from_address = 'notifications@storycare.app',
+  email_from_address = 'notifications@storycare.health',
   smtp_provider = 'paubox',
   updated_at = NOW()
 WHERE enable_email_notifications IS NULL OR enable_email_notifications = false;

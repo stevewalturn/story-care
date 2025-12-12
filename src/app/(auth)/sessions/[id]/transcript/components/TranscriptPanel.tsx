@@ -3,6 +3,7 @@
 /**
  * Transcript Panel Component
  * Displays session transcript with search, summary, and speaker diarization
+ * Collapsible panel that defaults to shown
  */
 
 import type { TranscriptPanelProps, Utterance } from '../types/transcript.types';
@@ -23,6 +24,7 @@ export function TranscriptPanel({
   const [sessionSummary, setSessionSummary] = useState<string | null>(null);
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true); // Default: shown
 
   // Load session summary on mount
   useEffect(() => {
@@ -58,8 +60,33 @@ export function TranscriptPanel({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Collapsed state - thin vertical bar
+  if (!isExpanded) {
+    return (
+      <div className="flex h-full w-12 flex-col items-center justify-center bg-gray-100 border-r border-gray-200">
+        <button
+          onClick={() => setIsExpanded(true)}
+          className="group flex flex-col items-center gap-2 p-2 transition-colors hover:bg-gray-200"
+          title="Expand Transcript"
+        >
+          <svg className="h-5 w-5 text-gray-600 group-hover:text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          <div className="flex flex-col items-center">
+            {['T', 'r', 'a', 'n', 's', 'c', 'r', 'i', 'p', 't'].map((letter, i) => (
+              <span key={i} className="text-xs font-medium text-gray-600 group-hover:text-gray-900">
+                {letter}
+              </span>
+            ))}
+          </div>
+        </button>
+      </div>
+    );
+  }
+
+  // Expanded state - full panel
   return (
-    <>
+    <div className="flex h-full w-80 flex-col bg-white border-r border-gray-200 transition-all duration-300">
       {/* Header */}
       <div className="border-b border-gray-200 p-4">
         <div className="mb-4 flex items-center justify-between">
@@ -71,7 +98,16 @@ export function TranscriptPanel({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h2 className="text-sm font-semibold text-gray-900">{sessionTitle}</h2>
+          <h2 className="flex-1 text-center text-sm font-semibold text-gray-900">{sessionTitle}</h2>
+          <button
+            onClick={() => setIsExpanded(false)}
+            className="text-gray-500 hover:text-gray-700"
+            title="Collapse Transcript"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
+          </button>
         </div>
 
         {/* Audio Player */}
@@ -209,6 +245,6 @@ export function TranscriptPanel({
           Re-label Speakers
         </button>
       </div>
-    </>
+    </div>
   );
 }

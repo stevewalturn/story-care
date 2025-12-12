@@ -1737,7 +1737,7 @@ async function seedSystemPrompts() {
 
     // Get or create a system user (super admin)
     let systemUser = await db.query.usersSchema.findFirst({
-      where: eq(usersSchema.email, 'system@storycare.app'),
+      where: eq(usersSchema.email, 'system@storycare.health'),
     });
 
     if (!systemUser) {
@@ -1745,7 +1745,7 @@ async function seedSystemPrompts() {
       const result = await db
         .insert(usersSchema)
         .values({
-          email: 'system@storycare.app',
+          email: 'system@storycare.health',
           name: 'System',
           role: 'super_admin',
         })

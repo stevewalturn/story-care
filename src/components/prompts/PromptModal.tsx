@@ -2,8 +2,10 @@
 
 import { Plus, Star, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
+
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { getPromptIcon, PROMPT_CATEGORIES, PROMPT_ICONS } from '@/constants/PromptConstants';
 
 type Prompt = {
   id?: string;
@@ -13,6 +15,8 @@ type Prompt = {
   category: string;
   tags: string[];
   isFavorite?: boolean;
+  icon?: string;
+  outputType?: 'text' | 'json';
 };
 
 type PromptModalProps = {
@@ -22,27 +26,23 @@ type PromptModalProps = {
   prompt?: Prompt;
 };
 
-const CATEGORIES = [
-  { id: 'visualization', label: 'Visualization' },
-  { id: 'character', label: 'Character' },
-  { id: 'environment', label: 'Environment' },
-  { id: 'emotion', label: 'Emotion' },
-  { id: 'metaphor', label: 'Metaphor' },
-  { id: 'safety', label: 'Safe Space' },
-];
-
 export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProps) {
   const [formData, setFormData] = useState<Prompt>(
     prompt || {
       title: '',
       description: '',
       promptText: '',
-      category: 'visualization',
+      category: 'analysis',
       tags: [],
       isFavorite: false,
+      icon: 'sparkles',
+      outputType: 'text',
     },
   );
   const [tagInput, setTagInput] = useState('');
+
+  // Get icon component for preview
+  const SelectedIcon = getPromptIcon(formData.icon);
 
   const handleAddTag = () => {
     if (tagInput.trim() && !formData.tags.includes(tagInput.trim().toLowerCase())) {
@@ -129,23 +129,69 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
             </p>
           </div>
 
-          {/* Category */}
+          {/* Category and Output Type Row */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Category */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Category *
+              </label>
+              <select
+                value={formData.category}
+                onChange={e => setFormData({ ...formData, category: e.target.value })}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                required
+              >
+                {PROMPT_CATEGORIES.filter(cat => cat.id !== 'all').map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Output Type */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Output Type *
+              </label>
+              <select
+                value={formData.outputType}
+                onChange={e => setFormData({ ...formData, outputType: e.target.value as 'text' | 'json' })}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                required
+              >
+                <option value="text">Text</option>
+                <option value="json">JSON</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Icon Selector */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">
-              Category *
+              Icon *
             </label>
-            <select
-              value={formData.category}
-              onChange={e => setFormData({ ...formData, category: e.target.value })}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              required
-            >
-              {CATEGORIES.map(category => (
-                <option key={category.id} value={category.id}>
-                  {category.label}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg border-2 border-indigo-200 bg-indigo-50">
+                <SelectedIcon className="h-5 w-5 text-indigo-600" />
+              </div>
+              <select
+                value={formData.icon}
+                onChange={e => setFormData({ ...formData, icon: e.target.value })}
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                required
+              >
+                {Object.keys(PROMPT_ICONS).map((iconKey) => (
+                  <option key={iconKey} value={iconKey}>
+                    {iconKey.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs text-gray-500">
+              Choose an icon that represents this prompt's purpose
+            </p>
           </div>
 
           {/* Tags */}

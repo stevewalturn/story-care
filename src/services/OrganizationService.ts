@@ -42,6 +42,11 @@ export async function createOrganization(data: {
       throw new Error(`Only super_admin can create organizations. User role: ${creatorUser.role}`);
     }
 
+    // Check if admin email already exists
+    const existingUser = await db.query.users.findFirst({
+      where: eq(users.email, data.adminEmail),
+    });
+
     // Default settings
     const defaultSettings: OrganizationSettings = {
       subscriptionTier: 'basic',
@@ -71,60 +76,97 @@ export async function createOrganization(data: {
       branding: { ...defaultSettings.branding, ...data.settings?.branding },
     };
 
-    // Create organization
-    const organizationValues = {
-      name: data.name,
-      slug: data.slug,
-      contactEmail: data.contactEmail,
-      logoUrl: data.logoUrl || null,
-      primaryColor: data.primaryColor || null,
-      settings,
-      status: 'active' as const,
-      createdBy: data.createdBy,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    // Use a transaction to ensure atomicity (org + user operations succeed/fail together)
+    const result = await db.transaction(async (tx) => {
+      // Create organization
+      const organizationValues = {
+        name: data.name,
+        slug: data.slug,
+        contactEmail: data.contactEmail,
+        logoUrl: data.logoUrl || null,
+        primaryColor: data.primaryColor || null,
+        settings,
+        status: 'active' as const,
+        createdBy: data.createdBy,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-    const [organization] = await db
-      .insert(organizationsSchema)
-      .values(organizationValues)
-      .returning();
+      const [organization] = await tx
+        .insert(organizationsSchema)
+        .values(organizationValues)
+        .returning();
 
-    // Create org_admin user for the new organization
-    if (!organization) {
-      throw new Error('Failed to create organization');
-    }
+      if (!organization) {
+        throw new Error('Failed to create organization');
+      }
 
-    const adminUserValues = {
-      email: data.adminEmail,
-      name: data.adminName,
-      role: 'org_admin' as const,
-      organizationId: organization.id,
-      status: 'invited' as const, // Invited by super admin, needs to set up account
-      firebaseUid: null, // Will be set when they create their account via /setup-account
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+      let adminUser;
 
-    const adminUserResult = await db
-      .insert(users)
-      .values(adminUserValues)
-      .returning();
+      if (existingUser) {
+        // Link existing user to new organization
+        const [updatedUser] = await tx
+          .update(users)
+          .set({
+            organizationId: organization.id,
+            role: 'org_admin',
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, existingUser.id))
+          .returning();
 
-    const adminUser = Array.isArray(adminUserResult) ? adminUserResult[0] : undefined;
+        adminUser = updatedUser;
 
-    // Send invitation email to the org admin
-    if (adminUser) {
+        console.log('OrganizationService.createOrganization - Linked existing user to organization:', {
+          userId: existingUser.id,
+          email: data.adminEmail,
+          organizationId: organization.id,
+        });
+      } else {
+        // Create new org_admin user
+        const adminUserValues = {
+          email: data.adminEmail,
+          name: data.adminName,
+          role: 'org_admin' as const,
+          organizationId: organization.id,
+          status: 'invited' as const,
+          firebaseUid: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        const adminUserResult = await tx
+          .insert(users)
+          .values(adminUserValues)
+          .returning();
+
+        adminUser = Array.isArray(adminUserResult) ? adminUserResult[0] : undefined;
+
+        console.log('OrganizationService.createOrganization - Created new org admin user:', {
+          userId: adminUser?.id,
+          email: data.adminEmail,
+          organizationId: organization.id,
+        });
+      }
+
+      return {
+        organization,
+        adminUser,
+      };
+    });
+
+    // Send invitation email AFTER transaction commits (don't block transaction with email operations)
+    if (result.adminUser) {
       try {
         const appUrl = Env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
         const setupAccountUrl = `${appUrl}/setup-account?email=${encodeURIComponent(data.adminEmail)}&type=org_admin`;
 
         await sendOrgAdminInvitationEmail({
           orgAdminEmail: data.adminEmail,
-          orgAdminName: data.adminName,
-          orgAdminUserId: adminUser.id,
+          orgAdminName: result.adminUser.name,
+          orgAdminUserId: result.adminUser.id,
           inviterName: creatorUser.name,
-          organizationName: organization.name,
+          organizationName: result.organization.name,
           setupAccountUrl,
         });
 
@@ -134,16 +176,13 @@ export async function createOrganization(data: {
         console.error('OrganizationService.createOrganization - Failed to send invitation email:', {
           error: emailError,
           adminEmail: data.adminEmail,
-          organizationId: organization.id,
+          organizationId: result.organization.id,
         });
         // Continue - the invitation can be resent later via the resend button
       }
     }
 
-    return {
-      organization,
-      adminUser,
-    };
+    return result;
   } catch (error) {
     console.error('OrganizationService.createOrganization - Error occurred:', {
       error,
@@ -331,13 +370,29 @@ export async function listOrganizations(params?: {
           .limit(limit)
           .offset(offset);
 
+  // Get user count for each organization
+  const organizationsWithUserCount = await Promise.all(
+    organizationsList.map(async (org) => {
+      const userCountResult = await db
+        .select({ count: count() })
+        .from(users)
+        .where(eq(users.organizationId, org.id));
+      const userCount = Number(userCountResult[0]?.count || 0);
+
+      return {
+        ...org,
+        userCount,
+      };
+    }),
+  );
+
   const totalResult = await db
     .select({ count: count() })
     .from(organizationsSchema);
   const total = Number(totalResult[0]?.count || 0);
 
   return {
-    organizations: organizationsList,
+    organizations: organizationsWithUserCount,
     pagination: {
       total,
       page,

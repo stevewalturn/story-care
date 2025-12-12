@@ -5,11 +5,13 @@
 
 'use client';
 
-import { AlertCircle, Building2, Calendar, CheckCircle, Plus, XCircle } from 'lucide-react';
+import { AlertCircle, Building2, Calendar, CheckCircle, Plus, Trash2, Users, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { CreateOrganizationModal } from '@/components/super-admin/CreateOrganizationModal';
 import { Button } from '@/components/ui/Button';
+import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedDelete } from '@/utils/AuthenticatedFetch';
 
 type Organization = {
   id: string;
@@ -19,6 +21,7 @@ type Organization = {
   status: 'active' | 'suspended';
   joinCode: string;
   createdAt: string;
+  userCount: number;
 };
 
 export default function OrganizationsPage() {
@@ -28,6 +31,10 @@ export default function OrganizationsPage() {
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [idToken, setIdToken] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [organizationToDelete, setOrganizationToDelete] = useState<Organization | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const fetchOrganizations = useCallback(async () => {
     try {
@@ -58,6 +65,51 @@ export default function OrganizationsPage() {
       fetchOrganizations();
     }
   }, [user, fetchOrganizations]);
+
+  const handleDeleteClick = (org: Organization) => {
+    setOrganizationToDelete(org);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!organizationToDelete || !user) return;
+
+    setIsDeleting(true);
+    setError('');
+
+    try {
+      const response = await authenticatedDelete(
+        `/api/organizations/${organizationToDelete.id}`,
+        user,
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete organization');
+      }
+
+      // Remove from local state
+      setOrganizations(prev => prev.filter(o => o.id !== organizationToDelete.id));
+      setSuccessMessage(`Organization "${organizationToDelete.name}" has been deleted successfully`);
+      setDeleteModalOpen(false);
+      setOrganizationToDelete(null);
+
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(''), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete organization');
+      setDeleteModalOpen(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    if (!isDeleting) {
+      setDeleteModalOpen(false);
+      setOrganizationToDelete(null);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     const styles = {
@@ -114,6 +166,13 @@ export default function OrganizationsPage() {
         idToken={idToken}
       />
 
+      {/* Success Message */}
+      {successMessage && (
+        <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-green-700">
+          {successMessage}
+        </div>
+      )}
+
       {/* Error Message */}
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
@@ -133,6 +192,9 @@ export default function OrganizationsPage() {
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                Users
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                 Created
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
@@ -144,7 +206,7 @@ export default function OrganizationsPage() {
             {organizations.length === 0
               ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-12 text-center">
+                    <td colSpan={5} className="px-6 py-12 text-center">
                       <Building2 className="mx-auto h-12 w-12 text-gray-400" />
                       <p className="mt-2 text-sm text-gray-500">
                         No organizations found
@@ -175,17 +237,44 @@ export default function OrganizationsPage() {
                       </td>
                       <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
                         <div className="flex items-center">
+                          <Users className="mr-2 h-4 w-4" />
+                          {org.userCount}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+                        <div className="flex items-center">
                           <Calendar className="mr-2 h-4 w-4" />
                           {new Date(org.createdAt).toLocaleDateString()}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
-                        <a
-                          href={`/super-admin/organizations/${org.id}`}
-                          className="text-indigo-600 hover:text-indigo-900"
-                        >
-                          Manage
-                        </a>
+                        <div className="flex items-center justify-end gap-3">
+                          <a
+                            href={`/super-admin/organizations/${org.id}`}
+                            className="text-indigo-600 hover:text-indigo-900"
+                          >
+                            Manage
+                          </a>
+                          {org.userCount === 0
+                            ? (
+                                <button
+                                  onClick={() => handleDeleteClick(org)}
+                                  className="text-red-600 hover:text-red-900"
+                                  title="Delete organization"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )
+                            : (
+                                <button
+                                  disabled
+                                  className="cursor-not-allowed text-gray-400"
+                                  title="Cannot delete organization with users"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -193,6 +282,20 @@ export default function OrganizationsPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationDialog
+        isOpen={deleteModalOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Organization"
+        message={
+          organizationToDelete
+            ? `Are you sure you want to delete "${organizationToDelete.name}"? This action cannot be undone and will permanently delete all related data including groups, templates, treatment modules, and workflows.`
+            : ''
+        }
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

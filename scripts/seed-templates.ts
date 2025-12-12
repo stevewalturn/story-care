@@ -376,7 +376,7 @@ async function seedTemplates() {
 
     if (!systemUser) {
       systemUser = await db.query.usersSchema.findFirst({
-        where: eq(usersSchema.email, 'system@storycare.app'),
+        where: eq(usersSchema.email, 'system@storycare.health'),
       });
     }
 
@@ -385,7 +385,7 @@ async function seedTemplates() {
       const result = await db
         .insert(usersSchema)
         .values({
-          email: 'system@storycare.app',
+          email: 'system@storycare.health',
           name: 'System',
           role: 'super_admin',
           status: 'active',

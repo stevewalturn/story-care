@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -10,6 +10,10 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 function AuthLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Check if we're on the transcript page
+  const isTranscriptPage = pathname?.includes('/transcript');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -32,6 +36,40 @@ function AuthLayoutContent({ children }: { children: React.ReactNode }) {
     return null;
   }
 
+  // Full-screen layout for transcript page (no sidebar/topbar)
+  if (isTranscriptPage) {
+    return (
+      <div className="h-screen bg-gray-50">
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#fff',
+              color: '#363636',
+            },
+            success: {
+              duration: 3000,
+              iconTheme: {
+                primary: '#10b981',
+                secondary: '#fff',
+              },
+            },
+            error: {
+              duration: 5000,
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
+        <main className="h-full">{children}</main>
+      </div>
+    );
+  }
+
+  // Regular layout with sidebar and topbar
   return (
     <div className="flex h-screen bg-gray-50">
       <Toaster

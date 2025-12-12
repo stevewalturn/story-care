@@ -144,4 +144,22 @@ export async function setCustomClaims(uid: string, claims: Record<string, any>) 
   }
 }
 
+/**
+ * Delete Firebase account (used for rollback when account linking fails)
+ * WARNING: This is a destructive operation. Use only for error recovery.
+ */
+export async function deleteFirebaseAccount(uid: string) {
+  try {
+    await adminAuth.deleteUser(uid);
+    console.log(`🗑️ Successfully deleted Firebase account: ${uid}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to delete Firebase account:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
 export { adminApp, adminAuth };

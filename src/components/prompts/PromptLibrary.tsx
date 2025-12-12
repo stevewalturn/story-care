@@ -1,40 +1,28 @@
 'use client';
 
-import { BookOpen, CheckCircle, Copy, Edit2, Plus, Search, Tag, Trash2 } from 'lucide-react';
+import { BookOpen, CheckCircle, Copy, Edit2, Eye, Plus, Search, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { PromptPreviewModal } from '@/components/prompts/PromptPreviewModal';
+import {
+  getCategoryClasses,
+  getPromptIcon,
+  getSchemaTypeLabel,
+  OUTPUT_TYPES,
+  PROMPT_CATEGORIES,
+} from '@/constants/PromptConstants';
 import { useAuth } from '@/contexts/AuthContext';
+import type { ModuleAiPrompt } from '@/models/Schema';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
-type Prompt = {
-  id: string;
-  title: string;
-  description: string;
-  promptText: string;
-  category: string;
-  tags: string[];
-  useCount: number;
-  createdAt: Date;
-  isFavorite?: boolean;
-};
-
 type PromptLibraryProps = {
-  onSelectPrompt?: (prompt: Prompt) => void;
+  onSelectPrompt?: (prompt: ModuleAiPrompt) => void;
   onAddClick?: () => void;
-  onEditClick?: (prompt: Prompt) => void;
+  onEditClick?: (prompt: ModuleAiPrompt) => void;
   onDeleteClick?: (promptId: string) => void;
 };
-
-const CATEGORIES = [
-  { id: 'all', label: 'All Prompts', color: 'gray' },
-  { id: 'visualization', label: 'Visualization', color: 'blue' },
-  { id: 'character', label: 'Character', color: 'purple' },
-  { id: 'environment', label: 'Environment', color: 'green' },
-  { id: 'emotion', label: 'Emotion', color: 'pink' },
-  { id: 'metaphor', label: 'Metaphor', color: 'orange' },
-  { id: 'safety', label: 'Safe Space', color: 'indigo' },
-];
 
 export function PromptLibrary({
   onSelectPrompt,
@@ -46,8 +34,10 @@ export function PromptLibrary({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [prompts, setPrompts] = useState<ModuleAiPrompt[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedPromptId, setExpandedPromptId] = useState<string | null>(null);
+  const [previewPrompt, setPreviewPrompt] = useState<ModuleAiPrompt | null>(null);
 
   // Fetch prompts from API
   useEffect(() => {
@@ -99,14 +89,8 @@ export function PromptLibrary({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const getCategoryColor = (categoryId: string) => {
-    const category = CATEGORIES.find(c => c.id === categoryId);
-    return category?.color || 'gray';
-  };
-
-  const getCategoryLabel = (categoryId: string) => {
-    const category = CATEGORIES.find(c => c.id === categoryId);
-    return category?.label || categoryId;
+  const toggleExpanded = (promptId: string) => {
+    setExpandedPromptId(expandedPromptId === promptId ? null : promptId);
   };
 
   return (
@@ -138,19 +122,22 @@ export function PromptLibrary({
 
         {/* Category Filter */}
         <div className="flex flex-wrap gap-2">
-          {CATEGORIES.map(category => (
-            <button
-              key={category.id}
-              onClick={() => setSelectedCategory(category.id)}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
-                selectedCategory === category.id
-                  ? `bg-${category.color}-100 text-${category.color}-700 border- border-2${category.color}-500`
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {category.label}
-            </button>
-          ))}
+          {PROMPT_CATEGORIES.map((category) => {
+            const classes = getCategoryClasses(category.id);
+            return (
+              <button
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                  selectedCategory === category.id
+                    ? classes.activeButton
+                    : classes.inactiveButton
+                }`}
+              >
+                {category.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -177,119 +164,146 @@ export function PromptLibrary({
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredPrompts.map(prompt => (
-            <div
-              key={prompt.id}
-              className="rounded-lg border border-gray-200 bg-white p-5 transition-all hover:shadow-lg"
-            >
-              {/* Header */}
-              <div className="mb-3 flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="mb-1 font-semibold text-gray-900">{prompt.title}</h3>
-                  <p className="line-clamp-2 text-sm text-gray-600">{prompt.description}</p>
+          {filteredPrompts.map((prompt) => {
+            const Icon = getPromptIcon(prompt.icon);
+            const categoryClasses = getCategoryClasses(prompt.category || 'analysis');
+            const schemaTypeLabel = getSchemaTypeLabel(prompt.jsonSchema);
+            const isExpanded = expandedPromptId === prompt.id;
+
+            return (
+              <div
+                key={prompt.id}
+                className="rounded-lg border border-gray-200 bg-white p-5 transition-all hover:shadow-lg"
+              >
+                {/* Header with Icon */}
+                <div className="mb-3 flex items-start gap-3">
+                  <div className={`rounded-lg ${categoryClasses.bg} p-2`}>
+                    <Icon className={`h-5 w-5 ${categoryClasses.text}`} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="mb-1 font-semibold text-gray-900">{prompt.name}</h3>
+                    {prompt.description && (
+                      <p className={isExpanded ? 'text-sm text-gray-600' : 'line-clamp-2 text-sm text-gray-600'}>
+                        {prompt.description}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                {prompt.isFavorite && (
-                  <CheckCircle className="ml-2 h-5 w-5 flex-shrink-0 text-indigo-600" />
-                )}
-              </div>
 
-              {/* Content Preview */}
-              <div className="mb-3 rounded bg-gray-50 p-3">
-                <p className="line-clamp-3 text-xs text-gray-700">{prompt.promptText}</p>
-              </div>
-
-              {/* Metadata */}
-              <div className="mb-3 flex items-center gap-2">
-                <span
-                  className={`bg- rounded px-2 py-1 text-xs font-medium${getCategoryColor(prompt.category)}-100 text-${getCategoryColor(prompt.category)}-700`}
-                >
-                  {getCategoryLabel(prompt.category)}
-                </span>
-                <span className="text-xs text-gray-500">
-                  Used
-                  {' '}
-                  {prompt.useCount || 0}
-                  {' '}
-                  times
-                </span>
-              </div>
-
-              {/* Tags */}
-              {prompt.tags && prompt.tags.length > 0 && (
-                <div className="mb-3 flex flex-wrap gap-1">
-                  {prompt.tags.slice(0, 3).map((tag, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs text-gray-600"
-                    >
-                      <Tag className="h-3 w-3" />
-                      {tag}
+                {/* Metadata Badges */}
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span className={`rounded px-2 py-1 text-xs font-medium ${categoryClasses.badge}`}>
+                    {prompt.category}
+                  </span>
+                  {prompt.outputType && (
+                    <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
+                      {OUTPUT_TYPES[prompt.outputType as keyof typeof OUTPUT_TYPES]?.icon}{' '}
+                      {OUTPUT_TYPES[prompt.outputType as keyof typeof OUTPUT_TYPES]?.label || prompt.outputType}
                     </span>
-                  ))}
-                  {prompt.tags.length > 3 && (
-                    <span className="text-xs text-gray-500">
-                      +
-                      {prompt.tags.length - 3}
-                      {' '}
-                      more
+                  )}
+                  {schemaTypeLabel && (
+                    <span className="rounded bg-indigo-100 px-2 py-1 text-xs font-medium text-indigo-700">
+                      {schemaTypeLabel}
                     </span>
                   )}
                 </div>
-              )}
 
-              {/* Actions */}
-              <div className="flex items-center gap-2 border-t border-gray-200 pt-3">
-                {onSelectPrompt && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => onSelectPrompt(prompt)}
-                    className="flex-1"
-                  >
-                    <BookOpen className="mr-1 h-4 w-4" />
-                    Use
-                  </Button>
+                {/* Expandable Description/Prompt Text */}
+                {!prompt.description && (
+                  <div className="mb-3">
+                    <div className="rounded bg-gray-50 p-3">
+                      <p className={isExpanded ? 'whitespace-pre-wrap text-xs text-gray-700' : 'line-clamp-5 text-xs text-gray-700'}>
+                        {prompt.promptText}
+                      </p>
+                    </div>
+                    {prompt.promptText.length > 300 && (
+                      <button
+                        onClick={() => toggleExpanded(prompt.id)}
+                        className="mt-2 text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                      >
+                        {isExpanded ? 'Show Less' : 'Read More'}
+                      </button>
+                    )}
+                  </div>
                 )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleCopy(prompt.id, prompt.promptText)}
-                >
-                  {copiedId === prompt.id
-                    ? (
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                      )
-                    : (
-                        <Copy className="h-4 w-4" />
-                      )}
-                </Button>
-                {onEditClick && (
+
+                {/* Use Count */}
+                <div className="mb-3 text-xs text-gray-500">
+                  Used {prompt.useCount || 0} times
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 border-t border-gray-200 pt-3">
+                  {onSelectPrompt && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => onSelectPrompt(prompt)}
+                      className="flex-1"
+                    >
+                      <BookOpen className="mr-1 h-4 w-4" />
+                      Use
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => onEditClick(prompt)}
+                    onClick={() => setPreviewPrompt(prompt)}
+                    title="Preview full prompt"
                   >
-                    <Edit2 className="h-4 w-4" />
+                    <Eye className="h-4 w-4" />
                   </Button>
-                )}
-                {onDeleteClick && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      if (confirm('Are you sure you want to delete this prompt?')) {
-                        onDeleteClick(prompt.id);
-                        fetchPrompts();
-                      }
-                    }}
+                    onClick={() => handleCopy(prompt.id, prompt.promptText)}
+                    title="Copy prompt text"
                   >
-                    <Trash2 className="h-4 w-4 text-red-600" />
+                    {copiedId === prompt.id ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
                   </Button>
-                )}
+                  {onEditClick && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onEditClick(prompt)}
+                      title="Edit prompt"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {onDeleteClick && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm('Are you sure you want to delete this prompt?')) {
+                          onDeleteClick(prompt.id);
+                          fetchPrompts();
+                        }
+                      }}
+                      title="Delete prompt"
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
+      )}
+
+      {/* Preview Modal */}
+      {previewPrompt && (
+        <PromptPreviewModal
+          prompt={previewPrompt}
+          isOpen={!!previewPrompt}
+          onClose={() => setPreviewPrompt(null)}
+        />
       )}
     </div>
   );

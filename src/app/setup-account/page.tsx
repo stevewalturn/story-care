@@ -43,12 +43,23 @@ export default function SetupAccountPage() {
       const response = await fetch(`/api/auth/check-invitation?email=${encodeURIComponent(email)}`);
       const data = await response.json();
 
-      if (response.ok && data.exists) {
+      if (response.ok && data.status === 'pending' && data.exists) {
+        // Valid pending invitation found
         setInvitation(data);
         setCurrentStep(2);
-      } else {
+      } else if (response.ok && data.status === 'already_activated') {
+        // Account already activated
         setError(
-          data.error || 'No invitation found for this email. Please check with your organization admin or create a new organization instead.',
+          'This account has already been activated. Please sign in instead.',
+        );
+        // Optionally redirect to sign-in after a delay
+        setTimeout(() => {
+          router.push('/sign-in?message=already_activated');
+        }, 2000);
+      } else {
+        // No invitation found or other error
+        setError(
+          data.error || 'No invitation found for this email. Please contact your therapist or administrator.',
         );
       }
     } catch (err) {
@@ -80,6 +91,57 @@ export default function SetupAccountPage() {
       const { user, error: signUpError } = await signUp(email, password);
 
       if (signUpError) {
+        // Check if account already exists
+        if (signUpError.code === 'auth/email-already-in-use') {
+          // Firebase account exists - try to link it to database
+          setError('Account already exists. Attempting to link...');
+
+          // Try to sign in to get the ID token
+          try {
+            const { signIn } = await import('@/libs/Firebase');
+            const { user: existingUser, error: signInError } = await signIn(email, password);
+
+            if (signInError || !existingUser) {
+              setError('This email is already registered. Please sign in or use a different email.');
+              setLoading(false);
+              return;
+            }
+
+            // Try to link the existing Firebase account
+            const idToken = await existingUser.getIdToken();
+            const linkResponse = await fetch('/api/auth/link-firebase-uid', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`,
+              },
+              body: JSON.stringify({ email }),
+            });
+
+            const linkData = await linkResponse.json();
+
+            if (!linkResponse.ok) {
+              console.error('Failed to link existing Firebase account:', linkData);
+              setError(linkData.error || 'This email is already registered. Please sign in instead.');
+              setLoading(false);
+              return;
+            }
+
+            // Successfully linked existing account
+            console.log('✅ Existing Firebase account linked:', linkData);
+            setCurrentStep(3);
+            setTimeout(() => {
+              router.push('/sign-in?setup=complete');
+            }, 2000);
+            return;
+          } catch (recoveryError) {
+            console.error('Failed to recover existing account:', recoveryError);
+            setError('This email is already registered. Please sign in instead.');
+            setLoading(false);
+            return;
+          }
+        }
+
         setError(humanizeFirebaseError(signUpError));
         setLoading(false);
         return;
@@ -102,7 +164,21 @@ export default function SetupAccountPage() {
 
           if (!linkResponse.ok) {
             console.error('Failed to link Firebase UID:', linkData);
-            setError(linkData.error || 'Failed to activate account. Please contact support.');
+
+            // Provide specific error messages based on status code
+            if (linkResponse.status === 409) {
+              // Conflict - account already activated or linked to different account
+              setError(linkData.error || 'This account has already been activated. Please sign in.');
+              setTimeout(() => {
+                router.push('/sign-in');
+              }, 2000);
+            } else if (linkResponse.status === 404) {
+              // No invitation found
+              setError(linkData.error || 'No invitation found. Please contact your administrator.');
+            } else {
+              setError(linkData.error || 'Failed to activate account. Please try again or contact support.');
+            }
+
             setLoading(false);
             return;
           }
@@ -110,7 +186,7 @@ export default function SetupAccountPage() {
           console.log('✅ Account linked and activated:', linkData);
         } catch (linkError) {
           console.error('Error linking Firebase UID:', linkError);
-          setError('Failed to complete account setup. Please contact support.');
+          setError('Failed to complete account setup. Please try again or contact support.');
           setLoading(false);
           return;
         }
@@ -124,6 +200,7 @@ export default function SetupAccountPage() {
         }, 2000);
       }
     } catch (err) {
+      console.error('Unexpected error during account creation:', err);
       setError('Failed to create account. Please try again.');
       setLoading(false);
     }

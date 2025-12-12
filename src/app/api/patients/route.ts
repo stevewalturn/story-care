@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
         role: users.role,
       })
       .from(users)
-      .where(eq(users.id, validated.therapistId))
+      .where(eq(users.firebaseUid, validated.therapistId))
       .limit(1);
 
     if (!therapist) {

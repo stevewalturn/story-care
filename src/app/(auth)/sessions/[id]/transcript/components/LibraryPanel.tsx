@@ -3,6 +3,7 @@
 /**
  * Library Panel Component
  * Main container for session library with tabs for media, quotes, notes, and profile
+ * Collapsible panel that defaults to hidden
  */
 
 import type { LibraryPanelProps } from '../types/transcript.types';
@@ -20,11 +21,37 @@ export function LibraryPanel({
   refreshKey,
 }: LibraryPanelProps) {
   const [activeTab, setActiveTab] = useState<'media' | 'quotes' | 'notes' | 'profile'>('media');
+  const [isExpanded, setIsExpanded] = useState(false); // Default: hidden
 
+  // Collapsed state - thin vertical bar
+  if (!isExpanded) {
+    return (
+      <div className="flex h-full w-12 flex-col items-center justify-center bg-gray-100 border-l border-gray-200">
+        <button
+          onClick={() => setIsExpanded(true)}
+          className="group flex flex-col items-center gap-2 p-2 transition-colors hover:bg-gray-200"
+          title="Expand Library"
+        >
+          <svg className="h-5 w-5 text-gray-600 group-hover:text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          <div className="flex flex-col items-center">
+            {['L', 'i', 'b', 'r', 'a', 'r', 'y'].map((letter, i) => (
+              <span key={i} className="text-xs font-medium text-gray-600 group-hover:text-gray-900">
+                {letter}
+              </span>
+            ))}
+          </div>
+        </button>
+      </div>
+    );
+  }
+
+  // Expanded state - full panel
   return (
-    <>
+    <div className="flex h-full w-96 flex-col bg-gray-50 border-l border-gray-200 transition-all duration-300">
       {/* Header */}
-      <div className="border-b border-gray-200 p-4">
+      <div className="border-b border-gray-200 bg-white p-4">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Library</h2>
           <div className="flex gap-2">
@@ -36,6 +63,15 @@ export function LibraryPanel({
             <button className="text-gray-500 hover:text-gray-700">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setIsExpanded(false)}
+              className="text-gray-500 hover:text-gray-700"
+              title="Collapse Library"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
               </svg>
             </button>
           </div>
@@ -89,6 +125,6 @@ export function LibraryPanel({
       {activeTab === 'profile' && (
         <ProfileTab sessionData={sessionData} />
       )}
-    </>
+    </div>
   );
 }

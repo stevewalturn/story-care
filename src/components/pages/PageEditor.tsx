@@ -19,7 +19,7 @@ type QuestionType = 'open_text' | 'scale' | 'multiple_choice' | 'yes_no';
 type ReflectionQuestion = {
   id?: string;
   text: string;
-  type: QuestionType;
+  type: 'open_text'; // Reflection questions only support open text
   sequenceNumber: number;
 };
 
@@ -232,12 +232,12 @@ export function PageEditor({
       order: blocks.length,
       content: {
         templateId: templateId || undefined,
-        // For reflection blocks, copy all template questions
+        // For reflection blocks, copy all template questions (always open_text)
         questions: templateType === 'reflection'
           ? (template?.questions || []).map((q: any, i: number) => ({
               id: `q-${Date.now()}-${i}`,
               text: q.questionText || q.text || '',
-              type: (q.questionType || 'open_text') as QuestionType,
+              type: 'open_text' as const,
               sequenceNumber: i,
             }))
           : undefined,
@@ -538,7 +538,7 @@ export function PageEditor({
         return (
           <div className="space-y-3">
             <label className="text-sm font-medium text-gray-700">Reflection Questions</label>
-            {(block.content.questions || [{ id: `q-default`, text: '', type: 'open_text' as QuestionType, sequenceNumber: 0 }]).map((question, index) => (
+            {(block.content.questions || [{ id: `q-default`, text: '', type: 'open_text' as const, sequenceNumber: 0 }]).map((question, index) => (
               <div key={question.id || index} className="flex gap-2">
                 <Input
                   value={question.text}
@@ -570,9 +570,9 @@ export function PageEditor({
               size="sm"
               onClick={() => {
                 const currentQuestions = block.content.questions || [];
-                const newQuestions = [
+                const newQuestions: ReflectionQuestion[] = [
                   ...currentQuestions,
-                  { id: `q-${Date.now()}`, text: '', type: 'open_text' as QuestionType, sequenceNumber: currentQuestions.length },
+                  { id: `q-${Date.now()}`, text: '', type: 'open_text' as const, sequenceNumber: currentQuestions.length },
                 ];
                 updateBlockContent(block.id, { questions: newQuestions });
               }}

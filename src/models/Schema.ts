@@ -109,11 +109,9 @@ export const blockTypeEnum = pgEnum('block_type', [
 ]);
 export const pageStatusEnum = pgEnum('page_status', ['draft', 'published', 'archived']);
 export const visibilityEnum = pgEnum('visibility', ['private', 'patient_only']);
-// Reflection questions only support qualitative data types
+// Reflection questions only support open text responses
 export const reflectionQuestionTypeEnum = pgEnum('reflection_question_type', [
   'open_text',
-  'scale',
-  'emotion',
 ]);
 
 // Survey questions support all types including multiple choice
@@ -1282,7 +1280,7 @@ export const platformSettingsSchema = pgTable('platform_settings', {
   emailFromName: varchar('email_from_name', { length: 100 }).notNull().default('StoryCare'),
   emailFromAddress: varchar('email_from_address', { length: 255 })
     .notNull()
-    .default('notifications@storycare.app'),
+    .default('notifications@storycare.health'),
   emailFooterText: text('email_footer_text')
     .notNull()
     .default('You received this because you are a patient in the StoryCare platform.'),

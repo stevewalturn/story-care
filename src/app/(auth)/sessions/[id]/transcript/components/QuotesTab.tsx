@@ -39,7 +39,7 @@ export function QuotesTab({ sessionId, user, refreshKey }: QuotesTabProps) {
   }, [sessionId, user, refreshKey]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-4">
+    <div className="flex-1 overflow-y-auto bg-gray-50 p-4">
       {isLoading ? (
         <div className="py-12 text-center">
           <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
@@ -47,8 +47,13 @@ export function QuotesTab({ sessionId, user, refreshKey }: QuotesTabProps) {
         </div>
       ) : quotes.length === 0 ? (
         <div className="py-12 text-center">
-          <p className="text-sm text-gray-500">No quotes extracted yet</p>
-          <p className="mt-1 text-xs text-gray-400">Select text from the transcript to create quotes</p>
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-200">
+            <svg className="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+            </svg>
+          </div>
+          <p className="text-sm text-gray-600">No quotes extracted yet</p>
+          <p className="mt-1 text-xs text-gray-500">Select text from the transcript to create quotes</p>
         </div>
       ) : (
         <div className="space-y-4">

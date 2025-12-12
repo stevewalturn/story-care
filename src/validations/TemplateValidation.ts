@@ -21,18 +21,14 @@ export const templateStatusSchema = z.enum([
 ]);
 
 /**
- * Reflection question schema - only qualitative types (no multiple_choice)
- * Reflection questions are designed to collect open-ended, qualitative data
+ * Reflection question schema - only open text responses
+ * Reflection questions are designed to collect open-ended qualitative data
  */
 export const reflectionQuestionSchema = z.object({
   id: z.string().uuid().optional(),
   text: z.string().min(5).max(500),
-  type: z.enum(['open_text', 'scale', 'emotion']), // No multiple_choice for reflection
+  type: z.literal('open_text'), // Only open_text for reflection questions
   required: z.boolean().default(false),
-  scaleMin: z.number().optional(), // For scale type
-  scaleMax: z.number().optional(), // For scale type
-  scaleMinLabel: z.string().optional(), // For scale type
-  scaleMaxLabel: z.string().optional(), // For scale type
   metadata: z.record(z.string(), z.any()).optional(),
 });
 

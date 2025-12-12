@@ -76,6 +76,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // First, check if this Firebase UID is already linked to the user (idempotent check)
+    const [existingLinkedUser] = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        role: users.role,
+        status: users.status,
+        firebaseUid: users.firebaseUid,
+      })
+      .from(users)
+      .where(
+        and(
+          eq(users.email, email.toLowerCase()),
+          eq(users.firebaseUid, firebaseUser.uid),
+        ),
+      )
+      .limit(1);
+
+    if (existingLinkedUser) {
+      // Already linked - this is an idempotent retry, return success
+      console.log('✅ Firebase UID already linked (idempotent):', {
+        userId: existingLinkedUser.id,
+        email: existingLinkedUser.email,
+        firebaseUid: existingLinkedUser.firebaseUid,
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: 'Account already activated',
+        user: {
+          id: existingLinkedUser.id,
+          email: existingLinkedUser.email,
+          name: existingLinkedUser.name,
+          role: existingLinkedUser.role,
+          status: existingLinkedUser.status,
+        },
+      });
+    }
+
     // Find invited user with this email and no Firebase UID
     const [invitedUser] = await db
       .select({
@@ -97,9 +137,41 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (!invitedUser) {
+      // Check if user exists but with different state
+      const [anyUser] = await db
+        .select({
+          id: users.id,
+          email: users.email,
+          status: users.status,
+          firebaseUid: users.firebaseUid,
+        })
+        .from(users)
+        .where(eq(users.email, email.toLowerCase()))
+        .limit(1);
+
+      if (anyUser && anyUser.firebaseUid && anyUser.firebaseUid !== firebaseUser.uid) {
+        // User exists but linked to a different Firebase UID
+        return NextResponse.json(
+          {
+            error: 'This email is already linked to a different account. Please sign in or contact support.',
+          },
+          { status: 409 },
+        );
+      }
+
+      if (anyUser && anyUser.status === 'active') {
+        // User is already active (race condition caught)
+        return NextResponse.json(
+          {
+            error: 'This account has already been activated. Please sign in.',
+          },
+          { status: 409 },
+        );
+      }
+
       return NextResponse.json(
         {
-          error: 'No pending invitation found for this email. The invitation may have already been activated or does not exist.',
+          error: 'No pending invitation found for this email. Please contact your therapist or administrator.',
         },
         { status: 404 },
       );

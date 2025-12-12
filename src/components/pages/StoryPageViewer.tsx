@@ -23,8 +23,7 @@ type PageBlock = {
 type ReflectionQuestion = {
   id: string;
   questionText: string;
-  questionType: 'open_text' | 'multiple_choice' | 'scale' | 'emotion';
-  options?: string[];
+  questionType: 'open_text'; // Reflection questions only support open text
   settings?: any;
 };
 

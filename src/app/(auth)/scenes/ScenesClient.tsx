@@ -10,6 +10,7 @@ import { SceneTimeline } from '@/components/scenes/SceneTimeline';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
+import { useVideoJobPolling } from '@/hooks/useVideoJobPolling';
 import { authenticatedFetch, authenticatedPost, authenticatedPut } from '@/utils/AuthenticatedFetch';
 
 type Clip = {
@@ -64,6 +65,38 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
 
   // Assembled video URL
   const [assembledVideoUrl, setAssembledVideoUrl] = useState<string | null>(null);
+
+  // Video job polling state
+  const [pollingEnabled, setPollingEnabled] = useState(false);
+
+  // Use video job polling hook
+  const { job: videoJob, isProcessing } = useVideoJobPolling({
+    sceneId: currentSceneId || undefined,
+    enabled: pollingEnabled && !!currentSceneId,
+    pollInterval: 2000,
+    onComplete: (job) => {
+      toast.success('Video assembly completed!', { duration: 5000 });
+      setAssembledVideoUrl(job.assembledVideoUrl || null);
+      setPollingEnabled(false);
+      setIsExporting(false);
+
+      // Auto-display the exported video
+      if (job.assembledVideoUrl) {
+        setPreviewVideoUrl(job.assembledVideoUrl);
+        setIsViewerOpen(true);
+      }
+
+      // Refresh scene to get updated data
+      if (currentSceneId) {
+        loadScene(currentSceneId);
+      }
+    },
+    onError: (error) => {
+      toast.error(`Video assembly failed: ${error}`);
+      setPollingEnabled(false);
+      setIsExporting(false);
+    },
+  });
 
   // Calculate total duration automatically from both clips and audio tracks
   const totalDuration = useMemo(() => {
@@ -350,46 +383,44 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
         throw new Error('Failed to save scene before exporting');
       }
 
-      // Then trigger assembly
-      toast.loading('Processing video with FFmpeg...', { id: toastId });
+      // Then trigger async assembly using Cloud Run
+      toast.loading('Starting video assembly on Cloud Run...', { id: toastId });
 
-      const response = await authenticatedPost(`/api/scenes/${savedSceneId}/assemble`, user, {
+      const response = await authenticatedPost(`/api/scenes/${savedSceneId}/assemble-async`, user, {
         audioTrack: null, // Optional: add background music
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Assembly failed');
+        throw new Error(errorData.error || 'Failed to start assembly');
       }
 
       const data = await response.json();
 
-      toast.success(
-        `Scene assembled successfully! Duration: ${Math.round(data.durationSeconds)}s, ${data.clipCount} clips`,
-        { id: toastId, duration: 5000 },
-      );
+      // Check if job was created successfully
+      if (data.jobId) {
+        setPollingEnabled(true);
 
-      // Update assembled video URL immediately
-      if (data.assembledVideoUrl) {
-        setAssembledVideoUrl(data.assembledVideoUrl);
-      }
+        toast.success(
+          'Video assembly started! Processing in the background...',
+          { id: toastId, duration: 3000 },
+        );
 
-      // Refresh scene to get updated URL
-      if (savedSceneId) {
-        await loadScene(savedSceneId);
-      }
-
-      // Auto-display the exported video
-      if (data.assembledVideoUrl) {
-        setPreviewVideoUrl(data.assembledVideoUrl);
-        setIsViewerOpen(true);
+        // Show processing message with progress updates
+        toast.loading(
+          'Assembling video on Cloud Run... This may take a few minutes.',
+          { id: 'processing-toast' },
+        );
+      } else {
+        throw new Error('No job ID returned from server');
       }
     } catch (error: any) {
       console.error('Export error:', error);
-      toast.error(`Failed to export scene: ${error.message}`, { id: toastId });
-    } finally {
+      toast.error(`Failed to start export: ${error.message}`, { id: toastId });
       setIsExporting(false);
+      setPollingEnabled(false);
     }
+    // Note: Don't set isExporting to false here - it will be set by polling callbacks
   };
 
   const handlePreview = async () => {
@@ -500,11 +531,17 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
               variant="secondary"
               onClick={handleExport}
               disabled={!selectedPatient || clips.length === 0 || isExporting || isSaving}
+              className="relative"
             >
-              {isExporting ? (
+              {isExporting || isProcessing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Assembling...
+                  {videoJob?.currentStep || 'Processing...'}
+                  {videoJob?.progress !== undefined && (
+                    <span className="ml-2 text-xs opacity-75">
+                      {Math.round(videoJob.progress)}%
+                    </span>
+                  )}
                 </>
               ) : (
                 <>
@@ -532,6 +569,43 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
             </Button>
           </div>
         </div>
+
+        {/* Video Processing Progress */}
+        {(isExporting || isProcessing) && videoJob && (
+          <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                <h3 className="text-sm font-semibold text-blue-900">
+                  Video Processing on Cloud Run
+                </h3>
+              </div>
+              <span className="text-xs font-medium text-blue-700">
+                {Math.round(videoJob.progress || 0)}% Complete
+              </span>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-blue-200">
+              <div
+                className="h-full bg-blue-600 transition-all duration-300 ease-out"
+                style={{ width: `${videoJob.progress || 0}%` }}
+              />
+            </div>
+
+            {/* Current Step */}
+            <p className="text-xs text-blue-700">
+              {videoJob.currentStep || 'Starting...'}
+            </p>
+
+            {/* Job Info */}
+            {videoJob.jobId && (
+              <p className="mt-1 text-xs text-blue-600">
+                Job ID: {videoJob.jobId.substring(0, 12)}...
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Audio Settings */}
         {audioTracks.length > 0 && (

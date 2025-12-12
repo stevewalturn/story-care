@@ -5,10 +5,18 @@
  * Multi-select component for choosing AI prompts from the library
  */
 
-import type { PromptTemplate } from '@/models/Schema';
-import { Check, Search, Sparkles } from 'lucide-react';
+import { Check, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
+
+import {
+  getCategoryClasses,
+  getCategoryData,
+  getPromptIcon,
+  getSchemaTypeLabel,
+  OUTPUT_TYPES,
+} from '@/constants/PromptConstants';
 import { useAuth } from '@/contexts/AuthContext';
+import type { PromptTemplate } from '@/models/Schema';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type PromptSelectorProps = {
@@ -17,20 +25,6 @@ type PromptSelectorProps = {
   apiEndpoint?: string;
   label?: string;
   description?: string;
-};
-
-const categoryLabels: Record<string, string> = {
-  analysis: 'Analysis',
-  creative: 'Creative',
-  extraction: 'Extraction',
-  reflection: 'Reflection',
-};
-
-const categoryColors: Record<string, string> = {
-  analysis: 'bg-blue-100 text-blue-700',
-  creative: 'bg-purple-100 text-purple-700',
-  extraction: 'bg-green-100 text-green-700',
-  reflection: 'bg-orange-100 text-orange-700',
 };
 
 export function PromptSelector({
@@ -121,11 +115,14 @@ export function PromptSelector({
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
         >
           <option value="all">All Categories</option>
-          {categories.map(cat => (
-            <option key={cat} value={cat}>
-              {categoryLabels[cat] || cat}
-            </option>
-          ))}
+          {categories.map((cat) => {
+            const categoryData = getCategoryData(cat);
+            return (
+              <option key={cat} value={cat}>
+                {categoryData.label}
+              </option>
+            );
+          })}
         </select>
       </div>
 
@@ -142,6 +139,9 @@ export function PromptSelector({
         ) : (
           filteredPrompts.map((prompt) => {
             const isSelected = selectedPromptIds.includes(prompt.id);
+            const Icon = getPromptIcon(prompt.icon);
+            const categoryClasses = getCategoryClasses(prompt.category || 'analysis');
+            const schemaTypeLabel = getSchemaTypeLabel(prompt.jsonSchema);
 
             return (
               <label
@@ -153,11 +153,12 @@ export function PromptSelector({
                 }`}
               >
                 <div className="flex h-5 items-center">
-                  <div className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-all ${
-                    isSelected
-                      ? 'border-indigo-600 bg-indigo-600'
-                      : 'border-gray-300 bg-white'
-                  }`}
+                  <div
+                    className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-all ${
+                      isSelected
+                        ? 'border-indigo-600 bg-indigo-600'
+                        : 'border-gray-300 bg-white'
+                    }`}
                   >
                     {isSelected && <Check className="h-3 w-3 text-white" />}
                   </div>
@@ -169,26 +170,31 @@ export function PromptSelector({
                   />
                 </div>
 
+                <div className={`rounded-lg p-1.5 ${categoryClasses.bg}`}>
+                  <Icon className={`h-4 w-4 ${categoryClasses.text}`} />
+                </div>
+
                 <div className="min-w-0 flex-1">
                   <div className="mb-1 flex items-center gap-2">
                     <span className="text-sm font-medium text-gray-900">
                       {prompt.name}
                     </span>
-                    <span className={`rounded px-2 py-0.5 text-xs font-medium ${
-                      categoryColors[prompt.category] || 'bg-gray-100 text-gray-700'
-                    }`}
-                    >
-                      {categoryLabels[prompt.category] || prompt.category}
+                    <span className={`rounded px-2 py-0.5 text-xs font-medium ${categoryClasses.badge}`}>
+                      {prompt.category}
                     </span>
                     {prompt.outputType && (
                       <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
-                        {prompt.outputType === 'text' && '📝 Text'}
-                        {prompt.outputType === 'image' && '🖼️ Image'}
-                        {prompt.outputType === 'scene' && '🎬 Scene'}
+                        {OUTPUT_TYPES[prompt.outputType as keyof typeof OUTPUT_TYPES]?.icon}{' '}
+                        {OUTPUT_TYPES[prompt.outputType as keyof typeof OUTPUT_TYPES]?.label || prompt.outputType}
+                      </span>
+                    )}
+                    {schemaTypeLabel && (
+                      <span className="rounded bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
+                        {schemaTypeLabel}
                       </span>
                     )}
                     {prompt.scope === 'system' && (
-                      <span className="rounded bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
+                      <span className="rounded bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
                         System
                       </span>
                     )}
@@ -199,11 +205,6 @@ export function PromptSelector({
                     </p>
                   )}
                 </div>
-
-                <Sparkles className={`h-4 w-4 flex-shrink-0 ${
-                  isSelected ? 'text-indigo-600' : 'text-gray-400'
-                }`}
-                />
               </label>
             );
           })

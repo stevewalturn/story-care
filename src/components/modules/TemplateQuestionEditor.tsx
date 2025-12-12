@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
 export type QuestionType = 'open_text' | 'multiple_choice' | 'scale' | 'emotion';
-export type ReflectionQuestionType = 'open_text' | 'scale' | 'emotion'; // No multiple_choice
+export type ReflectionQuestionType = 'open_text'; // Reflection questions only support open text
 
 export type TemplateQuestion = {
   id: string;
@@ -34,22 +34,20 @@ export function TemplateQuestionEditor({
 
   // Get available question types based on template type
   const getAvailableQuestionTypes = (): Array<{ value: QuestionType; label: string }> => {
-    const baseTypes = [
-      { value: 'open_text' as QuestionType, label: 'Open Text' },
-      { value: 'scale' as QuestionType, label: 'Scale' },
-      { value: 'emotion' as QuestionType, label: 'Emotion' },
-    ];
-
-    // Only survey templates can use multiple choice
-    if (templateType === 'survey') {
+    // Reflection templates only support open text
+    if (templateType === 'reflection') {
       return [
-        ...baseTypes.slice(0, 1),
-        { value: 'multiple_choice' as QuestionType, label: 'Multiple Choice' },
-        ...baseTypes.slice(1),
+        { value: 'open_text' as QuestionType, label: 'Open Text' },
       ];
     }
 
-    return baseTypes;
+    // Survey templates support all question types
+    return [
+      { value: 'open_text' as QuestionType, label: 'Open Text' },
+      { value: 'multiple_choice' as QuestionType, label: 'Multiple Choice' },
+      { value: 'scale' as QuestionType, label: 'Scale' },
+      { value: 'emotion' as QuestionType, label: 'Emotion' },
+    ];
   };
 
   const addQuestion = () => {

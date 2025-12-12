@@ -12,7 +12,8 @@ export const createDbConnection = () => {
     connectionString: Env.DATABASE_URL,
     // Increase max connections for production
     // Cloud Run with 4GB RAM / 2 vCPU can handle 10 concurrent connections
-    max: Env.NODE_ENV === 'production' ? 10 : 1,
+    // Development: Use 5 connections to avoid pool exhaustion during nested operations
+    max: Env.NODE_ENV === 'production' ? 10 : 5,
     // Connection timeout (30 seconds)
     connectionTimeoutMillis: 30000,
     // Idle timeout - close connections after 30 seconds of inactivity

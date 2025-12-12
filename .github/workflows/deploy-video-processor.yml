@@ -31,11 +31,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Create .env file from secret
+        run: |
+          cat > .env.build << 'EOF'
+          ${{ secrets.ENV_FILE_DEV }}
+          EOF
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_DEV }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_DEV }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
@@ -47,6 +53,7 @@ jobs:
         run: |
           docker build \
             -f jobs/video-processor/Dockerfile \
+            --build-arg ENV_FILE="$(cat .env.build)" \
             -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
             -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest \
             .
@@ -75,12 +82,7 @@ jobs:
               --max-retries 3 \
               --parallelism 1 \
               --tasks 1 \
-              --set-env-vars NODE_ENV=production \
-              --update-secrets DATABASE_URL=DATABASE_URL_DEV:latest \
-              --update-secrets GCS_PROJECT_ID=GCS_PROJECT_ID:latest \
-              --update-secrets GCS_CLIENT_EMAIL=GCS_CLIENT_EMAIL:latest \
-              --update-secrets GCS_PRIVATE_KEY=GCS_PRIVATE_KEY:latest \
-              --update-secrets GCS_BUCKET_NAME=GCS_BUCKET_NAME:latest
+              --set-env-vars NODE_ENV=production
           else
             echo "🆕 Creating new Cloud Run Job..."
 
@@ -94,12 +96,7 @@ jobs:
               --max-retries 3 \
               --parallelism 1 \
               --tasks 1 \
-              --set-env-vars NODE_ENV=production \
-              --set-secrets DATABASE_URL=DATABASE_URL_DEV:latest \
-              --set-secrets GCS_PROJECT_ID=GCS_PROJECT_ID:latest \
-              --set-secrets GCS_CLIENT_EMAIL=GCS_CLIENT_EMAIL:latest \
-              --set-secrets GCS_PRIVATE_KEY=GCS_PRIVATE_KEY:latest \
-              --set-secrets GCS_BUCKET_NAME=GCS_BUCKET_NAME:latest
+              --set-env-vars NODE_ENV=production
           fi
 
       - name: Verify Job Deployment
