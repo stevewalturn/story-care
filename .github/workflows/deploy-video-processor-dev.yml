@@ -1,6 +1,5 @@
-name: Deploy Video Processor to Cloud Run
+name: Deploy Video Processor to Cloud Run (Development)
 
-# Trigger on push to main (after main app deployment) or manual trigger
 on:
   push:
     branches:
@@ -8,21 +7,19 @@ on:
     paths:
       - 'jobs/video-processor/**'
       - 'src/services/VideoService.ts'
-      - '.github/workflows/deploy-video-processor.yml'
-  workflow_dispatch: # Allow manual trigger
+      - '.github/workflows/deploy-video-processor-dev.yml'
+  workflow_dispatch:
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  SERVICE_NAME: storycare-video-processor
-  REGION: us-central1
+  GCP_REGION: us-central1
+  SERVICE_NAME: storycare-video-processor-dev
 
 jobs:
   deploy:
-    name: Build and Deploy Video Processor to Cloud Run
+    name: Build and Deploy Video Processor to Cloud Run (Dev)
     runs-on: ubuntu-latest
     environment: development
 
-    # Required for Workload Identity Federation
     permissions:
       contents: read
       id-token: write
@@ -37,7 +34,7 @@ jobs:
           ${{ secrets.ENV_FILE_DEV }}
           EOF
 
-      - name: Authenticate to Google Cloud
+      - name: Authenticate to Google Cloud (Dev)
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_DEV }}
@@ -45,6 +42,8 @@ jobs:
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID_DEV }}
 
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker gcr.io
@@ -54,95 +53,86 @@ jobs:
           docker build \
             -f jobs/video-processor/Dockerfile \
             --build-arg ENV_FILE="$(cat .env.build)" \
-            -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-            -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID_DEV }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID_DEV }}/${{ env.SERVICE_NAME }}:dev-latest \
             .
 
       - name: Push Docker image to GCR
         run: |
-          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID_DEV }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID_DEV }}/${{ env.SERVICE_NAME }}:dev-latest
 
       - name: Create or Update Cloud Run Job
         id: deploy
         run: |
           # Check if job exists
           if gcloud run jobs describe ${{ env.SERVICE_NAME }} \
-            --region ${{ env.REGION }} \
-            --project ${{ env.PROJECT_ID }} &> /dev/null; then
+            --region ${{ env.GCP_REGION }} \
+            --project ${{ secrets.GCP_PROJECT_ID_DEV }} &> /dev/null; then
             echo "📝 Updating existing Cloud Run Job..."
 
             gcloud run jobs update ${{ env.SERVICE_NAME }} \
-              --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-              --region ${{ env.REGION }} \
-              --project ${{ env.PROJECT_ID }} \
+              --image gcr.io/${{ secrets.GCP_PROJECT_ID_DEV }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+              --region ${{ env.GCP_REGION }} \
+              --project ${{ secrets.GCP_PROJECT_ID_DEV }} \
               --memory 4Gi \
               --cpu 2 \
               --task-timeout 3600 \
               --max-retries 3 \
               --parallelism 1 \
               --tasks 1 \
-              --set-env-vars NODE_ENV=production
+              --set-env-vars NODE_ENV=development
           else
             echo "🆕 Creating new Cloud Run Job..."
 
             gcloud run jobs create ${{ env.SERVICE_NAME }} \
-              --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-              --region ${{ env.REGION }} \
-              --project ${{ env.PROJECT_ID }} \
+              --image gcr.io/${{ secrets.GCP_PROJECT_ID_DEV }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+              --region ${{ env.GCP_REGION }} \
+              --project ${{ secrets.GCP_PROJECT_ID_DEV }} \
               --memory 4Gi \
               --cpu 2 \
               --task-timeout 3600 \
               --max-retries 3 \
               --parallelism 1 \
               --tasks 1 \
-              --set-env-vars NODE_ENV=production
+              --set-env-vars NODE_ENV=development
           fi
 
       - name: Verify Job Deployment
         run: |
           echo "🔍 Verifying Cloud Run Job deployment..."
           gcloud run jobs describe ${{ env.SERVICE_NAME }} \
-            --region ${{ env.REGION }} \
-            --project ${{ env.PROJECT_ID }}
-
-      - name: Test Job Execution (Optional)
-        run: |
-          echo "⚠️  Skipping test execution (requires valid JOB_ID)"
-          echo "   To test manually, run:"
-          echo "   gcloud run jobs execute ${{ env.SERVICE_NAME }} \\"
-          echo "     --region ${{ env.REGION }} \\"
-          echo "     --project ${{ env.PROJECT_ID }} \\"
-          echo "     --update-env-vars JOB_ID=test-job-id,SCENE_ID=test-scene-id"
+            --region ${{ env.GCP_REGION }} \
+            --project ${{ secrets.GCP_PROJECT_ID_DEV }}
 
       - name: Deployment Summary
         run: |
           echo "=========================================="
-          echo "🎉 Video Processor Job Deployment Successful!"
+          echo "🎉 Video Processor Job Deployment Successful! (DEV)"
           echo "=========================================="
           echo ""
           echo "Job Name: ${{ env.SERVICE_NAME }}"
-          echo "Region: ${{ env.REGION }}"
-          echo "Image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          echo "Region: ${{ env.GCP_REGION }}"
+          echo "Image: gcr.io/${{ secrets.GCP_PROJECT_ID_DEV }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
           echo ""
           echo "📋 Job Configuration:"
           echo "   Memory: 4Gi"
           echo "   CPU: 2"
           echo "   Timeout: 3600s (1 hour)"
           echo "   Max Retries: 3"
+          echo "   Environment: development"
           echo ""
           echo "📝 Next Steps:"
           echo "   1. Main app will trigger this job via Cloud Run Jobs API"
-          echo "   2. No URL needed (jobs don't expose HTTP endpoints)"
-          echo "   3. Monitor executions: gcloud run jobs executions list --job=${{ env.SERVICE_NAME }}"
+          echo "   2. Monitor executions: gcloud run jobs executions list --job=${{ env.SERVICE_NAME }}"
           echo ""
           echo "=========================================="
 
-      - name: Deployment summary
+      - name: Deployment status
         if: always()
         run: |
           if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ Video processor deployment completed successfully!"
+            echo "✅ Video processor deployment (DEV) completed successfully!"
           else
-            echo "❌ Video processor deployment failed!"
+            echo "❌ Video processor deployment (DEV) failed!"
           fi

@@ -6,7 +6,6 @@ FROM node:20-alpine
 # Install FFmpeg and dependencies
 RUN apk add --no-cache \
     ffmpeg \
-    ffprobe \
     bash \
     curl \
     ca-certificates \
