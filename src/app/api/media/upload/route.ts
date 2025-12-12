@@ -50,7 +50,8 @@ export async function POST(request: NextRequest) {
     // }
 
     // Parse multipart form data
-    // Note: In Next.js 16, we need to ensure the request body is only read once
+    // Let browser set Content-Type automatically - DO NOT manually set Content-Type header
+    // Note: In Next.js 16, we need to ensure request body is only read once
     // Use the cloned request to avoid "body already used" errors
     let formData: FormData;
     try {

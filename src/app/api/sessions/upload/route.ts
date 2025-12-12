@@ -62,7 +62,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse FormData - wrap in try-catch for better error messages
+    // Parse FormData - let browser set Content-Type automatically
+    // Do NOT manually set Content-Type header for multipart/form-data
     let formData: FormData;
     try {
       formData = await request.formData();
