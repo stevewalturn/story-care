@@ -48,6 +48,22 @@ jobs:
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker gcr.io
 
+      - name: Store GCS Private Key in Secret Manager
+        run: |
+          echo "📝 Updating GCS_PRIVATE_KEY_DEV in Secret Manager..."
+          # Create or update the secret
+          if gcloud secrets describe GCS_PRIVATE_KEY_DEV --project=${{ secrets.GCP_PROJECT_ID_DEV }} &> /dev/null; then
+            echo "${{ secrets.GCS_PRIVATE_KEY_DEV }}" | gcloud secrets versions add GCS_PRIVATE_KEY_DEV \
+              --data-file=- \
+              --project=${{ secrets.GCP_PROJECT_ID_DEV }}
+          else
+            echo "${{ secrets.GCS_PRIVATE_KEY_DEV }}" | gcloud secrets create GCS_PRIVATE_KEY_DEV \
+              --data-file=- \
+              --replication-policy="automatic" \
+              --project=${{ secrets.GCP_PROJECT_ID_DEV }}
+          fi
+          echo "✅ GCS_PRIVATE_KEY_DEV secret updated"
+
       - name: Build Docker image
         run: |
           docker build \
@@ -82,8 +98,8 @@ jobs:
               --parallelism 1 \
               --tasks 1 \
               --add-cloudsql-instances=storycare-dev-479511:us-central1:storycare-dev \
-              --update-secrets=DATABASE_URL=DATABASE_URL_DEV:latest \
-              --set-env-vars NODE_ENV=development,GCS_PROJECT_ID=${{ secrets.GCS_PROJECT_ID_DEV }},GCS_CLIENT_EMAIL=${{ secrets.GCS_CLIENT_EMAIL_DEV }},GCS_PRIVATE_KEY=${{ secrets.GCS_PRIVATE_KEY_DEV }},GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME_DEV }}
+              --update-secrets=DATABASE_URL=DATABASE_URL_DEV:latest,GCS_PRIVATE_KEY=GCS_PRIVATE_KEY_DEV:latest \
+              --set-env-vars NODE_ENV=development,GCS_PROJECT_ID=${{ secrets.GCS_PROJECT_ID_DEV }},GCS_CLIENT_EMAIL=${{ secrets.GCS_CLIENT_EMAIL_DEV }},GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME_DEV }}
           else
             echo "🆕 Creating new Cloud Run Job..."
 
@@ -98,8 +114,8 @@ jobs:
               --parallelism 1 \
               --tasks 1 \
               --add-cloudsql-instances=storycare-dev-479511:us-central1:storycare-dev \
-              --update-secrets=DATABASE_URL=DATABASE_URL_DEV:latest \
-              --set-env-vars NODE_ENV=development,GCS_PROJECT_ID=${{ secrets.GCS_PROJECT_ID_DEV }},GCS_CLIENT_EMAIL=${{ secrets.GCS_CLIENT_EMAIL_DEV }},GCS_PRIVATE_KEY=${{ secrets.GCS_PRIVATE_KEY_DEV }},GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME_DEV }}
+              --update-secrets=DATABASE_URL=DATABASE_URL_DEV:latest,GCS_PRIVATE_KEY=GCS_PRIVATE_KEY_DEV:latest \
+              --set-env-vars NODE_ENV=development,GCS_PROJECT_ID=${{ secrets.GCS_PROJECT_ID_DEV }},GCS_CLIENT_EMAIL=${{ secrets.GCS_CLIENT_EMAIL_DEV }},GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME_DEV }}
           fi
 
       - name: Verify Job Deployment
