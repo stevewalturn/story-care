@@ -155,8 +155,14 @@ export async function POST(_request: NextRequest, context: RouteContext) {
 
     // Trigger Cloud Run Job using Google Cloud Run API
     const projectId = Env.GCS_PROJECT_ID || 'storycare-478114';
-    const region = 'us-central1';
-    const jobName = 'storycare-video-processor';
+    const region = Env.CLOUD_RUN_REGION || 'us-central1';
+
+    // Determine job name based on environment
+    const nodeEnv = Env.NODE_ENV || 'development';
+    const jobName = Env.CLOUD_RUN_JOB_NAME ||
+      (nodeEnv === 'production'
+        ? 'storycare-video-processor-prod'
+        : 'storycare-video-processor-dev');
 
     try {
       // Import Google Cloud Run client

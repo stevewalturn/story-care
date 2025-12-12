@@ -30,6 +30,8 @@ export const Env = createEnv({
     // Video Processing (Cloud Run)
     VIDEO_PROCESSOR_URL: z.string().url().optional(),
     WEBHOOK_SECRET: z.string().min(1).optional(),
+    CLOUD_RUN_JOB_NAME: z.string().min(1).optional(),
+    CLOUD_RUN_REGION: z.string().min(1).optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().optional(),
@@ -79,6 +81,8 @@ export const Env = createEnv({
     // Video Processing (Cloud Run)
     VIDEO_PROCESSOR_URL: process.env.VIDEO_PROCESSOR_URL,
     WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
+    CLOUD_RUN_JOB_NAME: process.env.CLOUD_RUN_JOB_NAME,
+    CLOUD_RUN_REGION: process.env.CLOUD_RUN_REGION,
 
     // Client vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,

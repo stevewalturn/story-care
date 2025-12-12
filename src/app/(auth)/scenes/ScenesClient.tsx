@@ -669,12 +669,33 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
       </div>
 
       {/* Main Content */}
-      <div className="grid min-h-0 flex-1 grid-cols-3 gap-6">
+      <div className="relative grid min-h-0 flex-1 grid-cols-3 gap-6">
+        {/* Processing Overlay */}
+        {(isExporting || isProcessing) && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black/20 backdrop-blur-sm">
+            <div className="rounded-lg border border-blue-300 bg-white/95 p-6 text-center shadow-xl">
+              <Loader2 className="mx-auto mb-3 h-12 w-12 animate-spin text-blue-600" />
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">
+                Video Processing in Progress
+              </h3>
+              <p className="mb-1 text-sm text-gray-600">
+                {videoJob?.currentStep || 'Processing on Cloud Run...'}
+              </p>
+              <p className="text-xs text-gray-500">
+                Editing is temporarily disabled
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Clip Library (Left) */}
         <div className="col-span-1 h-full overflow-hidden">
           {selectedPatient
             ? (
-                <ClipLibrary onAddToTimeline={handleAddClip} patientId={selectedPatient} />
+                <ClipLibrary
+                  onAddToTimeline={handleAddClip}
+                  patientId={selectedPatient}
+                />
               )
             : (
                 <div className="flex h-full items-center justify-center rounded-lg border border-gray-200 bg-white">

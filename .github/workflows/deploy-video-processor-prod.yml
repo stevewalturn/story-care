@@ -81,6 +81,8 @@ jobs:
               --max-retries 3 \
               --parallelism 1 \
               --tasks 1 \
+              --add-cloudsql-instances=storycare-478114:us-central1:storycare-prod \
+              --update-secrets=DATABASE_URL=DATABASE_URL_PROD:latest \
               --set-env-vars NODE_ENV=production
           else
             echo "🆕 Creating new Cloud Run Job..."
@@ -95,6 +97,8 @@ jobs:
               --max-retries 3 \
               --parallelism 1 \
               --tasks 1 \
+              --add-cloudsql-instances=storycare-478114:us-central1:storycare-prod \
+              --update-secrets=DATABASE_URL=DATABASE_URL_PROD:latest \
               --set-env-vars NODE_ENV=production
           fi
 

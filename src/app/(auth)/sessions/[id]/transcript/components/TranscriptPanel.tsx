@@ -63,18 +63,26 @@ export function TranscriptPanel({
   // Collapsed state - thin vertical bar
   if (!isExpanded) {
     return (
-      <div className="flex h-full w-12 flex-col items-center justify-center bg-gray-100 border-r border-gray-200">
+      <div className="flex h-full w-14 flex-col items-center justify-start border-r border-gray-200 bg-white shadow-sm transition-all duration-300">
         <button
           onClick={() => setIsExpanded(true)}
-          className="group flex flex-col items-center gap-2 p-2 transition-colors hover:bg-gray-200"
+          className="group relative mt-4 flex w-full flex-col items-center gap-3 py-4 transition-all duration-200 hover:bg-gray-50"
           title="Expand Transcript"
         >
-          <svg className="h-5 w-5 text-gray-600 group-hover:text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-          <div className="flex flex-col items-center">
-            {['T', 'r', 'a', 'n', 's', 'c', 'r', 'i', 'p', 't'].map((letter, i) => (
-              <span key={i} className="text-xs font-medium text-gray-600 group-hover:text-gray-900">
+          {/* Icon with background */}
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-indigo-50 transition-all duration-200 group-hover:bg-indigo-100 group-hover:scale-110">
+            <svg className="h-4 w-4 text-indigo-600 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+
+          {/* Vertical text with better spacing */}
+          <div className="flex flex-col items-center gap-0.5">
+            {['T', 'R', 'A', 'N', 'S', 'C', 'R', 'I', 'P', 'T'].map((letter, i) => (
+              <span
+                key={i}
+                className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 transition-colors duration-200 group-hover:text-indigo-600"
+              >
                 {letter}
               </span>
             ))}

@@ -318,18 +318,116 @@ function renderPreview(schemaType: JSONSchemaType, data: any) {
 
     case 'music_generation':
       return (
-        <div className="space-y-2 text-sm">
-          <p className="font-semibold text-gray-900">Music Options:</p>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="rounded-lg bg-purple-50 p-2">
-              <p className="font-semibold text-purple-900">Instrumental</p>
-              <p className="text-purple-700">{data.instrumental_option?.title}</p>
-              <p className="mt-1 text-xs text-purple-600">{data.instrumental_option?.mood}</p>
+        <div className="space-y-4">
+          <p className="text-sm font-semibold text-gray-900">Choose Music Style</p>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {/* Instrumental Option */}
+            <div className="group relative overflow-hidden rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 p-5 transition-all hover:border-purple-400 hover:shadow-xl">
+              {/* Icon Badge */}
+              <div className="mb-4 inline-flex items-center justify-center rounded-full bg-purple-500 p-3 shadow-lg">
+                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                </svg>
+              </div>
+
+              {/* Title */}
+              <h3 className="mb-2 text-lg font-bold text-purple-900">
+                {data.instrumental_option?.title || 'Instrumental'}
+              </h3>
+
+              {/* Mood Badge */}
+              {data.instrumental_option?.mood && (
+                <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-purple-200 px-3 py-1">
+                  <div className="h-2 w-2 rounded-full bg-purple-600" />
+                  <span className="text-xs font-semibold text-purple-800">{data.instrumental_option.mood}</span>
+                </div>
+              )}
+
+              {/* Description */}
+              {data.instrumental_option?.music_description && (
+                <p className="mb-4 text-sm leading-relaxed text-purple-700">{data.instrumental_option.music_description}</p>
+              )}
+
+              {/* Rationale */}
+              {data.instrumental_option?.rationale && (
+                <p className="mb-4 text-sm italic leading-relaxed text-purple-600">{data.instrumental_option.rationale}</p>
+              )}
+
+              {/* Technical Details */}
+              {(data.instrumental_option?.genre_tags || data.instrumental_option?.style_prompt) && (
+                <div className="space-y-2 text-xs text-purple-600">
+                  {data.instrumental_option?.genre_tags && (
+                    <div className="flex flex-wrap gap-1">
+                      {data.instrumental_option.genre_tags.map((tag: string, i: number) => (
+                        <span key={i} className="rounded-full bg-purple-200/60 px-2 py-0.5 text-xs font-medium text-purple-800">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Hover Indicator */}
+              <div className="absolute -right-8 -bottom-8 h-24 w-24 rounded-full bg-purple-400/20 transition-transform group-hover:scale-150" />
             </div>
-            <div className="rounded-lg bg-indigo-50 p-2">
-              <p className="font-semibold text-indigo-900">Lyrical</p>
-              <p className="text-indigo-700">{data.lyrical_option?.title}</p>
-              <p className="mt-1 text-xs text-indigo-600">{data.lyrical_option?.mood}</p>
+
+            {/* Lyrical Option */}
+            <div className="group relative overflow-hidden rounded-xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-indigo-100 p-5 transition-all hover:border-indigo-400 hover:shadow-xl">
+              {/* Icon Badge */}
+              <div className="mb-4 inline-flex items-center justify-center rounded-full bg-indigo-500 p-3 shadow-lg">
+                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+              </div>
+
+              {/* Title */}
+              <h3 className="mb-2 text-lg font-bold text-indigo-900">{data.lyrical_option?.title || 'Lyrical'}</h3>
+
+              {/* Mood Badge */}
+              {data.lyrical_option?.mood && (
+                <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-indigo-200 px-3 py-1">
+                  <div className="h-2 w-2 rounded-full bg-indigo-600" />
+                  <span className="text-xs font-semibold text-indigo-800">{data.lyrical_option.mood}</span>
+                </div>
+              )}
+
+              {/* Description */}
+              {data.lyrical_option?.music_description && (
+                <p className="mb-4 text-sm leading-relaxed text-indigo-700">{data.lyrical_option.music_description}</p>
+              )}
+
+              {/* Lyrics Preview */}
+              {data.lyrical_option?.suggested_lyrics && (
+                <div className="mb-4 rounded-lg bg-white/60 p-3 backdrop-blur-sm">
+                  <p className="mb-1 text-xs font-medium text-indigo-600">Lyrics Preview:</p>
+                  <p className="line-clamp-4 text-sm italic text-indigo-900 whitespace-pre-wrap">
+                    {typeof data.lyrical_option.suggested_lyrics === 'string'
+                      ? data.lyrical_option.suggested_lyrics
+                      : data.lyrical_option.suggested_lyrics.slice(0, 200) + '...'}
+                  </p>
+                </div>
+              )}
+
+              {/* Rationale */}
+              {data.lyrical_option?.rationale && (
+                <p className="mb-4 text-sm italic leading-relaxed text-indigo-600">{data.lyrical_option.rationale}</p>
+              )}
+
+              {/* Technical Details */}
+              {data.lyrical_option?.genre_tags && (
+                <div className="flex flex-wrap gap-1">
+                  {data.lyrical_option.genre_tags.map((tag: string, i: number) => (
+                    <span key={i} className="rounded-full bg-indigo-200/60 px-2 py-0.5 text-xs font-medium text-indigo-800">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Hover Indicator */}
+              <div className="absolute -right-8 -bottom-8 h-24 w-24 rounded-full bg-indigo-400/20 transition-transform group-hover:scale-150" />
             </div>
           </div>
         </div>

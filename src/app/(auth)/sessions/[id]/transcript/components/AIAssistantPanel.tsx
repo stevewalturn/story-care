@@ -7,8 +7,7 @@
 
 import type { AIAssistantPanelProps } from '../types/transcript.types';
 import { useEffect, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { AssistantMessageContent } from '@/components/sessions/AssistantMessageContent';
 import { JSONOutputRenderer } from '@/components/sessions/JSONOutputRenderer';
 import { getAvailableTextModels } from '@/libs/ModelMetadata';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
@@ -35,6 +34,7 @@ export function AIAssistantPanel({
   const [_isLoadingHistory, _setIsLoadingHistory] = useState(true);
   const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Load chat history on mount
   useEffect(() => {
@@ -115,6 +115,23 @@ export function AIAssistantPanel({
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  // Textarea handlers for auto-resize and keyboard shortcuts
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setPrompt(e.target.value);
+
+    // Auto-resize textarea
+    const textarea = e.target;
+    textarea.style.height = '52px'; // Reset to min height
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -340,93 +357,112 @@ export function AIAssistantPanel({
               return (
                 <div
                   key={index}
-                  className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`group relative ${message.role === 'user' ? 'ml-12' : 'mr-12'}`}
                 >
-                  {message.role === 'assistant' && (
-                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100">
-                      <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                  )}
+                  {/* Message Content */}
                   <div
-                    className={`max-w-[80%] ${message.role === 'user' ? 'rounded-lg bg-indigo-600 px-4 py-3 text-white' : ''}`}
+                    className={`relative ${message.role === 'user' ? 'flex flex-col items-end' : 'flex flex-col items-start'}`}
                   >
-                    {message.role === 'assistant' ? (
-                      jsonData ? (
-                        // Render JSON output with action buttons
-                        <JSONOutputRenderer
-                          jsonData={jsonData}
-                          sessionId={sessionId}
-                          user={user}
-                          onActionComplete={(result) => {
-                            // Refresh the library panel to show newly saved items
-                            if (onLibraryRefresh) {
-                              onLibraryRefresh();
-                            }
-                            console.log('Action completed:', result.message);
-                          }}
-                          onProgress={(update) => {
-                            // Just log progress, don't clutter chat
-                            console.log('Progress update:', update);
-                          }}
-                          onOpenImageModal={onOpenImageModal}
-                          onOpenVideoModal={onOpenVideoModal}
-                          onOpenMusicModal={onOpenMusicModal}
-                        />
-                      ) : (
-                        // Regular markdown rendering for non-JSON content
-                        <div className="rounded-lg bg-gray-100 px-4 py-3 text-gray-900">
-                          <div className="prose prose-sm max-w-none text-sm leading-relaxed
-                            prose-headings:font-semibold prose-headings:text-gray-900
-                            prose-h1:mt-4 prose-h1:mb-3 prose-h1:text-lg
-                            prose-h2:mt-4 prose-h2:mb-2 prose-h2:text-base
-                            prose-h3:mt-3 prose-h3:mb-2 prose-h3:text-sm
-                            prose-p:my-2 prose-p:text-gray-700
-                            prose-a:text-indigo-600 prose-a:no-underline
-                            hover:prose-a:underline prose-blockquote:rounded-r
-                            prose-blockquote:border-l-4 prose-blockquote:border-indigo-500
-                            prose-blockquote:bg-indigo-50 prose-blockquote:px-4
-                            prose-blockquote:py-2 prose-blockquote:text-gray-700
-                            prose-blockquote:not-italic prose-strong:font-semibold
-                            prose-strong:text-gray-900 prose-code:rounded
-                            prose-code:bg-indigo-50 prose-code:px-1
-                            prose-code:py-0.5 prose-code:font-mono prose-code:text-xs
-                            prose-code:text-indigo-600 prose-ol:my-2
-                            prose-ul:my-2 prose-li:my-1 prose-li:text-gray-700"
-                          >
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {message.content}
-                            </ReactMarkdown>
+                    {/* User/Assistant Label */}
+                    <div className="mb-1.5 flex items-center gap-2 px-1">
+                      {message.role === 'assistant' ? (
+                        <>
+                          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500 to-purple-600">
+                            <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
                           </div>
-                        </div>
-                      )
-                    ) : (
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                          <span className="text-xs font-semibold text-gray-900">AI Assistant</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-xs font-semibold text-gray-700">You</span>
+                          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gray-200">
+                            <svg className="h-3.5 w-3.5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Message Bubble/Card */}
+                    <div
+                      className={`relative ${
+                        message.role === 'user'
+                          ? 'rounded-2xl rounded-tr-sm bg-gradient-to-br from-indigo-600 to-indigo-700 px-4 py-3 text-white shadow-lg shadow-indigo-600/20'
+                          : jsonData
+                            ? 'w-full'
+                            : 'rounded-2xl rounded-tl-sm border border-gray-200 bg-white px-4 py-3 text-gray-900 shadow-sm'
+                      }`}
+                    >
+                      {message.role === 'assistant' ? (
+                        jsonData ? (
+                          <JSONOutputRenderer
+                            jsonData={jsonData}
+                            sessionId={sessionId}
+                            user={user}
+                            onActionComplete={(result) => {
+                              if (onLibraryRefresh) {
+                                onLibraryRefresh();
+                              }
+                              console.log('Action completed:', result.message);
+                            }}
+                            onProgress={(update) => {
+                              console.log('Progress update:', update);
+                            }}
+                            onOpenImageModal={onOpenImageModal}
+                            onOpenVideoModal={onOpenVideoModal}
+                            onOpenMusicModal={onOpenMusicModal}
+                          />
+                        ) : (
+                          <AssistantMessageContent content={message.content} />
+                        )
+                      ) : (
+                        <p className="whitespace-pre-wrap text-[15px] leading-relaxed">{message.content}</p>
+                      )}
+                    </div>
+
+                    {/* Action Buttons (Assistant messages only) */}
+                    {message.role === 'assistant' && !jsonData && (
+                      <div className="mt-2 flex items-center gap-1 px-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        <button
+                          type="button"
+                          className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                          title="Copy message"
+                          onClick={() => navigator.clipboard.writeText(message.content)}
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        </button>
+                      </div>
                     )}
                   </div>
-                  {message.role === 'user' && (
-                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-200">
-                      <svg className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </div>
-                  )}
                 </div>
               );
             })}
             {isLoading && (
-              <div className="flex gap-3">
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100">
-                  <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
+              <div className="mr-12">
+                <div className="mb-1.5 flex items-center gap-2 px-1">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500 to-purple-600">
+                    <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <span className="text-xs font-semibold text-gray-900">AI Assistant</span>
+                  <span className="text-xs text-gray-500">is thinking...</span>
                 </div>
-                <div className="rounded-lg bg-gray-100 px-4 py-3">
-                  <div className="flex gap-1">
-                    <div className="h-2 w-2 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: '0ms' }} />
-                    <div className="h-2 w-2 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: '150ms' }} />
-                    <div className="h-2 w-2 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: '300ms' }} />
+
+                <div className="rounded-2xl rounded-tl-sm border border-gray-200 bg-white px-5 py-4 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    {/* Animated dots */}
+                    <div className="flex gap-1.5">
+                      <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-indigo-500" style={{ animationDelay: '0ms' }} />
+                      <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-indigo-400" style={{ animationDelay: '150ms' }} />
+                      <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-indigo-300" style={{ animationDelay: '300ms' }} />
+                    </div>
+                    <span className="text-sm text-gray-500">Analyzing and generating response...</span>
                   </div>
                 </div>
               </div>
@@ -440,24 +476,53 @@ export function AIAssistantPanel({
       {/* Chat Input */}
       <div className="border-t border-gray-200 bg-white p-4">
         <div className="relative">
-          <input
-            type="text"
+          {/* Textarea for multi-line support */}
+          <textarea
+            ref={textareaRef}
             value={prompt}
-            onChange={e => setPrompt(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Chat about this transcript, or select text to begin..."
-            className="w-full rounded-lg border border-gray-200 py-3 pr-12 pl-4 text-sm focus:border-indigo-500 focus:outline-none"
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            rows={1}
+            placeholder="Message AI Assistant..."
+            className="w-full resize-none rounded-xl border-2 border-gray-200 bg-gray-50 py-3.5 pr-24 pl-4 text-[15px] leading-relaxed transition-all placeholder:text-gray-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10"
             disabled={isLoading}
+            style={{
+              minHeight: '52px',
+              maxHeight: '200px',
+            }}
           />
-          <button
-            onClick={() => handleSendMessage()}
-            disabled={isLoading || !prompt.trim()}
-            className="absolute top-1/2 right-3 -translate-y-1/2 text-indigo-600 hover:text-indigo-700 disabled:cursor-not-allowed disabled:text-gray-400"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-          </button>
+
+          {/* Action buttons */}
+          <div className="absolute bottom-2 right-2 flex items-center gap-2">
+            {/* Send button */}
+            <button
+              type="button"
+              onClick={() => handleSendMessage()}
+              disabled={isLoading || !prompt.trim()}
+              className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-600/30 transition-all hover:from-indigo-700 hover:to-indigo-800 hover:shadow-xl hover:shadow-indigo-600/40 disabled:cursor-not-allowed disabled:from-gray-300 disabled:to-gray-400 disabled:shadow-none"
+              title={prompt.trim() ? 'Send message (Enter)' : 'Type a message'}
+            >
+              {isLoading ? (
+                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              )}
+            </button>
+          </div>
+
+          {/* Keyboard hint */}
+          <div className="absolute -bottom-6 right-0 flex items-center gap-1 text-xs text-gray-400">
+            <kbd className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs">Enter</kbd>
+            <span>to send</span>
+            <span className="mx-1">•</span>
+            <kbd className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs">Shift + Enter</kbd>
+            <span>for new line</span>
+          </div>
         </div>
       </div>
     </>
