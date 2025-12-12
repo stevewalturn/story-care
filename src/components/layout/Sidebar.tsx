@@ -1,20 +1,51 @@
 'use client';
 
-import { LogOut } from 'lucide-react';
+import { LogOut, User as UserIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { TherapistProfileModal } from '@/components/therapists/TherapistProfileModal';
 import { getNavigationForRole } from '@/config/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { logOut } from '@/libs/Firebase';
+import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 export function Sidebar() {
   const { user, dbUser } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
+
+  // Fetch therapist profile with avatar URL
+  useEffect(() => {
+    const fetchAvatar = async () => {
+      if (!user || !dbUser || dbUser.role !== 'therapist') return;
+
+      try {
+        const response = await authenticatedFetch('/api/therapists/me', user);
+        if (response.ok) {
+          const data = await response.json();
+          setAvatarUrl(data.therapist.avatarUrl);
+        }
+      } catch (error) {
+        console.error('Error fetching avatar:', error);
+      }
+    };
+
+    fetchAvatar();
+  }, [user, dbUser]);
 
   const handleLogout = async () => {
     await logOut();
     router.push('/sign-in');
+  };
+
+  const handleProfileUpdate = (updatedTherapist: any) => {
+    // Update avatar URL in local state
+    setAvatarUrl(updatedTherapist.avatarUrl);
+    setImageError(false);
   };
 
   // Get navigation items based on user role
@@ -80,13 +111,29 @@ export function Sidebar() {
 
       {/* User section */}
       <div className="border-t border-gray-200 p-4">
-        <div className="mb-3 flex items-center">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200">
-            <span className="text-sm font-medium text-gray-600">
-              {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-            </span>
+        <button
+          type="button"
+          onClick={() => dbUser?.role === 'therapist' && setIsProfileModalOpen(true)}
+          className={`mb-3 flex w-full items-center rounded-lg p-2 transition-colors ${
+            dbUser?.role === 'therapist' ? 'cursor-pointer hover:bg-gray-50' : 'cursor-default'
+          }`}
+          title={dbUser?.role === 'therapist' ? 'Click to edit profile' : undefined}
+        >
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200">
+            {avatarUrl && !imageError
+              ? (
+                  <img
+                    src={avatarUrl}
+                    alt={user?.displayName || 'User avatar'}
+                    className="h-full w-full object-cover"
+                    onError={() => setImageError(true)}
+                  />
+                )
+              : (
+                  <UserIcon className="h-5 w-5 text-gray-600" />
+                )}
           </div>
-          <div className="ml-3 min-w-0 flex-1">
+          <div className="ml-3 min-w-0 flex-1 text-left">
             <p className="truncate text-sm font-medium text-gray-900">
               {user?.displayName || user?.email?.split('@')[0] || 'User'}
             </p>
@@ -94,7 +141,7 @@ export function Sidebar() {
               {user?.email || ''}
             </p>
           </div>
-        </div>
+        </button>
         <button
           type="button"
           onClick={handleLogout}
@@ -104,6 +151,15 @@ export function Sidebar() {
           Logout
         </button>
       </div>
+
+      {/* Therapist Profile Modal */}
+      {dbUser?.role === 'therapist' && (
+        <TherapistProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          onUpdate={handleProfileUpdate}
+        />
+      )}
     </aside>
   );
 }

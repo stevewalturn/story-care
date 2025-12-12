@@ -621,13 +621,400 @@ function renderPreview(schemaType: JSONSchemaType, data: any) {
       );
     }
 
+    // Extraction schemas
+    case 'metaphor_extraction':
+      return (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-gray-900">🔮 Metaphors & Symbols</p>
+          <div className="space-y-2">
+            {data.metaphors?.slice(0, 3).map((m: any, i: number) => (
+              <div key={i} className="rounded-lg border border-purple-200 bg-purple-50 p-2">
+                <p className="text-xs font-medium text-purple-900">{m.metaphor}</p>
+                <p className="text-xs text-purple-700">{m.symbolic_meaning}</p>
+              </div>
+            ))}
+            {data.metaphors?.length > 3 && (
+              <p className="text-xs text-gray-500">+ {data.metaphors.length - 3} more metaphors</p>
+            )}
+          </div>
+        </div>
+      );
+
+    case 'key_moments':
+      return (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-gray-900">⭐ Key Moments</p>
+          <div className="space-y-2">
+            {data.moments?.slice(0, 3).map((m: any, i: number) => (
+              <div key={i} className="rounded-lg border border-blue-200 bg-blue-50 p-2">
+                <p className="text-xs font-medium text-blue-900">{m.moment_title}</p>
+                <p className="line-clamp-2 text-xs text-blue-700">{m.significance}</p>
+              </div>
+            ))}
+            {data.moments?.length > 3 && (
+              <p className="text-xs text-gray-500">+ {data.moments.length - 3} more moments</p>
+            )}
+          </div>
+        </div>
+      );
+
+    case 'values_beliefs':
+      return (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-gray-900">💎 Values & Beliefs</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-lg border border-green-200 bg-green-50 p-2">
+              <p className="mb-1 text-xs font-medium text-green-900">Values ({data.values?.length || 0})</p>
+              <ul className="space-y-1">
+                {data.values?.slice(0, 3).map((v: any, i: number) => (
+                  <li key={i} className="text-xs text-green-700">• {v.value}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-2">
+              <p className="mb-1 text-xs font-medium text-amber-900">Beliefs ({data.beliefs?.length || 0})</p>
+              <ul className="space-y-1">
+                {data.beliefs?.slice(0, 3).map((b: any, i: number) => (
+                  <li key={i} className="text-xs text-amber-700">• {b.belief}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      );
+
+    case 'goals_intentions':
+      return (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-gray-900">🎯 Goals & Intentions</p>
+          <div className="space-y-2">
+            {data.goals?.slice(0, 3).map((g: any, i: number) => (
+              <div key={i} className="rounded-lg border border-indigo-200 bg-indigo-50 p-2">
+                <p className="text-xs font-medium text-indigo-900">{g.goal}</p>
+                {g.timeframe && <p className="text-xs text-indigo-600">⏱️ {g.timeframe}</p>}
+              </div>
+            ))}
+            {data.goals?.length > 3 && (
+              <p className="text-xs text-gray-500">+ {data.goals.length - 3} more goals</p>
+            )}
+          </div>
+        </div>
+      );
+
+    case 'strengths_resources':
+      return (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-gray-900">💪 Strengths & Resources</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2">
+              <p className="mb-1 text-xs font-medium text-emerald-900">Internal Strengths</p>
+              <ul className="space-y-1">
+                {data.internal_strengths?.slice(0, 3).map((s: any, i: number) => (
+                  <li key={i} className="text-xs text-emerald-700">• {s.strength}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-lg border border-teal-200 bg-teal-50 p-2">
+              <p className="mb-1 text-xs font-medium text-teal-900">External Resources</p>
+              <ul className="space-y-1">
+                {data.external_resources?.slice(0, 3).map((r: any, i: number) => (
+                  <li key={i} className="text-xs text-teal-700">• {r.resource}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      );
+
+    case 'barriers_challenges':
+      return (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-gray-900">🚧 Barriers & Challenges</p>
+          <div className="space-y-2">
+            {data.barriers?.slice(0, 3).map((b: any, i: number) => (
+              <div key={i} className="rounded-lg border border-red-200 bg-red-50 p-2">
+                <p className="text-xs font-medium text-red-900">{b.barrier}</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <span className={`rounded px-1.5 py-0.5 text-xs ${
+                    b.type === 'internal' ? 'bg-red-200 text-red-800' :
+                    b.type === 'external' ? 'bg-orange-200 text-orange-800' :
+                    'bg-gray-200 text-gray-800'
+                  }`}>
+                    {b.type}
+                  </span>
+                  <span className={`rounded px-1.5 py-0.5 text-xs ${
+                    b.impact === 'high' ? 'bg-red-300 text-red-900' :
+                    b.impact === 'medium' ? 'bg-yellow-200 text-yellow-900' :
+                    'bg-green-200 text-green-900'
+                  }`}>
+                    {b.impact} impact
+                  </span>
+                </div>
+              </div>
+            ))}
+            {data.barriers?.length > 3 && (
+              <p className="text-xs text-gray-500">+ {data.barriers.length - 3} more barriers</p>
+            )}
+          </div>
+        </div>
+      );
+
+    // Visualization schemas
+    case 'scene_visualization':
+      return (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-gray-900">🎬 {data.title}</p>
+          <p className="line-clamp-3 text-xs text-gray-700">{data.description}</p>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700">{data.mood}</span>
+            {data.symbolic_elements?.slice(0, 2).map((el: string, i: number) => (
+              <span key={i} className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-700">{el}</span>
+            ))}
+          </div>
+        </div>
+      );
+
+    case 'visual_metaphor':
+      return (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-gray-900">🖼️ {data.metaphor_title}</p>
+          <p className="line-clamp-2 text-xs text-gray-700">{data.metaphor_description}</p>
+          <p className="line-clamp-2 text-xs italic text-purple-600">{data.symbolic_meaning}</p>
+        </div>
+      );
+
+    case 'story_reframe':
+      return (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-gray-900">🔄 Story Reframe</p>
+          <div className="space-y-2">
+            <div className="rounded-lg border border-gray-300 bg-gray-50 p-2">
+              <p className="mb-1 text-xs font-medium text-gray-600">Original Narrative:</p>
+              <p className="line-clamp-2 text-xs text-gray-700">{data.original_narrative}</p>
+            </div>
+            <div className="rounded-lg border border-green-300 bg-green-50 p-2">
+              <p className="mb-1 text-xs font-medium text-green-700">Reframed Narrative:</p>
+              <p className="line-clamp-2 text-xs text-green-800">{data.reframed_narrative}</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500">{data.key_shifts?.length || 0} perspective shifts identified</p>
+        </div>
+      );
+
+    case 'hope_visualization':
+      return (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-transparent bg-gradient-to-r from-yellow-600 to-pink-600 bg-clip-text">
+            ✨ {data.hope_title}
+          </p>
+          <p className="line-clamp-3 text-xs text-gray-700">{data.hope_description}</p>
+          {data.concrete_elements && (
+            <div className="flex flex-wrap gap-1">
+              {data.concrete_elements.slice(0, 3).map((el: string, i: number) => (
+                <span key={i} className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs text-yellow-700">{el}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+
+    case 'journey_map':
+      return (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-gray-900">🗺️ {data.journey_title}</p>
+          <div className="space-y-1.5">
+            {data.stages?.slice(0, 4).map((stage: any, i: number) => (
+              <div key={i} className="flex items-start gap-2">
+                <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-blue-500 text-xs font-medium text-white">
+                  {i + 1}
+                </span>
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-gray-900">{stage.stage_name}</p>
+                  <p className="line-clamp-1 text-xs text-gray-600">{stage.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {data.stages?.length > 4 && (
+            <p className="text-xs text-gray-500">+ {data.stages.length - 4} more stages</p>
+          )}
+        </div>
+      );
+
+    case 'character_strength':
+      return (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-gray-900">🦸 {data.portrait_title}</p>
+          <p className="line-clamp-2 text-xs text-gray-700">{data.narrative_summary}</p>
+          <div className="flex flex-wrap gap-1">
+            {data.core_strengths?.slice(0, 4).map((s: any, i: number) => (
+              <span key={i} className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
+                {s.strength}
+              </span>
+            ))}
+          </div>
+        </div>
+      );
+
+    case 'timeline_visualization':
+      return (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-gray-900">📅 {data.timeline_title}</p>
+          <div className="space-y-1.5">
+            {data.timeline_entries?.slice(0, 4).map((entry: any, i: number) => (
+              <div key={i} className="flex items-start gap-2 border-l-2 border-blue-400 pl-3">
+                <div className="flex-1">
+                  {entry.date && <p className="text-xs font-medium text-blue-600">{entry.date}</p>}
+                  <p className="text-xs font-medium text-gray-900">{entry.event}</p>
+                  <p className="line-clamp-1 text-xs text-gray-600">{entry.significance}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {data.timeline_entries?.length > 4 && (
+            <p className="text-xs text-gray-500">+ {data.timeline_entries.length - 4} more entries</p>
+          )}
+        </div>
+      );
+
+    // Prompt schemas
+    case 'journaling_prompts':
+      return (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-gray-900">✍️ Journaling Prompts</p>
+          <ul className="space-y-1.5">
+            {data.prompts?.slice(0, 4).map((p: any, i: number) => (
+              <li key={i} className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+                {p.prompt}
+              </li>
+            ))}
+          </ul>
+          {data.prompts?.length > 4 && (
+            <p className="text-xs text-gray-500">+ {data.prompts.length - 4} more prompts</p>
+          )}
+        </div>
+      );
+
+    case 'goal_setting_questions':
+      return (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-gray-900">🎯 Goal-Setting Questions</p>
+          <ul className="space-y-1.5">
+            {data.questions?.slice(0, 4).map((q: any, i: number) => (
+              <li key={i} className="flex items-start gap-2 text-xs">
+                <span className={`mt-0.5 rounded px-1.5 py-0.5 text-xs ${
+                  q.category === 'clarification' ? 'bg-blue-100 text-blue-700' :
+                  q.category === 'planning' ? 'bg-green-100 text-green-700' :
+                  q.category === 'motivation' ? 'bg-purple-100 text-purple-700' :
+                  'bg-orange-100 text-orange-700'
+                }`}>
+                  {q.category}
+                </span>
+                <span className="flex-1 text-gray-900">{q.question}</span>
+              </li>
+            ))}
+          </ul>
+          {data.questions?.length > 4 && (
+            <p className="text-xs text-gray-500">+ {data.questions.length - 4} more questions</p>
+          )}
+        </div>
+      );
+
+    case 'self_compassion_prompts':
+      return (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-gray-900">💗 Self-Compassion Prompts</p>
+          <ul className="space-y-1.5">
+            {data.prompts?.slice(0, 4).map((p: any, i: number) => (
+              <li key={i} className="rounded-lg border border-pink-200 bg-pink-50 p-2 text-xs text-pink-900">
+                {p.prompt}
+              </li>
+            ))}
+          </ul>
+          {data.prompts?.length > 4 && (
+            <p className="text-xs text-gray-500">+ {data.prompts.length - 4} more prompts</p>
+          )}
+        </div>
+      );
+
+    case 'gratitude_prompts':
+      return (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-gray-900">🙏 Gratitude Prompts</p>
+          <ul className="space-y-1.5">
+            {data.prompts?.slice(0, 4).map((p: any, i: number) => (
+              <li key={i} className="rounded-lg border border-yellow-200 bg-yellow-50 p-2 text-xs text-yellow-900">
+                {p.prompt}
+              </li>
+            ))}
+          </ul>
+          {data.prompts?.length > 4 && (
+            <p className="text-xs text-gray-500">+ {data.prompts.length - 4} more prompts</p>
+          )}
+        </div>
+      );
+
+    case 'homework_assignments':
+      return (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-gray-900">📋 Homework Assignments</p>
+          <ul className="space-y-2">
+            {data.assignments?.slice(0, 3).map((a: any, i: number) => (
+              <li key={i} className="rounded-lg border border-blue-200 bg-blue-50 p-2">
+                <p className="text-xs font-medium text-blue-900">{a.assignment}</p>
+                <p className="mt-1 line-clamp-1 text-xs text-blue-700">{a.purpose}</p>
+                {a.time_required && (
+                  <p className="mt-1 text-xs text-blue-600">⏱️ {a.time_required}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+          {data.assignments?.length > 3 && (
+            <p className="text-xs text-gray-500">+ {data.assignments.length - 3} more assignments</p>
+          )}
+        </div>
+      );
+
+    case 'check_in_questions':
+      return (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold text-gray-900">✅ Check-In Questions</p>
+          <ul className="space-y-1.5">
+            {data.questions?.slice(0, 4).map((q: any, i: number) => (
+              <li key={i} className="flex items-start gap-2 text-xs">
+                <span className={`mt-0.5 rounded px-1.5 py-0.5 text-xs ${
+                  q.type === 'scale' ? 'bg-indigo-100 text-indigo-700' :
+                  q.type === 'open' ? 'bg-green-100 text-green-700' :
+                  'bg-purple-100 text-purple-700'
+                }`}>
+                  {q.type}
+                </span>
+                <span className="flex-1 text-gray-900">{q.question}</span>
+              </li>
+            ))}
+          </ul>
+          {data.questions?.length > 4 && (
+            <p className="text-xs text-gray-500">+ {data.questions.length - 4} more questions</p>
+          )}
+        </div>
+      );
+
     default:
       return (
-        <p className="text-xs text-gray-600">
-          {Object.keys(data).length}
-          {' '}
-          fields detected
-        </p>
+        <div className="space-y-2 text-sm">
+          <p className="font-semibold text-amber-900">⚠️ Unknown Schema Type</p>
+          <p className="text-xs text-gray-600">
+            Schema type "{schemaType}" is not yet implemented.
+          </p>
+          <details className="text-xs">
+            <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
+              View raw JSON ({Object.keys(data).length} fields)
+            </summary>
+            <pre className="mt-2 max-h-40 overflow-auto rounded bg-gray-100 p-2 text-xs">
+              {JSON.stringify(data, null, 2)}
+            </pre>
+          </details>
+        </div>
       );
   }
 }

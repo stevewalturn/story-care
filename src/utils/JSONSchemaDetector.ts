@@ -105,6 +105,95 @@ function inferSchemaType(data: any): JSONSchemaType | null {
     }
   }
 
+  // Extraction schemas
+  if (hasRequiredKeys(data, ['metaphors']) && Array.isArray(data.metaphors)) {
+    return 'metaphor_extraction';
+  }
+
+  if (hasRequiredKeys(data, ['moments']) && Array.isArray(data.moments)) {
+    return 'key_moments';
+  }
+
+  if (hasRequiredKeys(data, ['values', 'beliefs'])) {
+    return 'values_beliefs';
+  }
+
+  if (hasRequiredKeys(data, ['goals']) && Array.isArray(data.goals)) {
+    return 'goals_intentions';
+  }
+
+  if (hasRequiredKeys(data, ['internal_strengths', 'external_resources'])) {
+    return 'strengths_resources';
+  }
+
+  if (hasRequiredKeys(data, ['barriers']) && Array.isArray(data.barriers)) {
+    return 'barriers_challenges';
+  }
+
+  // Visualization schemas
+  if (hasRequiredKeys(data, ['title', 'description', 'dalle_prompt']) && hasRequiredKeys(data, ['symbolic_elements'])) {
+    return 'scene_visualization';
+  }
+
+  if (hasRequiredKeys(data, ['metaphor_title', 'image_prompt', 'symbolic_meaning'])) {
+    return 'visual_metaphor';
+  }
+
+  if (hasRequiredKeys(data, ['original_narrative', 'reframed_narrative', 'key_shifts'])) {
+    return 'story_reframe';
+  }
+
+  if (hasRequiredKeys(data, ['hope_title', 'hope_description', 'image_prompt'])) {
+    return 'hope_visualization';
+  }
+
+  if (hasRequiredKeys(data, ['journey_title', 'stages']) && Array.isArray(data.stages)) {
+    return 'journey_map';
+  }
+
+  if (hasRequiredKeys(data, ['portrait_title', 'core_strengths', 'visual_prompt'])) {
+    return 'character_strength';
+  }
+
+  if (hasRequiredKeys(data, ['timeline_title', 'timeline_entries']) && Array.isArray(data.timeline_entries)) {
+    return 'timeline_visualization';
+  }
+
+  // Prompt schemas
+  if (hasRequiredKeys(data, ['prompts']) && Array.isArray(data.prompts)) {
+    // Disambiguate between different prompt types
+    if (data.prompts.length > 0) {
+      const firstPrompt = data.prompts[0];
+
+      if (hasRequiredKeys(firstPrompt, ['prompt', 'focus'])) {
+        return 'journaling_prompts';
+      }
+
+      if (hasRequiredKeys(firstPrompt, ['question', 'category'])) {
+        return 'goal_setting_questions';
+      }
+
+      if (hasRequiredKeys(firstPrompt, ['prompt', 'technique'])) {
+        return 'self_compassion_prompts';
+      }
+
+      if (hasRequiredKeys(firstPrompt, ['prompt', 'depth'])) {
+        return 'gratitude_prompts';
+      }
+    }
+  }
+
+  if (hasRequiredKeys(data, ['assignments']) && Array.isArray(data.assignments)) {
+    return 'homework_assignments';
+  }
+
+  if (hasRequiredKeys(data, ['questions']) && Array.isArray(data.questions)) {
+    // Check if it's check-in questions (has type field)
+    if (data.questions.length > 0 && hasRequiredKeys(data.questions[0], ['question', 'type'])) {
+      return 'check_in_questions';
+    }
+  }
+
   return null;
 }
 

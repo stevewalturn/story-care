@@ -37,7 +37,7 @@ Focus on:
 
 Extract 2-3 meaningful quotes that show resilience. Summarize therapeutic themes in 2-3 sentences. Suggest visual scenes or metaphors that capture their journey of survival and strength.
 
-Output ONLY valid JSON matching this schema:
+CRITICAL: Output ONLY valid JSON matching this schema:
 {
   "schemaType": "therapeutic_note",
   "note_title": "Brief title",
@@ -82,7 +82,7 @@ Analyze the selected text and create a vivid visual scene description that:
 - Artistic style and emotional mood
 - 2-3 sentences with rich visual details
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "scene_visualization",
   "title": "Scene title",
@@ -127,7 +127,7 @@ Review the selected transcript segment and identify:
 
 Extract 3-5 quotes with context.
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "quote_extraction",
   "extracted_quotes": [
@@ -246,7 +246,7 @@ Extract:
 
 Provide therapeutic insights for helping the patient build regulation capacity.
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "therapeutic_note",
   "title": "Grounding & Regulation Analysis",
@@ -295,7 +295,7 @@ Extract:
 
 Suggest how to support relational healing in future sessions.
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "therapeutic_note",
   "title": "Relational Healing & Integration Analysis",
@@ -336,7 +336,7 @@ Analyze the session themes and generate 3-5 open-ended questions that:
 4. Encourage narrative expansion
 5. Connect past, present, and future
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "reflection_questions",
   "questions": [
@@ -386,7 +386,7 @@ Look for:
 4. Nature or landscape references
 5. Journey/movement metaphors
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "metaphor_extraction",
   "metaphors": [
@@ -440,7 +440,7 @@ Analyze for:
 4. Collaboration quality (shared goals, mutual respect)
 5. Transference/countertransference hints
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "therapeutic_note",
   "title": "Therapeutic Alliance Analysis",
@@ -483,7 +483,7 @@ Look for signs of:
 6. Reaction formation (expressing opposite of true feelings)
 7. Humor/deflection (avoiding difficult topics)
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "therapeutic_note",
   "title": "Defense Mechanisms Analysis",
@@ -565,7 +565,7 @@ Compare current session to earlier work (if available) for:
 4. Coping skill acquisition
 5. Narrative shifts (how story is told differently)
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "therapeutic_note",
   "title": "Progress Tracking Analysis",
@@ -605,7 +605,7 @@ Analyze for indicators of:
 3. Avoidant attachment (discomfort with intimacy, self-reliance)
 4. Disorganized attachment (contradictory behaviors, fear)
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "therapeutic_note",
   "title": "Attachment Pattern Analysis",
@@ -647,7 +647,7 @@ Watch for:
 5. Negative cognitions about self/world
 6. Somatic symptoms
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "therapeutic_note",
   "title": "Trauma Response Analysis",
@@ -688,7 +688,7 @@ Identify:
 4. Individual vs social coping
 5. Coping flexibility and repertoire
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "therapeutic_note",
   "title": "Coping Strategy Assessment",
@@ -748,7 +748,7 @@ Analyze the selected transcript segment and create a complete scene card with:
 
 6. **Assembly Steps**: Clear instructions for video editor showing how to sequence the images, timing, transitions, and music cues.
 
-Output ONLY valid JSON matching the scene_card schema. No markdown, no explanations, just the JSON object.`,
+CRITICAL: Output ONLY valid JSON matching the scene_card schema. No markdown, no explanations, just the JSON object.`,
 
     userPrompt: null,
     description: 'Generate complete therapeutic scene card with images, music, and reflections (JSON output)',
@@ -821,7 +821,7 @@ Consider:
 - Hope and future-oriented themes
 - Relational healing moments
 
-Output ONLY valid JSON matching the scene_suggestions schema:
+CRITICAL: Output ONLY valid JSON matching the scene_suggestions schema:
 {
   "potential_scenes_by_participant": [
     {
@@ -907,7 +907,7 @@ Analyze the selected transcript and create TWO music generation options:
 - Source Quotes: Quotes from transcript that inspired the lyrics
 - Rationale: Therapeutic purpose of this song
 
-Output ONLY valid JSON matching the music_generation schema. No markdown, no explanations.
+CRITICAL: Output ONLY valid JSON matching the music_generation schema. No markdown, no explanations.
 
 Example structure:
 {
@@ -971,7 +971,7 @@ Based on the transcript, design visual metaphors that:
 
 **IMPORTANT**: The "dalle_prompt" field must be a complete, detailed image generation prompt (2-3 sentences with specific visual elements, composition, lighting, colors, and style).
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "visual_metaphor",
   "metaphors": [
@@ -1023,7 +1023,7 @@ Analyze the dominant narrative and suggest reframes that:
 4. Connect to values and meaning
 5. Open possibilities for the future
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "story_reframe",
   "current_narrative": "Brief summary",
@@ -1064,7 +1064,7 @@ Based on hopes, dreams, and goals mentioned, create:
 
 **IMPORTANT**: The "dalle_prompt" field must be a complete, detailed image generation prompt (2-3 sentences with specific visual elements, composition, lighting, colors, and style).
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "hope_visualization",
   "future_description": "Vivid description",
@@ -1105,7 +1105,7 @@ Create a visual journey map showing:
 
 **IMPORTANT**: The "dalle_prompt" field must be a complete, detailed image generation prompt (2-3 sentences with specific visual elements, composition, lighting, colors, and style).
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "journey_map",
   "narrative_arc": "Description",
@@ -1145,7 +1145,7 @@ Based on the transcript, identify:
 
 **IMPORTANT**: The "dalle_prompt" field must be a complete, detailed image generation prompt (2-3 sentences with specific visual elements, composition, lighting, colors, and style).
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "character_strength",
   "strengths": [
@@ -1201,7 +1201,7 @@ Design a timeline showing:
 
 **IMPORTANT**: The "dalle_prompt" field must be a complete, detailed image generation prompt (2-3 sentences with specific visual elements, composition, lighting, colors, and style).
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "timeline_visualization",
   "narrative": "Chronological description",
@@ -1259,7 +1259,7 @@ Look for:
 4. Narrative shifts
 5. Connections made (between past and present, feelings and thoughts)
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "key_moments",
   "moments": [
@@ -1311,7 +1311,7 @@ Extract:
 4. Core beliefs about others/world
 5. Values conflicts or alignment
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "values_beliefs",
   "values": [
@@ -1365,7 +1365,7 @@ Identify:
 4. Approach goals (what they want) vs avoidance goals (what they don't want)
 5. SMART goal components (Specific, Measurable, Achievable, Relevant, Time-bound)
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "goals_intentions",
   "goals": [
@@ -1421,7 +1421,7 @@ Extract:
 4. Spiritual/existential resources (faith, meaning, purpose)
 5. Skills and competencies
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "strengths_resources",
   "resources": [
@@ -1475,7 +1475,7 @@ Identify:
 4. Resource limitations
 5. Systemic/structural challenges
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "barriers_challenges",
   "barriers": [
@@ -1531,7 +1531,7 @@ Based on session themes, generate 3-5 questions that:
 4. Notice patterns and changes
 5. Prepare for next session
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "reflection_questions",
   "questions": [
@@ -1582,7 +1582,7 @@ Generate 4-6 prompts that encourage:
 5. Goal clarification
 6. Meaning-making
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "journaling_prompts",
   "prompts": [
@@ -1632,7 +1632,7 @@ Create questions that:
 4. Anticipate obstacles
 5. Measure progress
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "goal_setting_questions",
   "questions": [
@@ -1682,7 +1682,7 @@ Generate reflections that:
 4. Promote common humanity
 5. Practice mindfulness of difficult emotions
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "self_compassion_prompts",
   "prompts": [
@@ -1732,7 +1732,7 @@ Create prompts that:
 4. Find meaning in challenges
 5. Express thanks for resources
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "gratitude_prompts",
   "prompts": [
@@ -1782,7 +1782,7 @@ Design 2-3 assignments that:
 4. Gather data or notice patterns
 5. Prepare for next session
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "homework_assignments",
   "assignments": [
@@ -1834,7 +1834,7 @@ Generate check-in questions for:
 4. Coping skill usage
 5. Support system engagement
 
-Output ONLY valid JSON:
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 {
   "schemaType": "check_in_questions",
   "questions": [

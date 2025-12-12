@@ -140,6 +140,259 @@ export const SCHEMA_ACTIONS: Record<JSONSchemaType, SchemaAction[]> = {
       batchable: true,
     },
   ],
+
+  // Extraction Schema Actions
+  metaphor_extraction: [
+    {
+      id: 'save_metaphors',
+      label: 'Save as Note',
+      icon: 'save',
+      handler: 'handleSaveAsNote',
+    },
+    {
+      id: 'generate_visual',
+      label: 'Generate Visual',
+      icon: 'image',
+      handler: 'handleGenerateVisualFromMetaphor',
+    },
+  ],
+
+  key_moments: [
+    {
+      id: 'save_moments',
+      label: 'Save as Note',
+      icon: 'save',
+      handler: 'handleSaveAsNote',
+    },
+  ],
+
+  values_beliefs: [
+    {
+      id: 'save_values_beliefs',
+      label: 'Save as Note',
+      icon: 'save',
+      handler: 'handleSaveAsNote',
+    },
+  ],
+
+  goals_intentions: [
+    {
+      id: 'save_goals',
+      label: 'Save as Note',
+      icon: 'save',
+      handler: 'handleSaveAsNote',
+    },
+  ],
+
+  strengths_resources: [
+    {
+      id: 'save_strengths',
+      label: 'Save as Note',
+      icon: 'save',
+      handler: 'handleSaveAsNote',
+    },
+  ],
+
+  barriers_challenges: [
+    {
+      id: 'save_barriers',
+      label: 'Save as Note',
+      icon: 'save',
+      handler: 'handleSaveAsNote',
+    },
+  ],
+
+  // Visualization Schema Actions
+  scene_visualization: [
+    {
+      id: 'generate_scene_image',
+      label: 'Generate Image',
+      icon: 'image',
+      handler: 'handleGenerateSingleImage',
+    },
+    {
+      id: 'save_scene_viz',
+      label: 'Save as Note',
+      icon: 'save',
+      handler: 'handleSaveAsNote',
+    },
+  ],
+
+  visual_metaphor: [
+    {
+      id: 'generate_metaphor_image',
+      label: 'Generate Image',
+      icon: 'image',
+      handler: 'handleGenerateSingleImage',
+    },
+    {
+      id: 'save_visual_metaphor',
+      label: 'Save as Note',
+      icon: 'save',
+      handler: 'handleSaveAsNote',
+    },
+  ],
+
+  story_reframe: [
+    {
+      id: 'save_reframe',
+      label: 'Save as Note',
+      icon: 'save',
+      handler: 'handleSaveAsNote',
+    },
+    {
+      id: 'add_to_story_page',
+      label: 'Add to Story Page',
+      icon: 'plus-circle',
+      handler: 'handleAddToStoryPage',
+    },
+  ],
+
+  hope_visualization: [
+    {
+      id: 'generate_hope_image',
+      label: 'Generate Image',
+      icon: 'image',
+      handler: 'handleGenerateSingleImage',
+    },
+    {
+      id: 'save_hope_viz',
+      label: 'Save as Note',
+      icon: 'save',
+      handler: 'handleSaveAsNote',
+    },
+  ],
+
+  journey_map: [
+    {
+      id: 'save_journey',
+      label: 'Save as Note',
+      icon: 'save',
+      handler: 'handleSaveAsNote',
+    },
+    {
+      id: 'generate_journey_images',
+      label: 'Generate Stage Images',
+      icon: 'image',
+      handler: 'handleGenerateImages',
+      batchable: true,
+    },
+  ],
+
+  character_strength: [
+    {
+      id: 'generate_portrait',
+      label: 'Generate Portrait',
+      icon: 'image',
+      handler: 'handleGenerateSingleImage',
+    },
+    {
+      id: 'save_character',
+      label: 'Save as Note',
+      icon: 'save',
+      handler: 'handleSaveAsNote',
+    },
+  ],
+
+  timeline_visualization: [
+    {
+      id: 'save_timeline',
+      label: 'Save as Note',
+      icon: 'save',
+      handler: 'handleSaveAsNote',
+    },
+  ],
+
+  // Prompt Schema Actions
+  journaling_prompts: [
+    {
+      id: 'add_journaling_prompts',
+      label: 'Add to Story Page',
+      icon: 'plus-circle',
+      handler: 'handleAddToStoryPage',
+    },
+    {
+      id: 'save_journaling',
+      label: 'Save as Note',
+      icon: 'save',
+      handler: 'handleSaveAsNote',
+    },
+  ],
+
+  goal_setting_questions: [
+    {
+      id: 'add_goal_questions',
+      label: 'Add to Story Page',
+      icon: 'plus-circle',
+      handler: 'handleAddToStoryPage',
+    },
+    {
+      id: 'save_goal_questions',
+      label: 'Save as Note',
+      icon: 'save',
+      handler: 'handleSaveAsNote',
+    },
+  ],
+
+  self_compassion_prompts: [
+    {
+      id: 'add_compassion_prompts',
+      label: 'Add to Story Page',
+      icon: 'plus-circle',
+      handler: 'handleAddToStoryPage',
+    },
+    {
+      id: 'save_compassion',
+      label: 'Save as Note',
+      icon: 'save',
+      handler: 'handleSaveAsNote',
+    },
+  ],
+
+  gratitude_prompts: [
+    {
+      id: 'add_gratitude_prompts',
+      label: 'Add to Story Page',
+      icon: 'plus-circle',
+      handler: 'handleAddToStoryPage',
+    },
+    {
+      id: 'save_gratitude',
+      label: 'Save as Note',
+      icon: 'save',
+      handler: 'handleSaveAsNote',
+    },
+  ],
+
+  homework_assignments: [
+    {
+      id: 'add_homework',
+      label: 'Add to Story Page',
+      icon: 'plus-circle',
+      handler: 'handleAddToStoryPage',
+    },
+    {
+      id: 'save_homework',
+      label: 'Save as Note',
+      icon: 'save',
+      handler: 'handleSaveAsNote',
+    },
+  ],
+
+  check_in_questions: [
+    {
+      id: 'add_checkin',
+      label: 'Add to Story Page',
+      icon: 'plus-circle',
+      handler: 'handleAddToStoryPage',
+    },
+    {
+      id: 'save_checkin',
+      label: 'Save as Note',
+      icon: 'save',
+      handler: 'handleSaveAsNote',
+    },
+  ],
 };
 
 // ============================================================================
@@ -182,6 +435,28 @@ export function getSchemaDisplayName(schemaType: JSONSchemaType): string {
     reflection_questions: 'Reflection Questions',
     therapeutic_note: 'Therapeutic Note',
     quote_extraction: 'Quote Extraction',
+    // Extraction schemas
+    metaphor_extraction: 'Metaphor Extraction',
+    key_moments: 'Key Moments',
+    values_beliefs: 'Values & Beliefs',
+    goals_intentions: 'Goals & Intentions',
+    strengths_resources: 'Strengths & Resources',
+    barriers_challenges: 'Barriers & Challenges',
+    // Visualization schemas
+    scene_visualization: 'Scene Visualization',
+    visual_metaphor: 'Visual Metaphor',
+    story_reframe: 'Story Reframe',
+    hope_visualization: 'Hope Visualization',
+    journey_map: 'Journey Map',
+    character_strength: 'Character Strength',
+    timeline_visualization: 'Timeline Visualization',
+    // Prompt schemas
+    journaling_prompts: 'Journaling Prompts',
+    goal_setting_questions: 'Goal-Setting Questions',
+    self_compassion_prompts: 'Self-Compassion Prompts',
+    gratitude_prompts: 'Gratitude Prompts',
+    homework_assignments: 'Homework Assignments',
+    check_in_questions: 'Check-In Questions',
   };
   return names[schemaType] || 'JSON Output';
 }
@@ -199,6 +474,28 @@ export function getSchemaDescription(schemaType: JSONSchemaType): string {
     reflection_questions: 'Curated reflection questions for patients or groups',
     therapeutic_note: 'Structured therapeutic note or observation',
     quote_extraction: 'Extracted meaningful quotes from transcript',
+    // Extraction schemas
+    metaphor_extraction: 'Metaphors and symbolic language identified from transcript',
+    key_moments: 'Therapeutically significant moments identified from session',
+    values_beliefs: 'Core values and beliefs expressed by patient',
+    goals_intentions: 'Patient goals and intentions for their therapeutic journey',
+    strengths_resources: 'Internal strengths and external resources available to patient',
+    barriers_challenges: 'Barriers and challenges hindering progress',
+    // Visualization schemas
+    scene_visualization: 'Therapeutic scene with visual and symbolic elements',
+    visual_metaphor: 'Visual representation of therapeutic metaphor',
+    story_reframe: 'Alternative empowering narrative perspective',
+    hope_visualization: 'Hopeful future vision with concrete elements',
+    journey_map: 'Patient journey mapped through stages',
+    character_strength: 'Character portrait highlighting core strengths',
+    timeline_visualization: 'Timeline of significant life events',
+    // Prompt schemas
+    journaling_prompts: 'Reflective journaling prompts for patient',
+    goal_setting_questions: 'Questions to clarify and develop goals',
+    self_compassion_prompts: 'Prompts to cultivate self-compassion',
+    gratitude_prompts: 'Prompts to practice gratitude',
+    homework_assignments: 'Therapeutic assignments for between-session work',
+    check_in_questions: 'Questions to assess patient progress and wellbeing',
   };
   return descriptions[schemaType] || 'AI-generated structured output';
 }
