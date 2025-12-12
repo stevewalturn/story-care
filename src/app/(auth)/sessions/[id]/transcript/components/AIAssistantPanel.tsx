@@ -26,6 +26,8 @@ export function AIAssistantPanel({
   onOpenVideoModal,
   onOpenMusicModal,
   onLibraryRefresh,
+  analyzeMode,
+  onAnalyzeModeChange,
 }: AIAssistantPanelProps) {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
@@ -33,8 +35,20 @@ export function AIAssistantPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [_isLoadingHistory, _setIsLoadingHistory] = useState(true);
   const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash');
+  const [selectedPrompt, setSelectedPrompt] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Prompt templates
+  const promptTemplates = [
+    { value: '', label: 'Custom prompt...' },
+    { value: 'summarize', label: 'Summarize this session', prompt: 'Please provide a comprehensive summary of this therapy session, highlighting key themes, insights, and progress.' },
+    { value: 'themes', label: 'Identify key themes', prompt: 'What are the main themes and patterns emerging from this session?' },
+    { value: 'progress', label: 'Track progress', prompt: 'Based on this session, what progress has the patient made? What areas need more attention?' },
+    { value: 'homework', label: 'Suggest homework', prompt: 'What therapeutic homework or exercises would you recommend based on this session?' },
+    { value: 'concerns', label: 'Identify concerns', prompt: 'What are the primary concerns or challenges the patient is facing based on this session?' },
+    { value: 'strengths', label: 'Identify strengths', prompt: 'What strengths and resources does the patient demonstrate in this session?' },
+  ];
 
   // Load chat history on mount
   useEffect(() => {
@@ -136,6 +150,17 @@ export function AIAssistantPanel({
     setVisibleMessageCount(prev => prev + 10);
   };
 
+  // Handle prompt template selection
+  const handlePromptTemplateChange = (value: string) => {
+    setSelectedPrompt(value);
+    const template = promptTemplates.find(t => t.value === value);
+    if (template && template.prompt) {
+      setPrompt(template.prompt);
+    } else {
+      setPrompt('');
+    }
+  };
+
   // Calculate visible messages (show last N messages)
   const visibleMessages = messages.slice(-visibleMessageCount);
   const hasMoreMessages = messages.length > visibleMessageCount;
@@ -197,28 +222,47 @@ export function AIAssistantPanel({
           </div>
         </div>
 
-        {/* Model Selector */}
+        {/* Model Selector & Analyze Mode */}
         <div className="border-t border-gray-200 bg-gray-50 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <label htmlFor="ai-model" className="text-sm font-medium text-gray-700">
-              Model:
-            </label>
-            <select
-              id="ai-model"
-              value={selectedModel}
-              onChange={e => setSelectedModel(e.target.value)}
-              className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+          <div className="flex items-center gap-4">
+            {/* Model Selector */}
+            <div className="flex flex-1 items-center gap-2">
+              <label htmlFor="ai-model" className="text-sm font-medium text-gray-700">
+                Model:
+              </label>
+              <select
+                id="ai-model"
+                value={selectedModel}
+                onChange={e => setSelectedModel(e.target.value)}
+                className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+              >
+                {Object.entries(getAvailableTextModels()).map(([provider, models]) => (
+                  <optgroup key={provider} label={provider}>
+                    {models.map(model => (
+                      <option key={model.value} value={model.value}>
+                        {model.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+
+            {/* Analyze Mode Toggle */}
+            <button
+              onClick={() => onAnalyzeModeChange(!analyzeMode)}
+              className={`flex items-center gap-2 rounded-lg border px-4 py-1.5 text-sm font-medium transition-all ${
+                analyzeMode
+                  ? 'border-indigo-600 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+              title={analyzeMode ? 'Analyze Mode: ON - Select text to analyze' : 'Analyze Mode: OFF - Click to enable'}
             >
-              {Object.entries(getAvailableTextModels()).map(([provider, models]) => (
-                <optgroup key={provider} label={provider}>
-                  {models.map(model => (
-                    <option key={model.value} value={model.value}>
-                      {model.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+              <span>{analyzeMode ? 'Analyze Mode: ON' : 'Analyze Mode: OFF'}</span>
+            </button>
           </div>
         </div>
 
@@ -468,6 +512,22 @@ export function AIAssistantPanel({
 
       {/* Chat Input */}
       <div className="border-t border-gray-200 bg-white p-4">
+        {/* Prompt Templates Dropdown */}
+        <div className="mb-3">
+          <select
+            value={selectedPrompt}
+            onChange={e => handlePromptTemplateChange(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            disabled={isLoading}
+          >
+            {promptTemplates.map(template => (
+              <option key={template.value} value={template.value}>
+                {template.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="relative">
           {/* Textarea for multi-line support */}
           <textarea

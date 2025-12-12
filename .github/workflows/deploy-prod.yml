@@ -90,7 +90,6 @@ jobs:
             --port 8080 \
             --set-env-vars "NODE_ENV=production" \
             --timeout 300 \
-            --body-size-limit 524288000 \
             --concurrency 80
 
       - name: Get service URL

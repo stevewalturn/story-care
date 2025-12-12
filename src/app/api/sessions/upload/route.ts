@@ -9,6 +9,11 @@ import { checkRateLimit, getClientIP, uploadRateLimit } from '@/utils/RateLimite
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minutes for large file uploads
 
+// IMPORTANT: Cloud Run has a 32MB request body limit that CANNOT be changed
+// For files >32MB, this route will fail in production
+// TODO: Implement chunked upload or GCS signed URL direct upload for large files
+export const dynamic = 'force-dynamic';
+
 // POST /api/sessions/upload - Upload audio file to GCS
 // HIPAA COMPLIANCE: Requires authentication, rate limiting, and audit logging
 // CRITICAL: This endpoint handles PHI (patient audio recordings)
@@ -33,7 +38,21 @@ export async function POST(request: NextRequest) {
 
     // 3. VALIDATE FILE SIZE
     const contentLength = request.headers.get('content-length');
-    const maxSize = 500 * 1024 * 1024; // 500MB
+    const cloudRunLimit = 32 * 1024 * 1024; // 32MB Cloud Run hard limit
+    const maxSize = 500 * 1024 * 1024; // 500MB application limit
+
+    // Check if file exceeds Cloud Run's limit
+    if (contentLength && Number.parseInt(contentLength, 10) > cloudRunLimit) {
+      return NextResponse.json(
+        {
+          error: 'File too large for direct upload',
+          message: 'Files larger than 32MB must use the signed URL upload method',
+          useSignedUrl: true,
+          fileSize: Number.parseInt(contentLength, 10),
+        },
+        { status: 413 },
+      );
+    }
 
     // Check content length before parsing
     if (contentLength && Number.parseInt(contentLength, 10) > maxSize) {

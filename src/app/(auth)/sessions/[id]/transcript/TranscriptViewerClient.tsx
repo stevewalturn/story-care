@@ -77,6 +77,9 @@ export function TranscriptViewerClient({
   // Media/Library refresh trigger (for media, quotes, and notes)
   const [mediaRefreshKey, setMediaRefreshKey] = useState(0);
 
+  // Analyze Mode state (for controlling automatic text selection analysis)
+  const [analyzeMode, setAnalyzeMode] = useState(false);
+
   // Fetch session and transcript data
   useEffect(() => {
     const fetchData = async () => {
@@ -120,6 +123,7 @@ export function TranscriptViewerClient({
           startTime: Number.parseFloat(u.startTimeSeconds || '0'),
           endTime: Number.parseFloat(u.endTimeSeconds || '0'),
           confidence: Number.parseFloat(u.confidenceScore || '1'),
+          avatarUrl: u.avatarUrl,
         }));
 
         setUtterances(transformedUtterances);
@@ -192,6 +196,9 @@ export function TranscriptViewerClient({
 
   // Handler for text selection from transcript
   const handleTextSelection = () => {
+    // Only open analyze modal if Analyze Mode is enabled
+    if (!analyzeMode) return;
+
     const selection = window.getSelection();
     const text = selection?.toString().trim();
 
@@ -204,6 +211,9 @@ export function TranscriptViewerClient({
 
   // Handler for text selection from AI conversation
   const handleAITextSelection = () => {
+    // Only open analyze modal if Analyze Mode is enabled
+    if (!analyzeMode) return;
+
     const selection = window.getSelection();
     const text = selection?.toString().trim();
 
@@ -531,6 +541,8 @@ export function TranscriptViewerClient({
             onOpenVideoModal={handleOpenVideoModal}
             onOpenMusicModal={handleOpenMusicModal}
             onLibraryRefresh={() => setMediaRefreshKey(prev => prev + 1)}
+            analyzeMode={analyzeMode}
+            onAnalyzeModeChange={setAnalyzeMode}
           />
         </div>
 

@@ -100,11 +100,12 @@ export function TranscriptPanel({
         <div className="mb-4 flex items-center justify-between">
           <button
             onClick={() => window.location.href = '/sessions'}
-            className="text-gray-500 hover:text-gray-700"
+            className="flex items-center gap-1.5 text-gray-600 transition-colors hover:text-gray-900"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
+            <span className="text-sm font-medium">Back</span>
           </button>
           <h2 className="flex-1 text-center text-sm font-semibold text-gray-900">{sessionTitle}</h2>
           <button
@@ -206,14 +207,32 @@ export function TranscriptPanel({
         {filteredUtterances.map((utterance: Utterance) => (
           <div key={utterance.id} className="flex gap-3">
             {/* Avatar */}
-            <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
+            <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full overflow-hidden ${
               utterance.speakerType === 'therapist' ? 'bg-blue-100' : 'bg-green-100'
             }`}
             >
+              {utterance.avatarUrl
+                ? (
+                    <img
+                      src={utterance.avatarUrl}
+                      alt={utterance.speakerName}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        // Fallback to icon if image fails to load
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const svg = target.nextElementSibling as HTMLElement;
+                        if (svg) {
+                          svg.style.display = 'block';
+                        }
+                      }}
+                    />
+                  )
+                : null}
               <svg
                 className={`h-4 w-4 ${
                   utterance.speakerType === 'therapist' ? 'text-blue-600' : 'text-green-600'
-                }`}
+                } ${utterance.avatarUrl ? 'hidden' : ''}`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"

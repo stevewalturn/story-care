@@ -2,7 +2,8 @@ import type { NextRequest } from 'next/server';
 import { asc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { speakers, transcripts, utterances } from '@/models/Schema';
+import { generatePresignedUrl } from '@/libs/GCS';
+import { speakers, transcripts, users, utterances } from '@/models/Schema';
 
 // GET /api/sessions/[id]/transcript - Get transcript and utterances
 export async function GET(
@@ -25,7 +26,7 @@ export async function GET(
       );
     }
 
-    // Fetch utterances
+    // Fetch utterances with speaker and user avatar data
     const utterancesList = await db
       .select({
         id: utterances.id,
@@ -38,16 +39,45 @@ export async function GET(
           speakerLabel: speakers.speakerLabel,
           speakerType: speakers.speakerType,
           speakerName: speakers.speakerName,
+          userId: speakers.userId,
         },
+        userAvatarUrl: users.avatarUrl,
       })
       .from(utterances)
       .leftJoin(speakers, eq(utterances.speakerId, speakers.id))
+      .leftJoin(users, eq(speakers.userId, users.id))
       .where(eq(utterances.transcriptId, transcript.id))
       .orderBy(asc(utterances.startTimeSeconds));
 
+    // Generate presigned URLs for avatars
+    const utterancesWithSignedUrls = await Promise.all(
+      utterancesList.map(async (utterance) => {
+        let signedAvatarUrl = null;
+
+        if (utterance.userAvatarUrl) {
+          try {
+            signedAvatarUrl = await generatePresignedUrl(utterance.userAvatarUrl, 1);
+          } catch (error) {
+            console.error('Failed to generate presigned URL for avatar:', error);
+          }
+        }
+
+        return {
+          id: utterance.id,
+          speakerId: utterance.speakerId,
+          text: utterance.text,
+          startTimeSeconds: utterance.startTimeSeconds,
+          endTimeSeconds: utterance.endTimeSeconds,
+          confidenceScore: utterance.confidenceScore,
+          speaker: utterance.speaker,
+          avatarUrl: signedAvatarUrl || undefined,
+        };
+      }),
+    );
+
     return NextResponse.json({
       transcript,
-      utterances: utterancesList,
+      utterances: utterancesWithSignedUrls,
     });
   } catch (error) {
     console.error('Error fetching transcript:', error);

@@ -15,6 +15,7 @@ export type Utterance = {
   startTime: number;
   endTime: number;
   confidence: number;
+  avatarUrl?: string;
 };
 
 export type { AIPromptOption };
@@ -58,6 +59,8 @@ export type AIAssistantPanelProps = {
     lyricalOption?: any;
   }) => void;
   onLibraryRefresh?: () => void;
+  analyzeMode: boolean;
+  onAnalyzeModeChange: (enabled: boolean) => void;
 };
 
 // Props for LibraryPanel
