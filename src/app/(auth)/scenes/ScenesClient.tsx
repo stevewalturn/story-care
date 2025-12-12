@@ -443,8 +443,8 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
         throw new Error('Failed to save scene before exporting');
       }
 
-      // Then trigger async assembly using Cloud Run
-      toast.loading('Starting video assembly on Cloud Run...', { id: toastId });
+      // Then trigger async assembly
+      toast.loading('Starting video assembly...', { id: toastId });
 
       const response = await authenticatedPost(`/api/scenes/${savedSceneId}/assemble-async`, user, {
         audioTrack: null, // Optional: add background music
@@ -468,7 +468,7 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
 
         // Show processing message with progress updates
         toast.loading(
-          'Assembling video on Cloud Run... This may take a few minutes.',
+          'Assembling video... This may take a few minutes.',
           { id: 'processing-toast' },
         );
       } else {
@@ -522,6 +522,9 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
     }
   };
 
+  // Determine if scene is currently being processed
+  const isProcessingOrExporting = isProcessing || isExporting;
+
   return (
     <div className="flex h-[calc(100vh-80px)] flex-col p-8">
       {/* Header */}
@@ -529,7 +532,11 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
         {/* Back Button */}
         {onBackToLibrary && (
           <div className="mb-4">
-            <Button variant="ghost" onClick={onBackToLibrary}>
+            <Button
+              variant="ghost"
+              onClick={onBackToLibrary}
+              disabled={isProcessingOrExporting}
+            >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Scenes
             </Button>
@@ -548,7 +555,8 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
                 setSelectedPatient(e.target.value);
                 createNewScene();
               }}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+              disabled={isProcessingOrExporting}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             >
               <option value="">Select patient...</option>
               {patients.map(patient => (
@@ -567,14 +575,14 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
               onChange={e => setSceneName(e.target.value)}
               className="text-2xl font-bold"
               placeholder="Scene name..."
-              disabled={!selectedPatient}
+              disabled={!selectedPatient || isProcessingOrExporting}
             />
           </div>
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               onClick={() => setShowInstantPreview(true)}
-              disabled={!selectedPatient || clips.length === 0}
+              disabled={!selectedPatient || clips.length === 0 || isProcessingOrExporting}
             >
               <Play className="mr-2 h-4 w-4" />
               Preview Draft
@@ -582,7 +590,7 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
             <Button
               variant="ghost"
               onClick={handlePreview}
-              disabled={!selectedPatient || clips.length === 0 || isExporting}
+              disabled={!selectedPatient || clips.length === 0 || isProcessingOrExporting}
             >
               <Eye className="mr-2 h-4 w-4" />
               Preview Final
@@ -590,7 +598,7 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
             <Button
               variant="secondary"
               onClick={handleExport}
-              disabled={!selectedPatient || clips.length === 0 || isExporting || isSaving}
+              disabled={!selectedPatient || clips.length === 0 || isProcessingOrExporting || isSaving}
               className="relative"
             >
               {isExporting || isProcessing ? (
@@ -613,7 +621,7 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
             <Button
               variant="primary"
               onClick={handleSaveScene}
-              disabled={isSaving || clips.length === 0 || !selectedPatient || isExporting}
+              disabled={isSaving || clips.length === 0 || !selectedPatient || isProcessingOrExporting}
             >
               {isSaving ? (
                 <>
@@ -637,7 +645,7 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
               <div className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
                 <h3 className="text-sm font-semibold text-blue-900">
-                  Video Processing on Cloud Run
+                  Video Processing
                 </h3>
               </div>
               <span className="text-xs font-medium text-blue-700">
@@ -683,7 +691,7 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
                   checked={loopAudio}
                   onChange={(e) => setLoopAudio(e.target.checked)}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  disabled={fitAudioToDuration}
+                  disabled={fitAudioToDuration || isProcessingOrExporting}
                 />
                 <span className="text-sm text-gray-700">
                   Loop audio to fit video length
@@ -695,7 +703,7 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
                   checked={fitAudioToDuration}
                   onChange={(e) => setFitAudioToDuration(e.target.checked)}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  disabled={loopAudio}
+                  disabled={loopAudio || isProcessingOrExporting}
                 />
                 <span className="text-sm text-gray-700">
                   Trim/cut audio to fit video length
@@ -729,17 +737,17 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
       </div>
 
       {/* Main Content */}
-      <div className="relative grid min-h-0 flex-1 grid-cols-3 gap-6">
+      <div className={`relative grid min-h-0 flex-1 grid-cols-3 gap-6 ${isProcessingOrExporting ? 'pointer-events-none' : ''}`}>
         {/* Processing Overlay */}
         {(isExporting || isProcessing) && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black/20 backdrop-blur-sm">
+          <div className="pointer-events-auto absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black/20 backdrop-blur-sm">
             <div className="rounded-lg border border-blue-300 bg-white/95 p-6 text-center shadow-xl">
               <Loader2 className="mx-auto mb-3 h-12 w-12 animate-spin text-blue-600" />
               <h3 className="mb-2 text-lg font-semibold text-gray-900">
                 Video Processing in Progress
               </h3>
               <p className="mb-1 text-sm text-gray-600">
-                {videoJob?.currentStep || 'Processing on Cloud Run...'}
+                {videoJob?.currentStep || 'Processing...'}
               </p>
               <p className="text-xs text-gray-500">
                 Editing is temporarily disabled

@@ -13,7 +13,7 @@
  * Note: Environment variables are provided by Cloud Run, no .env file needed
  */
 
-const { execSync } = require('node:child_process');
+const { execSync, execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -203,10 +203,13 @@ async function uploadToGCS(localPath, gcsPath) {
  * Generate thumbnail from video using FFmpeg
  */
 function generateThumbnail(videoPath, thumbnailPath) {
-  execSync(
-    `ffmpeg -i "${videoPath}" -ss 00:00:01 -vframes 1 -vf scale=640:-1 "${thumbnailPath}"`,
-    { stdio: 'pipe' },
-  );
+  execFileSync('ffmpeg', [
+    '-i', videoPath,
+    '-ss', '00:00:01',
+    '-vframes', '1',
+    '-vf', 'scale=640:-1',
+    thumbnailPath
+  ], { stdio: 'pipe' });
 }
 
 /**
@@ -274,10 +277,15 @@ async function executeJob() {
       // Convert images to video clips if needed
       if (clip.type === 'image') {
         const videoPath = clip.localPath.replace('.jpg', '-video.mp4');
-        execSync(
-          `ffmpeg -loop 1 -i "${clip.localPath}" -t ${clip.duration} -pix_fmt yuv420p -vf scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2 "${videoPath}"`,
-          { stdio: 'pipe' },
-        );
+        // Use execFileSync to avoid shell interpretation of parentheses
+        execFileSync('ffmpeg', [
+          '-loop', '1',
+          '-i', clip.localPath,
+          '-t', String(clip.duration),
+          '-pix_fmt', 'yuv420p',
+          '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2',
+          videoPath
+        ], { stdio: 'pipe' });
         return `file '${videoPath}'`;
       }
       return `file '${clip.localPath}'`;
@@ -288,10 +296,13 @@ async function executeJob() {
     await updateJobStatus('processing', 50, 'Concatenating video clips');
 
     // Concatenate clips
-    execSync(
-      `ffmpeg -f concat -safe 0 -i "${concatFile}" -c copy "${outputPath}"`,
-      { stdio: 'pipe' },
-    );
+    execFileSync('ffmpeg', [
+      '-f', 'concat',
+      '-safe', '0',
+      '-i', concatFile,
+      '-c', 'copy',
+      outputPath
+    ], { stdio: 'pipe' });
 
     await updateJobStatus('processing', 70, 'Video clips assembled');
 
@@ -311,10 +322,14 @@ async function executeJob() {
       const audioPath = audioTracks[0].localPath;
       const outputWithAudio = path.join(tempDir, `scene-${sceneId}-with-audio.mp4`);
 
-      execSync(
-        `ffmpeg -i "${outputPath}" -i "${audioPath}" -c:v copy -c:a aac -shortest "${outputWithAudio}"`,
-        { stdio: 'pipe' },
-      );
+      execFileSync('ffmpeg', [
+        '-i', outputPath,
+        '-i', audioPath,
+        '-c:v', 'copy',
+        '-c:a', 'aac',
+        '-shortest',
+        outputWithAudio
+      ], { stdio: 'pipe' });
 
       fs.renameSync(outputWithAudio, outputPath);
       await updateJobStatus('processing', 85, 'Audio tracks merged');

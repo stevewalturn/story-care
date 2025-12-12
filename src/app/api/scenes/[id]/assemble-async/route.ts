@@ -158,7 +158,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     const region = Env.CLOUD_RUN_REGION || 'us-central1';
 
     // Determine job name based on environment
-    const jobName = 'storycare-video-processor';
+    const jobName = 'storycare-video-processor-dev';
 
     try {
       // Import Google Cloud Run client
