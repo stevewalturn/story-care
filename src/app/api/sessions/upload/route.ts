@@ -5,6 +5,10 @@ import { uploadFile } from '@/libs/GCS';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 import { checkRateLimit, getClientIP, uploadRateLimit } from '@/utils/RateLimiter';
 
+// Route segment config for Cloud Run compatibility
+export const runtime = 'nodejs';
+export const maxDuration = 300; // 5 minutes for large file uploads
+
 // POST /api/sessions/upload - Upload audio file to GCS
 // HIPAA COMPLIANCE: Requires authentication, rate limiting, and audit logging
 // CRITICAL: This endpoint handles PHI (patient audio recordings)
@@ -39,7 +43,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const formData = await request.formData();
+    // Parse FormData - wrap in try-catch for better error messages
+    let formData: FormData;
+    try {
+      formData = await request.formData();
+    } catch (formDataError) {
+      console.error('FormData parsing error:', formDataError);
+      return NextResponse.json(
+        {
+          error: 'Failed to parse upload data',
+          details: formDataError instanceof Error ? formDataError.message : 'Unknown error',
+        },
+        { status: 400 },
+      );
+    }
+
     const file = formData.get('file') as File;
 
     if (!file) {

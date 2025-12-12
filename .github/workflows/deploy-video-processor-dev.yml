@@ -12,7 +12,7 @@ on:
 
 env:
   GCP_REGION: us-central1
-  SERVICE_NAME: storycare-video-processor-dev
+  SERVICE_NAME: storycare-video-processor
 
 jobs:
   deploy:
