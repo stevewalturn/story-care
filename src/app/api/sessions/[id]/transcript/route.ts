@@ -42,6 +42,7 @@ export async function GET(
           userId: speakers.userId,
         },
         userAvatarUrl: users.avatarUrl,
+        userReferenceImageUrl: users.referenceImageUrl,
       })
       .from(utterances)
       .leftJoin(speakers, eq(utterances.speakerId, speakers.id))
@@ -49,14 +50,17 @@ export async function GET(
       .where(eq(utterances.transcriptId, transcript.id))
       .orderBy(asc(utterances.startTimeSeconds));
 
-    // Generate presigned URLs for avatars
+    // Generate presigned URLs for avatars (check both referenceImageUrl and avatarUrl)
     const utterancesWithSignedUrls = await Promise.all(
       utterancesList.map(async (utterance) => {
         let signedAvatarUrl = null;
 
-        if (utterance.userAvatarUrl) {
+        // Priority: referenceImageUrl (patient-specific) > avatarUrl (general)
+        const imageUrl = utterance.userReferenceImageUrl || utterance.userAvatarUrl;
+
+        if (imageUrl) {
           try {
-            signedAvatarUrl = await generatePresignedUrl(utterance.userAvatarUrl, 1);
+            signedAvatarUrl = await generatePresignedUrl(imageUrl, 1);
           } catch (error) {
             console.error('Failed to generate presigned URL for avatar:', error);
           }

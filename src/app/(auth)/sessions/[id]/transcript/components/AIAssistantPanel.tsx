@@ -6,7 +6,9 @@
  */
 
 import type { AIAssistantPanelProps } from '../types/transcript.types';
+import type { AIPromptOption } from '@/components/sessions/AnalyzeSelectionModal';
 import { useEffect, useRef, useState } from 'react';
+import { Code2, FileText } from 'lucide-react';
 import { AssistantMessageContent } from '@/components/sessions/AssistantMessageContent';
 import { JSONOutputRenderer } from '@/components/sessions/JSONOutputRenderer';
 import { getAvailableTextModels } from '@/libs/ModelMetadata';
@@ -35,20 +37,18 @@ export function AIAssistantPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [_isLoadingHistory, _setIsLoadingHistory] = useState(true);
   const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash');
-  const [selectedPrompt, setSelectedPrompt] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Prompt templates
-  const promptTemplates = [
-    { value: '', label: 'Custom prompt...' },
-    { value: 'summarize', label: 'Summarize this session', prompt: 'Please provide a comprehensive summary of this therapy session, highlighting key themes, insights, and progress.' },
-    { value: 'themes', label: 'Identify key themes', prompt: 'What are the main themes and patterns emerging from this session?' },
-    { value: 'progress', label: 'Track progress', prompt: 'Based on this session, what progress has the patient made? What areas need more attention?' },
-    { value: 'homework', label: 'Suggest homework', prompt: 'What therapeutic homework or exercises would you recommend based on this session?' },
-    { value: 'concerns', label: 'Identify concerns', prompt: 'What are the primary concerns or challenges the patient is facing based on this session?' },
-    { value: 'strengths', label: 'Identify strengths', prompt: 'What strengths and resources does the patient demonstrate in this session?' },
-  ];
+  // Dynamic AI Prompts system
+  const [aiPrompts, setAiPrompts] = useState<AIPromptOption[]>([]); // Module prompts
+  const [libraryPrompts, setLibraryPrompts] = useState<AIPromptOption[]>([]); // Library prompts
+  const [moduleAiPromptText, setModuleAiPromptText] = useState<string | null>(null);
+  const [isLoadingPrompts, setIsLoadingPrompts] = useState(false);
+  const [outputTypeFilter, setOutputTypeFilter] = useState<'all' | 'text' | 'json'>('all');
+  const [showAllPrompts, setShowAllPrompts] = useState(false);
+  const [selectedPromptId, setSelectedPromptId] = useState('');
+  const [selectedSystemPrompt, setSelectedSystemPrompt] = useState<string | null>(null); // Hidden system prompt
 
   // Load chat history on mount
   useEffect(() => {
@@ -75,6 +75,54 @@ export function AIAssistantPanel({
     loadChatHistory();
   }, [sessionId, user]);
 
+  // Load AI prompts (module + library)
+  useEffect(() => {
+    const fetchAiPrompts = async () => {
+      if (!user || !sessionId) return;
+
+      try {
+        setIsLoadingPrompts(true);
+
+        // 1. Fetch module prompts
+        const moduleResponse = await authenticatedFetch(`/api/sessions/${sessionId}/ai-prompts`, user);
+        let modulePrompts: AIPromptOption[] = [];
+        if (moduleResponse.ok) {
+          const moduleData = await moduleResponse.json();
+          modulePrompts = moduleData.prompts || [];
+          setAiPrompts(modulePrompts);
+
+          // Store module's inline AI prompt text
+          if (moduleData.module?.aiPromptText) {
+            setModuleAiPromptText(moduleData.module.aiPromptText);
+          } else {
+            setModuleAiPromptText(null);
+          }
+        }
+
+        // 2. Fetch all available library prompts
+        const libraryResponse = await authenticatedFetch('/api/therapist/prompts', user);
+        if (libraryResponse.ok) {
+          const libraryData = await libraryResponse.json();
+          const allLibraryPrompts = libraryData.prompts || [];
+
+          // 3. Filter out module prompts to avoid duplicates
+          const modulePromptIds = new Set(modulePrompts.map(p => p.id));
+          const filteredLibraryPrompts = allLibraryPrompts.filter(
+            (p: AIPromptOption) => !modulePromptIds.has(p.id),
+          );
+
+          setLibraryPrompts(filteredLibraryPrompts);
+        }
+      } catch (err) {
+        console.error('Error fetching AI prompts:', err);
+      } finally {
+        setIsLoadingPrompts(false);
+      }
+    };
+
+    fetchAiPrompts();
+  }, [sessionId, user, assignedModule]); // Re-fetch when module changes
+
   // Watch for trigger prompt from analyze modal
   useEffect(() => {
     if (triggerPrompt) {
@@ -90,19 +138,33 @@ export function AIAssistantPanel({
   }, [messages, isLoading]);
 
   const handleSendMessage = async (messageText?: string) => {
-    const textToSend = messageText || prompt;
-    if (!textToSend.trim() || isLoading) {
+    const userText = messageText || prompt;
+
+    // If a system prompt is selected, combine it with user text
+    let fullPrompt = userText;
+    if (selectedSystemPrompt) {
+      // Prepend system prompt (hidden from user) to user's custom text
+      fullPrompt = `${selectedSystemPrompt}\n\n${userText}`;
+    }
+
+    if (!fullPrompt.trim() || isLoading) {
       return;
     }
 
-    const userMessage = { role: 'user' as const, content: textToSend };
+    // Show only user's text in chat history (not the system prompt)
+    const userMessage = { role: 'user' as const, content: userText };
     setMessages(prev => [...prev, userMessage]);
     setPrompt('');
     setIsLoading(true);
 
+    // Clear system prompt after sending
+    setSelectedSystemPrompt(null);
+    setSelectedPromptId('');
+
     try {
+      // Send full prompt (with system instructions) to AI
       const response = await authenticatedPost('/api/ai/chat', user, {
-        messages: [...messages, userMessage],
+        messages: [...messages, { role: 'user', content: fullPrompt }],
         sessionId,
         model: selectedModel,
       });
@@ -150,13 +212,40 @@ export function AIAssistantPanel({
     setVisibleMessageCount(prev => prev + 10);
   };
 
-  // Handle prompt template selection
-  const handlePromptTemplateChange = (value: string) => {
-    setSelectedPrompt(value);
-    const template = promptTemplates.find(t => t.value === value);
-    if (template && template.prompt) {
-      setPrompt(template.prompt);
+  // Filter prompts by output type
+  const filterByOutputType = (prompts: AIPromptOption[]) => {
+    if (outputTypeFilter === 'all') return prompts;
+    return prompts.filter((prompt) => {
+      if (!prompt.outputType) return outputTypeFilter === 'text'; // Default to text if not specified
+      return prompt.outputType === outputTypeFilter;
+    });
+  };
+
+  // Handle prompt selection with module context
+  const handlePromptSelection = (promptId: string, prompt: AIPromptOption) => {
+    setSelectedPromptId(promptId);
+
+    // Get the system prompt (hidden from user) - use systemPrompt if available, fallback to promptText
+    const systemPrompt = prompt.systemPrompt || prompt.promptText;
+
+    // Check if this is a module-linked prompt
+    const isModulePrompt = aiPrompts.some(p => p.id === promptId);
+
+    // Combine module's inline prompt with system prompt if it's a module prompt
+    let finalSystemPrompt = systemPrompt;
+    if (isModulePrompt && moduleAiPromptText) {
+      // Prepend module's inline prompt for module-linked prompts
+      finalSystemPrompt = `${moduleAiPromptText}\n\n---\n\n${systemPrompt}`;
+    }
+
+    // Store system prompt separately (NOT shown in textarea)
+    setSelectedSystemPrompt(finalSystemPrompt);
+
+    // Only show user-facing prompt in textarea (if it exists)
+    if (prompt.userPrompt) {
+      setPrompt(prompt.userPrompt);
     } else {
+      // Don't populate textarea with system prompt - keep it empty for user to type
       setPrompt('');
     }
   };
@@ -164,6 +253,19 @@ export function AIAssistantPanel({
   // Calculate visible messages (show last N messages)
   const visibleMessages = messages.slice(-visibleMessageCount);
   const hasMoreMessages = messages.length > visibleMessageCount;
+
+  // Get filtered prompts
+  const filteredModulePrompts = filterByOutputType(aiPrompts);
+  const filteredLibraryPrompts = filterByOutputType(libraryPrompts);
+
+  // Calculate counts for filter buttons
+  const allPromptsCount = aiPrompts.length + libraryPrompts.length;
+  const textOnlyCount = filterByOutputType([...aiPrompts, ...libraryPrompts]).filter(p =>
+    !p.outputType || p.outputType === 'text'
+  ).length;
+  const jsonOnlyCount = filterByOutputType([...aiPrompts, ...libraryPrompts]).filter(p =>
+    p.outputType === 'json'
+  ).length;
 
   return (
     <>
@@ -512,20 +614,105 @@ export function AIAssistantPanel({
 
       {/* Chat Input */}
       <div className="border-t border-gray-200 bg-white p-4">
-        {/* Prompt Templates Dropdown */}
+        {/* Output Type Filter Buttons */}
+        <div className="mb-3 flex gap-2">
+          <button
+            onClick={() => setOutputTypeFilter('all')}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
+              outputTypeFilter === 'all'
+                ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            disabled={isLoadingPrompts}
+          >
+            All
+            <span className="text-[10px] text-gray-500">({allPromptsCount})</span>
+          </button>
+          <button
+            onClick={() => setOutputTypeFilter('text')}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
+              outputTypeFilter === 'text'
+                ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            disabled={isLoadingPrompts}
+          >
+            <FileText className="h-3 w-3" />
+            Text
+            <span className="text-[10px] text-gray-500">({textOnlyCount})</span>
+          </button>
+          <button
+            onClick={() => setOutputTypeFilter('json')}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
+              outputTypeFilter === 'json'
+                ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            disabled={isLoadingPrompts}
+          >
+            <Code2 className="h-3 w-3" />
+            JSON
+            <span className="text-[10px] text-gray-500">({jsonOnlyCount})</span>
+          </button>
+        </div>
+
+        {/* Dynamic AI Prompts Dropdown */}
         <div className="mb-3">
           <select
-            value={selectedPrompt}
-            onChange={e => handlePromptTemplateChange(e.target.value)}
+            value={selectedPromptId}
+            onChange={(e) => {
+              const selectedId = e.target.value;
+              if (!selectedId) {
+                setSelectedPromptId('');
+                setPrompt('');
+                setSelectedSystemPrompt(null);
+                return;
+              }
+              const prompt = [...aiPrompts, ...libraryPrompts].find(p => p.id === selectedId);
+              if (prompt) {
+                handlePromptSelection(selectedId, prompt); // Pass full prompt object
+              }
+            }}
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            disabled={isLoading}
+            disabled={isLoading || isLoadingPrompts}
           >
-            {promptTemplates.map(template => (
-              <option key={template.value} value={template.value}>
-                {template.label}
-              </option>
-            ))}
+            <option value="">
+              {isLoadingPrompts ? 'Loading prompts...' : 'Choose a prompt or write custom...'}
+            </option>
+
+            {/* Module Prompts */}
+            {filteredModulePrompts.length > 0 && (
+              <optgroup label={`${assignedModule?.name || 'Module'} Prompts ${moduleAiPromptText ? '(+ Context)' : ''}`}>
+                {filteredModulePrompts.map(p => (
+                  <option key={p.id} value={p.id}>
+                    [{p.category}] {p.name} {p.outputType === 'json' ? '(JSON)' : ''}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+
+            {/* Library Prompts */}
+            {filteredLibraryPrompts.length > 0 && (
+              <optgroup label={filteredModulePrompts.length > 0 ? 'Other Available Prompts (Library)' : 'Library Prompts'}>
+                {(showAllPrompts ? filteredLibraryPrompts : filteredLibraryPrompts.slice(0, 5)).map(p => (
+                  <option key={p.id} value={p.id}>
+                    [{p.category}] {p.name} {p.outputType === 'json' ? '(JSON)' : ''}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
+
+          {/* Show All Button */}
+          {!showAllPrompts && filteredLibraryPrompts.length > 5 && (
+            <button
+              onClick={() => setShowAllPrompts(true)}
+              className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-all hover:bg-gray-50"
+              disabled={isLoading}
+            >
+              + Show {filteredLibraryPrompts.length - 5} more prompts
+            </button>
+          )}
         </div>
 
         <div className="relative">

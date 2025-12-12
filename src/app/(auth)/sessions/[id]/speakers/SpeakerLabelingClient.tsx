@@ -11,6 +11,7 @@ type Speaker = {
   label: string;
   type: 'therapist' | 'patient' | 'group_member' | null;
   name: string;
+  userId?: string;
   avatarUrl?: string;
   sampleAudioUrl?: string;
   utteranceCount: number;
@@ -21,6 +22,14 @@ type SessionContext = {
   sessionType: 'individual' | 'group';
   therapistName: string;
   patientName: string;
+  therapistId: string;
+  patientId?: string | null;
+};
+
+type GroupMember = {
+  userId: string;
+  name: string;
+  avatarUrl?: string;
 };
 
 type SpeakerLabelingClientProps = {
@@ -37,7 +46,10 @@ export function SpeakerLabelingClient({
     sessionType: 'individual',
     therapistName: 'Therapist',
     patientName: 'Patient',
+    therapistId: '',
+    patientId: null,
   });
+  const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,12 +71,18 @@ export function SpeakerLabelingClient({
           setSessionContext(data.sessionContext);
         }
 
+        // Set group members from API response
+        if (data.groupMembers) {
+          setGroupMembers(data.groupMembers);
+        }
+
         // Transform API data to match component interface
         const transformedSpeakers: Speaker[] = data.speakers.map((speaker: any) => ({
           id: speaker.id,
           label: speaker.speakerLabel || `Speaker ${speaker.id}`,
           type: speaker.speakerType,
           name: speaker.speakerName || '',
+          userId: speaker.userId,
           avatarUrl: speaker.avatarUrl,
           utteranceCount: speaker.totalUtterances || 0,
           totalDuration: speaker.totalDurationSeconds || 0,
@@ -91,6 +109,7 @@ export function SpeakerLabelingClient({
         speakerLabel: speaker.label,
         speakerType: speaker.type,
         speakerName: speaker.name,
+        userId: speaker.userId, // Include userId for linking to user records
         totalUtterances: speaker.utteranceCount,
         totalDurationSeconds: speaker.totalDuration,
       }));
@@ -147,6 +166,7 @@ export function SpeakerLabelingClient({
         sessionId={sessionId}
         speakers={speakers}
         sessionContext={sessionContext}
+        groupMembers={groupMembers}
         onSave={handleSave}
         onCancel={handleCancel}
       />

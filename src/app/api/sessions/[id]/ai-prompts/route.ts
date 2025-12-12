@@ -58,7 +58,9 @@ export async function GET(
       .select({
         id: moduleAiPromptsSchema.id,
         name: moduleAiPromptsSchema.name,
-        promptText: moduleAiPromptsSchema.promptText,
+        promptText: moduleAiPromptsSchema.promptText, // DEPRECATED: kept for backward compatibility
+        systemPrompt: moduleAiPromptsSchema.systemPrompt,
+        userPrompt: moduleAiPromptsSchema.userPrompt,
         description: moduleAiPromptsSchema.description,
         category: moduleAiPromptsSchema.category,
         icon: moduleAiPromptsSchema.icon,

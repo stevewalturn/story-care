@@ -20,7 +20,9 @@ import { ModuleBadge } from '@/components/modules/ModuleBadge';
 export type AIPromptOption = {
   id: string;
   name: string;
-  promptText: string;
+  promptText: string; // DEPRECATED: Use systemPrompt instead (kept for backward compatibility)
+  systemPrompt?: string; // Hidden AI instructions (detailed therapeutic prompts)
+  userPrompt?: string | null; // Optional user-facing prompt text
   description: string | null;
   category: string;
   icon: string;

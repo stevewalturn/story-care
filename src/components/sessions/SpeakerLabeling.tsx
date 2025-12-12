@@ -13,6 +13,7 @@ type Speaker = {
   label: string; // e.g., "Speaker 1", "Speaker 2"
   type: 'therapist' | 'patient' | 'group_member' | null;
   name: string;
+  userId?: string;
   avatarUrl?: string;
   sampleAudioUrl?: string;
   utteranceCount: number;
@@ -25,10 +26,17 @@ type SessionContext = {
   patientName: string;
 };
 
+type GroupMember = {
+  userId: string;
+  name: string;
+  avatarUrl?: string;
+};
+
 type SpeakerLabelingProps = {
   sessionId: string;
   speakers: Speaker[];
   sessionContext: SessionContext;
+  groupMembers: GroupMember[];
   onSave: (speakers: Speaker[]) => void;
   onCancel: () => void;
 };
@@ -37,6 +45,7 @@ export function SpeakerLabeling({
   sessionId,
   speakers: initialSpeakers,
   sessionContext,
+  groupMembers,
   onSave,
   onCancel,
 }: SpeakerLabelingProps) {
@@ -131,11 +140,10 @@ export function SpeakerLabeling({
     }
 
     if (speakerType === 'group_member') {
-      // For group members, generate numbered options
-      const groupMemberCount = speakers.filter(s => s.type === 'group_member').length;
-      return Array.from({ length: Math.max(groupMemberCount, 5) }, (_, i) => ({
-        value: `Group Member ${i + 1}`,
-        label: `Group Member ${i + 1}`,
+      // For group members, show actual group member names
+      return groupMembers.map(member => ({
+        value: member.userId,
+        label: member.name,
       }));
     }
 
@@ -147,29 +155,48 @@ export function SpeakerLabeling({
       prev.map(s => {
         if (s.id === speakerId) {
           const newType = type as Speaker['type'];
-          // Auto-populate name when type changes
+          // Auto-populate name and userId when type changes
           let newName = s.name;
+          let newUserId = s.userId;
 
           if (newType === 'therapist') {
             newName = sessionContext.therapistName;
+            newUserId = undefined; // Will be auto-linked by API
           } else if (newType === 'patient') {
             newName = sessionContext.patientName;
-          } else if (newType === 'group_member' && !s.name) {
-            // Find next available group member number
-            const existingGroupMembers = prev.filter(sp => sp.type === 'group_member' && sp.id !== speakerId);
-            newName = `Group Member ${existingGroupMembers.length + 1}`;
+            newUserId = undefined; // Will be auto-linked by API
+          } else if (newType === 'group_member') {
+            // Keep existing selection or clear
+            newName = '';
+            newUserId = undefined;
           }
 
-          return { ...s, type: newType, name: newName };
+          return { ...s, type: newType, name: newName, userId: newUserId };
         }
         return s;
       }),
     );
   };
 
-  const handleNameChange = (speakerId: string, name: string) => {
+  const handleNameChange = (speakerId: string, value: string) => {
     setSpeakers(prev =>
-      prev.map(s => (s.id === speakerId ? { ...s, name } : s)),
+      prev.map(s => {
+        if (s.id === speakerId) {
+          // For group members, value is userId
+          if (s.type === 'group_member') {
+            const member = groupMembers.find(m => m.userId === value);
+            return {
+              ...s,
+              name: member?.name || value,
+              userId: value,
+            };
+          }
+
+          // For therapist/patient, value is name (userId handled by API)
+          return { ...s, name: value, userId: undefined };
+        }
+        return s;
+      }),
     );
   };
 

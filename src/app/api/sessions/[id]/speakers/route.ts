@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { generatePresignedUrl } from '@/libs/GCS';
-import { sessionsSchema, speakers, transcripts, users } from '@/models/Schema';
+import { groupMembersSchema, sessionsSchema, speakers, transcripts, users } from '@/models/Schema';
 
 // GET /api/sessions/[id]/speakers - Get speakers for a session
 export async function GET(
@@ -50,6 +50,43 @@ export async function GET(
         .limit(1);
     }
 
+    // Get group members if group session
+    let groupMembers: any[] = [];
+    if (session.groupId) {
+      const membersData = await db
+        .select({
+          userId: groupMembersSchema.userId,
+          userName: users.name,
+          userAvatarUrl: users.avatarUrl,
+          userReferenceImageUrl: users.referenceImageUrl,
+        })
+        .from(groupMembersSchema)
+        .leftJoin(users, eq(groupMembersSchema.userId, users.id))
+        .where(eq(groupMembersSchema.groupId, session.groupId));
+
+      // Generate presigned URLs for group member avatars
+      groupMembers = await Promise.all(
+        membersData.map(async (member) => {
+          const imageUrl = member.userReferenceImageUrl || member.userAvatarUrl;
+          let signedAvatarUrl = null;
+
+          if (imageUrl) {
+            try {
+              signedAvatarUrl = await generatePresignedUrl(imageUrl, 1);
+            } catch (error) {
+              console.error('Failed to generate presigned URL for group member avatar:', error);
+            }
+          }
+
+          return {
+            userId: member.userId,
+            name: member.userName,
+            avatarUrl: signedAvatarUrl || undefined,
+          };
+        }),
+      );
+    }
+
     // Get the transcript for this session
     const [transcript] = await db
       .select()
@@ -64,7 +101,10 @@ export async function GET(
           sessionType: session.sessionType,
           therapistName: therapist?.name || 'Therapist',
           patientName: patient?.name || 'Patient',
+          therapistId: session.therapistId,
+          patientId: session.patientId,
         },
+        groupMembers,
       });
     }
 
@@ -107,7 +147,10 @@ export async function GET(
         sessionType: session.sessionType,
         therapistName: therapist?.name || 'Therapist',
         patientName: patient?.name || 'Patient',
+        therapistId: session.therapistId,
+        patientId: session.patientId,
       },
+      groupMembers,
     });
   } catch (error) {
     console.error('Error fetching speakers:', error);
@@ -135,6 +178,24 @@ export async function PUT(
       );
     }
 
+    // Get session details for auto-linking
+    const [session] = await db
+      .select({
+        therapistId: sessionsSchema.therapistId,
+        patientId: sessionsSchema.patientId,
+        sessionType: sessionsSchema.sessionType,
+      })
+      .from(sessionsSchema)
+      .where(eq(sessionsSchema.id, id))
+      .limit(1);
+
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Session not found' },
+        { status: 404 },
+      );
+    }
+
     // First get the transcript for this session
     const [transcript] = await db
       .select()
@@ -156,12 +217,24 @@ export async function PUT(
         speakersData.map(async (speaker) => {
           // Each speaker should have an id from the client
           if (speaker.id) {
+            // Auto-link userId for individual sessions based on speakerType
+            let userId = speaker.userId || null;
+
+            if (session.sessionType === 'individual' && !userId) {
+              if (speaker.speakerType === 'therapist') {
+                userId = session.therapistId;
+              } else if (speaker.speakerType === 'patient' && session.patientId) {
+                userId = session.patientId;
+              }
+            }
+
             await db
               .update(speakers)
               .set({
                 speakerLabel: speaker.speakerLabel,
                 speakerType: speaker.speakerType,
                 speakerName: speaker.speakerName,
+                userId, // Save the userId (auto-linked or from client)
                 totalUtterances: speaker.totalUtterances || 0,
                 totalDurationSeconds: speaker.totalDurationSeconds || 0,
               })

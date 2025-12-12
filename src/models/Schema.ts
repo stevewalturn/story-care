@@ -783,7 +783,9 @@ export const moduleAiPromptsSchema = pgTable('module_ai_prompts', {
 
   // Prompt Details
   name: varchar('name', { length: 255 }).notNull(),
-  promptText: text('prompt_text').notNull(),
+  promptText: text('prompt_text').notNull(), // DEPRECATED: Use systemPrompt instead
+  systemPrompt: text('system_prompt'), // Hidden AI instructions (detailed therapeutic prompts)
+  userPrompt: text('user_prompt'), // Optional user-facing prompt text
   description: text('description'),
 
   // Classification
