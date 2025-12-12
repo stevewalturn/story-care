@@ -80,6 +80,14 @@ function inferSchemaType(data: any): JSONSchemaType | null {
     }
   }
 
+  // Video References detection
+  if (hasRequiredKeys(data, ['videos']) && Array.isArray(data.videos)) {
+    // Verify it's not just any array, but array of video objects
+    if (data.videos.length > 0 && hasRequiredKeys(data.videos[0], ['title', 'prompt'])) {
+      return 'video_references';
+    }
+  }
+
   // Reflection Questions detection
   if (
     (hasRequiredKeys(data, ['patient_questions']) || hasRequiredKeys(data, ['reflection_questions']))
@@ -320,6 +328,13 @@ export function validateJSONSchema(data: any, schemaType: JSONSchemaType): boole
           hasRequiredKeys(data, ['images'])
           && Array.isArray(data.images)
           && data.images.every((img: any) => hasRequiredKeys(img, ['title', 'prompt']))
+        );
+
+      case 'video_references':
+        return (
+          hasRequiredKeys(data, ['videos'])
+          && Array.isArray(data.videos)
+          && data.videos.every((vid: any) => hasRequiredKeys(vid, ['title', 'prompt']))
         );
 
       case 'reflection_questions':

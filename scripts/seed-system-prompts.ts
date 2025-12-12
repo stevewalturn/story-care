@@ -83,6 +83,8 @@ Analyze the selected text and create a vivid visual scene description that:
 - 2-3 sentences with rich visual details
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "scene_visualization",
   "title": "Scene title",
@@ -128,6 +130,8 @@ Review the selected transcript segment and identify:
 Extract 3-5 quotes with context.
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "quote_extraction",
   "extracted_quotes": [
@@ -189,6 +193,8 @@ Suggest 3-5 image concepts with detailed generation prompts.
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
+
 Required JSON fields:
 - schemaType: "image_references"
 - images: array of objects, each with:
@@ -247,6 +253,8 @@ Extract:
 Provide therapeutic insights for helping the patient build regulation capacity.
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "therapeutic_note",
   "title": "Grounding & Regulation Analysis",
@@ -296,6 +304,8 @@ Extract:
 Suggest how to support relational healing in future sessions.
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "therapeutic_note",
   "title": "Relational Healing & Integration Analysis",
@@ -337,6 +347,8 @@ Analyze the session themes and generate 3-5 open-ended questions that:
 5. Connect past, present, and future
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "reflection_questions",
   "questions": [
@@ -387,6 +399,8 @@ Look for:
 5. Journey/movement metaphors
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "metaphor_extraction",
   "metaphors": [
@@ -441,6 +455,8 @@ Analyze for:
 5. Transference/countertransference hints
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "therapeutic_note",
   "title": "Therapeutic Alliance Analysis",
@@ -484,6 +500,8 @@ Look for signs of:
 7. Humor/deflection (avoiding difficult topics)
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "therapeutic_note",
   "title": "Defense Mechanisms Analysis",
@@ -526,6 +544,8 @@ Examine:
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
+
 Required JSON fields:
 - schemaType: "therapeutic_note"
 - title: string (brief title for this analysis)
@@ -566,6 +586,8 @@ Compare current session to earlier work (if available) for:
 5. Narrative shifts (how story is told differently)
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "therapeutic_note",
   "title": "Progress Tracking Analysis",
@@ -606,6 +628,8 @@ Analyze for indicators of:
 4. Disorganized attachment (contradictory behaviors, fear)
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "therapeutic_note",
   "title": "Attachment Pattern Analysis",
@@ -648,6 +672,8 @@ Watch for:
 6. Somatic symptoms
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "therapeutic_note",
   "title": "Trauma Response Analysis",
@@ -689,6 +715,8 @@ Identify:
 5. Coping flexibility and repertoire
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "therapeutic_note",
   "title": "Coping Strategy Assessment",
@@ -972,6 +1000,8 @@ Based on the transcript, design visual metaphors that:
 **IMPORTANT**: The "dalle_prompt" field must be a complete, detailed image generation prompt (2-3 sentences with specific visual elements, composition, lighting, colors, and style).
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "visual_metaphor",
   "metaphors": [
@@ -1024,6 +1054,8 @@ Analyze the dominant narrative and suggest reframes that:
 5. Open possibilities for the future
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "story_reframe",
   "current_narrative": "Brief summary",
@@ -1065,6 +1097,8 @@ Based on hopes, dreams, and goals mentioned, create:
 **IMPORTANT**: The "dalle_prompt" field must be a complete, detailed image generation prompt (2-3 sentences with specific visual elements, composition, lighting, colors, and style).
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "hope_visualization",
   "future_description": "Vivid description",
@@ -1106,6 +1140,8 @@ Create a visual journey map showing:
 **IMPORTANT**: The "dalle_prompt" field must be a complete, detailed image generation prompt (2-3 sentences with specific visual elements, composition, lighting, colors, and style).
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "journey_map",
   "narrative_arc": "Description",
@@ -1146,6 +1182,8 @@ Based on the transcript, identify:
 **IMPORTANT**: The "dalle_prompt" field must be a complete, detailed image generation prompt (2-3 sentences with specific visual elements, composition, lighting, colors, and style).
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "character_strength",
   "strengths": [
@@ -1202,6 +1240,8 @@ Design a timeline showing:
 **IMPORTANT**: The "dalle_prompt" field must be a complete, detailed image generation prompt (2-3 sentences with specific visual elements, composition, lighting, colors, and style).
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "timeline_visualization",
   "narrative": "Chronological description",
@@ -1260,6 +1300,8 @@ Look for:
 5. Connections made (between past and present, feelings and thoughts)
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "key_moments",
   "moments": [
@@ -1312,6 +1354,8 @@ Extract:
 5. Values conflicts or alignment
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "values_beliefs",
   "values": [
@@ -1366,6 +1410,8 @@ Identify:
 5. SMART goal components (Specific, Measurable, Achievable, Relevant, Time-bound)
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "goals_intentions",
   "goals": [
@@ -1422,6 +1468,8 @@ Extract:
 5. Skills and competencies
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "strengths_resources",
   "resources": [
@@ -1476,6 +1524,8 @@ Identify:
 5. Systemic/structural challenges
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "barriers_challenges",
   "barriers": [
@@ -1532,6 +1582,8 @@ Based on session themes, generate 3-5 questions that:
 5. Prepare for next session
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "reflection_questions",
   "questions": [
@@ -1583,6 +1635,8 @@ Generate 4-6 prompts that encourage:
 6. Meaning-making
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "journaling_prompts",
   "prompts": [
@@ -1633,6 +1687,8 @@ Create questions that:
 5. Measure progress
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "goal_setting_questions",
   "questions": [
@@ -1683,6 +1739,8 @@ Generate reflections that:
 5. Practice mindfulness of difficult emotions
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "self_compassion_prompts",
   "prompts": [
@@ -1733,6 +1791,8 @@ Create prompts that:
 5. Express thanks for resources
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "gratitude_prompts",
   "prompts": [
@@ -1783,6 +1843,8 @@ Design 2-3 assignments that:
 5. Prepare for next session
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "homework_assignments",
   "assignments": [
@@ -1835,6 +1897,8 @@ Generate check-in questions for:
 5. Support system engagement
 
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
 {
   "schemaType": "check_in_questions",
   "questions": [
