@@ -126,6 +126,40 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
     fetchPatients();
   }, []);
 
+  // Check for ongoing jobs when scene changes or on mount
+  useEffect(() => {
+    const checkForOngoingJob = async () => {
+      if (!currentSceneId || !user) return;
+
+      try {
+        const response = await authenticatedFetch(
+          `/api/scenes/${currentSceneId}/assemble-async`,
+          user,
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+
+          // If job is pending or processing, enable polling
+          if (data.status === 'pending' || data.status === 'processing') {
+            setPollingEnabled(true);
+            setIsExporting(true);
+
+            toast.loading(
+              'Video assembly in progress... Detected ongoing job.',
+              { id: 'processing-toast' },
+            );
+          }
+        }
+      } catch (error) {
+        // Job might not exist, which is fine - user hasn't exported yet
+        console.log('No ongoing job found for this scene');
+      }
+    };
+
+    checkForOngoingJob();
+  }, [currentSceneId, user]);
+
   // Load scenes when patient changes
 
   const fetchPatients = async () => {
@@ -197,6 +231,32 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
           }
         } else {
           setAssembledVideoUrl(null);
+        }
+
+        // Check for ongoing processing job
+        try {
+          const jobResponse = await authenticatedFetch(
+            `/api/scenes/${sceneId}/assemble-async`,
+            user,
+          );
+
+          if (jobResponse.ok) {
+            const jobData = await jobResponse.json();
+
+            // If job is pending or processing, enable polling
+            if (jobData.status === 'pending' || jobData.status === 'processing') {
+              setPollingEnabled(true);
+              setIsExporting(true);
+
+              toast.loading(
+                'Video assembly in progress...',
+                { id: 'processing-toast' },
+              );
+            }
+          }
+        } catch (jobError) {
+          // No job exists yet, which is fine
+          console.log('No ongoing job found');
         }
       }
     } catch (error) {
