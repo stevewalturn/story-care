@@ -83,7 +83,7 @@ jobs:
               --tasks 1 \
               --add-cloudsql-instances=storycare-dev-479511:us-central1:storycare-dev \
               --update-secrets=DATABASE_URL=DATABASE_URL_DEV:latest \
-              --set-env-vars NODE_ENV=development
+              --set-env-vars NODE_ENV=development,GCS_PROJECT_ID=${{ secrets.GCS_PROJECT_ID_DEV }},GCS_CLIENT_EMAIL=${{ secrets.GCS_CLIENT_EMAIL_DEV }},GCS_PRIVATE_KEY=${{ secrets.GCS_PRIVATE_KEY_DEV }},GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME_DEV }}
           else
             echo "🆕 Creating new Cloud Run Job..."
 
@@ -99,7 +99,7 @@ jobs:
               --tasks 1 \
               --add-cloudsql-instances=storycare-dev-479511:us-central1:storycare-dev \
               --update-secrets=DATABASE_URL=DATABASE_URL_DEV:latest \
-              --set-env-vars NODE_ENV=development
+              --set-env-vars NODE_ENV=development,GCS_PROJECT_ID=${{ secrets.GCS_PROJECT_ID_DEV }},GCS_CLIENT_EMAIL=${{ secrets.GCS_CLIENT_EMAIL_DEV }},GCS_PRIVATE_KEY=${{ secrets.GCS_PRIVATE_KEY_DEV }},GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME_DEV }}
           fi
 
       - name: Verify Job Deployment
