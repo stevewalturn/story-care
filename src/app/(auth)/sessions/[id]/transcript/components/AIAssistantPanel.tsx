@@ -114,13 +114,6 @@ export function AIAssistantPanel({
     handleSendMessage(exampleText);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
   // Textarea handlers for auto-resize and keyboard shortcuts
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setPrompt(e.target.value);

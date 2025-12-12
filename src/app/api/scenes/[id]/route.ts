@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { extractGcsPath, generatePresignedUrl, generatePresignedUrlsForMedia } from '@/libs/GCS';
-import { mediaLibrary, sceneClips, scenes } from '@/models/Schema';
+import { mediaLibrary, sceneAudioTracks, sceneClips, scenes, videoProcessingJobs } from '@/models/Schema';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -152,6 +152,44 @@ export async function DELETE(
   try {
     const { id: sceneId } = await context.params;
 
+    // Check if scene exists first
+    const [existingScene] = await db
+      .select()
+      .from(scenes)
+      .where(eq(scenes.id, sceneId))
+      .limit(1);
+
+    if (!existingScene) {
+      return NextResponse.json(
+        { error: 'Scene not found' },
+        { status: 404 },
+      );
+    }
+
+    // Import pageBlocksSchema to delete related records
+    const { pageBlocksSchema } = await import('@/models/Schema');
+
+    // Delete related page_blocks that reference this scene
+    await db
+      .delete(pageBlocksSchema)
+      .where(eq(pageBlocksSchema.sceneId, sceneId));
+
+    // Delete related scene_clips
+    await db
+      .delete(sceneClips)
+      .where(eq(sceneClips.sceneId, sceneId));
+
+    // Delete related scene_audio_tracks
+    await db
+      .delete(sceneAudioTracks)
+      .where(eq(sceneAudioTracks.sceneId, sceneId));
+
+    // Delete related video_processing_jobs
+    await db
+      .delete(videoProcessingJobs)
+      .where(eq(videoProcessingJobs.sceneId, sceneId));
+
+    // Finally, delete the scene
     const [deletedScene] = await db
       .delete(scenes)
       .where(eq(scenes.id, sceneId))
@@ -159,8 +197,8 @@ export async function DELETE(
 
     if (!deletedScene) {
       return NextResponse.json(
-        { error: 'Scene not found' },
-        { status: 404 },
+        { error: 'Failed to delete scene' },
+        { status: 500 },
       );
     }
 
