@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { extractGcsPath, generatePresignedUrl } from '@/libs/GCS';
-import { pageBlocks, patientPageInteractions, reflectionQuestions, reflectionResponses, storyPages, surveyQuestions, surveyResponses } from '@/models/Schema';
+import { pageBlocks, patientPageInteractions, reflectionQuestions, reflectionResponses, scenes, storyPages, surveyQuestions, surveyResponses } from '@/models/Schema';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -35,6 +35,42 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const blocksWithSignedUrls = await Promise.all(
       blocks.map(async (block) => {
         const settings = block.settings as any;
+        
+        // Handle scene blocks - fetch scene data and generate presigned URL for video
+        if (block.blockType === 'scene' && block.sceneId) {
+          try {
+            // Fetch scene data
+            const [scene] = await db
+              .select()
+              .from(scenes)
+              .where(eq(scenes.id, block.sceneId))
+              .limit(1);
+
+            if (scene) {
+              // Generate presigned URL for the assembled video (or fallback to videoUrl)
+              const videoUrl = scene.assembledVideoUrl || scene.videoUrl;
+              const signedVideoUrl = videoUrl ? await generatePresignedUrl(videoUrl, 1) : null;
+              const signedThumbnailUrl = scene.thumbnailUrl ? await generatePresignedUrl(scene.thumbnailUrl, 1) : null;
+
+              return {
+                ...block,
+                settings: {
+                  ...settings,
+                  sceneId: block.sceneId,
+                  sceneTitle: scene.title || settings?.sceneTitle || 'Scene',
+                  mediaUrl: signedVideoUrl || settings?.mediaUrl, // Use video URL for playback
+                  thumbnailUrl: signedThumbnailUrl || settings?.mediaUrl, // Keep thumbnail for display
+                  videoUrl: signedVideoUrl, // Add explicit videoUrl field
+                  durationSeconds: scene.durationSeconds,
+                },
+              };
+            }
+          } catch (error) {
+            console.error('Error fetching scene data:', error);
+          }
+        }
+        
+        // Handle regular media blocks
         if (settings && settings.mediaUrl) {
           // Generate presigned URL from raw GCS path
           try {

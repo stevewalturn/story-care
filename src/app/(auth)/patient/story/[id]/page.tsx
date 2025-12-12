@@ -317,9 +317,26 @@ export default function PatientStoryPage({ params }: Props) {
                       <Clapperboard className="h-5 w-5 text-purple-600" />
                       <p className="font-medium text-purple-900">{block.settings?.sceneTitle || 'Scene'}</p>
                     </div>
-                    {block.settings?.mediaUrl && (
+                    {block.settings?.videoUrl && (
                       <div className="aspect-video overflow-hidden rounded-lg bg-gray-900">
-                        <video src={block.settings.mediaUrl} controls className="h-full w-full">
+                        <video 
+                          src={block.settings.videoUrl} 
+                          controls 
+                          className="h-full w-full"
+                          preload="metadata"
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+                      </div>
+                    )}
+                    {!block.settings?.videoUrl && block.settings?.mediaUrl && (
+                      <div className="aspect-video overflow-hidden rounded-lg bg-gray-900">
+                        <video 
+                          src={block.settings.mediaUrl} 
+                          controls 
+                          className="h-full w-full"
+                          preload="metadata"
+                        >
                           Your browser does not support the video tag.
                         </video>
                       </div>
