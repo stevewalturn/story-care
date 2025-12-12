@@ -5,12 +5,12 @@ import type { AIPromptOption } from '@/components/sessions/AnalyzeSelectionModal
 import type { TreatmentModule } from '@/models/Schema';
 import { useEffect, useState } from 'react';
 import { MediaUploadModal } from '@/components/media/MediaUploadModal';
+import { GenerateImageModal } from '@/components/media/GenerateImageModal';
+import { GenerateMusicModal } from '@/components/media/GenerateMusicModal';
 import { AnalyzeSelectionModal } from '@/components/sessions/AnalyzeSelectionModal';
 import { AssignModuleModal } from '@/components/sessions/AssignModuleModal';
 import { EditQuoteModal } from '@/components/sessions/EditQuoteModal';
-import { GenerateImageModal } from '@/components/sessions/GenerateImageModal';
 import { GenerateVideoModal } from '@/components/sessions/GenerateVideoModal';
-import { GenerateMusicModal } from '@/components/media/GenerateMusicModal';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
 import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,8 +31,10 @@ export function TranscriptViewerClient({
   const [audioUrl, setAudioUrl] = useState<string | undefined>();
   const [sessionTitle, setSessionTitle] = useState<string>('');
   const [patientName, setPatientName] = useState<string>('');
+  const [patientReferenceImage, setPatientReferenceImage] = useState<string | undefined>();
   const [assignedModule, setAssignedModule] = useState<TreatmentModule | null>(null);
   const [sessionData, setSessionData] = useState<any>(null);
+  const [patients, setPatients] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -96,6 +98,7 @@ export function TranscriptViewerClient({
         setAudioUrl(sessionDataResponse.session.audioUrl);
         setSessionTitle(sessionDataResponse.session.title);
         setPatientName(sessionDataResponse.session.patient?.name || sessionDataResponse.session.group?.name || 'Unknown');
+        setPatientReferenceImage(sessionDataResponse.session.patient?.referenceImageUrl);
 
         // Fetch assigned module if exists
         if (sessionDataResponse.session.moduleId) {
@@ -137,6 +140,31 @@ export function TranscriptViewerClient({
 
     fetchData();
   }, [sessionId]);
+
+  // Load patients for patient picker in image generation
+  useEffect(() => {
+    const loadPatients = async () => {
+      if (!user) {
+        return;
+      }
+
+      try {
+        const params = new URLSearchParams({
+          therapistId: user.uid,
+        });
+
+        const response = await authenticatedFetch(`/api/patients?${params.toString()}`, user);
+        if (response.ok) {
+          const data = await response.json();
+          setPatients(data.patients || []);
+        }
+      } catch (error) {
+        console.error('Error loading patients:', error);
+      }
+    };
+
+    loadPatients();
+  }, [user]);
 
   // Fetch AI prompts when session data loads
   useEffect(() => {
@@ -588,7 +616,9 @@ export function TranscriptViewerClient({
           setImageModalInitialData({}); // Clear initial data on close
         }}
         onGenerate={handleGenerateImage}
+        patients={patients}
         patientName={patientName}
+        patientReferenceImage={patientReferenceImage}
         initialPrompt={imageModalInitialData.prompt || selectedText}
         initialTitle={imageModalInitialData.title}
         initialDescription={imageModalInitialData.description}

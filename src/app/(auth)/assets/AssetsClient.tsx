@@ -1528,16 +1528,35 @@ export function AssetsClient() {
         <GenerateImageModal
           isOpen={showGenerateImageModal}
           onClose={() => setShowGenerateImageModal(false)}
-          onGenerate={async (_imageUrl, _prompt) => {
-            // Image is already saved to DB by the modal's API call
-            // Just refresh the media list and show success message
+          onGenerate={async (
+            prompt,
+            model,
+            useReference,
+            referenceImage,
+            metadata
+          ) => {
+            // Call the API to generate the image
+            const response = await authenticatedPost('/api/ai/generate-image', user, {
+              prompt,
+              model,
+              useReference,
+              referenceImage,
+              patientId: selectedPatient,
+              title: metadata?.title,
+              description: metadata?.description,
+              sourceQuote: metadata?.sourceQuote,
+              style: metadata?.style,
+            });
+
+            if (!response.ok) {
+              throw new Error('Failed to generate image');
+            }
+
+            // Refresh the media list
             await loadMedia();
             toast.success('Image generated successfully!');
-            setShowGenerateImageModal(false);
           }}
           patients={patients}
-          user={user}
-          patientId={selectedPatient}
         />
       )}
 

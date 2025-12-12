@@ -31,6 +31,35 @@ export function detectJSONSchema(content: string): (AnyJSONSchema & { schemaType
 }
 
 /**
+ * Validate that a data object matches the expected structure for a given schema type
+ * @param data - Parsed JSON object
+ * @param schemaType - Expected schema type
+ * @returns true if structure matches, false otherwise
+ */
+function validateSchemaStructure(data: any, schemaType: JSONSchemaType): boolean {
+  switch (schemaType) {
+    case 'scene_visualization':
+      return hasRequiredKeys(data, ['title', 'description', 'dalle_prompt', 'mood', 'symbolic_elements']);
+    case 'image_references':
+      return hasRequiredKeys(data, ['images']) && Array.isArray(data.images)
+        && data.images.length > 0 && hasRequiredKeys(data.images[0], ['title', 'prompt']);
+    case 'video_references':
+      return hasRequiredKeys(data, ['videos']) && Array.isArray(data.videos)
+        && data.videos.length > 0 && hasRequiredKeys(data.videos[0], ['title', 'prompt']);
+    case 'scene_card':
+      return hasRequiredKeys(data, ['video_introduction', 'reference_images', 'music', 'assembly_steps', 'patient_reflection_questions']);
+    case 'music_generation':
+      return hasRequiredKeys(data, ['instrumental_option', 'lyrical_option']);
+    case 'therapeutic_note':
+      return hasRequiredKeys(data, ['note_title', 'note_content']) || hasRequiredKeys(data, ['title', 'content']);
+    // Add more cases as needed
+    default:
+      // For schemas we haven't explicitly validated, assume it's valid
+      return true;
+  }
+}
+
+/**
  * Infer schema type based on JSON structure
  * @param data - Parsed JSON object
  * @returns JSONSchemaType if matched, null otherwise
@@ -40,9 +69,23 @@ function inferSchemaType(data: any): JSONSchemaType | null {
     return null;
   }
 
-  // If schemaType is explicitly provided, use it
+  // If schemaType is explicitly provided, validate it matches structure
   if (data.schemaType && typeof data.schemaType === 'string') {
-    return data.schemaType as JSONSchemaType;
+    const explicitType = data.schemaType as JSONSchemaType;
+
+    // Validate that the structure matches the claimed schema type
+    const structureMatches = validateSchemaStructure(data, explicitType);
+
+    if (!structureMatches) {
+      console.warn(
+        `[JSONSchemaDetector] Schema mismatch: Explicit schemaType="${explicitType}" but structure doesn't match expected fields.`,
+        '\nReceived data:', data,
+        '\nExpected fields for', explicitType, 'not found.'
+      );
+    }
+
+    // Return the explicit type anyway (let the renderer handle the mismatch)
+    return explicitType;
   }
 
   // Scene Card detection

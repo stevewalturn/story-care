@@ -455,16 +455,70 @@ function renderPreview(schemaType: JSONSchemaType, data: any) {
         </div>
       );
 
-    case 'image_references':
+    case 'image_references': {
+      // Defensive rendering: check if images array exists and has valid structure
+      if (!data.images || !Array.isArray(data.images)) {
+        return (
+          <div className="space-y-3 text-sm">
+            <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-3">
+              <div className="mb-2 flex items-center gap-2">
+                <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p className="font-semibold text-amber-900">⚠️ Invalid Image References</p>
+              </div>
+              <p className="mb-2 text-xs text-amber-800">
+                The AI returned an image_references schema, but the 'images' array is missing or invalid.
+              </p>
+              <details className="mt-2">
+                <summary className="cursor-pointer text-xs text-amber-700 hover:text-amber-900">View raw data</summary>
+                <pre className="mt-1 max-h-32 overflow-auto rounded bg-white p-2 text-xs text-gray-700">
+                  {JSON.stringify(data, null, 2)}
+                </pre>
+              </details>
+            </div>
+          </div>
+        );
+      }
+
+      // Check if images have required fields
+      const hasValidImages = data.images.every((img: any) => img.title && img.prompt);
+
+      if (!hasValidImages) {
+        return (
+          <div className="space-y-3 text-sm">
+            <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-3">
+              <div className="mb-2 flex items-center gap-2">
+                <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p className="font-semibold text-amber-900">⚠️ Incomplete Image Data</p>
+              </div>
+              <p className="mb-2 text-xs text-amber-800">
+                Some images are missing required fields (title and/or prompt).
+              </p>
+              <p className="text-xs text-amber-700">Expected each image to have: title, prompt</p>
+              <details className="mt-2">
+                <summary className="cursor-pointer text-xs text-amber-700 hover:text-amber-900">View raw data</summary>
+                <pre className="mt-1 max-h-32 overflow-auto rounded bg-white p-2 text-xs text-gray-700">
+                  {JSON.stringify(data, null, 2)}
+                </pre>
+              </details>
+            </div>
+          </div>
+        );
+      }
+
+      // Normal rendering when all fields are present
       return (
         <div className="space-y-3">
           <p className="text-sm font-semibold text-gray-900">
-            {data.images?.length || 0}
+            {data.images.length}
             {' '}
             Image Suggestion
-            {data.images?.length !== 1 ? 's' : ''}
+            {data.images.length !== 1 ? 's' : ''}
           </p>
-          {data.images?.map((img: any, index: number) => (
+          {data.images.map((img: any, index: number) => (
             <div
               key={index}
               className="flex items-start justify-between gap-3 rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
@@ -490,6 +544,7 @@ function renderPreview(schemaType: JSONSchemaType, data: any) {
           ))}
         </div>
       );
+    }
 
     case 'video_references':
       return (
@@ -760,7 +815,51 @@ function renderPreview(schemaType: JSONSchemaType, data: any) {
       );
 
     // Visualization schemas
-    case 'scene_visualization':
+    case 'scene_visualization': {
+      // Defensive rendering: check if required fields exist
+      const hasRequiredFields = data.title && data.description && data.dalle_prompt;
+
+      if (!hasRequiredFields) {
+        // Show error state with what's available
+        return (
+          <div className="space-y-3 text-sm">
+            <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-3">
+              <div className="mb-2 flex items-center gap-2">
+                <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p className="font-semibold text-amber-900">⚠️ Incomplete Scene Visualization</p>
+              </div>
+              <p className="mb-2 text-xs text-amber-800">
+                The AI returned a scene_visualization schema, but it's missing required fields.
+              </p>
+              <div className="mb-2 text-xs">
+                <p className="font-medium text-amber-900">Expected fields:</p>
+                <ul className="ml-4 mt-1 list-disc space-y-0.5 text-amber-700">
+                  <li className={data.title ? 'line-through' : ''}>title {data.title ? '✓' : '✗'}</li>
+                  <li className={data.description ? 'line-through' : ''}>description {data.description ? '✓' : '✗'}</li>
+                  <li className={data.dalle_prompt ? 'line-through' : ''}>dalle_prompt {data.dalle_prompt ? '✓' : '✗'}</li>
+                  <li className={data.mood ? 'line-through' : ''}>mood {data.mood ? '✓' : '✗'}</li>
+                  <li className={data.symbolic_elements ? 'line-through' : ''}>symbolic_elements {data.symbolic_elements ? '✓' : '✗'}</li>
+                </ul>
+              </div>
+              {data.analysis && (
+                <div className="mt-2 rounded bg-amber-100 p-2">
+                  <p className="text-xs font-medium text-amber-900">⚠️ Found unexpected 'analysis' field instead</p>
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-xs text-amber-700 hover:text-amber-900">View raw data</summary>
+                    <pre className="mt-1 max-h-32 overflow-auto rounded bg-white p-2 text-xs text-gray-700">
+                      {JSON.stringify(data, null, 2)}
+                    </pre>
+                  </details>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      // Normal rendering when all fields are present
       return (
         <div className="space-y-3 text-sm">
           <p className="font-semibold text-gray-900">🎬 {data.title}</p>
@@ -773,6 +872,7 @@ function renderPreview(schemaType: JSONSchemaType, data: any) {
           </div>
         </div>
       );
+    }
 
     case 'visual_metaphor':
       return (
