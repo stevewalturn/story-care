@@ -4,7 +4,7 @@
 # ========================================
 # Stage 1: Dependencies
 # ========================================
-FROM node:20-alpine AS deps
+FROM node:23.1.0-alpine AS deps
 
 # Install dependencies only when needed
 RUN apk add --no-cache libc6-compat
@@ -21,7 +21,7 @@ RUN npm ci --only=production --ignore-scripts && \
 # ========================================
 # Stage 2: Builder
 # ========================================
-FROM node:20-alpine AS builder
+FROM node:23.1.0-alpine AS builder
 
 WORKDIR /app
 
@@ -53,7 +53,7 @@ RUN if [ -n "$ENV_FILE" ]; then \
 # ========================================
 # Stage 3: Production Runtime
 # ========================================
-FROM node:20-alpine AS runner
+FROM node:23.1.0-alpine AS runner
 
 WORKDIR /app
 
