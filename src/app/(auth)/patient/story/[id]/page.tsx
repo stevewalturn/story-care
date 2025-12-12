@@ -9,7 +9,6 @@ import { Clapperboard, FileText, MessageCircle } from 'lucide-react';
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { auth } from '@/libs/Firebase';
 
 type PageData = {
   page: {

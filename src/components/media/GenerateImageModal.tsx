@@ -131,7 +131,8 @@ export function GenerateImageModal({
     || selectedPatientWithAvatar?.avatarUrl
     || patientReferenceImage; // For transcript page
 
-  const hasReferenceImage = uploadedReferenceImage !== null || !!patientImageUrl;
+  // Only filter models to image-to-image if toggle is ON and reference exists
+  const hasReferenceImage = (uploadedReferenceImage !== null || !!patientImageUrl) && useReference;
 
   const enhancePromptWithPatients = (basePrompt: string) => {
     if (selectedPatients.length === 0) {

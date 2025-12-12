@@ -783,7 +783,7 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
       </div>
 
       {/* Main Content */}
-      <div className={`relative grid min-h-0 flex-1 grid-cols-3 gap-6 transition-all ${isProcessingOrExporting ? 'pointer-events-none blur-sm' : ''}`}>
+      <div className={`relative grid min-h-0 flex-1 grid-cols-3 gap-6 transition-all ${isProcessingOrExporting ? 'pointer-events-none' : ''}`}>
         {/* Processing Overlay */}
         {(isExporting || isProcessing) && (
           <div className="pointer-events-auto absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black/30">
