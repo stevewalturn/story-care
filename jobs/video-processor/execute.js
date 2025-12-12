@@ -9,10 +9,9 @@
  * - DATABASE_URL: PostgreSQL connection string
  * - GCS_PROJECT_ID, GCS_CLIENT_EMAIL, GCS_PRIVATE_KEY: For GCS uploads
  * - GCS_BUCKET_NAME: Bucket for storing assembled videos
+ *
+ * Note: Environment variables are provided by Cloud Run, no .env file needed
  */
-
-// Load environment variables from .env file (baked in during Docker build)
-require('dotenv').config({ path: '/app/.env' });
 
 const { execSync } = require('node:child_process');
 const fs = require('node:fs');

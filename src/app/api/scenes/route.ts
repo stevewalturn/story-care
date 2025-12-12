@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
 import { generatePresignedUrl } from '@/libs/GCS';
-import { mediaLibrary, sceneClips, scenes, sessions, usersSchema } from '@/models/Schema';
+import { mediaLibrary, sceneClips, scenes, sessions, usersSchema, videoProcessingJobs } from '@/models/Schema';
 
 // GET /api/scenes - List scenes
 export async function GET(request: NextRequest) {
@@ -80,10 +80,30 @@ export async function GET(request: NextRequest) {
           ? await generatePresignedUrl(thumbnailUrl, 1)
           : null;
 
+        // Get latest job data for processing scenes
+        let job = null;
+        if (scene.status === 'processing') {
+          const [latestJob] = await db
+            .select({
+              id: videoProcessingJobs.id,
+              status: videoProcessingJobs.status,
+              progress: videoProcessingJobs.progress,
+              currentStep: videoProcessingJobs.currentStep,
+              cloudRunJobId: videoProcessingJobs.cloudRunJobId,
+            })
+            .from(videoProcessingJobs)
+            .where(eq(videoProcessingJobs.sceneId, scene.id))
+            .orderBy(desc(videoProcessingJobs.createdAt))
+            .limit(1);
+
+          job = latestJob || null;
+        }
+
         return {
           ...scene,
           assembledVideoUrl,
           thumbnailUrl: signedThumbnailUrl,
+          job,
         };
       }),
     );

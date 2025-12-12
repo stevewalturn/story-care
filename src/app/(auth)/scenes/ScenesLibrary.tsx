@@ -5,13 +5,21 @@
  * Displays all scenes as cards with options to edit, preview, or create new
  */
 
-import { Film, MoreVertical, Play, Plus, Search, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Film, Loader2, MoreVertical, Play, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { MediaViewer } from '@/components/assets/MediaViewer';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
+
+type JobData = {
+  id: string;
+  status: string;
+  progress: number;
+  currentStep: string;
+  cloudRunJobId: string | null;
+};
 
 type Scene = {
   id: string;
@@ -25,6 +33,7 @@ type Scene = {
   thumbnailUrl: string | null;
   createdAt: string;
   updatedAt: string;
+  job?: JobData | null;
 };
 
 type ScenesLibraryProps = {
@@ -36,13 +45,23 @@ export function ScenesLibrary({ onEditScene, onCreateNew }: ScenesLibraryProps) 
   const { user } = useAuth();
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<string>('all');
   const [patients, setPatients] = useState<any[]>([]);
+  const [completedSceneIds, setCompletedSceneIds] = useState<Set<string>>(new Set());
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     fetchPatients();
     fetchScenes();
+
+    // Cleanup polling on unmount
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
   }, []);
 
   const fetchPatients = async () => {
@@ -57,24 +76,78 @@ export function ScenesLibrary({ onEditScene, onCreateNew }: ScenesLibraryProps) 
     }
   };
 
-  const fetchScenes = async () => {
+  const fetchScenes = async (isPolling = false) => {
     try {
-      setLoading(true);
+      if (!isPolling) {
+        setLoading(true);
+      }
       const params = selectedPatient !== 'all' ? `?patientId=${selectedPatient}` : '';
       const response = await authenticatedFetch(`/api/scenes${params}`, user);
 
       if (response.ok) {
         const data = await response.json();
-        setScenes(data.scenes || []);
+        const newScenes: Scene[] = data.scenes || [];
+
+        // Check for newly completed scenes
+        newScenes.forEach((scene) => {
+          const oldScene = scenes.find(s => s.id === scene.id);
+          if (
+            oldScene?.status === 'processing'
+            && scene.status === 'completed'
+            && !completedSceneIds.has(scene.id)
+          ) {
+            // Scene just completed!
+            setCompletedSceneIds(prev => new Set(prev).add(scene.id));
+            toast.success(`✅ ${scene.title} assembly completed!`);
+
+            // Remove from completed set after 3 seconds
+            setTimeout(() => {
+              setCompletedSceneIds(prev => {
+                const updated = new Set(prev);
+                updated.delete(scene.id);
+                return updated;
+              });
+            }, 3000);
+          }
+        });
+
+        setScenes(newScenes);
+
+        // Setup or clear polling based on processing scenes
+        const hasProcessingScenes = newScenes.some(s => s.status === 'processing');
+
+        if (hasProcessingScenes && !pollingIntervalRef.current) {
+          // Start polling
+          pollingIntervalRef.current = setInterval(() => {
+            fetchScenes(true);
+          }, 5000); // Poll every 5 seconds
+        } else if (!hasProcessingScenes && pollingIntervalRef.current) {
+          // Stop polling
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
       } else {
-        toast.error('Failed to load scenes');
+        if (!isPolling) {
+          toast.error('Failed to load scenes');
+        }
       }
     } catch (error) {
       console.error('Error fetching scenes:', error);
-      toast.error('Error loading scenes');
+      if (!isPolling) {
+        toast.error('Error loading scenes');
+      }
     } finally {
-      setLoading(false);
+      if (!isPolling) {
+        setLoading(false);
+      }
     }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchScenes();
+    setRefreshing(false);
+    toast.success('Scenes refreshed');
   };
 
   useEffect(() => {
@@ -134,10 +207,24 @@ export function ScenesLibrary({ onEditScene, onCreateNew }: ScenesLibraryProps) 
                 </p>
               </div>
             </div>
-            <Button variant="primary" onClick={onCreateNew}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create New Scene
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="secondary"
+                onClick={handleRefresh}
+                disabled={refreshing}
+              >
+                {refreshing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                Refresh
+              </Button>
+              <Button variant="primary" onClick={onCreateNew}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create New Scene
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -231,8 +318,13 @@ function SceneCard({ scene, onEdit, onDelete }: SceneCardProps) {
     return `${mins}:${remainingSecs.toString().padStart(2, '0')}`;
   };
 
+  const isProcessing = scene.status === 'processing';
+  const isCompleted = scene.status === 'completed';
+  const progress = scene.job?.progress || 0;
+  const currentStep = scene.job?.currentStep;
+
   return (
-    <div className="group relative rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+    <div className={`group relative rounded-lg border bg-white shadow-sm transition-all hover:shadow-md ${isCompleted ? 'animate-pulse-green' : isProcessing ? 'border-yellow-300' : 'border-gray-200'}`}>
       {/* Thumbnail */}
       <div className="relative aspect-video overflow-hidden rounded-t-lg bg-gray-900">
         {scene.thumbnailUrl || scene.assembledVideoUrl ? (
@@ -242,7 +334,7 @@ function SceneCard({ scene, onEdit, onDelete }: SceneCardProps) {
               alt={scene.title}
               className="h-full w-full object-cover"
             />
-            {scene.assembledVideoUrl && (
+            {scene.assembledVideoUrl && !isProcessing && (
               <button
                 onClick={() => setIsViewerOpen(true)}
                 className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100"
@@ -267,13 +359,33 @@ function SceneCard({ scene, onEdit, onDelete }: SceneCardProps) {
         )}
 
         {/* Status Badge */}
-        <div className="absolute top-2 left-2">
+        <div className="absolute top-2 left-2 flex items-center gap-1.5">
           <span
             className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[scene.status as keyof typeof statusColors] || statusColors.draft}`}
           >
             {scene.status}
           </span>
+          {isProcessing && (
+            <Loader2 className="h-4 w-4 animate-spin text-yellow-600" />
+          )}
         </div>
+
+        {/* Progress Bar for Processing Scenes */}
+        {isProcessing && (
+          <div className="absolute inset-x-0 bottom-0 bg-black/50 p-2">
+            <div className="mb-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-700">
+              <div
+                className="h-full bg-yellow-500 transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            {currentStep && (
+              <p className="text-[10px] text-white">
+                {currentStep} {progress > 0 && `• ${Math.round(progress)}%`}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Actions Menu */}
         <div className="absolute top-2 right-2">
@@ -299,13 +411,14 @@ function SceneCard({ scene, onEdit, onDelete }: SceneCardProps) {
                 <button
                   onClick={() => {
                     setShowMenu(false);
-                    onEdit();
+                    if (!isProcessing) onEdit();
                   }}
-                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                  disabled={isProcessing}
+                  className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm ${isProcessing ? 'cursor-not-allowed text-gray-400' : 'text-gray-700 hover:bg-gray-100'}`}
                   type="button"
                 >
                   <Film className="h-4 w-4" />
-                  Edit Scene
+                  Edit Scene {isProcessing && '(Processing)'}
                 </button>
 
                 {scene.assembledVideoUrl && (

@@ -35,14 +35,6 @@ COPY src/utils ./src/utils
 RUN mkdir -p /tmp/video-assembly && \
     chmod 777 /tmp/video-assembly
 
-# Accept ENV_FILE build arg and create .env file
-ARG ENV_FILE
-RUN if [ -n "$ENV_FILE" ]; then \
-      echo "$ENV_FILE" > /app/.env; \
-    else \
-      echo "Warning: ENV_FILE not provided, using runtime environment variables"; \
-    fi
-
 # Set environment
 ENV NODE_ENV=production \
     TEMP_DIR=/tmp/video-assembly
