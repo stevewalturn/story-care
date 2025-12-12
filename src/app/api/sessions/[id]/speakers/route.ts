@@ -89,13 +89,13 @@ export async function GET(
     if (session.groupId) {
       const membersData = await db
         .select({
-          userId: groupMembersSchema.userId,
+          userId: groupMembersSchema.patientId,
           userName: users.name,
           userAvatarUrl: users.avatarUrl,
           userReferenceImageUrl: users.referenceImageUrl,
         })
         .from(groupMembersSchema)
-        .leftJoin(users, eq(groupMembersSchema.userId, users.id))
+        .leftJoin(users, eq(groupMembersSchema.patientId, users.id))
         .where(eq(groupMembersSchema.groupId, session.groupId));
 
       // Generate presigned URLs for group member avatars

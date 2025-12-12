@@ -5,32 +5,13 @@
 
 'use client';
 
+import type { PromptTemplate } from '@/models/Schema';
 import { Eye, FileText, MessageCircle, Plus, Search, Sparkles, Target, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { CreatePromptModal } from '@/components/prompts/CreatePromptModal';
 import { ViewEditPromptModal } from '@/components/prompts/ViewEditPromptModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
-
-type Prompt = {
-  id: string;
-  name: string;
-  promptText: string;
-  description: string | null;
-  category: 'analysis' | 'creative' | 'extraction' | 'reflection';
-  icon: string;
-  scope: 'system' | 'organization' | 'private';
-  organizationId: string | null;
-  createdBy: string;
-  useCount: number;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  outputType: 'json' | 'text';
-  jsonSchema: any | null;
-  blocks: any | null;
-  useAdvancedMode: boolean;
-};
 
 const categoryIcons = {
   analysis: Target,
@@ -48,13 +29,13 @@ const categoryColors = {
 
 export default function PromptLibraryPage() {
   const { user } = useAuth();
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [prompts, setPrompts] = useState<PromptTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [scopeFilter, setScopeFilter] = useState<string>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
+  const [selectedPrompt, setSelectedPrompt] = useState<PromptTemplate | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
   useEffect(() => {
@@ -76,17 +57,17 @@ export default function PromptLibraryPage() {
     }
   };
 
-  const handleViewDetails = (prompt: Prompt) => {
+  const handleViewDetails = (prompt: PromptTemplate) => {
     setSelectedPrompt(prompt);
     setIsViewModalOpen(true);
   };
 
-  const handleEdit = (prompt: Prompt) => {
+  const handleEdit = (prompt: PromptTemplate) => {
     setSelectedPrompt(prompt);
     setIsViewModalOpen(true);
   };
 
-  const handleDelete = async (prompt: Prompt) => {
+  const handleDelete = async (prompt: PromptTemplate) => {
     if (!user) return;
 
     const confirmDelete = window.confirm(
@@ -312,19 +293,19 @@ function PromptCard({
   onDelete,
   editable = false,
 }: {
-  prompt: Prompt;
+  prompt: PromptTemplate;
   onUpdate: () => void;
-  onView: (prompt: Prompt) => void;
-  onEdit?: (prompt: Prompt) => void;
-  onDelete?: (prompt: Prompt) => void;
+  onView: (prompt: PromptTemplate) => void;
+  onEdit?: (prompt: PromptTemplate) => void;
+  onDelete?: (prompt: PromptTemplate) => void;
   editable?: boolean;
 }) {
-  const IconComponent = categoryIcons[prompt.category];
+  const IconComponent = categoryIcons[prompt.category as keyof typeof categoryIcons];
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
       <div className="mb-3 flex items-start justify-between">
-        <div className={`rounded-lg p-2 ${categoryColors[prompt.category]}`}>
+        <div className={`rounded-lg p-2 ${categoryColors[prompt.category as keyof typeof categoryColors]}`}>
           <IconComponent className="h-5 w-5" />
         </div>
         <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 uppercase">
