@@ -24,6 +24,8 @@ type SessionContext = {
   patientName: string;
   therapistId: string;
   patientId?: string | null;
+  therapistAvatarUrl?: string | null;
+  patientAvatarUrl?: string | null;
 };
 
 type GroupMember = {
@@ -48,6 +50,8 @@ export function SpeakerLabelingClient({
     patientName: 'Patient',
     therapistId: '',
     patientId: null,
+    therapistAvatarUrl: null,
+    patientAvatarUrl: null,
   });
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);

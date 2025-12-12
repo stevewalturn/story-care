@@ -26,7 +26,8 @@ const db = drizzle(pool, { schema });
 const systemPrompts = [
   {
     name: 'Self-Resilience & Re-Authoring Analysis',
-    promptText: `Read the transcript carefully. Locate passages about struggle, adversity, and survival. Extract moments where the person demonstrated resilience, agency, or strength - even in small ways.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+    systemPrompt: `Read the transcript carefully. Locate passages about struggle, adversity, and survival. Extract moments where the person demonstrated resilience, agency, or strength - even in small ways.
 
 Focus on:
 1. Externalizing problems (the problem is not the person)
@@ -44,6 +45,7 @@ Output ONLY valid JSON matching this schema:
   "key_themes": ["theme1", "theme2"],
   "tags": ["tag1", "tag2"]
 }`,
+    userPrompt: null,
     description: 'Analyze for moments of personal agency, strength, and alternative narratives',
     category: 'analysis',
     icon: 'target',
@@ -62,7 +64,9 @@ Output ONLY valid JSON matching this schema:
   },
   {
     name: 'Create A Scene',
-    promptText: `Generate a therapeutic scene visualization from transcript moments.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Generate a therapeutic scene visualization from transcript moments.
 
 Analyze the selected text and create a vivid visual scene description that:
 1. Captures the emotional core of the therapeutic moment
@@ -88,6 +92,8 @@ Output ONLY valid JSON:
   "symbolic_elements": ["symbol1", "symbol2"],
   "therapeutic_purpose": "Why this scene matters"
 }`,
+
+    userPrompt: null,
     description: 'Generate therapeutic scene visualization from transcript moments',
     category: 'creative',
     icon: 'sparkles',
@@ -108,7 +114,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Extract Meaningful Quotes',
-    promptText: `AI analyzes selection and extracts therapeutically significant quotes.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `AI analyzes selection and extracts therapeutically significant quotes.
 
 Review the selected transcript segment and identify:
 1. Moments of insight or self-awareness
@@ -131,6 +139,8 @@ Output ONLY valid JSON:
     }
   ]
 }`,
+
+    userPrompt: null,
     description: 'AI extracts therapeutically meaningful quotes with context',
     category: 'extraction',
     icon: 'quote',
@@ -158,7 +168,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Potential Images',
-    promptText: `Generate image suggestions based on transcript themes and metaphors.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Generate image suggestions based on transcript themes and metaphors.
 
 Analyze the selected text for:
 1. Natural metaphors the patient uses
@@ -185,6 +197,8 @@ Required JSON fields:
   - style: string (photorealistic, artistic, abstract, etc.)
   - therapeutic_purpose: string
   - source_quote: string from the transcript`,
+
+    userPrompt: null,
     description: 'Generate image suggestions based on transcript themes and metaphors',
     category: 'creative',
     icon: 'image',
@@ -213,7 +227,9 @@ Required JSON fields:
   },
   {
     name: 'Grounding & Regulation Analysis',
-    promptText: `Identify grounding and emotional regulation opportunities in the transcript.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Identify grounding and emotional regulation opportunities in the transcript.
 
 Analyze for:
 1. Moments of dysregulation (heightened emotion, dissociation, overwhelm)
@@ -239,6 +255,8 @@ Output ONLY valid JSON:
   "keyInsights": ["insight 1", "insight 2"],
   "actionItems": ["action 1", "action 2"]
 }`,
+
+    userPrompt: null,
     description: 'Identify dysregulation patterns and coping mechanisms',
     category: 'analysis',
     icon: 'activity',
@@ -258,7 +276,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Relational Healing & Integration Analysis',
-    promptText: `Examine relational healing and integration patterns in the transcript.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Examine relational healing and integration patterns in the transcript.
 
 Focus on:
 1. Attachment patterns (secure, anxious, avoidant, disorganized)
@@ -284,6 +304,8 @@ Output ONLY valid JSON:
   "keyInsights": ["insight 1", "insight 2"],
   "actionItems": ["action 1", "action 2"]
 }`,
+
+    userPrompt: null,
     description: 'Analyze attachment patterns and relational healing opportunities',
     category: 'analysis',
     icon: 'users',
@@ -303,7 +325,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Generate Reflection Questions',
-    promptText: `Create thoughtful reflection questions for the patient based on the transcript.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Create thoughtful reflection questions for the patient based on the transcript.
 
 Analyze the session themes and generate 3-5 open-ended questions that:
 1. Invite deeper self-exploration
@@ -323,6 +347,8 @@ Output ONLY valid JSON:
     }
   ]
 }`,
+
+    userPrompt: null,
     description: 'Generate personalized reflection questions for story pages',
     category: 'reflection',
     icon: 'message-circle',
@@ -349,7 +375,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Identify Metaphors & Symbols',
-    promptText: `Extract natural metaphors and symbolic language from the transcript.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Extract natural metaphors and symbolic language from the transcript.
 
 Look for:
 1. Metaphors the patient uses naturally (not therapist-imposed)
@@ -370,6 +398,8 @@ Output ONLY valid JSON:
     }
   ]
 }`,
+
+    userPrompt: null,
     description: 'Extract patient\'s natural metaphors and symbolic language',
     category: 'extraction',
     icon: 'eye',
@@ -399,7 +429,9 @@ Output ONLY valid JSON:
   // === NEW ANALYSIS PROMPTS ===
   {
     name: 'Therapeutic Alliance Analysis',
-    promptText: `Assess the quality and development of the therapeutic relationship based on the transcript.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Assess the quality and development of the therapeutic relationship based on the transcript.
 
 Analyze for:
 1. Trust indicators (what patient shares, how openly)
@@ -417,6 +449,8 @@ Output ONLY valid JSON:
   "keyInsights": ["insight 1", "insight 2"],
   "actionItems": ["action 1", "action 2"]
 }`,
+
+    userPrompt: null,
     description: 'Assess quality of therapeutic relationship and alliance indicators',
     category: 'analysis',
     icon: 'heart',
@@ -436,7 +470,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Defense Mechanisms Analysis',
-    promptText: `Identify psychological defense mechanisms in the transcript.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Identify psychological defense mechanisms in the transcript.
 
 Look for signs of:
 1. Denial (refusing to acknowledge reality)
@@ -456,6 +492,8 @@ Output ONLY valid JSON:
   "keyInsights": ["insight 1", "insight 2"],
   "actionItems": ["action 1", "action 2"]
 }`,
+
+    userPrompt: null,
     description: 'Identify defense patterns and their protective functions',
     category: 'analysis',
     icon: 'shield',
@@ -475,7 +513,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Emotional Regulation Analysis',
-    promptText: `Analyze emotion management strategies and regulation capacity.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Analyze emotion management strategies and regulation capacity.
 
 Examine:
 1. Emotional awareness (ability to name/describe feelings)
@@ -493,6 +533,8 @@ Required JSON fields:
 - tags: array of strings
 - keyInsights: array of strings
 - actionItems: array of strings`,
+
+    userPrompt: null,
     description: 'Analyze emotion management strategies and regulation capacity',
     category: 'analysis',
     icon: 'thermometer',
@@ -512,7 +554,9 @@ Required JSON fields:
   },
   {
     name: 'Progress Tracking Analysis',
-    promptText: `Evaluate therapeutic progress and development over time.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Evaluate therapeutic progress and development over time.
 
 Compare current session to earlier work (if available) for:
 1. Symptom reduction or management
@@ -530,6 +574,8 @@ Output ONLY valid JSON:
   "keyInsights": ["insight 1", "insight 2"],
   "actionItems": ["action 1", "action 2"]
 }`,
+
+    userPrompt: null,
     description: 'Evaluate therapeutic progress and development markers',
     category: 'analysis',
     icon: 'trending-up',
@@ -549,7 +595,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Attachment Pattern Analysis',
-    promptText: `Identify attachment styles and relational patterns in the transcript.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Identify attachment styles and relational patterns in the transcript.
 
 Analyze for indicators of:
 1. Secure attachment (comfort with closeness and autonomy)
@@ -566,6 +614,8 @@ Output ONLY valid JSON:
   "keyInsights": ["insight 1", "insight 2"],
   "actionItems": ["action 1", "action 2"]
 }`,
+
+    userPrompt: null,
     description: 'Identify attachment styles and relational blueprints',
     category: 'analysis',
     icon: 'link',
@@ -585,7 +635,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Trauma Response Analysis',
-    promptText: `Recognize trauma indicators and post-traumatic responses in the transcript.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Recognize trauma indicators and post-traumatic responses in the transcript.
 
 Watch for:
 1. Hyperarousal (anxiety, hypervigilance, irritability)
@@ -604,6 +656,8 @@ Output ONLY valid JSON:
   "keyInsights": ["insight 1", "insight 2"],
   "actionItems": ["action 1", "action 2"]
 }`,
+
+    userPrompt: null,
     description: 'Recognize trauma indicators and adaptive responses',
     category: 'analysis',
     icon: 'alert-triangle',
@@ -623,7 +677,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Coping Strategy Assessment',
-    promptText: `Map current coping mechanisms and adaptive strategies.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Map current coping mechanisms and adaptive strategies.
 
 Identify:
 1. Healthy coping (exercise, connection, creativity, etc.)
@@ -641,6 +697,8 @@ Output ONLY valid JSON:
   "keyInsights": ["insight 1", "insight 2"],
   "actionItems": ["action 1", "action 2"]
 }`,
+
+    userPrompt: null,
     description: 'Map current coping mechanisms and adaptive strategies',
     category: 'analysis',
     icon: 'tool',
@@ -662,7 +720,9 @@ Output ONLY valid JSON:
   // === NEW JSON OUTPUT PROMPTS ===
   {
     name: 'Scene Card Generation',
-    promptText: `Generate a complete therapeutic scene card in JSON format based on the transcript.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Generate a complete therapeutic scene card in JSON format based on the transcript.
 
 A scene card is a comprehensive therapeutic video visualization that includes reference images, background music, assembly instructions, and reflection questions.
 
@@ -689,6 +749,8 @@ Analyze the selected transcript segment and create a complete scene card with:
 6. **Assembly Steps**: Clear instructions for video editor showing how to sequence the images, timing, transitions, and music cues.
 
 Output ONLY valid JSON matching the scene_card schema. No markdown, no explanations, just the JSON object.`,
+
+    userPrompt: null,
     description: 'Generate complete therapeutic scene card with images, music, and reflections (JSON output)',
     category: 'creative',
     icon: 'film',
@@ -737,7 +799,9 @@ Output ONLY valid JSON matching the scene_card schema. No markdown, no explanati
   },
   {
     name: 'Scene Suggestions',
-    promptText: `Analyze the transcript and suggest multiple therapeutic scenes that could be created for different participants.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Analyze the transcript and suggest multiple therapeutic scenes that could be created for different participants.
 
 Review the full transcript and identify key therapeutic moments, themes, and narratives for each participant. Generate scene suggestions organized by participant.
 
@@ -776,6 +840,8 @@ Output ONLY valid JSON matching the scene_suggestions schema:
 }
 
 No markdown, no explanations, just the JSON object.`,
+
+    userPrompt: null,
     description: 'Generate multiple scene suggestions for participants based on transcript (JSON output)',
     category: 'creative',
     icon: 'sparkles',
@@ -814,7 +880,9 @@ No markdown, no explanations, just the JSON object.`,
   },
   {
     name: 'Music Generation Options',
-    promptText: `Generate therapeutic music options (instrumental and lyrical) based on transcript themes.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Generate therapeutic music options (instrumental and lyrical) based on transcript themes.
 
 Analyze the selected transcript and create TWO music generation options:
 
@@ -846,6 +914,8 @@ Example structure:
   "instrumental_option": { ... },
   "lyrical_option": { ... }
 }`,
+
+    userPrompt: null,
     description: 'Generate instrumental and lyrical music options based on transcript (JSON output)',
     category: 'creative',
     icon: 'music',
@@ -888,7 +958,9 @@ Example structure:
   // === NEW CREATIVE PROMPTS ===
   {
     name: 'Generate Visual Metaphor',
-    promptText: `Create symbolic image concepts that represent therapeutic themes.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Create symbolic image concepts that represent therapeutic themes.
 
 Based on the transcript, design visual metaphors that:
 1. Capture abstract concepts (healing, growth, struggle, hope)
@@ -911,6 +983,8 @@ Output ONLY valid JSON:
     }
   ]
 }`,
+
+    userPrompt: null,
     description: 'Create symbolic image concepts representing therapeutic themes',
     category: 'creative',
     icon: 'palette',
@@ -938,7 +1012,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Story Reframe Suggestion',
-    promptText: `Offer alternative narrative perspectives on the patient's story.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Offer alternative narrative perspectives on the patient's story.
 
 Analyze the dominant narrative and suggest reframes that:
 1. Externalize problems (problem is separate from person)
@@ -955,6 +1031,8 @@ Output ONLY valid JSON:
   "supporting_evidence": ["Evidence 1", "Evidence 2"],
   "exploration_questions": ["Question 1", "Question 2"]
 }`,
+
+    userPrompt: null,
     description: 'Offer alternative narrative perspectives and reframes',
     category: 'creative',
     icon: 'refresh-cw',
@@ -973,7 +1051,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Hope Visualization',
-    promptText: `Visualize the patient's preferred future and aspirations.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Visualize the patient's preferred future and aspirations.
 
 Based on hopes, dreams, and goals mentioned, create:
 1. Vivid description of preferred future
@@ -992,6 +1072,8 @@ Output ONLY valid JSON:
   "pathway_steps": ["Step 1", "Step 2"],
   "affirmations": ["Affirmation 1", "Affirmation 2"]
 }`,
+
+    userPrompt: null,
     description: 'Visualize patient\'s preferred future and aspirations',
     category: 'creative',
     icon: 'sun',
@@ -1010,7 +1092,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Journey Map Creation',
-    promptText: `Map the patient's therapeutic journey visually.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Map the patient's therapeutic journey visually.
 
 Create a visual journey map showing:
 1. Where they started (presenting issues, initial state)
@@ -1029,6 +1113,8 @@ Output ONLY valid JSON:
   "dalle_prompt": "DETAILED generation prompt (2-3 sentences with visual specifics)",
   "milestones": ["Milestone 1", "Milestone 2"]
 }`,
+
+    userPrompt: null,
     description: 'Map therapeutic journey from past through present to future',
     category: 'creative',
     icon: 'map',
@@ -1047,7 +1133,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Character Strength Portrait',
-    promptText: `Identify and visualize the patient's core character strengths.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Identify and visualize the patient's core character strengths.
 
 Based on the transcript, identify:
 1. VIA character strengths displayed (wisdom, courage, humanity, justice, temperance, transcendence)
@@ -1070,6 +1158,8 @@ Output ONLY valid JSON:
   "dalle_prompt": "DETAILED generation prompt (2-3 sentences with visual specifics)",
   "leverage_suggestions": ["Suggestion 1", "Suggestion 2"]
 }`,
+
+    userPrompt: null,
     description: 'Identify and visualize patient\'s core character strengths',
     category: 'creative',
     icon: 'award',
@@ -1098,7 +1188,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Timeline Visualization',
-    promptText: `Create visual timeline of patient's therapeutic process.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Create visual timeline of patient's therapeutic process.
 
 Design a timeline showing:
 1. Pre-therapy state
@@ -1123,6 +1215,8 @@ Output ONLY valid JSON:
     }
   ]
 }`,
+
+    userPrompt: null,
     description: 'Create visual timeline of therapeutic process and progress',
     category: 'creative',
     icon: 'clock',
@@ -1154,7 +1248,9 @@ Output ONLY valid JSON:
   // === NEW EXTRACTION PROMPTS ===
   {
     name: 'Extract Key Moments',
-    promptText: `Identify pivotal moments and turning points in the session.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Identify pivotal moments and turning points in the session.
 
 Look for:
 1. Moments of insight ("aha" moments)
@@ -1175,6 +1271,8 @@ Output ONLY valid JSON:
     }
   ]
 }`,
+
+    userPrompt: null,
     description: 'Identify pivotal session moments and therapeutic turning points',
     category: 'extraction',
     icon: 'star',
@@ -1202,7 +1300,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Extract Values & Beliefs',
-    promptText: `Identify core values and belief systems expressed in the transcript.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Identify core values and belief systems expressed in the transcript.
 
 Extract:
 1. Stated values (what patient says matters)
@@ -1224,6 +1324,8 @@ Output ONLY valid JSON:
     }
   ]
 }`,
+
+    userPrompt: null,
     description: 'Identify core values and belief systems',
     category: 'extraction',
     icon: 'compass',
@@ -1252,7 +1354,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Extract Goals & Intentions',
-    promptText: `Pull out stated goals, intentions, and desired changes.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Pull out stated goals, intentions, and desired changes.
 
 Identify:
 1. Explicit goals stated by patient
@@ -1275,6 +1379,8 @@ Output ONLY valid JSON:
     }
   ]
 }`,
+
+    userPrompt: null,
     description: 'Pull out stated goals, intentions, and desired changes',
     category: 'extraction',
     icon: 'crosshair',
@@ -1304,7 +1410,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Extract Strengths & Resources',
-    promptText: `Identify personal assets, strengths, and resources mentioned.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Identify personal assets, strengths, and resources mentioned.
 
 Extract:
 1. Personal strengths (resilience, creativity, determination, etc.)
@@ -1326,6 +1434,8 @@ Output ONLY valid JSON:
     }
   ]
 }`,
+
+    userPrompt: null,
     description: 'Identify personal assets, strengths, and support systems',
     category: 'extraction',
     icon: 'battery-charging',
@@ -1354,7 +1464,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Extract Barriers & Challenges',
-    promptText: `List obstacles, barriers, and challenges patient faces.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `List obstacles, barriers, and challenges patient faces.
 
 Identify:
 1. Internal barriers (thoughts, feelings, patterns)
@@ -1376,6 +1488,8 @@ Output ONLY valid JSON:
     }
   ]
 }`,
+
+    userPrompt: null,
     description: 'List obstacles and challenges requiring attention',
     category: 'extraction',
     icon: 'octagon',
@@ -1406,7 +1520,9 @@ Output ONLY valid JSON:
   // === NEW REFLECTION PROMPTS ===
   {
     name: 'Generate Between-Session Questions',
-    promptText: `Create questions for patient reflection between sessions.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Create questions for patient reflection between sessions.
 
 Based on session themes, generate 3-5 questions that:
 1. Deepen insights from session
@@ -1426,6 +1542,8 @@ Output ONLY valid JSON:
     }
   ]
 }`,
+
+    userPrompt: null,
     description: 'Create questions for reflection between sessions',
     category: 'reflection',
     icon: 'lightbulb',
@@ -1452,7 +1570,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Generate Journaling Prompts',
-    promptText: `Create journaling prompts for therapeutic writing.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Create journaling prompts for therapeutic writing.
 
 Generate 4-6 prompts that encourage:
 1. Emotional expression and processing
@@ -1473,6 +1593,8 @@ Output ONLY valid JSON:
     }
   ]
 }`,
+
+    userPrompt: null,
     description: 'Create therapeutic journaling prompts for self-exploration',
     category: 'reflection',
     icon: 'book-open',
@@ -1499,7 +1621,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Generate Goal-Setting Questions',
-    promptText: `Help patient define and refine therapeutic goals.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Help patient define and refine therapeutic goals.
 
 Create questions that:
 1. Clarify what patient truly wants
@@ -1519,6 +1643,8 @@ Output ONLY valid JSON:
     }
   ]
 }`,
+
+    userPrompt: null,
     description: 'Help patient define and refine therapeutic goals',
     category: 'reflection',
     icon: 'target',
@@ -1545,7 +1671,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Generate Self-Compassion Prompts',
-    promptText: `Create prompts that cultivate self-compassion and kindness.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Create prompts that cultivate self-compassion and kindness.
 
 Generate reflections that:
 1. Counter self-criticism with understanding
@@ -1565,6 +1693,8 @@ Output ONLY valid JSON:
     }
   ]
 }`,
+
+    userPrompt: null,
     description: 'Cultivate self-compassion and self-kindness practices',
     category: 'reflection',
     icon: 'heart',
@@ -1591,7 +1721,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Generate Gratitude Prompts',
-    promptText: `Foster gratitude practice and positive focus.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Foster gratitude practice and positive focus.
 
 Create prompts that:
 1. Notice small positive moments
@@ -1611,6 +1743,8 @@ Output ONLY valid JSON:
     }
   ]
 }`,
+
+    userPrompt: null,
     description: 'Foster gratitude practice and positive awareness',
     category: 'reflection',
     icon: 'gift',
@@ -1637,7 +1771,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Generate Homework Assignments',
-    promptText: `Create therapeutic homework for between sessions.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Create therapeutic homework for between sessions.
 
 Design 2-3 assignments that:
 1. Apply session insights to real life
@@ -1658,6 +1794,8 @@ Output ONLY valid JSON:
     }
   ]
 }`,
+
+    userPrompt: null,
     description: 'Create therapeutic homework and between-session practices',
     category: 'reflection',
     icon: 'clipboard-list',
@@ -1685,7 +1823,9 @@ Output ONLY valid JSON:
   },
   {
     name: 'Generate Check-In Questions',
-    promptText: `Create questions for ongoing progress monitoring.
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Create questions for ongoing progress monitoring.
 
 Generate check-in questions for:
 1. Symptom tracking (mood, anxiety, etc.)
@@ -1705,6 +1845,8 @@ Output ONLY valid JSON:
     }
   ]
 }`,
+
+    userPrompt: null,
     description: 'Create questions for ongoing progress monitoring and check-ins',
     category: 'reflection',
     icon: 'check-square',
@@ -1759,7 +1901,7 @@ async function seedSystemPrompts() {
 
     console.log(`Using system user: ${systemUser.email} (${systemUser.id})`);
 
-    // Insert each prompt
+    // Insert or update each prompt
     for (const promptData of systemPrompts) {
       try {
         const [existingPrompt] = await db
@@ -1769,7 +1911,23 @@ async function seedSystemPrompts() {
           .limit(1);
 
         if (existingPrompt) {
-          console.log(`⏭️  Skipping "${promptData.name}" (already exists)`);
+          // Update existing prompt with new systemPrompt structure
+          await db
+            .update(moduleAiPromptsSchema)
+            .set({
+              promptText: promptData.promptText,
+              systemPrompt: promptData.systemPrompt,
+              userPrompt: promptData.userPrompt,
+              description: promptData.description,
+              category: promptData.category,
+              icon: promptData.icon,
+              outputType: promptData.outputType,
+              jsonSchema: promptData.jsonSchema,
+              updatedAt: new Date(),
+            })
+            .where(eq(moduleAiPromptsSchema.id, existingPrompt.id));
+
+          console.log(`🔄 Updated: "${promptData.name}" (migrated to systemPrompt)`);
           continue;
         }
 

@@ -715,6 +715,28 @@ export function AIAssistantPanel({
           )}
         </div>
 
+        {/* Visual Indicator for Active System Prompt */}
+        {selectedSystemPrompt && (
+          <div className="mb-3 flex items-center gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-xs">
+            <svg className="h-4 w-4 flex-shrink-0 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="flex-1 text-indigo-700">
+              Using <strong>{[...aiPrompts, ...libraryPrompts].find(p => p.id === selectedPromptId)?.name}</strong> prompt template
+            </span>
+            <button
+              onClick={() => {
+                setSelectedSystemPrompt(null);
+                setSelectedPromptId('');
+              }}
+              className="flex-shrink-0 text-indigo-600 transition-colors hover:text-indigo-800"
+              title="Clear prompt template"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         <div className="relative">
           {/* Textarea for multi-line support */}
           <textarea

@@ -33,21 +33,55 @@ export async function GET(
       );
     }
 
-    // Get therapist name
+    // Get therapist name and avatar
     const [therapist] = await db
-      .select({ name: users.name })
+      .select({
+        name: users.name,
+        avatarUrl: users.avatarUrl,
+        referenceImageUrl: users.referenceImageUrl,
+      })
       .from(users)
       .where(eq(users.id, session.therapistId))
       .limit(1);
 
-    // Get patient name if individual session
+    // Generate presigned URL for therapist avatar
+    let therapistAvatarUrl = null;
+    if (therapist) {
+      const therapistImageUrl = therapist.referenceImageUrl || therapist.avatarUrl;
+      if (therapistImageUrl) {
+        try {
+          therapistAvatarUrl = await generatePresignedUrl(therapistImageUrl, 1);
+        } catch (error) {
+          console.error('Failed to generate presigned URL for therapist avatar:', error);
+        }
+      }
+    }
+
+    // Get patient name and avatar if individual session
     let patient = null;
+    let patientAvatarUrl = null;
     if (session.patientId) {
       [patient] = await db
-        .select({ name: users.name })
+        .select({
+          name: users.name,
+          avatarUrl: users.avatarUrl,
+          referenceImageUrl: users.referenceImageUrl,
+        })
         .from(users)
         .where(eq(users.id, session.patientId))
         .limit(1);
+
+      // Generate presigned URL for patient avatar
+      if (patient) {
+        const patientImageUrl = patient.referenceImageUrl || patient.avatarUrl;
+        if (patientImageUrl) {
+          try {
+            patientAvatarUrl = await generatePresignedUrl(patientImageUrl, 1);
+          } catch (error) {
+            console.error('Failed to generate presigned URL for patient avatar:', error);
+          }
+        }
+      }
     }
 
     // Get group members if group session
@@ -103,6 +137,8 @@ export async function GET(
           patientName: patient?.name || 'Patient',
           therapistId: session.therapistId,
           patientId: session.patientId,
+          therapistAvatarUrl,
+          patientAvatarUrl,
         },
         groupMembers,
       });
@@ -149,6 +185,8 @@ export async function GET(
         patientName: patient?.name || 'Patient',
         therapistId: session.therapistId,
         patientId: session.patientId,
+        therapistAvatarUrl,
+        patientAvatarUrl,
       },
       groupMembers,
     });

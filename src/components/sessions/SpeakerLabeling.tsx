@@ -24,6 +24,10 @@ type SessionContext = {
   sessionType: 'individual' | 'group';
   therapistName: string;
   patientName: string;
+  therapistId: string;
+  patientId?: string | null;
+  therapistAvatarUrl?: string | null;
+  patientAvatarUrl?: string | null;
 };
 
 type GroupMember = {
@@ -198,6 +202,26 @@ export function SpeakerLabeling({
         return s;
       }),
     );
+  };
+
+  // Get display avatar based on speaker type (for immediate visual feedback)
+  const getDisplayAvatar = (speaker: Speaker): string | undefined => {
+    // Priority 1: Type-based override for immediate feedback
+    if (speaker.type === 'therapist') {
+      return sessionContext.therapistAvatarUrl || undefined;
+    }
+
+    if (speaker.type === 'patient') {
+      return sessionContext.patientAvatarUrl || undefined;
+    }
+
+    if (speaker.type === 'group_member' && speaker.userId) {
+      const member = groupMembers.find(m => m.userId === speaker.userId);
+      return member?.avatarUrl;
+    }
+
+    // Priority 2: Original speaker avatar (if userId already assigned)
+    return speaker.avatarUrl;
   };
 
   // Cleanup audio on unmount
@@ -375,10 +399,10 @@ export function SpeakerLabeling({
               <div className="flex items-start gap-4">
                 {/* Avatar */}
                 <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 overflow-hidden">
-                  {speaker.avatarUrl && !imageErrors.has(speaker.id)
+                  {getDisplayAvatar(speaker) && !imageErrors.has(speaker.id)
                     ? (
                         <img
-                          src={speaker.avatarUrl}
+                          src={getDisplayAvatar(speaker)}
                           alt={speaker.name || speaker.label}
                           className="h-full w-full object-cover"
                           onError={() => handleImageError(speaker.id)}

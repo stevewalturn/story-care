@@ -118,15 +118,18 @@ export function AnalyzeSelectionModal({
     return null;
   }
 
-  const handleAnalyze = (promptId: string, promptText: string) => {
+  const handleAnalyze = (promptId: string, prompt: AIPromptOption) => {
+    // Use systemPrompt if available, fallback to promptText for backward compatibility
+    const systemPrompt = prompt.systemPrompt || prompt.promptText;
+
     // Check if this is a module-linked prompt
     const isModulePrompt = aiPrompts.some(p => p.id === promptId);
 
-    // Combine module's inline prompt with selected prompt if it's a module prompt
-    let finalPromptText = promptText;
+    // Combine module's inline prompt with system prompt if it's a module prompt
+    let finalPromptText = systemPrompt;
     if (isModulePrompt && moduleAiPromptText) {
       // Prepend module's inline prompt for module-linked prompts
-      finalPromptText = `${moduleAiPromptText}\n\n---\n\n${promptText}`;
+      finalPromptText = `${moduleAiPromptText}\n\n---\n\n${systemPrompt}`;
     }
 
     onAnalyze(promptId, finalPromptText, selectedText);
@@ -268,7 +271,7 @@ export function AnalyzeSelectionModal({
                   return (
                     <button
                       key={prompt.id}
-                      onClick={() => handleAnalyze(prompt.id, prompt.promptText)}
+                      onClick={() => handleAnalyze(prompt.id, prompt)}
                       onMouseEnter={() => setSelectedOption(prompt.id)}
                       onMouseLeave={() => setSelectedOption(null)}
                       className={`w-full rounded-lg border-2 text-left transition-all ${
@@ -363,7 +366,7 @@ export function AnalyzeSelectionModal({
                   return (
                     <button
                       key={prompt.id}
-                      onClick={() => handleAnalyze(prompt.id, prompt.promptText)}
+                      onClick={() => handleAnalyze(prompt.id, prompt)}
                       onMouseEnter={() => setSelectedOption(prompt.id)}
                       onMouseLeave={() => setSelectedOption(null)}
                       className={`w-full rounded-lg border-2 text-left transition-all ${
