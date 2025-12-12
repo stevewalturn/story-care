@@ -11,6 +11,9 @@
  * - GCS_BUCKET_NAME: Bucket for storing assembled videos
  */
 
+// Load environment variables from .env file (baked in during Docker build)
+require('dotenv').config({ path: '/app/.env' });
+
 const { execSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
