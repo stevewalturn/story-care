@@ -43,6 +43,30 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .set({ transcriptionStatus: 'processing' })
       .where(eq(sessions.id, id));
 
+    // For re-transcription, delete existing transcript, speakers, and utterances
+    const [existingTranscript] = await db
+      .select()
+      .from(transcripts)
+      .where(eq(transcripts.sessionId, id))
+      .limit(1);
+
+    if (existingTranscript) {
+      // Delete existing utterances first (foreign key dependency)
+      await db
+        .delete(utterances)
+        .where(eq(utterances.transcriptId, existingTranscript.id));
+
+      // Delete existing speakers
+      await db
+        .delete(speakers)
+        .where(eq(speakers.transcriptId, existingTranscript.id));
+
+      // Delete existing transcript
+      await db
+        .delete(transcripts)
+        .where(eq(transcripts.id, existingTranscript.id));
+    }
+
     // Transcribe audio
     const result = await transcribeAudio(session.audioUrl);
 

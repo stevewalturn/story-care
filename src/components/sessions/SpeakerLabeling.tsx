@@ -1,6 +1,6 @@
 'use client';
 
-import { Pause, Play, User, Users } from 'lucide-react';
+import { Pause, Play, RefreshCw, User, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Dropdown } from '@/components/ui/Dropdown';
@@ -117,6 +117,7 @@ export function SpeakerLabeling({
   const [selectedForMerge, setSelectedForMerge] = useState<string[]>([]);
   const [loadingAudio, setLoadingAudio] = useState<string | null>(null);
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+  const [isRetrying, setIsRetrying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const handleImageError = (speakerId: string) => {
@@ -351,6 +352,45 @@ export function SpeakerLabeling({
 
   const isComplete = speakers.every(s => s.type && s.name.trim());
 
+  const handleRetrySpeakerLabeling = async () => {
+    if (isRetrying) return;
+
+    try {
+      setIsRetrying(true);
+      
+      const response = await authenticatedFetch(`/api/sessions/${sessionId}/transcribe`, user);
+      
+      if (!response.ok) {
+        throw new Error('Failed to retry speaker labeling');
+      }
+
+      const data = await response.json();
+      
+      // Transform new speakers data to match component interface
+      const newSpeakers: Speaker[] = data.speakers.map((speaker: any) => ({
+        id: speaker.id,
+        label: speaker.speakerLabel || `Speaker ${speaker.id}`,
+        type: speaker.speakerType,
+        name: speaker.speakerName || '',
+        userId: speaker.userId,
+        avatarUrl: speaker.avatarUrl,
+        utteranceCount: speaker.totalUtterances || 0,
+        totalDuration: speaker.totalDurationSeconds || 0,
+        sampleAudioUrl: speaker.sampleAudioUrl,
+      }));
+
+      // Apply auto-assignment to new speakers
+      setSpeakers(getAutoAssignedSpeakers(newSpeakers));
+      
+      console.log('Speaker labeling retried successfully');
+    } catch (error) {
+      console.error('Error retrying speaker labeling:', error);
+      alert('Failed to retry speaker labeling. Please try again.');
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -362,6 +402,14 @@ export function SpeakerLabeling({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            onClick={handleRetrySpeakerLabeling}
+            disabled={isRetrying}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${isRetrying ? 'animate-spin' : ''}`} />
+            {isRetrying ? 'Retrying...' : 'Retry Speaker Labeling'}
+          </Button>
           <Button
             variant="ghost"
             onClick={() => setMergeMode(!mergeMode)}
