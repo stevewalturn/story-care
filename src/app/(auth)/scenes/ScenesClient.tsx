@@ -553,7 +553,6 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
             <Button
               variant="ghost"
               onClick={onBackToLibrary}
-              disabled={isProcessingOrExporting}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Scenes
@@ -784,10 +783,10 @@ export function ScenesClient({ initialSceneId, onBackToLibrary }: ScenesClientPr
       </div>
 
       {/* Main Content */}
-      <div className={`relative grid min-h-0 flex-1 grid-cols-3 gap-6 ${isProcessingOrExporting ? 'pointer-events-none' : ''}`}>
+      <div className={`relative grid min-h-0 flex-1 grid-cols-3 gap-6 transition-all ${isProcessingOrExporting ? 'pointer-events-none blur-sm' : ''}`}>
         {/* Processing Overlay */}
         {(isExporting || isProcessing) && (
-          <div className="pointer-events-auto absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black/20 backdrop-blur-sm">
+          <div className="pointer-events-auto absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black/30">
             <div className="rounded-lg border border-blue-300 bg-white/95 p-6 text-center shadow-xl">
               <Loader2 className="mx-auto mb-3 h-12 w-12 animate-spin text-blue-600" />
               <h3 className="mb-2 text-lg font-semibold text-gray-900">
