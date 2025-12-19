@@ -34,6 +34,7 @@ type GenerateImageModalProps = {
   patientName?: string; // For transcript page
   patientId?: string; // For transcript page - to fetch reference images
   patientReferenceImage?: string; // For transcript page
+  sessionId?: string; // For transcript page - to link images to session
   // Initial data support (for transcript page JSON actions)
   initialPrompt?: string;
   initialTitle?: string;
@@ -68,6 +69,7 @@ export function GenerateImageModal({
   patientName,
   patientId,
   patientReferenceImage,
+  sessionId,
   initialPrompt = '',
   initialTitle = '',
   initialDescription = '',
@@ -519,6 +521,7 @@ export function GenerateImageModal({
           sourceQuote: sourceQuote.trim() || undefined,
           style: style.trim() || undefined,
           patientId: patientId || (selectedPatients.length > 0 ? selectedPatients[0] : undefined),
+          sessionId: sessionId || undefined,
         }),
       });
 

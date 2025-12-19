@@ -606,6 +606,7 @@ export function TranscriptViewerClient({
         patientName={patientName}
         patientId={patientId}
         patientReferenceImage={patientReferenceImage}
+        sessionId={sessionId}
         initialPrompt={imageModalInitialData.prompt || selectedText}
         initialTitle={imageModalInitialData.title}
         initialDescription={imageModalInitialData.description}
