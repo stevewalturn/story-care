@@ -118,13 +118,45 @@ export class VideoService {
     videoPaths: string[],
     outputPath: string,
   ): Promise<void> {
+    // Validate inputs
+    if (!videoPaths || videoPaths.length === 0) {
+      throw new Error('No video paths provided for concatenation');
+    }
+
+    // Check that all files exist and are valid
+    const validPaths: string[] = [];
+    for (const videoPath of videoPaths) {
+      if (!fs.existsSync(videoPath)) {
+        console.error(`[CONCAT] File does not exist: ${videoPath}`);
+        continue;
+      }
+
+      const stats = fs.statSync(videoPath);
+      if (stats.size === 0) {
+        console.error(`[CONCAT] File is empty: ${videoPath}`);
+        continue;
+      }
+
+      validPaths.push(videoPath);
+      console.log(`[CONCAT] Valid file: ${videoPath} (${(stats.size / 1024 / 1024).toFixed(2)} MB)`);
+    }
+
+    if (validPaths.length === 0) {
+      throw new Error('No valid video files found for concatenation');
+    }
+
     // Create concat file
     const concatFilePath = path.join(this.tempDir, 'concat-list.txt');
-    const concatContent = videoPaths.map(p => `file '${p}'`).join('\n');
+    const concatContent = validPaths.map(p => `file '${p}'`).join('\n');
     fs.writeFileSync(concatFilePath, concatContent);
 
-    const command = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -c copy "${outputPath}" -y`;
+    console.log(`[CONCAT] Created concat file with ${validPaths.length} videos`);
+    console.log(`[CONCAT] Concat content:\n${concatContent}`);
 
+    // Use re-encode instead of stream copy to ensure compatibility
+    const command = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -c:v libx264 -c:a aac -pix_fmt yuv420p "${outputPath}" -y`;
+
+    console.log(`[CONCAT] Running command: ${command}`);
     await execAsync(command);
   }
 
@@ -298,48 +330,80 @@ export class VideoService {
     this.ensureTempDir();
 
     try {
+      // Validate clips array
+      if (!clips || clips.length === 0) {
+        throw new Error('No clips provided for assembly');
+      }
+
+      console.log(`[ASSEMBLE] Starting assembly of ${clips.length} clips`);
+
       const processedClips: string[] = [];
 
       // Process each clip
       for (let i = 0; i < clips.length; i++) {
         const clip = clips[i];
         if (!clip) {
+          console.warn(`[ASSEMBLE] Clip ${i} is undefined, skipping`);
           continue;
         }
 
         const clipId = `clip-${i}`;
+        console.log(`[ASSEMBLE] Processing clip ${i}: type=${clip.type}, duration=${clip.duration}s`);
 
-        // Download media
-        const ext = clip.type === 'image' ? 'jpg' : 'mp4';
-        const downloadedPath = await this.downloadMedia(
-          clip.mediaUrl,
-          `${clipId}-source.${ext}`,
-        );
-
-        const processedPath = path.join(this.tempDir, `${clipId}-processed.mp4`);
-
-        if (clip.type === 'image') {
-          // Convert image to video
-          await this.imageToVideo(
-            downloadedPath,
-            clip.duration,
-            processedPath,
-            width,
-            height,
-            fps,
+        try {
+          // Download media
+          const ext = clip.type === 'image' ? 'jpg' : 'mp4';
+          const downloadedPath = await this.downloadMedia(
+            clip.mediaUrl,
+            `${clipId}-source.${ext}`,
           );
-        } else {
-          // Trim video if needed
-          await this.trimVideo(
-            downloadedPath,
-            clip.startTime,
-            clip.duration,
-            processedPath,
-          );
+
+          console.log(`[ASSEMBLE] Downloaded clip ${i} to ${downloadedPath}`);
+
+          const processedPath = path.join(this.tempDir, `${clipId}-processed.mp4`);
+
+          if (clip.type === 'image') {
+            // Convert image to video
+            console.log(`[ASSEMBLE] Converting image to video: ${downloadedPath}`);
+            await this.imageToVideo(
+              downloadedPath,
+              clip.duration,
+              processedPath,
+              width,
+              height,
+              fps,
+            );
+          } else {
+            // Trim video if needed
+            console.log(`[ASSEMBLE] Trimming video: ${downloadedPath} (start: ${clip.startTime}s, duration: ${clip.duration}s)`);
+            await this.trimVideo(
+              downloadedPath,
+              clip.startTime,
+              clip.duration,
+              processedPath,
+            );
+          }
+
+          // Verify the processed file exists and has content
+          if (fs.existsSync(processedPath)) {
+            const stats = fs.statSync(processedPath);
+            console.log(`[ASSEMBLE] Clip ${i} processed successfully: ${processedPath} (${(stats.size / 1024 / 1024).toFixed(2)} MB)`);
+            processedClips.push(processedPath);
+          } else {
+            console.error(`[ASSEMBLE] Processed file does not exist: ${processedPath}`);
+          }
+        } catch (clipError) {
+          console.error(`[ASSEMBLE] Error processing clip ${i}:`, clipError);
+          // Continue with other clips instead of failing completely
         }
-
-        processedClips.push(processedPath);
       }
+
+      // Check if we have any processed clips
+      if (processedClips.length === 0) {
+        throw new Error('No clips were successfully processed. Check the logs for details.');
+      }
+
+      console.log(`[ASSEMBLE] Successfully processed ${processedClips.length} out of ${clips.length} clips`);
 
       // Concatenate all clips
       const tempOutputPath = path.join(this.tempDir, 'assembled-temp.mp4');
