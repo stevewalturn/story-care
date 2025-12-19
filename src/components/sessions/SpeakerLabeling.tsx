@@ -357,35 +357,86 @@ export function SpeakerLabeling({
 
     try {
       setIsRetrying(true);
-      
-      const response = await authenticatedFetch(`/api/sessions/${sessionId}/transcribe`, user);
-      
-      if (!response.ok) {
-        throw new Error('Failed to retry speaker labeling');
+
+      // Add 2-minute timeout for long-running transcription
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes
+
+      try {
+        const response = await authenticatedFetch(
+          `/api/sessions/${sessionId}/transcribe`,
+          user,
+          {
+            method: 'POST',
+            signal: controller.signal,
+          },
+        );
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          // Extract actual error message from API response
+          let errorMessage = `HTTP ${response.status}: Failed to retry speaker labeling`;
+          try {
+            const errorData = await response.json();
+            if (errorData.error) {
+              errorMessage = errorData.error;
+            }
+          } catch {
+            // If response is not JSON, use status text
+            errorMessage = response.statusText || errorMessage;
+          }
+          throw new Error(errorMessage);
+        }
+
+        const data = await response.json();
+
+        // Validate response structure
+        if (!data.speakers || !Array.isArray(data.speakers)) {
+          throw new Error('Invalid response format: Missing speakers array');
+        }
+
+        // Transform new speakers data to match component interface
+        const newSpeakers: Speaker[] = data.speakers.map((speaker: any) => ({
+          id: speaker.id,
+          label: speaker.speakerLabel || `Speaker ${speaker.id}`,
+          type: speaker.speakerType,
+          name: speaker.speakerName || '',
+          userId: speaker.userId,
+          avatarUrl: speaker.avatarUrl,
+          utteranceCount: speaker.totalUtterances || 0,
+          totalDuration: speaker.totalDurationSeconds || 0,
+          sampleAudioUrl: speaker.sampleAudioUrl,
+        }));
+
+        // Apply auto-assignment to new speakers
+        setSpeakers(getAutoAssignedSpeakers(newSpeakers));
+
+        console.log('Speaker labeling retried successfully', {
+          speakerCount: newSpeakers.length,
+          utteranceCount: data.utteranceCount,
+        });
+
+        alert(`Speaker labeling completed successfully! Found ${newSpeakers.length} speaker(s).`);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        throw fetchError;
       }
-
-      const data = await response.json();
-      
-      // Transform new speakers data to match component interface
-      const newSpeakers: Speaker[] = data.speakers.map((speaker: any) => ({
-        id: speaker.id,
-        label: speaker.speakerLabel || `Speaker ${speaker.id}`,
-        type: speaker.speakerType,
-        name: speaker.speakerName || '',
-        userId: speaker.userId,
-        avatarUrl: speaker.avatarUrl,
-        utteranceCount: speaker.totalUtterances || 0,
-        totalDuration: speaker.totalDurationSeconds || 0,
-        sampleAudioUrl: speaker.sampleAudioUrl,
-      }));
-
-      // Apply auto-assignment to new speakers
-      setSpeakers(getAutoAssignedSpeakers(newSpeakers));
-      
-      console.log('Speaker labeling retried successfully');
     } catch (error) {
       console.error('Error retrying speaker labeling:', error);
-      alert('Failed to retry speaker labeling. Please try again.');
+
+      // Show specific error message
+      let errorMessage = 'Failed to retry speaker labeling. Please try again.';
+
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = 'Request timed out. Transcription is taking longer than expected. Please try again or check the audio file.';
+        } else {
+          errorMessage = `Failed to retry speaker labeling: ${error.message}`;
+        }
+      }
+
+      alert(errorMessage);
     } finally {
       setIsRetrying(false);
     }

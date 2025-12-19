@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { uploadFile } from '@/libs/GCS';
+import { generatePresignedUrl, uploadFile } from '@/libs/GCS';
 import {
   addReferenceImage,
   getPatientReferenceImages,
@@ -25,7 +25,15 @@ export async function GET(
     // 3. FETCH REFERENCE IMAGES
     const images = await getPatientReferenceImages(patientId);
 
-    return NextResponse.json({ images });
+    // 4. GENERATE PRESIGNED URLS (1-hour expiration for security)
+    const imagesWithSignedUrls = await Promise.all(
+      images.map(async (img) => ({
+        ...img,
+        imageUrl: await generatePresignedUrl(img.imageUrl, 1),
+      })),
+    );
+
+    return NextResponse.json({ images: imagesWithSignedUrls });
   } catch (error) {
     console.error('Error fetching reference images:', error);
     return handleAuthError(error);
@@ -144,7 +152,13 @@ export async function POST(
       isPrimary,
     });
 
-    return NextResponse.json({ image: newImage }, { status: 201 });
+    // 6. GENERATE PRESIGNED URL for immediate display (1-hour expiration)
+    const imageWithSignedUrl = {
+      ...newImage,
+      imageUrl: await generatePresignedUrl(newImage.imageUrl, 1),
+    };
+
+    return NextResponse.json({ image: imageWithSignedUrl }, { status: 201 });
   } catch (error) {
     console.error('Error adding reference image:', error);
     if (error instanceof z.ZodError) {
