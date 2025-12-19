@@ -48,6 +48,9 @@ export const SCHEMA_ACTIONS: Record<JSONSchemaType, SchemaAction[]> = {
     },
   ],
 
+  // Therapeutic Scene Card Actions
+  therapeutic_scene_card: [],
+
   // Music Generation Actions
   music_generation: [
     {
@@ -106,6 +109,12 @@ export const SCHEMA_ACTIONS: Record<JSONSchemaType, SchemaAction[]> = {
 
   // Reflection Questions Actions
   reflection_questions: [
+    {
+      id: 'save_to_template_library',
+      label: 'Save to Template Library',
+      icon: 'bookmark',
+      handler: 'handleSaveToTemplateLibrary',
+    },
     {
       id: 'add_to_module',
       label: 'Add to Module',
@@ -428,6 +437,7 @@ export function isActionBatchable(schemaType: JSONSchemaType, actionId: string):
 export function getSchemaDisplayName(schemaType: JSONSchemaType): string {
   const names: Record<JSONSchemaType, string> = {
     scene_card: 'Scene Card',
+    therapeutic_scene_card: 'Therapeutic Scene Card',
     music_generation: 'Music Generation',
     scene_suggestions: 'Scene Suggestions',
     image_references: 'Image References',
@@ -467,6 +477,7 @@ export function getSchemaDisplayName(schemaType: JSONSchemaType): string {
 export function getSchemaDescription(schemaType: JSONSchemaType): string {
   const descriptions: Record<JSONSchemaType, string> = {
     scene_card: 'A complete therapeutic scene with images, music, and reflection questions',
+    therapeutic_scene_card: 'AI-generated therapeutic scene cards with patient quotes, meanings, and visual prompts',
     music_generation: 'Instrumental and lyrical music generation options',
     scene_suggestions: 'AI-suggested therapeutic scenes based on transcript analysis',
     image_references: 'Collection of images to generate for therapeutic use',

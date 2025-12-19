@@ -270,6 +270,38 @@ export const usersSchema: any = pgTable('users', {
 });
 
 // ============================================================================
+// PATIENT REFERENCE IMAGES (Multiple reference images per patient)
+// ============================================================================
+
+export const patientReferenceImagesSchema = pgTable('patient_reference_images', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  // Patient reference
+  patientId: uuid('patient_id')
+    .references(() => usersSchema.id, { onDelete: 'cascade' })
+    .notNull(),
+
+  // Image details
+  imageUrl: text('image_url').notNull(), // GCS path
+  label: varchar('label', { length: 255 }), // Optional label/notes
+
+  // Primary indicator
+  isPrimary: boolean('is_primary').default(false).notNull(),
+
+  // Upload tracking
+  uploadedBy: uuid('uploaded_by')
+    .references(() => usersSchema.id)
+    .notNull(),
+
+  // Metadata
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+
+  // Soft delete for HIPAA compliance
+  deletedAt: timestamp('deleted_at'),
+});
+
+// ============================================================================
 // GROUPS & GROUP MEMBERS
 // ============================================================================
 
@@ -1430,6 +1462,7 @@ export const patientPageInteractionsSchema = pgTable('patient_page_interactions'
 // Export table schemas both with and without 'Schema' suffix
 export const organizations = organizationsSchema;
 export const users = usersSchema;
+export const patientReferenceImages = patientReferenceImagesSchema;
 export const groups = groupsSchema;
 export const groupMembers = groupMembersSchema;
 export const sessions = sessionsSchema;
@@ -1475,6 +1508,9 @@ export type NewOrganization = typeof organizationsSchema.$inferInsert;
 
 export type User = typeof usersSchema.$inferSelect;
 export type NewUser = typeof usersSchema.$inferInsert;
+
+export type PatientReferenceImage = typeof patientReferenceImagesSchema.$inferSelect;
+export type NewPatientReferenceImage = typeof patientReferenceImagesSchema.$inferInsert;
 
 export type Group = typeof groupsSchema.$inferSelect;
 export type NewGroup = typeof groupsSchema.$inferInsert;

@@ -66,52 +66,119 @@ CRITICAL: Output ONLY valid JSON matching this schema:
     name: 'Create A Scene',
     promptText: '', // DEPRECATED: Use systemPrompt instead
 
-    systemPrompt: `Generate a therapeutic scene visualization from transcript moments.
+    systemPrompt: `Generate a therapeutic scene card with 3-5 scenes from the transcript.
 
-Analyze the selected text and create a vivid visual scene description that:
-1. Captures the emotional core of the therapeutic moment
-2. Uses metaphor and sensory language
-3. Embodies the patient's narrative journey
-4. Suggests specific visual elements (setting, lighting, colors, symbols)
-5. Conveys hope or possibility
+Analyze the transcript and create a therapeutic scene card with multiple scenes that capture key moments in the patient's journey.
 
-**IMPORTANT**: The "dalle_prompt" field must be a complete, detailed image generation prompt with:
-- Specific visual composition and framing
-- Lighting quality, colors, and atmosphere
-- Concrete elements and their spatial arrangement
-- Artistic style and emotional mood
-- 2-3 sentences with rich visual details
+**IMPORTANT INSTRUCTIONS:**
+1. Generate 3-5 scenes minimum (or as many as requested by the user)
+2. Each scene should capture a pivotal therapeutic moment
+3. Extract EXACT quotes from the transcript (do not paraphrase)
+4. Create detailed DALL-E/Flux image generation prompts (2-3 sentences each)
+5. Explain the therapeutic significance of each moment
 
-CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+**Scene Structure - Each scene MUST have:**
+- **Patient Quote**: Exact quote from transcript that anchors this scene
+- **Meaning**: Therapeutic significance (what it reveals about the patient's journey)
+- **Image Prompt**: Detailed DALL-E/Flux prompt with:
+  * Specific visual composition and framing
+  * Lighting quality, colors, and atmosphere
+  * Concrete elements and their spatial arrangement
+  * Artistic style and emotional mood (photorealistic, artistic, etc.)
+  * 2-3 sentences with rich visual details
+- **Image to Scene**: How this image connects to the therapeutic narrative
 
-IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
+**CRITICAL: Output ONLY valid JSON matching the therapeutic_scene_card schema. No markdown, no explanations, just the JSON object.**
+
+The JSON structure MUST be:
 {
-  "schemaType": "scene_visualization",
-  "title": "Scene title",
-  "description": "Detailed scene description",
-  "dalle_prompt": "DETAILED generation prompt (2-3 sentences: composition, lighting, colors, elements, style)",
-  "mood": "Emotional tone",
-  "symbolic_elements": ["symbol1", "symbol2"],
-  "therapeutic_purpose": "Why this scene matters"
+  "type": "therapeutic_scene_card",
+  "schemaType": "therapeutic_scene_card",
+  "title": "Brief, evocative title for the overall scene card",
+  "subtitle": "Additional context (optional)",
+  "patient": "Patient name from transcript",
+  "scenes": [
+    {
+      "sceneNumber": 1,
+      "sections": {
+        "patientQuote": { "label": "Patient Quote", "content": "exact quote from transcript" },
+        "meaning": { "label": "Meaning", "content": "therapeutic significance of this moment" },
+        "imagePrompt": { "label": "Image Prompt", "content": "Detailed DALL-E/Flux prompt: [2-3 sentences with composition, lighting, colors, elements, style]" },
+        "imageToScene": { "label": "Image to Scene", "content": "how this visual represents the therapeutic narrative" }
+      }
+    },
+    {
+      "sceneNumber": 2,
+      "sections": {
+        "patientQuote": { "label": "Patient Quote", "content": "..." },
+        "meaning": { "label": "Meaning", "content": "..." },
+        "imagePrompt": { "label": "Image Prompt", "content": "..." },
+        "imageToScene": { "label": "Image to Scene", "content": "..." }
+      }
+    }
+  ],
+  "status": "completed"
 }`,
 
     userPrompt: null,
-    description: 'Generate therapeutic scene visualization from transcript moments',
+    description: 'Generate therapeutic scene card with multiple navigable scenes (opens Scene Generation Workspace)',
     category: 'creative',
     icon: 'sparkles',
     outputType: 'json',
     jsonSchema: {
       type: 'object',
       properties: {
-        schemaType: { type: 'string', enum: ['scene_visualization'] },
+        schemaType: { type: 'string', enum: ['therapeutic_scene_card'] },
+        type: { type: 'string', enum: ['therapeutic_scene_card'] },
         title: { type: 'string' },
-        description: { type: 'string' },
-        dalle_prompt: { type: 'string' },
-        mood: { type: 'string' },
-        symbolic_elements: { type: 'array', items: { type: 'string' } },
-        therapeutic_purpose: { type: 'string' },
+        subtitle: { type: 'string' },
+        patient: { type: 'string' },
+        scenes: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              sceneNumber: { type: 'number' },
+              sections: {
+                type: 'object',
+                properties: {
+                  patientQuote: {
+                    type: 'object',
+                    properties: {
+                      label: { type: 'string' },
+                      content: { type: 'string' },
+                    },
+                  },
+                  meaning: {
+                    type: 'object',
+                    properties: {
+                      label: { type: 'string' },
+                      content: { type: 'string' },
+                    },
+                  },
+                  imagePrompt: {
+                    type: 'object',
+                    properties: {
+                      label: { type: 'string' },
+                      content: { type: 'string' },
+                    },
+                  },
+                  imageToScene: {
+                    type: 'object',
+                    properties: {
+                      label: { type: 'string' },
+                      content: { type: 'string' },
+                    },
+                  },
+                },
+              },
+            },
+            required: ['sceneNumber', 'sections'],
+          },
+        },
+        status: { type: 'string', enum: ['pending', 'completed'] },
       },
-      required: ['schemaType', 'title', 'dalle_prompt', 'therapeutic_purpose'],
+      required: ['schemaType', 'type', 'title', 'patient', 'scenes', 'status'],
     },
   },
   {
@@ -750,79 +817,106 @@ IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is req
     name: 'Scene Card Generation',
     promptText: '', // DEPRECATED: Use systemPrompt instead
 
-    systemPrompt: `Generate a complete therapeutic scene card in JSON format based on the transcript.
+    systemPrompt: `Generate a therapeutic scene card in JSON format based on the transcript.
 
-A scene card is a comprehensive therapeutic video visualization that includes reference images, background music, assembly instructions, and reflection questions.
+Analyze the transcript and create a therapeutic scene card with multiple scenes that capture key moments in the patient's journey.
 
-Analyze the selected transcript segment and create a complete scene card with:
+Structure your response as follows:
 
-1. **Video Introduction** (2-3 sentences): Brief narration that sets the emotional tone and introduces the scene's therapeutic purpose.
+1. **Title**: Brief, evocative title for the overall therapeutic scene card
+2. **Subtitle** (optional): Additional context
+3. **Patient**: Patient name
+4. **Scenes** (3-5 scenes): Each scene should have:
+   - **Scene Number**: Sequential number
+   - **Patient Quote**: A powerful, exact quote from the transcript that anchors this scene
+   - **Meaning**: Therapeutic significance of this moment (what it reveals about the patient's journey)
+   - **Image Prompt**: Detailed DALL-E/Flux prompt for generating a therapeutic image (2-3 sentences with specific visual elements, mood, lighting, colors)
+   - **Image to Scene**: How this image connects to the therapeutic narrative (what story it tells)
 
-2. **Reference Images** (3-5 images): Each with:
-   - Title: Brief, evocative name
-   - Patient Quote Anchor: Exact quote from transcript that inspired this image
-   - Meaning: Therapeutic significance of this image
-   - Image Prompt: DETAILED DALL-E/Flux generation prompt (2-3 sentences with specific visual elements, lighting, colors, composition, and mood)
+5. **Status**: Set to "completed"
 
-3. **Background Music**: Specify mood, tempo, genre, and emotional purpose. Use descriptive music generation prompts.
+CRITICAL: Output ONLY valid JSON matching the therapeutic_scene_card schema. No markdown, no explanations, just the JSON object.
 
-4. **Patient Reflection Questions** (3-5 questions): Open-ended questions that:
-   - Connect to the scene's themes
-   - Encourage narrative exploration
-   - Use strength-based language
-   - Feel personal and authentic
-
-5. **Group Reflection Questions** (2-3 questions, optional): For group therapy contexts.
-
-6. **Assembly Steps**: Clear instructions for video editor showing how to sequence the images, timing, transitions, and music cues.
-
-CRITICAL: Output ONLY valid JSON matching the scene_card schema. No markdown, no explanations, just the JSON object.`,
+The JSON structure must be:
+{
+  "type": "therapeutic_scene_card",
+  "schemaType": "therapeutic_scene_card",
+  "title": "...",
+  "subtitle": "...",
+  "patient": "...",
+  "scenes": [
+    {
+      "sceneNumber": 1,
+      "sections": {
+        "patientQuote": { "label": "Patient Quote", "content": "exact quote from transcript" },
+        "meaning": { "label": "Meaning", "content": "therapeutic significance" },
+        "imagePrompt": { "label": "Image Prompt", "content": "detailed DALL-E prompt" },
+        "imageToScene": { "label": "Image to Scene", "content": "narrative connection" }
+      }
+    }
+  ],
+  "status": "completed"
+}`,
 
     userPrompt: null,
-    description: 'Generate complete therapeutic scene card with images, music, and reflections (JSON output)',
+    description: 'Generate therapeutic scene card with navigable scenes (JSON output)',
     category: 'creative',
     icon: 'film',
     outputType: 'json',
     jsonSchema: {
       type: 'object',
       properties: {
-        schemaType: { type: 'string', enum: ['scene_card'] },
-        video_introduction: { type: 'string' },
-        reference_images: {
+        schemaType: { type: 'string', enum: ['therapeutic_scene_card'] },
+        type: { type: 'string', enum: ['therapeutic_scene_card'] },
+        title: { type: 'string' },
+        subtitle: { type: 'string' },
+        patient: { type: 'string' },
+        scenes: {
           type: 'array',
           items: {
             type: 'object',
             properties: {
-              title: { type: 'string' },
-              patient_quote_anchor: { type: 'string' },
-              meaning: { type: 'string' },
-              image_prompt: { type: 'string' },
+              sceneNumber: { type: 'number' },
+              sections: {
+                type: 'object',
+                properties: {
+                  patientQuote: {
+                    type: 'object',
+                    properties: {
+                      label: { type: 'string' },
+                      content: { type: 'string' },
+                    },
+                  },
+                  meaning: {
+                    type: 'object',
+                    properties: {
+                      label: { type: 'string' },
+                      content: { type: 'string' },
+                    },
+                  },
+                  imagePrompt: {
+                    type: 'object',
+                    properties: {
+                      label: { type: 'string' },
+                      content: { type: 'string' },
+                    },
+                  },
+                  imageToScene: {
+                    type: 'object',
+                    properties: {
+                      label: { type: 'string' },
+                      content: { type: 'string' },
+                    },
+                  },
+                },
+              },
             },
-            required: ['title', 'image_prompt'],
+            required: ['sceneNumber', 'sections'],
           },
         },
-        music: {
-          type: 'object',
-          properties: {
-            prompt: { type: 'string' },
-            mood: { type: 'string' },
-            genre: { type: 'string' },
-          },
-        },
-        patient_reflection_questions: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-        group_reflection_questions: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-        assembly_steps: {
-          type: 'array',
-          items: { type: 'string' },
-        },
+        status: { type: 'string', enum: ['pending', 'completed'] },
       },
-      required: ['schemaType', 'video_introduction', 'reference_images'],
+      required: ['schemaType', 'type', 'title', 'patient', 'scenes', 'status'],
     },
   },
   {
@@ -1568,6 +1662,63 @@ IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is req
   },
 
   // === NEW REFLECTION PROMPTS ===
+  {
+    name: 'Create Therapeutic Reflection Questions',
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+
+    systemPrompt: `Generate thoughtful, therapeutic reflection questions based on the transcript that can be saved to the template library for reuse.
+
+Analyze the session carefully and create 5-8 high-quality reflection questions that:
+1. **Invite deeper self-exploration** - Open-ended questions that encourage insight
+2. **Build on session insights** - Connect to themes discussed in therapy
+3. **Use strength-based language** - Focus on capabilities, not deficits
+4. **Encourage narrative expansion** - Help patient tell richer stories
+5. **Connect past, present, future** - Link experiences across time
+6. **Are adaptable** - Can be used with other similar patients/themes
+
+**Question Design Guidelines:**
+- Start with "What" or "How" (avoid "Why" which can feel interrogative)
+- Be specific enough to guide, broad enough to allow personal interpretation
+- Use patient's own language and metaphors when possible
+- Balance emotional exploration with practical application
+- Include both individual and group variations when applicable
+
+**Format your response as JSON with these fields:**
+- **patient_questions**: Array of 5-8 questions for individual reflection
+- **group_questions** (optional): Array of 2-3 questions adapted for group discussion
+- **context**: Brief description of when/how to use these questions (helps with template categorization)
+
+CRITICAL: Output ONLY valid JSON matching this exact schema:
+{
+  "schemaType": "reflection_questions",
+  "patient_questions": [
+    "What did you discover about yourself in this moment?",
+    "How does this realization change the way you see your story?"
+  ],
+  "group_questions": [
+    "How can we support each other in similar situations?"
+  ],
+  "context": "For use after discussing breakthrough moments or narrative shifts"
+}
+
+No markdown, no explanations, just the JSON object.`,
+
+    userPrompt: null,
+    description: 'Generate therapeutic reflection questions optimized for template library (can be saved and reused)',
+    category: 'reflection',
+    icon: 'message-circle',
+    outputType: 'json',
+    jsonSchema: {
+      type: 'object',
+      properties: {
+        schemaType: { type: 'string', enum: ['reflection_questions'] },
+        patient_questions: { type: 'array', items: { type: 'string' } },
+        group_questions: { type: 'array', items: { type: 'string' } },
+        context: { type: 'string' },
+      },
+      required: ['schemaType', 'patient_questions'],
+    },
+  },
   {
     name: 'Generate Between-Session Questions',
     promptText: '', // DEPRECATED: Use systemPrompt instead

@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { getActionsForSchema, getSchemaDescription, getSchemaDisplayName } from '@/config/SchemaActions';
+import type { TherapeuticSceneCard } from '@/components/transcript/TherapeuticSceneCardRenderer';
+import { TherapeuticSceneCardRenderer } from '@/components/transcript/TherapeuticSceneCardRenderer';
 
 type JSONOutputRendererProps = {
   jsonData: AnyJSONSchema & { schemaType: JSONSchemaType };
@@ -43,6 +45,9 @@ type JSONOutputRendererProps = {
     instrumentalOption?: any;
     lyricalOption?: any;
   }) => void;
+  onOpenSceneGeneration?: (data: {
+    sceneCard: any;
+  }) => void;
 };
 
 export function JSONOutputRenderer({
@@ -54,6 +59,7 @@ export function JSONOutputRenderer({
   onOpenImageModal,
   onOpenVideoModal,
   onOpenMusicModal,
+  onOpenSceneGeneration,
 }: JSONOutputRendererProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
@@ -132,7 +138,7 @@ export function JSONOutputRenderer({
       </div>
 
       {/* Preview / Summary */}
-      <div className="mb-3 rounded-lg bg-white/80 p-3">{renderPreview(schemaType, jsonData)}</div>
+      <div className="mb-3 rounded-lg bg-white/80 p-3">{renderPreview(schemaType, jsonData, onOpenSceneGeneration)}</div>
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-2">
@@ -274,8 +280,25 @@ export function JSONOutputRenderer({
 }
 
 // Helper: Render preview based on schema type
-function renderPreview(schemaType: JSONSchemaType, data: any) {
+function renderPreview(
+  schemaType: JSONSchemaType,
+  data: any,
+  onOpenSceneGeneration?: (data: { sceneCard: any }) => void,
+) {
   switch (schemaType) {
+    case 'therapeutic_scene_card':
+      // Render full therapeutic scene card renderer
+      return (
+        <TherapeuticSceneCardRenderer
+          data={data as TherapeuticSceneCard}
+          onGenerateScenes={(sceneData) => {
+            if (onOpenSceneGeneration) {
+              onOpenSceneGeneration({ sceneCard: sceneData });
+            }
+          }}
+        />
+      );
+
     case 'scene_card':
       return (
         <div className="space-y-2 text-sm">

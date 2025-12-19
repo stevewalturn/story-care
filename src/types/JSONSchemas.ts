@@ -3,6 +3,7 @@
 
 export type JSONSchemaType
   = | 'scene_card'
+    | 'therapeutic_scene_card'
     | 'music_generation'
     | 'scene_suggestions'
     | 'image_references'
@@ -72,6 +73,40 @@ export type SceneCardSchema = {
     data_key?: string; // Optional data key reference
     icon?: string; // Icon name
   }>;
+} & BaseJSONSchema;
+
+// ============================================================================
+// THERAPEUTIC SCENE CARD SCHEMA
+// ============================================================================
+
+export type TherapeuticSceneCardSchema = {
+  schemaType: 'therapeutic_scene_card';
+  type: 'therapeutic_scene_card';
+  title: string; // e.g., "Therapeutic Scene Card"
+  subtitle?: string; // e.g., "References images & animation"
+  patient: string; // Patient name
+  scenes: Array<{
+    sceneNumber: number;
+    sections: {
+      patientQuote: {
+        label: string; // "Patient Quote Anchor"
+        content: string; // Actual quote
+      };
+      meaning: {
+        label: string; // "Meaning"
+        content: string; // Therapeutic significance
+      };
+      imagePrompt: {
+        label: string; // "Image prompt"
+        content: string; // Detailed image generation prompt
+      };
+      imageToScene: {
+        label: string; // "Image to scene"
+        content: string; // Animation/scene direction
+      };
+    };
+  }>;
+  status: 'pending' | 'completed';
 } & BaseJSONSchema;
 
 // ============================================================================
@@ -472,6 +507,7 @@ export type CheckInQuestionsSchema = {
 
 export type AnyJSONSchema
   = | SceneCardSchema
+    | TherapeuticSceneCardSchema
     | MusicGenerationSchema
     | SceneSuggestionsSchema
     | ImageReferencesSchema
@@ -508,6 +544,10 @@ export type AnyJSONSchema
 
 export function isSceneCardSchema(schema: any): schema is SceneCardSchema {
   return schema?.schemaType === 'scene_card';
+}
+
+export function isTherapeuticSceneCardSchema(schema: any): schema is TherapeuticSceneCardSchema {
+  return schema?.schemaType === 'therapeutic_scene_card';
 }
 
 export function isMusicGenerationSchema(schema: any): schema is MusicGenerationSchema {

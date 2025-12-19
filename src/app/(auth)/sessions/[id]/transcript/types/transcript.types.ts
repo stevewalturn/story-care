@@ -58,6 +58,9 @@ export type AIAssistantPanelProps = {
     instrumentalOption?: any;
     lyricalOption?: any;
   }) => void;
+  onOpenSceneGeneration?: (data: {
+    sceneCard: any; // TherapeuticSceneCard data
+  }) => void;
   onLibraryRefresh?: () => void;
   analyzeMode: boolean;
   onAnalyzeModeChange: (enabled: boolean) => void;

@@ -48,6 +48,8 @@ function validateSchemaStructure(data: any, schemaType: JSONSchemaType): boolean
         && data.videos.length > 0 && hasRequiredKeys(data.videos[0], ['title', 'prompt']);
     case 'scene_card':
       return hasRequiredKeys(data, ['video_introduction', 'reference_images', 'music', 'assembly_steps', 'patient_reflection_questions']);
+    case 'therapeutic_scene_card':
+      return hasRequiredKeys(data, ['title', 'patient', 'scenes', 'status']) && Array.isArray(data.scenes);
     case 'music_generation':
       return hasRequiredKeys(data, ['instrumental_option', 'lyrical_option']);
     case 'therapeutic_note':
@@ -86,6 +88,16 @@ function inferSchemaType(data: any): JSONSchemaType | null {
 
     // Return the explicit type anyway (let the renderer handle the mismatch)
     return explicitType;
+  }
+
+  // Therapeutic Scene Card detection (check this BEFORE scene_card)
+  if (
+    hasRequiredKeys(data, ['title', 'patient', 'scenes', 'status'])
+    && Array.isArray(data.scenes)
+    && data.scenes.length > 0
+    && hasRequiredKeys(data.scenes[0], ['sceneNumber', 'sections'])
+  ) {
+    return 'therapeutic_scene_card';
   }
 
   // Scene Card detection
@@ -277,12 +289,27 @@ function isObject(value: any): boolean {
  * @returns Extracted JSON string or original content
  */
 export function extractJSONFromMarkdown(content: string): string {
-  // Match JSON code blocks: ```json ... ``` or just ``` ... ```
-  const jsonBlockRegex = /```(?:json)?\n?([\s\S]*?)\n?```/;
-  const match = content.match(jsonBlockRegex);
+  // Try multiple regex patterns to handle various markdown code block formats
+  const patterns = [
+    // ```json\n{...}\n``` - with json language specifier
+    /```json\s*\n([\s\S]+?)\n\s*```/,
+    // ```\n{...}\n``` - without language specifier
+    /```\s*\n([\s\S]+?)\n\s*```/,
+    // ```json {...} ``` - all on one/few lines with json
+    /```json\s*([\s\S]+?)\s*```/,
+    // ``` {...} ``` - all on one/few lines without json
+    /```\s*([\s\S]+?)\s*```/,
+  ];
 
-  if (match && match[1]) {
-    return match[1].trim();
+  for (const pattern of patterns) {
+    const match = content.match(pattern);
+    if (match && match[1]) {
+      const extracted = match[1].trim();
+      // Verify it looks like JSON (starts with { or [)
+      if (extracted.startsWith('{') || extracted.startsWith('[')) {
+        return extracted;
+      }
+    }
   }
 
   return content;
@@ -346,6 +373,16 @@ export function validateJSONSchema(data: any, schemaType: JSONSchemaType): boole
           && Array.isArray(data.reference_images)
           && Array.isArray(data.patient_reflection_questions)
           && isObject(data.music)
+        );
+
+      case 'therapeutic_scene_card':
+        return (
+          hasRequiredKeys(data, ['title', 'patient', 'scenes', 'status'])
+          && Array.isArray(data.scenes)
+          && data.scenes.every((scene: any) =>
+            hasRequiredKeys(scene, ['sceneNumber', 'sections'])
+            && hasRequiredKeys(scene.sections, ['patientQuote', 'meaning', 'imagePrompt', 'imageToScene'])
+          )
         );
 
       case 'music_generation':
@@ -412,26 +449,40 @@ export function detectAndExtractJSON(content: string): (AnyJSONSchema & { schema
   // First, try direct JSON parsing
   let result = detectJSONSchema(content);
   if (result) {
+    console.log('[detectAndExtractJSON] Direct parse succeeded', result.schemaType);
     return result;
   }
 
   // Try extracting from markdown code blocks
   const extracted = extractJSONFromMarkdown(content);
   if (extracted !== content) {
+    console.log('[detectAndExtractJSON] Extracted from markdown, length:', extracted.length, 'starts with:', extracted.substring(0, 50));
     result = detectJSONSchema(extracted);
     if (result) {
+      console.log('[detectAndExtractJSON] Markdown extraction succeeded', result.schemaType);
       return result;
+    } else {
+      console.warn('[detectAndExtractJSON] Markdown extraction failed - could not detect schema. First 100 chars:', extracted.substring(0, 100));
+    }
+  } else {
+    // Log why markdown extraction was skipped
+    const hasCodeBlock = content.includes('```');
+    if (hasCodeBlock) {
+      console.warn('[detectAndExtractJSON] Content has ``` but extraction returned same content. First 200 chars:', content.substring(0, 200));
     }
   }
 
   // Try extracting JSON from mixed content (text before/after JSON)
   const mixedExtracted = extractJSONFromMixedContent(content);
   if (mixedExtracted) {
+    console.log('[detectAndExtractJSON] Extracted from mixed content');
     result = detectJSONSchema(mixedExtracted);
     if (result) {
+      console.log('[detectAndExtractJSON] Mixed content extraction succeeded', result.schemaType);
       return result;
     }
   }
 
+  console.warn('[detectAndExtractJSON] All extraction methods failed for content length:', content.length);
   return null;
 }

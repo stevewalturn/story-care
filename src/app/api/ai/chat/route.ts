@@ -218,6 +218,7 @@ Be empathetic, insightful, and focused on narrative therapy principles.`;
     const result = await generateText({
       messages: fullMessages,
       model: model as TextGenModel,
+      maxTokens: 8000, // Increased from 2000 to support larger JSON schemas
     });
 
     // 6. SAVE TO DATABASE: Store chat history

@@ -1,12 +1,14 @@
 /**
  * Music Tasks API
- * List music generation tasks with filtering
+ * List music generation tasks with filtering and create new tasks
  */
 
 import type { NextRequest } from 'next/server';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { db } from '@/libs/DB';
+import { generateSunoMusic } from '@/libs/SunoAI';
 import { musicGenerationTasksSchema } from '@/models/Schema';
 import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
 import { downloadAndSaveAudio } from '@/utils/SunoAudioUtils';
@@ -31,6 +33,114 @@ function mapSunoStatus(sunoStatus: string): { status: string; progress: number }
       return { status: 'failed', progress: 0 };
     default:
       return { status: 'processing', progress: 10 };
+  }
+}
+
+/**
+ * Request body validation schema
+ */
+const createMusicTaskSchema = z.object({
+  patientId: z.string(),
+  sessionId: z.string().optional().nullable(),
+  prompt: z.string().min(1, 'Prompt is required'),
+  title: z.string().min(1, 'Title is required'),
+  style: z.string().optional(),
+  model: z.enum(['V4', 'V4_5', 'V4_5PLUS', 'V4_5ALL', 'V5']).default('V4_5'),
+  customMode: z.boolean().default(false),
+  instrumental: z.boolean().default(true),
+});
+
+/**
+ * POST /api/ai/music-tasks
+ * Create a new music generation task
+ */
+export async function POST(request: NextRequest) {
+  try {
+    // Authenticate user
+    const user = await requireAuth(request);
+
+    // Parse and validate request body
+    const body = await request.json();
+    const validated = createMusicTaskSchema.parse(body);
+
+    console.log('[Music Tasks] Creating new task:', {
+      patientId: validated.patientId,
+      sessionId: validated.sessionId,
+      title: validated.title,
+      model: validated.model,
+      customMode: validated.customMode,
+      instrumental: validated.instrumental,
+    });
+
+    // Generate unique task ID
+    const taskId = `music_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+
+    // Call Suno API to create generation task
+    const sunoOptions = {
+      prompt: validated.prompt,
+      title: validated.title,
+      style: validated.style,
+      model: validated.model,
+      customMode: validated.customMode,
+      instrumental: validated.instrumental,
+    };
+
+    console.log('[Music Tasks] Calling Suno API with options:', sunoOptions);
+
+    const sunoResponse = await generateSunoMusic(sunoOptions);
+
+    if (sunoResponse.code !== 200 || !sunoResponse.data?.taskId) {
+      throw new Error(sunoResponse.msg || 'Failed to create music generation task');
+    }
+
+    console.log('[Music Tasks] Suno task created:', sunoResponse.data.taskId);
+
+    // Save task to database
+    const result = await db
+      .insert(musicGenerationTasksSchema)
+      .values({
+        taskId: taskId, // Custom task ID (not id - that's auto-generated UUID)
+        patientId: validated.patientId,
+        sessionId: validated.sessionId,
+        title: validated.title,
+        prompt: validated.prompt,
+        style: validated.style || null,
+        model: validated.model,
+        customMode: validated.customMode,
+        instrumental: validated.instrumental,
+        sunoTaskId: sunoResponse.data.taskId,
+        status: 'pending',
+        progress: 0,
+        createdByTherapistId: user.dbUserId, // Add therapist ID from authenticated user
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning() as any[];
+
+    if (!result || result.length === 0) {
+      throw new Error('Failed to create music task in database');
+    }
+
+    const newTask = result[0]!
+
+    console.log('[Music Tasks] Task saved to database:', newTask.id);
+
+    return NextResponse.json({
+      task: newTask,
+      sunoTaskId: sunoResponse.data.taskId,
+    });
+  } catch (error: unknown) {
+    console.error('[Music Tasks API] Error creating task:', error);
+
+    // Handle Zod validation errors
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation error', details: error.issues },
+        { status: 400 },
+      );
+    }
+
+    return handleAuthError(error);
   }
 }
 

@@ -81,7 +81,10 @@
     "node_modules",
     "**/*.spec.ts",
     "**/*.e2e.ts",
-    "scripts"
+    "scripts",
+    "check-latest-message.ts",
+    "diagnose-message-format.ts",
+    "test-json-parser.ts"
   ],
   "include": [
     "next-env.d.ts",

@@ -1,9 +1,10 @@
 'use client';
 
-import { Edit2, Plus, Search, Trash2, User } from 'lucide-react';
+import { Edit2, Plus, Search, Star, Trash2, User } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import type { PatientReferenceImage } from '@/models/Schema';
 
 type Patient = {
   id: string;
@@ -14,6 +15,7 @@ type Patient = {
   sessionCount: number;
   lastSession?: string;
   createdAt: string | Date;
+  referenceImages?: PatientReferenceImage[];
 };
 
 type PatientListProps = {
@@ -69,22 +71,61 @@ export function PatientList({
             key={patient.id}
             className="rounded-lg border border-gray-200 bg-white p-6 transition-shadow hover:shadow-lg"
           >
-            {/* Avatar */}
+            {/* Avatar / Reference Images */}
             <div className="mb-4 flex items-start justify-between">
               <div className="flex items-center gap-3">
-                {patient.referenceImageUrl || patient.avatarUrl
+                {/* Reference Images Grid */}
+                {patient.referenceImages && patient.referenceImages.length > 0
                   ? (
-                      <img
-                        src={patient.referenceImageUrl || patient.avatarUrl}
-                        alt={patient.name}
-                        className="h-12 w-12 rounded-full object-cover"
-                      />
-                    )
-                  : (
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100">
-                        <User className="h-6 w-6 text-indigo-600" />
+                      <div className="flex flex-col gap-1">
+                        <div className="grid grid-cols-2 gap-1">
+                          {patient.referenceImages.slice(0, 4).map((refImg, idx) => (
+                            <div
+                              key={refImg.id}
+                              className="relative h-10 w-10 overflow-hidden rounded border border-gray-200 bg-gray-50"
+                            >
+                              <img
+                                src={refImg.imageUrl.startsWith('http') ? refImg.imageUrl : `/api/media/signed-url?path=${encodeURIComponent(refImg.imageUrl)}`}
+                                alt={refImg.label || `Reference ${idx + 1}`}
+                                className="size-full object-cover"
+                              />
+                              {refImg.isPrimary && (
+                                <div className="absolute left-0.5 top-0.5 rounded-full bg-yellow-400 p-0.5">
+                                  <Star className="h-2 w-2 fill-white text-white" />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                          {/* Show empty slots if less than 4 images */}
+                          {Array.from({ length: Math.max(0, 4 - patient.referenceImages.length) }).map((_, idx) => (
+                            <div
+                              key={`empty-${idx}`}
+                              className="flex h-10 w-10 items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50"
+                            >
+                              <User className="h-4 w-4 text-gray-400" />
+                            </div>
+                          ))}
+                        </div>
+                        {patient.referenceImages.length > 4 && (
+                          <span className="text-xs text-gray-500">
+                            +{patient.referenceImages.length - 4} more
+                          </span>
+                        )}
                       </div>
-                    )}
+                    )
+                  : patient.avatarUrl || patient.referenceImageUrl
+                    ? (
+                        <img
+                          src={patient.avatarUrl || patient.referenceImageUrl}
+                          alt={patient.name}
+                          className="h-20 w-20 rounded-lg object-cover"
+                        />
+                      )
+                    : (
+                        <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-indigo-100">
+                          <User className="h-10 w-10 text-indigo-600" />
+                        </div>
+                      )}
                 <div className="flex-1">
                   <h3 className="font-semibold text-gray-900">{patient.name}</h3>
                   <p className="text-sm text-gray-600">
@@ -92,6 +133,11 @@ export function PatientList({
                     {' '}
                     sessions
                   </p>
+                  {patient.referenceImages && patient.referenceImages.length > 0 && (
+                    <p className="text-xs text-gray-500">
+                      {patient.referenceImages.length} reference image{patient.referenceImages.length !== 1 ? 's' : ''}
+                    </p>
+                  )}
                 </div>
               </div>
 

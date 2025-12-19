@@ -5,12 +5,12 @@
  */
 
 import type { NextRequest } from 'next/server';
-import { and, eq, ilike, isNull } from 'drizzle-orm';
+import { and, desc, eq, ilike, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { Env } from '@/libs/Env';
 import { generatePresignedUrlsForPatients } from '@/libs/GCS';
-import { users } from '@/models/Schema';
+import { patientReferenceImagesSchema, users } from '@/models/Schema';
 import { sendPatientInvitationEmail } from '@/services/EmailService';
 import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
 import { invitePatientSchema } from '@/validations/UserValidation';
@@ -109,7 +109,32 @@ export async function GET(request: NextRequest) {
     // Generate presigned URLs for patient images (HIPAA compliant, 1-hour expiration)
     const patientsWithSignedUrls = await generatePresignedUrlsForPatients(patientsList, 1);
 
-    return NextResponse.json({ patients: patientsWithSignedUrls });
+    // Fetch reference images for each patient
+    const patientsWithReferenceImages = await Promise.all(
+      patientsWithSignedUrls.map(async (patient) => {
+        const referenceImages = await db
+          .select()
+          .from(patientReferenceImagesSchema)
+          .where(
+            and(
+              eq(patientReferenceImagesSchema.patientId, patient.id),
+              isNull(patientReferenceImagesSchema.deletedAt),
+            ),
+          )
+          .orderBy(
+            desc(patientReferenceImagesSchema.isPrimary),
+            desc(patientReferenceImagesSchema.createdAt),
+          )
+          .limit(4); // Only fetch first 4 for display
+
+        return {
+          ...patient,
+          referenceImages,
+        };
+      }),
+    );
+
+    return NextResponse.json({ patients: patientsWithReferenceImages });
   } catch (error) {
     console.error('Failed to fetch patients:', error);
     return handleAuthError(error);
@@ -218,6 +243,7 @@ export async function POST(request: NextRequest) {
         email: validated.email || null,
         dateOfBirth: validated.dateOfBirth ? new Date(validated.dateOfBirth) : null,
         referenceImageUrl: validated.referenceImageUrl || null,
+        avatarUrl: validated.avatarUrl || null,
         role: 'patient',
         therapistId: therapist.id, // Link to therapist (database UUID)
         organizationId: therapist.organizationId, // Inherit organization from therapist

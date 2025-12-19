@@ -27,6 +27,7 @@ export function AIAssistantPanel({
   onOpenImageModal,
   onOpenVideoModal,
   onOpenMusicModal,
+  onOpenSceneGeneration,
   onLibraryRefresh,
   analyzeMode,
   onAnalyzeModeChange,
@@ -553,6 +554,7 @@ export function AIAssistantPanel({
                             onOpenImageModal={onOpenImageModal}
                             onOpenVideoModal={onOpenVideoModal}
                             onOpenMusicModal={onOpenMusicModal}
+                            onOpenSceneGeneration={onOpenSceneGeneration}
                           />
                         ) : (
                           <AssistantMessageContent content={message.content} />

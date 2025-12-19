@@ -1,14 +1,12 @@
 import type { NextRequest } from 'next/server';
-import type { ImageGenModel } from '@/libs/ImageGeneration';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { generatePresignedUrl, uploadFile } from '@/libs/GCS';
-import { generateImage } from '@/libs/ImageGeneration';
 import { mediaLibrary, sessions } from '@/models/Schema';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 
-// POST /api/ai/generate-image - Generate image with multiple AI providers
+// POST /api/ai/generated-image/save - Save individual generated image to media library
 export async function POST(request: NextRequest) {
   try {
     // 1. AUTHENTICATE
@@ -16,68 +14,33 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const {
+      imageUrl, // The generated image URL (presigned or base64)
       prompt,
-      model = 'gemini-2.5-flash-image',
-      negativePrompt,
-      width,
-      height,
-      aspectRatio,
-      seed,
-      quality,
+      model,
+      title,
+      description,
+      sourceQuote,
       style,
       sessionId,
       patientId,
-      title,
-      referenceImage, // Base64 or URL for image-to-image
-      skipSave = false, // For batch generation - return URL without saving
     } = body;
 
-    console.log('[API /api/ai/generate-image] Request received:', {
+    console.log('[API /api/ai/generated-image/save] Request received:', {
       userId: user.dbUserId,
       model,
       promptLength: prompt?.length,
-      width,
-      height,
-      aspectRatio,
-      seed,
-      quality,
-      style,
-      sessionId,
-      patientId: patientId || 'from patientIds array',
       title,
-      hasReferenceImage: !!referenceImage,
-      patientIds: body.patientIds,
-      size: body.size,
+      sessionId,
+      patientId,
+      hasImageUrl: !!imageUrl,
     });
 
-    if (!prompt) {
+    if (!imageUrl) {
       return NextResponse.json(
-        { error: 'Prompt is required' },
+        { error: 'Image URL is required' },
         { status: 400 },
       );
     }
-
-    console.log('[API /api/ai/generate-image] Calling generateImage with model:', model);
-
-    // Generate image using the unified service
-    const { imageUrl, model: usedModel } = await generateImage({
-      prompt,
-      model: model as ImageGenModel,
-      negativePrompt,
-      width,
-      height,
-      aspectRatio,
-      seed,
-      quality,
-      style,
-      referenceImage,
-    });
-
-    console.log('[API /api/ai/generate-image] Image generated successfully:', {
-      usedModel,
-      imageUrlType: imageUrl.startsWith('data:') ? 'base64' : 'url',
-      imageUrlLength: imageUrl.length,
-    });
 
     // Handle base64 or URL images
     let imageBuffer: Buffer;
@@ -99,6 +62,9 @@ export async function POST(request: NextRequest) {
     } else {
       // URL - download the image
       const imageResponse = await fetch(imageUrl);
+      if (!imageResponse.ok) {
+        throw new Error('Failed to download image from URL');
+      }
       imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
 
       // Get content type from response
@@ -120,20 +86,7 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    // If skipSave is true (batch generation), return URL without saving to database
-    if (skipSave) {
-      const presignedUrl = await generatePresignedUrl(gcsPath, 1);
-
-      console.log('[API /api/ai/generate-image] Returning without saving (skipSave=true):', {
-        hasPresignedUrl: !!presignedUrl,
-      });
-
-      return NextResponse.json({
-        imageUrl: presignedUrl || gcsPath,
-        prompt,
-        model: usedModel,
-      });
-    }
+    console.log('[API /api/ai/generated-image/save] Uploaded to GCS:', gcsPath);
 
     // 2. GET PATIENT ID from session if not provided
     let finalPatientId = patientId;
@@ -156,20 +109,24 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Save to database (save GCS path, not presigned URL)
-    // patientId can be null for group session media
     const result = await db
       .insert(mediaLibrary)
       .values({
-        patientId: finalPatientId || null, // Null for group sessions
+        patientId: finalPatientId || null,
         createdByTherapistId: user.dbUserId,
         title: title || 'AI Generated Image',
+        description: description || null,
         mediaType: 'image',
         mediaUrl: gcsPath, // Save GCS path, not presigned URL
         sourceType: 'generated',
         sourceSessionId: sessionId || null,
         generationPrompt: prompt,
-        aiModel: usedModel,
+        aiModel: model,
         status: 'completed',
+        metadata: {
+          sourceQuote: sourceQuote || null,
+          style: style || null,
+        },
       })
       .returning();
 
@@ -180,27 +137,23 @@ export async function POST(request: NextRequest) {
       ? await generatePresignedUrl(media.mediaUrl, 1)
       : null;
 
-    console.log('[API /api/ai/generate-image] Presigned URL generation:', {
-      originalPath: media?.mediaUrl,
-      presignedUrlPreview: presignedUrl ? `${presignedUrl.substring(0, 100)}...` : null,
+    console.log('[API /api/ai/generated-image/save] Saved to database:', {
+      mediaId: media.id,
       hasPresignedUrl: !!presignedUrl,
-      isAlreadySigned: presignedUrl ? (presignedUrl.includes('X-Goog-Signature') || presignedUrl.includes('GoogleAccessId')) : false,
     });
 
     return NextResponse.json({
+      success: true,
       media: {
         ...media,
         mediaUrl: presignedUrl || media.mediaUrl,
       },
-      prompt,
-      model: usedModel,
     });
   } catch (error) {
-    console.error('[API /api/ai/generate-image] Error occurred:', {
+    console.error('[API /api/ai/generated-image/save] Error occurred:', {
       error,
       errorMessage: error instanceof Error ? error.message : 'Unknown error',
       errorStack: error instanceof Error ? error.stack : undefined,
-      errorName: error instanceof Error ? error.name : typeof error,
     });
     return handleAuthError(error);
   }

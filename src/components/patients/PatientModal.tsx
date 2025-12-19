@@ -2,6 +2,7 @@
 
 import { Upload, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { ReferenceImageGallery } from '@/components/patients/ReferenceImageGallery';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,11 +38,16 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
     name: '',
     email: '',
     referenceImageUrl: '',
+    avatarUrl: '',
     therapistId: '',
   });
   const [imagePreview, setImagePreview] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Avatar (display image) state
+  const [avatarPreview, setAvatarPreview] = useState('');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   // Update form data when patient prop changes
   useEffect(() => {
@@ -51,18 +57,22 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
         setFormData({
           name: patient.name || '',
           email: patient.email || '',
-          referenceImageUrl: patient.referenceImageUrl || patient.avatarUrl || '',
+          referenceImageUrl: patient.referenceImageUrl || '',
+          avatarUrl: patient.avatarUrl || '',
           therapistId: patient.therapistId || '',
         });
-        setImagePreview(patient.referenceImageUrl || patient.avatarUrl || '');
+        setImagePreview(patient.referenceImageUrl || '');
+        setAvatarPreview(patient.avatarUrl || '');
       } else {
         setFormData({
           name: '',
           email: '',
           referenceImageUrl: '',
+          avatarUrl: '',
           therapistId: '',
         });
         setImagePreview('');
+        setAvatarPreview('');
       }
     });
   }, [patient, isOpen]);
@@ -133,6 +143,70 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
     } finally {
       setUploadingImage(false);
       setUploadProgress(0);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image size must be less than 10MB');
+      return;
+    }
+
+    try {
+      setUploadingAvatar(true);
+
+      // Create preview immediately
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+
+      // Get auth token
+      const idToken = await user?.getIdToken();
+      if (!idToken) {
+        throw new Error('Not authenticated');
+      }
+
+      // Upload to GCS
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+
+      const response = await fetch('/api/patients/upload-image', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: uploadFormData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Upload failed');
+      }
+
+      const { url, path } = await response.json();
+
+      // Update form data with GCS path (permanent) for database
+      // Keep url for preview display (temporary presigned URL)
+      setFormData({ ...formData, avatarUrl: path });
+      setAvatarPreview(url);
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      alert(error instanceof Error ? error.message : 'Failed to upload avatar');
+      setAvatarPreview('');
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -218,75 +292,163 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
             )}
           </div>
 
-          {/* Reference Image */}
+          {/* Display Image / Avatar */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Reference Image</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Display Image</h3>
             <p className="text-sm text-gray-600">
-              Upload a reference image for AI-generated content consistency
+              Patient's profile picture shown in lists and cards
             </p>
 
             <div className="rounded-lg border-2 border-dashed border-gray-300 p-6">
-              {uploadingImage
-                ? (
-                    <div className="space-y-4 text-center">
-                      <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-                      <p className="text-sm text-gray-600">Uploading image...</p>
-                      {uploadProgress > 0 && (
-                        <div className="mx-auto w-48">
-                          <div className="h-2 overflow-hidden rounded-full bg-gray-200">
-                            <div
-                              className="h-full bg-indigo-600 transition-all duration-300"
-                              style={{ width: `${uploadProgress}%` }}
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                : imagePreview
-                  ? (
-                      <div className="space-y-4">
-                        <img
-                          src={imagePreview}
-                          alt="Reference"
-                          className="mx-auto h-32 w-32 rounded-lg object-cover"
-                        />
-                        <div className="text-center">
-                          <label className="cursor-pointer text-sm font-medium text-indigo-600 hover:text-indigo-700">
-                            Change Image
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handleImageUpload}
-                              className="hidden"
-                              disabled={uploadingImage}
-                            />
-                          </label>
-                        </div>
-                      </div>
-                    )
-                  : (
-                      <div className="text-center">
-                        <Upload className="mx-auto mb-3 h-12 w-12 text-gray-400" />
-                        <label className="cursor-pointer">
-                          <span className="font-medium text-indigo-600 hover:text-indigo-700">
-                            Upload a file
-                          </span>
-                          <span className="text-gray-600"> or drag and drop</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="hidden"
-                            disabled={uploadingImage}
-                          />
-                        </label>
-                        <p className="mt-2 text-xs text-gray-500">
-                          PNG, JPG, WebP, GIF up to 10MB
-                        </p>
-                      </div>
-                    )}
+              {uploadingAvatar ? (
+                <div className="space-y-4 text-center">
+                  <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                  <p className="text-sm text-gray-600">Uploading display image...</p>
+                </div>
+              ) : avatarPreview ? (
+                <div className="space-y-4">
+                  <img
+                    src={avatarPreview}
+                    alt="Display Image"
+                    className="mx-auto h-32 w-32 rounded-lg object-cover"
+                  />
+                  <div className="flex items-center justify-center gap-3">
+                    <label className="cursor-pointer text-sm font-medium text-indigo-600 hover:text-indigo-700">
+                      Change Image
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarUpload}
+                        className="hidden"
+                        disabled={uploadingAvatar}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAvatarPreview('');
+                        setFormData({ ...formData, avatarUrl: '' });
+                      }}
+                      className="text-sm font-medium text-red-600 hover:text-red-700"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <Upload className="mx-auto mb-3 h-12 w-12 text-gray-400" />
+                  <label className="cursor-pointer">
+                    <span className="font-medium text-indigo-600 hover:text-indigo-700">
+                      Upload display image
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      className="hidden"
+                      disabled={uploadingAvatar}
+                    />
+                  </label>
+                  <p className="mt-2 text-xs text-gray-500">
+                    PNG, JPG, WebP, GIF up to 10MB
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Optional - This image will be shown in patient lists
+                  </p>
+                </div>
+              )}
             </div>
+          </div>
+
+          {/* Reference Images */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">Reference Images</h3>
+            <p className="text-sm text-gray-600">
+              Upload reference images for AI-generated content consistency
+            </p>
+
+            {/* For existing patients: Show ReferenceImageGallery */}
+            {patient?.id
+              ? (
+                  <div className="rounded-lg border border-gray-200 p-4">
+                    <ReferenceImageGallery
+                      patientId={patient.id}
+                      showActions={true}
+                    />
+                  </div>
+                )
+              : (
+                  /* For new patients: Single image upload (can add more later) */
+                  <div className="rounded-lg border-2 border-dashed border-gray-300 p-6">
+                    {uploadingImage
+                      ? (
+                          <div className="space-y-4 text-center">
+                            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                            <p className="text-sm text-gray-600">Uploading image...</p>
+                            {uploadProgress > 0 && (
+                              <div className="mx-auto w-48">
+                                <div className="h-2 overflow-hidden rounded-full bg-gray-200">
+                                  <div
+                                    className="h-full bg-indigo-600 transition-all duration-300"
+                                    style={{ width: `${uploadProgress}%` }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      : imagePreview
+                        ? (
+                            <div className="space-y-4">
+                              <img
+                                src={imagePreview}
+                                alt="Reference"
+                                className="mx-auto h-32 w-32 rounded-lg object-cover"
+                              />
+                              <div className="text-center">
+                                <label className="cursor-pointer text-sm font-medium text-indigo-600 hover:text-indigo-700">
+                                  Change Image
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleImageUpload}
+                                    className="hidden"
+                                    disabled={uploadingImage}
+                                  />
+                                </label>
+                              </div>
+                              <p className="text-xs text-center text-gray-500">
+                                You can add more reference images after creating the patient
+                              </p>
+                            </div>
+                          )
+                        : (
+                            <div className="text-center">
+                              <Upload className="mx-auto mb-3 h-12 w-12 text-gray-400" />
+                              <label className="cursor-pointer">
+                                <span className="font-medium text-indigo-600 hover:text-indigo-700">
+                                  Upload a file
+                                </span>
+                                <span className="text-gray-600"> or drag and drop</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleImageUpload}
+                                  className="hidden"
+                                  disabled={uploadingImage}
+                                />
+                              </label>
+                              <p className="mt-2 text-xs text-gray-500">
+                                PNG, JPG, WebP, GIF up to 10MB
+                              </p>
+                              <p className="mt-2 text-xs text-gray-500">
+                                Optional - You can add more reference images later
+                              </p>
+                            </div>
+                          )}
+                  </div>
+                )}
           </div>
 
           {/* Actions */}

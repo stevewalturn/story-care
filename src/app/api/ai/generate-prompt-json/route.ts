@@ -92,7 +92,7 @@ ${examplesText}
       ],
       model: 'gpt-4o-mini', // Fast and cost-effective for JSON generation
       temperature: 0.7, // Balance creativity and consistency
-      maxTokens: 2000,
+      maxTokens: 8000, // Increased from 2000 to support larger JSON schemas
     });
 
     // 6. EXTRACT AND VALIDATE JSON

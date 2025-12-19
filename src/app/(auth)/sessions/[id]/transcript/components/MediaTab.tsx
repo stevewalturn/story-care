@@ -7,6 +7,7 @@
 
 import type { MediaTabProps } from '../types/transcript.types';
 import { useEffect, useState } from 'react';
+import { Music, RefreshCw, Trash2 } from 'lucide-react';
 import { FullscreenMediaViewer } from '@/components/media/FullscreenMediaViewer';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -21,6 +22,14 @@ export function MediaTab({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'image' | 'video' | 'audio'>('all');
   const [fullscreenMedia, setFullscreenMedia] = useState<any | null>(null);
+
+  // Music generation polling state
+  const [inProgressTasks, setInProgressTasks] = useState<any[]>([]);
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+
+  // Delete state
+  const [deletingMedia, setDeletingMedia] = useState<any | null>(null);
+  const [isDeletingMedia, setIsDeletingMedia] = useState(false);
 
   // Load media for this session
   useEffect(() => {
@@ -55,6 +64,54 @@ export function MediaTab({
     loadMedia();
   }, [sessionId, filterType, searchQuery, user, refreshKey]);
 
+  // Load in-progress music tasks
+  const loadInProgressTasks = async () => {
+    if (!user) return;
+
+    try {
+      setIsLoadingTasks(true);
+
+      // First fetch the session to get the patientId
+      const sessionResponse = await authenticatedFetch(`/api/sessions/${sessionId}`, user);
+      if (!sessionResponse.ok) return;
+
+      const sessionData = await sessionResponse.json();
+      const patientId = sessionData.session.patientId;
+
+      if (!patientId) return;
+
+      // Fetch in-progress tasks for this patient
+      const params = new URLSearchParams({
+        patientId,
+        status: 'pending,processing',
+      });
+
+      const response = await authenticatedFetch(`/api/ai/music-tasks?${params.toString()}`, user);
+      if (response.ok) {
+        const data = await response.json();
+        setInProgressTasks(data.tasks || []);
+      }
+    } catch (error) {
+      console.error('Error loading in-progress tasks:', error);
+    } finally {
+      setIsLoadingTasks(false);
+    }
+  };
+
+  // Poll for in-progress tasks every 5 seconds
+  useEffect(() => {
+    // Initial load
+    loadInProgressTasks();
+
+    // Set up polling interval
+    const interval = setInterval(() => {
+      loadInProgressTasks();
+    }, 5000);
+
+    // Cleanup interval on unmount or when dependencies change
+    return () => clearInterval(interval);
+  }, [sessionId, user, refreshKey]);
+
   // Helper function to format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -75,6 +132,40 @@ export function MediaTab({
       return `${Math.floor(diffDays / 30)} months ago`;
     }
     return `${Math.floor(diffDays / 365)} years ago`;
+  };
+
+  // Helper function to calculate time elapsed for tasks
+  const getTimeElapsed = (createdAt: string) => {
+    const created = new Date(createdAt).getTime();
+    const now = Date.now();
+    const diffSeconds = Math.floor((now - created) / 1000);
+
+    if (diffSeconds < 60) return `${diffSeconds}s`;
+    if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)}m`;
+    return `${Math.floor(diffSeconds / 3600)}h`;
+  };
+
+  // Handle delete media
+  const handleDeleteMedia = async (mediaId: string) => {
+    try {
+      setIsDeletingMedia(true);
+      const response = await authenticatedFetch(`/api/media/${mediaId}`, user, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Remove from local state immediately
+        setMedia(prev => prev.filter(m => m.id !== mediaId));
+        setDeletingMedia(null);
+      } else {
+        throw new Error('Failed to delete media');
+      }
+    } catch (error) {
+      console.error('Error deleting media:', error);
+      alert('Failed to delete media. Please try again.');
+    } finally {
+      setIsDeletingMedia(false);
+    }
   };
 
   return (
@@ -167,6 +258,69 @@ export function MediaTab({
         </div>
       </div>
 
+      {/* In-Progress Music Tasks Banner */}
+      {inProgressTasks.length > 0 && (
+        <div className="border-b border-gray-200 bg-gradient-to-r from-purple-50 to-pink-50 px-4 py-3">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Music className="h-4 w-4 text-purple-600" />
+              <span className="text-sm font-semibold text-gray-900">
+                Music Generation
+                {' '}
+                (
+                {inProgressTasks.length}
+                {' '}
+                in progress)
+              </span>
+            </div>
+            <button
+              onClick={loadInProgressTasks}
+              disabled={isLoadingTasks}
+              className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 disabled:opacity-50"
+              title="Refresh status"
+            >
+              <RefreshCw className={`h-3 w-3 ${isLoadingTasks ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {inProgressTasks.map(task => (
+              <div key={task.id} className="rounded-lg border border-purple-200 bg-white p-3 shadow-sm">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-medium text-gray-900">{task.title || 'Untitled Track'}</h4>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        task.status === 'processing'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {task.status}
+                    </span>
+                  </div>
+                  <span className="text-xs text-gray-500">{getTimeElapsed(task.createdAt)}</span>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                  <div
+                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300"
+                    style={{ width: `${task.progressPercentage || 0}%` }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-gray-600">
+                  <span>Task ID: {task.id.substring(0, 8)}...</span>
+                  <span>{task.progressPercentage || 0}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Media Grid */}
       <div className="flex-1 overflow-y-auto bg-gray-50 p-4">
         {isLoading ? (
@@ -211,6 +365,19 @@ export function MediaTab({
                               </svg>
                             </div>
                           </div>
+                          {/* Delete button for videos */}
+                          <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeletingMedia(item);
+                              }}
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 backdrop-blur-sm transition-all hover:bg-red-50"
+                              title="Delete media"
+                            >
+                              <Trash2 className="h-4 w-4 text-gray-700 transition-colors hover:text-red-600" />
+                            </button>
+                          </div>
                         </>
                       )
                     : item.mediaType === 'image'
@@ -221,8 +388,18 @@ export function MediaTab({
                               alt={item.title}
                               className="h-full w-full object-cover"
                             />
-                            {/* Fullscreen overlay icon */}
-                            <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
+                            {/* Fullscreen and Delete overlay icons */}
+                            <div className="absolute top-2 right-2 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeletingMedia(item);
+                                }}
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 backdrop-blur-sm transition-all hover:bg-red-50"
+                                title="Delete media"
+                              >
+                                <Trash2 className="h-4 w-4 text-gray-700 transition-colors hover:text-red-600" />
+                              </button>
                               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 backdrop-blur-sm">
                                 <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
@@ -232,10 +409,23 @@ export function MediaTab({
                           </>
                         )
                       : (
-                          <div className="flex h-full items-center justify-center">
+                          <div className="relative flex h-full items-center justify-center">
                             <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                             </svg>
+                            {/* Delete button for audio */}
+                            <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeletingMedia(item);
+                                }}
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 backdrop-blur-sm transition-all hover:bg-red-50"
+                                title="Delete media"
+                              >
+                                <Trash2 className="h-4 w-4 text-gray-700 transition-colors hover:text-red-600" />
+                              </button>
+                            </div>
                           </div>
                         )}
                 </div>
@@ -283,6 +473,49 @@ export function MediaTab({
         onClose={() => setFullscreenMedia(null)}
         media={fullscreenMedia}
       />
+
+      {/* Delete Confirmation Dialog */}
+      {deletingMedia && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-semibold text-gray-900">Delete Media</h3>
+            <p className="mb-4 text-sm text-gray-600">
+              Are you sure you want to delete "
+              {deletingMedia.title}
+              "? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeletingMedia(null)}
+                disabled={isDeletingMedia}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteMedia(deletingMedia.id)}
+                disabled={isDeletingMedia}
+                className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              >
+                {isDeletingMedia ? (
+                  <>
+                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

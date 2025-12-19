@@ -52,6 +52,7 @@ export const invitePatientSchema = z.object({
   dateOfBirth: z.string()
     .optional(),
   referenceImageUrl: z.string().optional(),
+  avatarUrl: z.string().optional(),
   therapistId: z.string()
     .min(1, 'Therapist ID is required'),
   welcomeMessage: z.string()

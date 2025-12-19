@@ -13,8 +13,10 @@ import { EditQuoteModal } from '@/components/sessions/EditQuoteModal';
 import { GenerateVideoModal } from '@/components/sessions/GenerateVideoModal';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
 import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog';
+import { SceneGenerationLayout } from '@/components/scenes-generation/SceneGenerationLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
+import { transformSceneCardToScenes } from '@/utils/SceneHelpers';
 import { AIAssistantPanel } from './components/AIAssistantPanel';
 import { LibraryPanel } from './components/LibraryPanel';
 import { TranscriptPanel } from './components/TranscriptPanel';
@@ -31,10 +33,10 @@ export function TranscriptViewerClient({
   const [audioUrl, setAudioUrl] = useState<string | undefined>();
   const [sessionTitle, setSessionTitle] = useState<string>('');
   const [patientName, setPatientName] = useState<string>('');
+  const [patientId, setPatientId] = useState<string | undefined>();
   const [patientReferenceImage, setPatientReferenceImage] = useState<string | undefined>();
   const [assignedModule, setAssignedModule] = useState<TreatmentModule | null>(null);
   const [sessionData, setSessionData] = useState<any>(null);
-  const [patients, setPatients] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,6 +54,8 @@ export function TranscriptViewerClient({
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [showMediaUploadModal, setShowMediaUploadModal] = useState(false);
   const [isAssignModuleModalOpen, setIsAssignModuleModalOpen] = useState(false);
+  const [showSceneGenerationModal, setShowSceneGenerationModal] = useState(false);
+  const [sceneCardData, setSceneCardData] = useState<any>(null);
   const [selectedText, setSelectedText] = useState('');
   const [selectedTextSource, setSelectedTextSource] = useState<'transcript' | 'ai'>('transcript');
   const [aiPrompt, setAiPrompt] = useState<string | null>(null);
@@ -98,6 +102,7 @@ export function TranscriptViewerClient({
         setAudioUrl(sessionDataResponse.session.audioUrl);
         setSessionTitle(sessionDataResponse.session.title);
         setPatientName(sessionDataResponse.session.patient?.name || sessionDataResponse.session.group?.name || 'Unknown');
+        setPatientId(sessionDataResponse.session.patient?.id);
         setPatientReferenceImage(sessionDataResponse.session.patient?.referenceImageUrl);
 
         // Fetch assigned module if exists
@@ -140,31 +145,6 @@ export function TranscriptViewerClient({
 
     fetchData();
   }, [sessionId]);
-
-  // Load patients for patient picker in image generation
-  useEffect(() => {
-    const loadPatients = async () => {
-      if (!user) {
-        return;
-      }
-
-      try {
-        const params = new URLSearchParams({
-          therapistId: user.uid,
-        });
-
-        const response = await authenticatedFetch(`/api/patients?${params.toString()}`, user);
-        if (response.ok) {
-          const data = await response.json();
-          setPatients(data.patients || []);
-        }
-      } catch (error) {
-        console.error('Error loading patients:', error);
-      }
-    };
-
-    loadPatients();
-  }, [user]);
 
   // Fetch AI prompts when session data loads
   useEffect(() => {
@@ -371,6 +351,12 @@ export function TranscriptViewerClient({
     setShowMusicModal(true);
   };
 
+  // Callback to open scene generation modal (from JSON actions)
+  const handleOpenSceneGeneration = (data: { sceneCard: any }) => {
+    setSceneCardData(data.sceneCard);
+    setShowSceneGenerationModal(true);
+  };
+
   // Handler for saving quote
   const handleSaveQuote = async (quoteData: {
     quoteText: string;
@@ -568,6 +554,7 @@ export function TranscriptViewerClient({
             onOpenImageModal={handleOpenImageModal}
             onOpenVideoModal={handleOpenVideoModal}
             onOpenMusicModal={handleOpenMusicModal}
+            onOpenSceneGeneration={handleOpenSceneGeneration}
             onLibraryRefresh={() => setMediaRefreshKey(prev => prev + 1)}
             analyzeMode={analyzeMode}
             onAnalyzeModeChange={setAnalyzeMode}
@@ -616,8 +603,8 @@ export function TranscriptViewerClient({
           setImageModalInitialData({}); // Clear initial data on close
         }}
         onGenerate={handleGenerateImage}
-        patients={patients}
         patientName={patientName}
+        patientId={patientId}
         patientReferenceImage={patientReferenceImage}
         initialPrompt={imageModalInitialData.prompt || selectedText}
         initialTitle={imageModalInitialData.title}
@@ -690,6 +677,26 @@ export function TranscriptViewerClient({
             // Trigger media refresh in LibraryPanel
             setMediaRefreshKey(prev => prev + 1);
             setShowMediaUploadModal(false);
+          }}
+        />
+      )}
+
+      {/* Scene Generation Modal */}
+      {showSceneGenerationModal && sceneCardData && (
+        <SceneGenerationLayout
+          isOpen={showSceneGenerationModal}
+          onClose={() => {
+            setShowSceneGenerationModal(false);
+            setSceneCardData(null);
+            // Refresh media panel to show new scenes
+            setMediaRefreshKey(prev => prev + 1);
+          }}
+          initialScenes={transformSceneCardToScenes(sceneCardData)}
+          sessionId={sessionId}
+          patient={{
+            id: sessionData?.patientId || sessionData?.patient?.id || 'unknown',
+            name: patientName,
+            avatarUrl: patientReferenceImage,
           }}
         />
       )}

@@ -423,6 +423,77 @@ export async function handleGenerateSingleVideo(ctx: ActionContext) {
 // ============================================================================
 
 /**
+ * Save reflection questions to template library
+ */
+export async function handleSaveToTemplateLibrary(ctx: ActionContext) {
+  const { jsonData, user, onProgress, onComplete } = ctx;
+
+  onProgress('💾 Saving to template library...');
+
+  try {
+    // Extract questions from JSON
+    const questions =
+      jsonData.patient_questions ||
+      jsonData.reflection_questions ||
+      [];
+    const groupQuestions = jsonData.group_questions || [];
+
+    // Combine into template format
+    const allQuestions = [
+      ...questions.map((q: string) => ({
+        text: q,
+        type: 'open_text' as const,
+        required: false,
+      })),
+      ...groupQuestions.map((q: string) => ({
+        text: `[Group] ${q}`,
+        type: 'open_text' as const,
+        required: false,
+      })),
+    ];
+
+    if (allQuestions.length === 0) {
+      onComplete({ message: '⚠️ No questions found to save.' });
+      return;
+    }
+
+    // Auto-generate title from context or timestamp
+    const defaultTitle = jsonData.context
+      ? `Reflections: ${jsonData.context.substring(0, 50)}${jsonData.context.length > 50 ? '...' : ''}`
+      : `Reflection Questions (${new Date().toLocaleDateString()})`;
+
+    // Save to template library
+    const response = await authenticatedPost('/api/templates/reflections', user, {
+      title: defaultTitle,
+      description: jsonData.context || 'AI-generated reflection questions',
+      category: 'custom',
+      scope: 'private',
+      questions: allQuestions,
+      metadata: {
+        source: 'ai_assistant',
+        generatedAt: new Date().toISOString(),
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to save template');
+    }
+
+    const result = await response.json();
+
+    onComplete({
+      message: `✅ Template "${result.template.title}" saved! View in Templates page.`,
+      data: result.template,
+    });
+  } catch (error) {
+    onComplete({
+      message: `❌ Failed to save: ${(error as Error).message}`,
+    });
+  }
+}
+
+/**
  * Add reflection questions to module
  */
 export async function handleAddReflectionsToModule(ctx: ActionContext) {
@@ -575,6 +646,7 @@ export const ACTION_HANDLERS: Record<string, (ctx: ActionContext) => Promise<voi
   handleGenerateSingleVideo,
 
   // Reflection Questions
+  handleSaveToTemplateLibrary,
   handleAddReflectionsToModule,
   handleSaveAsNote,
 
