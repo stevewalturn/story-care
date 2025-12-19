@@ -85,9 +85,14 @@ export function PatientList({
                               className="relative h-10 w-10 overflow-hidden rounded border border-gray-200 bg-gray-50"
                             >
                               <img
-                                src={refImg.imageUrl.startsWith('http') ? refImg.imageUrl : `/api/media/signed-url?path=${encodeURIComponent(refImg.imageUrl)}`}
+                                src={refImg.imageUrl || ''}
                                 alt={refImg.label || `Reference ${idx + 1}`}
                                 className="size-full object-cover"
+                                onError={(e) => {
+                                  // Hide broken images gracefully
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                }}
                               />
                               {refImg.isPrimary && (
                                 <div className="absolute left-0.5 top-0.5 rounded-full bg-yellow-400 p-0.5">

@@ -9,7 +9,7 @@ import { and, desc, eq, ilike, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { Env } from '@/libs/Env';
-import { generatePresignedUrlsForPatients } from '@/libs/GCS';
+import { generatePresignedUrl, generatePresignedUrlsForPatients } from '@/libs/GCS';
 import { patientReferenceImagesSchema, users } from '@/models/Schema';
 import { sendPatientInvitationEmail } from '@/services/EmailService';
 import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
     // Generate presigned URLs for patient images (HIPAA compliant, 1-hour expiration)
     const patientsWithSignedUrls = await generatePresignedUrlsForPatients(patientsList, 1);
 
-    // Fetch reference images for each patient
+    // Fetch reference images for each patient and generate presigned URLs
     const patientsWithReferenceImages = await Promise.all(
       patientsWithSignedUrls.map(async (patient) => {
         const referenceImages = await db
@@ -127,9 +127,20 @@ export async function GET(request: NextRequest) {
           )
           .limit(4); // Only fetch first 4 for display
 
+        // Generate presigned URLs for each reference image (1-hour expiration for HIPAA)
+        const referenceImagesWithSignedUrls = await Promise.all(
+          referenceImages.map(async (refImg) => {
+            const signedImageUrl = await generatePresignedUrl(refImg.imageUrl, 1);
+            return {
+              ...refImg,
+              imageUrl: signedImageUrl || refImg.imageUrl,
+            };
+          }),
+        );
+
         return {
           ...patient,
-          referenceImages,
+          referenceImages: referenceImagesWithSignedUrls,
         };
       }),
     );
