@@ -3,8 +3,29 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
 
+@layer base {
+  :root {
+    --font-sf-pro: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, sans-serif;
+  }
+
+  body {
+    font-family: var(--font-plus-jakarta), sans-serif;
+  }
+}
+
+@layer utilities {
+  .font-jakarta {
+    font-family: var(--font-plus-jakarta), sans-serif;
+  }
+
+  .font-sf-pro {
+    font-family: var(--font-sf-pro);
+  }
+}
+
 @keyframes pulse-green {
-  0%, 100% {
+  0%,
+  100% {
     border-color: rgba(34, 197, 94, 0.3);
     box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
   }
@@ -16,4 +37,89 @@
 
 .animate-pulse-green {
   animation: pulse-green 2s ease-in-out;
+}
+
+@keyframes pulse-subtle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes waveform {
+  0%,
+  100% {
+    height: 16px;
+  }
+  50% {
+    height: 32px;
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+.animate-waveform-1 {
+  height: 16px;
+  animation: waveform 1.2s ease-in-out infinite;
+  animation-delay: 0ms;
+}
+
+.animate-waveform-2 {
+  height: 16px;
+  animation: waveform 1.2s ease-in-out infinite;
+  animation-delay: 150ms;
+}
+
+.animate-waveform-3 {
+  height: 16px;
+  animation: waveform 1.2s ease-in-out infinite;
+  animation-delay: 300ms;
+}
+
+.animate-waveform-4 {
+  height: 16px;
+  animation: waveform 1.2s ease-in-out infinite;
+  animation-delay: 450ms;
+}
+
+.animate-waveform-5 {
+  height: 16px;
+  animation: waveform 1.2s ease-in-out infinite;
+  animation-delay: 600ms;
+}
+
+/* Typing indicator animation for AI chat */
+@keyframes typing-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-typing-dot {
+  animation: typing-dot 1.4s infinite ease-in-out;
 }

@@ -64,7 +64,7 @@ export default function OrgAdminDashboard() {
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center p-8">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
       </div>
     );
   }
@@ -146,7 +146,7 @@ export default function OrgAdminDashboard() {
             {stat.link && (
               <button
                 onClick={() => router.push(stat.link!)}
-                className="mt-4 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                className="mt-4 text-sm font-medium text-purple-600 hover:text-purple-700"
               >
                 View details →
               </button>
@@ -193,7 +193,7 @@ export default function OrgAdminDashboard() {
       {/* Activity Summary */}
       <div className="rounded-lg border border-gray-200 bg-white p-6">
         <h2 className="mb-4 flex items-center text-xl font-semibold text-gray-900">
-          <TrendingUp className="mr-2 h-5 w-5 text-indigo-600" />
+          <TrendingUp className="mr-2 h-5 w-5 text-purple-600" />
           Activity Summary (Last 30 Days)
         </h2>
         <div className="space-y-3">

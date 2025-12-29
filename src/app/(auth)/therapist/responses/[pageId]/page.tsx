@@ -78,7 +78,7 @@ export default function PageResponseDetailPage({
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
       </div>
     );
   }
@@ -129,7 +129,7 @@ export default function PageResponseDetailPage({
           <div className="flex items-center gap-4">
             <div className="rounded-lg bg-white px-4 py-2 shadow-sm">
               <p className="text-xs text-gray-600">Reflection Responses</p>
-              <p className="text-2xl font-bold text-indigo-600">{reflectionResponses.length}</p>
+              <p className="text-2xl font-bold text-purple-600">{reflectionResponses.length}</p>
             </div>
             <div className="rounded-lg bg-white px-4 py-2 shadow-sm">
               <p className="text-xs text-gray-600">Survey Responses</p>
@@ -144,7 +144,7 @@ export default function PageResponseDetailPage({
         <div className="mb-6 rounded-lg border border-gray-200 bg-white">
           <div className="border-b border-gray-200 px-6 py-4">
             <div className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-indigo-600" />
+              <MessageSquare className="h-5 w-5 text-purple-600" />
               <h2 className="text-lg font-semibold text-gray-900">Reflection Responses</h2>
             </div>
           </div>
@@ -165,7 +165,7 @@ export default function PageResponseDetailPage({
                     </div>
                   </div>
                 </div>
-                <div className="mt-3 rounded-lg bg-indigo-50 p-4">
+                <div className="mt-3 rounded-lg bg-purple-50 p-4">
                   <p className="text-sm whitespace-pre-wrap text-gray-700">{response.responseText}</p>
                 </div>
               </div>

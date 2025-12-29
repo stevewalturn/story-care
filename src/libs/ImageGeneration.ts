@@ -25,7 +25,7 @@ export type ImageGenerationOptions = {
   seed?: number;
   quality?: 'standard' | 'hd';
   style?: 'natural' | 'vivid';
-  referenceImage?: string; // Base64 or URL for image-to-image
+  referenceImages?: string[]; // Array of Base64 or URLs for image-to-image (supports multiple)
 };
 
 export type ImageGenerationResult = {
@@ -47,18 +47,18 @@ export async function generateImage(
     width: options.width,
     height: options.height,
     aspectRatio: options.aspectRatio,
-    hasReferenceImage: !!options.referenceImage,
+    referenceImageCount: options.referenceImages?.length || 0,
     style: options.style,
     quality: options.quality,
   });
 
-  // Route to Google Gemini (Image-to-Image)
+  // Route to Google Gemini (Image-to-Image) - only supports single reference image
   if (model === 'gemini-2.5-flash-image') {
     const { generateImageWithGemini } = await import('./providers/GeminiImage');
     return await generateImageWithGemini({
       prompt,
       model,
-      referenceImage: options.referenceImage,
+      referenceImage: options.referenceImages?.[0], // Gemini only supports single image
     });
   }
 
@@ -79,8 +79,35 @@ export async function generateImage(
     });
   }
 
-  // Route to Atlas Cloud (Flux models)
-  if (model === 'flux-dev' || model === 'flux-schnell' || model === 'flux-redux-dev') {
+  // Route to Atlas Cloud (Flux + Image-to-Image models)
+  const atlasCloudModels = [
+    // Text-to-Image
+    'flux-dev',
+    'flux-schnell',
+    // Image-to-Image
+    'flux-redux-dev',
+    'wan-2.6-i2i',
+    'wan-2.5-edit',
+    'qwen-image-edit',
+    'qwen-image-edit-plus',
+    'seedream-4.5-edit',
+    'seedream-4.5-edit-seq',
+    'seedream-4-edit',
+    'seedream-4-edit-seq',
+    'nano-banana-pro-edit-ultra',
+    'nano-banana-pro-edit',
+    'nano-banana-pro-edit-dev',
+    'nano-banana-edit-dev',
+    'nano-banana-edit',
+    // Upscaling
+    'recraft-crisp-upscale',
+    // Style Transfer
+    'plastic-bubble-figure',
+    'my-world',
+    'micro-landscape-mini-world',
+  ];
+
+  if (atlasCloudModels.includes(model)) {
     console.log('[ImageGeneration] Routing to Atlas Cloud provider');
     const { generateImageWithAtlas } = await import('./providers/AtlasCloud');
     // Convert dimensions to Atlas format (e.g., "1024*1024")
@@ -91,14 +118,14 @@ export async function generateImage(
       model,
       size,
       seed: options.seed,
-      hasReferenceImage: !!options.referenceImage,
+      referenceImageCount: options.referenceImages?.length || 0,
     });
     return await generateImageWithAtlas({
       prompt,
       model: model as AtlasImageModel,
       size,
       seed: options.seed,
-      referenceImage: options.referenceImage, // Pass reference image for Flux Redux
+      referenceImages: options.referenceImages, // Pass reference images array for image-to-image models
     });
   }
 

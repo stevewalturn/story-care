@@ -186,7 +186,7 @@ export function TherapistProfileModal({ isOpen, onClose, onUpdate }: TherapistPr
         {/* Loading State */}
         {loading ? (
           <div className="flex items-center justify-center p-12">
-            <div className="h-12 w-12 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+            <div className="h-12 w-12 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
           </div>
         ) : (
           /* Form */
@@ -202,7 +202,7 @@ export function TherapistProfileModal({ isOpen, onClose, onUpdate }: TherapistPr
                 {uploadingImage
                   ? (
                       <div className="text-center">
-                        <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                        <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
                         <p className="text-sm text-gray-600">
                           Uploading...
                           {' '}

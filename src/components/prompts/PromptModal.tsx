@@ -107,7 +107,7 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
               value={formData.description}
               onChange={e => setFormData({ ...formData, description: e.target.value })}
               placeholder="A brief description of what this prompt creates..."
-              className="h-20 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="h-20 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none"
               required
             />
           </div>
@@ -121,7 +121,7 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
               value={formData.promptText}
               onChange={e => setFormData({ ...formData, promptText: e.target.value })}
               placeholder="The detailed AI prompt that will be used to generate images..."
-              className="h-40 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="h-40 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none"
               required
             />
             <p className="text-xs text-gray-500">
@@ -139,10 +139,10 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
               <select
                 value={formData.category}
                 onChange={e => setFormData({ ...formData, category: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 required
               >
-                {PROMPT_CATEGORIES.filter(cat => cat.id !== 'all').map((category) => (
+                {PROMPT_CATEGORIES.filter(cat => cat.id !== 'all').map(category => (
                   <option key={category.id} value={category.id}>
                     {category.label}
                   </option>
@@ -158,7 +158,7 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
               <select
                 value={formData.outputType}
                 onChange={e => setFormData({ ...formData, outputType: e.target.value as 'text' | 'json' })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 required
               >
                 <option value="text">Text</option>
@@ -173,16 +173,16 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
               Icon *
             </label>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg border-2 border-indigo-200 bg-indigo-50">
-                <SelectedIcon className="h-5 w-5 text-indigo-600" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg border-2 border-purple-200 bg-purple-50">
+                <SelectedIcon className="h-5 w-5 text-purple-600" />
               </div>
               <select
                 value={formData.icon}
                 onChange={e => setFormData({ ...formData, icon: e.target.value })}
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 required
               >
-                {Object.keys(PROMPT_ICONS).map((iconKey) => (
+                {Object.keys(PROMPT_ICONS).map(iconKey => (
                   <option key={iconKey} value={iconKey}>
                     {iconKey.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                   </option>
@@ -218,14 +218,14 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
                 {formData.tags.map(tag => (
                   <span
                     key={tag}
-                    className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1 text-sm text-indigo-700"
+                    className="inline-flex items-center gap-2 rounded-full bg-purple-100 px-3 py-1 text-sm text-purple-700"
                   >
                     #
                     {tag}
                     <button
                       type="button"
                       onClick={() => handleRemoveTag(tag)}
-                      className="hover:text-indigo-900"
+                      className="hover:text-purple-900"
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -242,7 +242,7 @@ export function PromptModal({ isOpen, onClose, onSave, prompt }: PromptModalProp
               id="favorite"
               checked={formData.isFavorite}
               onChange={e => setFormData({ ...formData, isFavorite: e.target.checked })}
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
             />
             <label htmlFor="favorite" className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
               <Star className="h-4 w-4" />

@@ -1,11 +1,12 @@
 'use client';
 
+import type { ModuleAiPrompt } from '@/models/Schema';
 import { BookOpen, CheckCircle, Copy, Edit2, Eye, Plus, Search, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
 
+import { useEffect, useState } from 'react';
+import { PromptPreviewModal } from '@/components/prompts/PromptPreviewModal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { PromptPreviewModal } from '@/components/prompts/PromptPreviewModal';
 import {
   getCategoryClasses,
   getPromptIcon,
@@ -14,7 +15,6 @@ import {
   PROMPT_CATEGORIES,
 } from '@/constants/PromptConstants';
 import { useAuth } from '@/contexts/AuthContext';
-import type { ModuleAiPrompt } from '@/models/Schema';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type PromptLibraryProps = {
@@ -144,7 +144,7 @@ export function PromptLibrary({
       {/* Prompts Grid */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-indigo-600" />
+          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-purple-600" />
         </div>
       ) : filteredPrompts.length === 0 ? (
         <div className="py-12 text-center">
@@ -197,12 +197,13 @@ export function PromptLibrary({
                   </span>
                   {prompt.outputType && (
                     <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
-                      {OUTPUT_TYPES[prompt.outputType as keyof typeof OUTPUT_TYPES]?.icon}{' '}
+                      {OUTPUT_TYPES[prompt.outputType as keyof typeof OUTPUT_TYPES]?.icon}
+                      {' '}
                       {OUTPUT_TYPES[prompt.outputType as keyof typeof OUTPUT_TYPES]?.label || prompt.outputType}
                     </span>
                   )}
                   {schemaTypeLabel && (
-                    <span className="rounded bg-indigo-100 px-2 py-1 text-xs font-medium text-indigo-700">
+                    <span className="rounded bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700">
                       {schemaTypeLabel}
                     </span>
                   )}
@@ -212,14 +213,14 @@ export function PromptLibrary({
                 {!prompt.description && (
                   <div className="mb-3">
                     <div className="rounded bg-gray-50 p-3">
-                      <p className={isExpanded ? 'whitespace-pre-wrap text-xs text-gray-700' : 'line-clamp-5 text-xs text-gray-700'}>
+                      <p className={isExpanded ? 'text-xs whitespace-pre-wrap text-gray-700' : 'line-clamp-5 text-xs text-gray-700'}>
                         {prompt.promptText}
                       </p>
                     </div>
                     {prompt.promptText.length > 300 && (
                       <button
                         onClick={() => toggleExpanded(prompt.id)}
-                        className="mt-2 text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                        className="mt-2 text-xs font-medium text-purple-600 hover:text-purple-700"
                       >
                         {isExpanded ? 'Show Less' : 'Read More'}
                       </button>
@@ -229,7 +230,11 @@ export function PromptLibrary({
 
                 {/* Use Count */}
                 <div className="mb-3 text-xs text-gray-500">
-                  Used {prompt.useCount || 0} times
+                  Used
+                  {' '}
+                  {prompt.useCount || 0}
+                  {' '}
+                  times
                 </div>
 
                 {/* Actions */}

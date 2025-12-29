@@ -5,14 +5,14 @@
  * Modal for editing existing AI prompts with JSON output structure
  */
 
+import type { PromptTemplate } from '@/models/Schema';
 import { Sparkles, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
-import type { PromptTemplate } from '@/models/Schema';
+import { GenerateJSONWithAI } from './GenerateJSONWithAI';
 import { PromptJSONEditor } from './PromptJSONEditor';
 import { PromptPreviewPanel } from './PromptPreviewPanel';
-import { GenerateJSONWithAI } from './GenerateJSONWithAI';
 
 type PromptCategory = 'analysis' | 'creative' | 'extraction' | 'reflection';
 
@@ -178,7 +178,7 @@ export function EditPromptModal({ promptId, onClose, onUpdated }: EditPromptModa
               {loading
                 ? (
                     <div className="flex items-center justify-center py-12">
-                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
                     </div>
                   )
                 : (
@@ -195,7 +195,7 @@ export function EditPromptModal({ promptId, onClose, onUpdated }: EditPromptModa
                           type="text"
                           value={name}
                           onChange={e => setName(e.target.value)}
-                          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
                           placeholder="e.g., Self-Resilience Analysis"
                           disabled={isUpdating}
                           maxLength={255}
@@ -216,7 +216,7 @@ export function EditPromptModal({ promptId, onClose, onUpdated }: EditPromptModa
                           id="category"
                           value={category}
                           onChange={e => setCategory(e.target.value as PromptCategory)}
-                          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
                           disabled={isUpdating}
                         >
                           <option value="analysis">🎯 Analysis - Therapeutic analysis and insights</option>
@@ -236,7 +236,7 @@ export function EditPromptModal({ promptId, onClose, onUpdated }: EditPromptModa
                           value={description}
                           onChange={e => setDescription(e.target.value)}
                           rows={2}
-                          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
                           placeholder="What does this prompt do and when to use it..."
                           disabled={isUpdating}
                           maxLength={500}
@@ -258,7 +258,7 @@ export function EditPromptModal({ promptId, onClose, onUpdated }: EditPromptModa
                           value={promptText}
                           onChange={e => setPromptText(e.target.value)}
                           rows={6}
-                          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 font-mono text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 font-mono text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
                           placeholder="You are a trauma-informed therapist analyzing a session transcript...&#10;&#10;Task: Analyze the selected text and identify moments of resilience and therapeutic insights.&#10;&#10;Format your response as JSON..."
                           disabled={isUpdating}
                           maxLength={5000}
@@ -287,7 +287,7 @@ export function EditPromptModal({ promptId, onClose, onUpdated }: EditPromptModa
                             onClick={() => setActiveTab('edit')}
                             className={`px-4 py-2 text-sm font-medium transition-colors ${
                               activeTab === 'edit'
-                                ? 'border-b-2 border-indigo-600 text-indigo-600'
+                                ? 'border-b-2 border-purple-600 text-purple-600'
                                 : 'text-gray-500 hover:text-gray-700'
                             }`}
                           >
@@ -298,7 +298,7 @@ export function EditPromptModal({ promptId, onClose, onUpdated }: EditPromptModa
                             onClick={() => setActiveTab('preview')}
                             className={`px-4 py-2 text-sm font-medium transition-colors ${
                               activeTab === 'preview'
-                                ? 'border-b-2 border-indigo-600 text-indigo-600'
+                                ? 'border-b-2 border-purple-600 text-purple-600'
                                 : 'text-gray-500 hover:text-gray-700'
                             }`}
                           >
@@ -333,12 +333,12 @@ export function EditPromptModal({ promptId, onClose, onUpdated }: EditPromptModa
                       )}
 
                       {/* Info Box */}
-                      <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+                      <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
                         <div className="flex items-start gap-3">
-                          <Sparkles className="h-5 w-5 flex-shrink-0 text-indigo-600" />
+                          <Sparkles className="h-5 w-5 flex-shrink-0 text-purple-600" />
                           <div>
-                            <h4 className="text-sm font-semibold text-indigo-900">Writing Effective Prompts</h4>
-                            <ul className="mt-2 space-y-1 text-xs text-indigo-700">
+                            <h4 className="text-sm font-semibold text-purple-900">Writing Effective Prompts</h4>
+                            <ul className="mt-2 space-y-1 text-xs text-purple-700">
                               <li>• Be specific about the task and desired JSON output structure</li>
                               <li>• Include context about the therapeutic approach</li>
                               <li>• Use "Generate with AI" to quickly create JSON templates</li>
@@ -364,7 +364,7 @@ export function EditPromptModal({ promptId, onClose, onUpdated }: EditPromptModa
               <button
                 onClick={handleUpdate}
                 type="button"
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
                 disabled={isUpdating || loading || !name.trim() || !promptText.trim() || !jsonOutputString.trim() || !isJsonValid}
               >
                 {isUpdating ? 'Updating...' : 'Update Prompt'}

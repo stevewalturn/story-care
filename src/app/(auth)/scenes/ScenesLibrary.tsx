@@ -5,7 +5,7 @@
  * Displays all scenes as cards with options to edit, preview, or create new
  */
 
-import { Film, Loader2, MoreVertical, Play, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
+import { CheckCircle, Film, Loader2, MoreVertical, Play, Plus, RefreshCw, Search, Trash2, XCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { MediaViewer } from '@/components/assets/MediaViewer';
@@ -102,7 +102,7 @@ export function ScenesLibrary({ onEditScene, onCreateNew }: ScenesLibraryProps) 
 
             // Remove from completed set after 3 seconds
             setTimeout(() => {
-              setCompletedSceneIds(prev => {
+              setCompletedSceneIds((prev) => {
                 const updated = new Set(prev);
                 updated.delete(scene.id);
                 return updated;
@@ -185,7 +185,7 @@ export function ScenesLibrary({ onEditScene, onCreateNew }: ScenesLibraryProps) 
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
       </div>
     );
   }
@@ -197,7 +197,7 @@ export function ScenesLibrary({ onEditScene, onCreateNew }: ScenesLibraryProps) 
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-600 to-purple-600">
                 <Film className="h-7 w-7 text-white" />
               </div>
               <div>
@@ -238,7 +238,7 @@ export function ScenesLibrary({ onEditScene, onCreateNew }: ScenesLibraryProps) 
               placeholder="Search scenes..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-9 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-9 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
             />
           </div>
 
@@ -246,7 +246,7 @@ export function ScenesLibrary({ onEditScene, onCreateNew }: ScenesLibraryProps) 
           <select
             value={selectedPatient}
             onChange={e => setSelectedPatient(e.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
           >
             <option value="all">All Patients</option>
             {patients.map(patient => (
@@ -361,13 +361,13 @@ function SceneCard({ scene, onEdit, onDelete }: SceneCardProps) {
         {/* Status Badge */}
         <div className="absolute top-2 left-2 flex items-center gap-1.5">
           <span
-            className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[scene.status as keyof typeof statusColors] || statusColors.draft}`}
+            className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[scene.status as keyof typeof statusColors] || statusColors.draft}`}
           >
+            {isProcessing && <Loader2 className="h-3 w-3 animate-spin" />}
+            {scene.status === 'completed' && <CheckCircle className="h-3 w-3" />}
+            {scene.status === 'failed' && <XCircle className="h-3 w-3" />}
             {scene.status}
           </span>
-          {isProcessing && (
-            <Loader2 className="h-4 w-4 animate-spin text-yellow-600" />
-          )}
         </div>
 
         {/* Progress Bar for Processing Scenes */}
@@ -375,13 +375,15 @@ function SceneCard({ scene, onEdit, onDelete }: SceneCardProps) {
           <div className="absolute inset-x-0 bottom-0 bg-black/50 p-2">
             <div className="mb-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-700">
               <div
-                className="h-full bg-yellow-500 transition-all duration-300"
+                className="h-full bg-purple-500 transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>
             {currentStep && (
-              <p className="text-[10px] text-white">
-                {currentStep} {progress > 0 && `• ${Math.round(progress)}%`}
+              <p className="text-[10px] font-medium text-white">
+                {currentStep}
+                {' '}
+                {progress > 0 && `• ${Math.round(progress)}%`}
               </p>
             )}
           </div>
@@ -418,7 +420,9 @@ function SceneCard({ scene, onEdit, onDelete }: SceneCardProps) {
                   type="button"
                 >
                   <Film className="h-4 w-4" />
-                  Edit Scene {isProcessing && '(Processing)'}
+                  Edit Scene
+                  {' '}
+                  {isProcessing && '(Processing)'}
                 </button>
 
                 {scene.assembledVideoUrl && (

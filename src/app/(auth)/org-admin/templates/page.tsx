@@ -30,6 +30,7 @@ type Template = {
   scope: TemplateScope;
   questions: any[];
   useCount: number;
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -116,8 +117,8 @@ export default function OrgAdminTemplatesPage() {
         {/* Header - No action button */}
         <div className="mb-6">
           <div className="flex items-start">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100">
-              <FileText className="h-6 w-6 text-indigo-600" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100">
+              <FileText className="h-6 w-6 text-purple-600" />
             </div>
             <div className="ml-4">
               <h1 className="text-2xl font-bold text-gray-900">Templates Library</h1>
@@ -132,7 +133,7 @@ export default function OrgAdminTemplatesPage() {
             onClick={() => setActiveTab('my_templates')}
             className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
               activeTab === 'my_templates'
-                ? 'border-indigo-600 text-indigo-600'
+                ? 'border-purple-600 text-purple-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
             }`}
             type="button"
@@ -143,7 +144,7 @@ export default function OrgAdminTemplatesPage() {
             onClick={() => setActiveTab('system_templates')}
             className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
               activeTab === 'system_templates'
-                ? 'border-indigo-600 text-indigo-600'
+                ? 'border-purple-600 text-purple-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
             }`}
             type="button"
@@ -162,7 +163,7 @@ export default function OrgAdminTemplatesPage() {
               placeholder={activeTab === 'my_templates' ? 'Search my templates...' : 'Search system templates...'}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-9 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-9 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
             />
           </div>
 
@@ -170,7 +171,7 @@ export default function OrgAdminTemplatesPage() {
           <select
             value={activeType}
             onChange={e => setActiveType(e.target.value as TemplateType)}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
           >
             {typeOptions.map(type => (
               <option key={type.id} value={type.id}>
@@ -183,7 +184,7 @@ export default function OrgAdminTemplatesPage() {
           <select
             value={activeCategory}
             onChange={e => setActiveCategory(e.target.value as TemplateCategory)}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
           >
             {categoryOptions.map(cat => (
               <option key={cat.id} value={cat.id}>
@@ -196,7 +197,7 @@ export default function OrgAdminTemplatesPage() {
           {activeTab === 'my_templates' && (
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 whitespace-nowrap"
+              className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium whitespace-nowrap text-white hover:bg-purple-700"
               type="button"
             >
               <Plus className="h-4 w-4" />
@@ -208,7 +209,7 @@ export default function OrgAdminTemplatesPage() {
         {/* Content */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
           </div>
         ) : error ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4">
@@ -378,7 +379,7 @@ function TemplateCard({ template, activeTab, onView, onEdit, onCopy }: TemplateC
           <>
             <button
               onClick={onView}
-              className="flex-1 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+              className="flex-1 rounded-lg border border-purple-300 bg-purple-50 px-3 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100"
               type="button"
             >
               View Details
@@ -397,7 +398,7 @@ function TemplateCard({ template, activeTab, onView, onEdit, onCopy }: TemplateC
         {activeTab === 'system_templates' && onCopy && (
           <button
             onClick={onCopy}
-            className="flex w-full items-center justify-center gap-1 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+            className="flex w-full items-center justify-center gap-1 rounded-lg border border-purple-300 bg-purple-50 px-3 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100"
             type="button"
           >
             <Copy className="h-3 w-3" />

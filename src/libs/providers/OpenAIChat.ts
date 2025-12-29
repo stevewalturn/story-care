@@ -1,14 +1,18 @@
 /**
  * OpenAI Chat Provider
- * Supports: GPT-4o, GPT-4o-mini, GPT-4-turbo, o-series reasoning models
+ * Supports: GPT-4.1, GPT-4o, GPT-4-turbo, GPT-3.5-turbo, o-series reasoning models
  */
 
 import type { ChatMessage } from '../TextGeneration';
 
 export type OpenAIChatModel
-  = | 'gpt-4o' // Latest multimodal
+  = | 'gpt-4.1' // Latest GPT-4.1
+    | 'gpt-4.1-mini' // GPT-4.1 Mini
+    | 'gpt-4.1-nano' // GPT-4.1 Nano
+    | 'gpt-4o' // Latest multimodal
     | 'gpt-4o-mini' // Cost-efficient
     | 'gpt-4-turbo' // Legacy but good
+    | 'gpt-3.5-turbo' // Fast and cost-effective
     | 'o3-mini' // Reasoning (latest)
     | 'o3' // Advanced reasoning
     | 'o3-pro' // Pro reasoning

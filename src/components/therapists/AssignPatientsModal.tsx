@@ -131,7 +131,7 @@ export function AssignPatientsModal({
     return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+    <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black p-4">
       <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
         {/* Header */}
         <div className="mb-4 flex items-center justify-between">
@@ -146,7 +146,9 @@ export function AssignPatientsModal({
         </div>
 
         <p className="mb-4 text-sm text-gray-600">
-          Select patients to assign to <span className="font-semibold">{therapistName}</span>
+          Select patients to assign to
+          {' '}
+          <span className="font-semibold">{therapistName}</span>
         </p>
 
         {/* Error Message */}
@@ -164,7 +166,7 @@ export function AssignPatientsModal({
             placeholder="Search patients..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="block w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
           />
         </div>
 
@@ -173,7 +175,7 @@ export function AssignPatientsModal({
           {loading
             ? (
                 <div className="flex items-center justify-center p-12">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
                 </div>
               )
             : filteredPatients.length === 0
@@ -187,7 +189,7 @@ export function AssignPatientsModal({
                 )
               : (
                   <div className="divide-y divide-gray-200">
-                    {filteredPatients.map((patient) => (
+                    {filteredPatients.map(patient => (
                       <label
                         key={patient.id}
                         htmlFor={`patient-${patient.id}`}
@@ -198,12 +200,12 @@ export function AssignPatientsModal({
                           type="checkbox"
                           checked={selectedPatients.has(patient.id)}
                           onChange={() => togglePatient(patient.id)}
-                          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                         />
                         <div className="ml-3 flex-1">
                           <div className="flex items-center">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100">
-                              <User className="h-4 w-4 text-indigo-600" />
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100">
+                              <User className="h-4 w-4 text-purple-600" />
                             </div>
                             <div className="ml-3">
                               <p className="text-sm font-medium text-gray-900">{patient.name}</p>
@@ -212,7 +214,9 @@ export function AssignPatientsModal({
                           </div>
                           {patient.therapistName && (
                             <p className="mt-1 ml-11 text-xs text-gray-500">
-                              Currently assigned to: {patient.therapistName}
+                              Currently assigned to:
+                              {' '}
+                              {patient.therapistName}
                             </p>
                           )}
                         </div>
@@ -225,7 +229,12 @@ export function AssignPatientsModal({
         {/* Footer */}
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-600">
-            {selectedPatients.size} patient{selectedPatients.size !== 1 ? 's' : ''} selected
+            {selectedPatients.size}
+            {' '}
+            patient
+            {selectedPatients.size !== 1 ? 's' : ''}
+            {' '}
+            selected
           </p>
           <div className="flex gap-2">
             <Button variant="secondary" onClick={onClose} disabled={submitting}>

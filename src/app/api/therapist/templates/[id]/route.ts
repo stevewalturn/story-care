@@ -184,3 +184,80 @@ export async function PUT(
     );
   }
 }
+
+/**
+ * DELETE: Delete a private template
+ */
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    const decodedToken = await verifyIdToken(token);
+    const firebaseUid = decodedToken.uid;
+
+    // Get user
+    const user = await db.query.usersSchema.findFirst({
+      where: eq(usersSchema.firebaseUid, firebaseUid),
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const { id } = await params;
+
+    // Try to find in reflection templates first
+    let template = await db.query.reflectionTemplatesSchema.findFirst({
+      where: eq(reflectionTemplatesSchema.id, id),
+    });
+
+    let isReflection = true;
+
+    // If not found, try survey templates
+    if (!template) {
+      template = await db.query.surveyTemplatesSchema.findFirst({
+        where: eq(surveyTemplatesSchema.id, id),
+      });
+      isReflection = false;
+    }
+
+    if (!template) {
+      return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+    }
+
+    // Check if user owns this template (can only delete own private templates)
+    if (template.scope !== 'private' || template.createdBy !== user.id) {
+      return NextResponse.json(
+        { error: 'You can only delete your own private templates' },
+        { status: 403 },
+      );
+    }
+
+    // Delete the template
+    if (isReflection) {
+      await db
+        .delete(reflectionTemplatesSchema)
+        .where(eq(reflectionTemplatesSchema.id, id));
+    }
+    else {
+      await db
+        .delete(surveyTemplatesSchema)
+        .where(eq(surveyTemplatesSchema.id, id));
+    }
+
+    return NextResponse.json({ success: true, message: 'Template deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting template:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete template' },
+      { status: 500 },
+    );
+  }
+}

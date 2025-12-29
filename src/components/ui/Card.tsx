@@ -12,7 +12,7 @@ export function Card({ children, className = '', hover = false, onClick }: CardP
     <div
       className={`
         overflow-hidden rounded-xl border border-gray-200 bg-white
-        ${hover ? 'cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-600 hover:shadow-lg' : ''}
+        ${hover ? 'cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:border-purple-600 hover:shadow-lg' : ''}
         ${onClick ? 'cursor-pointer' : ''}
         ${className}
       `}
@@ -98,7 +98,7 @@ export function MediaCard({
             className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity group-hover:opacity-100"
           >
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90">
-              <svg className="ml-1 h-8 w-8 text-indigo-600" fill="currentColor" viewBox="0 0 24 24">
+              <svg className="ml-1 h-8 w-8 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z" />
               </svg>
             </div>
@@ -136,7 +136,7 @@ export function MediaCard({
             {tags.map(tag => (
               <span
                 key={tag}
-                className="rounded bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-600"
+                className="rounded bg-purple-50 px-2 py-1 text-xs font-medium text-purple-600"
               >
                 {tag}
               </span>
@@ -156,7 +156,7 @@ type MetricCardProps = {
   iconColor?: string;
 };
 
-export function MetricCard({ icon, label, value, iconColor = 'bg-indigo-50 text-indigo-600' }: MetricCardProps) {
+export function MetricCard({ icon, label, value, iconColor = 'bg-purple-50 text-purple-600' }: MetricCardProps) {
   return (
     <Card>
       <CardBody className="flex items-center gap-4">

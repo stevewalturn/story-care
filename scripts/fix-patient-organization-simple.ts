@@ -3,17 +3,17 @@
  * Updates patients to inherit organizationId from their assigned therapist
  */
 
+import * as path from 'node:path';
+import { PGlite } from '@electric-sql/pglite';
+
 // Load environment variables first
 import * as dotenv from 'dotenv';
-import * as path from 'node:path';
+import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/pglite';
+import * as schema from '../src/models/Schema';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-
-import { drizzle } from 'drizzle-orm/pglite';
-import { PGlite } from '@electric-sql/pglite';
-import { eq } from 'drizzle-orm';
-import * as schema from '../src/models/Schema';
 
 const { users } = schema;
 

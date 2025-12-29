@@ -29,12 +29,12 @@ export function AssistantMessageContent({ content }: AssistantMessageContentProp
               <div className="group/code relative my-4 overflow-hidden rounded-xl border border-gray-200">
                 {/* Language badge */}
                 <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-2">
-                  <span className="text-xs font-medium uppercase tracking-wide text-gray-600">{language}</span>
+                  <span className="text-xs font-medium tracking-wide text-gray-600 uppercase">{language}</span>
                   {/* Copy button */}
                   <button
                     type="button"
                     onClick={() => navigator.clipboard.writeText(String(children))}
-                    className="flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 opacity-0 shadow-sm transition-all hover:bg-gray-100 hover:text-gray-900 group-hover/code:opacity-100"
+                    className="flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 opacity-0 shadow-sm transition-all group-hover/code:opacity-100 hover:bg-gray-100 hover:text-gray-900"
                   >
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path
@@ -59,7 +59,7 @@ export function AssistantMessageContent({ content }: AssistantMessageContentProp
                   }}
                   codeTagProps={{
                     style: {
-                      fontFamily: "'Fira Code', 'Courier New', monospace",
+                      fontFamily: '\'Fira Code\', \'Courier New\', monospace',
                     },
                   }}
                   {...props}
@@ -70,7 +70,7 @@ export function AssistantMessageContent({ content }: AssistantMessageContentProp
             ) : (
               // Inline code
               <code
-                className="rounded border border-indigo-100 bg-indigo-50 px-1.5 py-0.5 font-mono text-[13px] text-indigo-700"
+                className="rounded border border-purple-100 bg-purple-50 px-1.5 py-0.5 font-mono text-[13px] text-purple-700"
                 {...props}
               >
                 {children}
@@ -79,9 +79,9 @@ export function AssistantMessageContent({ content }: AssistantMessageContentProp
           },
 
           // Custom heading styles
-          h1: ({ node, ...props }: any) => <h1 className="mb-4 mt-6 text-xl font-bold text-gray-900" {...props} />,
-          h2: ({ node, ...props }: any) => <h2 className="mb-3 mt-5 text-lg font-bold text-gray-900" {...props} />,
-          h3: ({ node, ...props }: any) => <h3 className="mb-2 mt-4 text-base font-semibold text-gray-900" {...props} />,
+          h1: ({ node, ...props }: any) => <h1 className="mt-6 mb-4 text-xl font-bold text-gray-900" {...props} />,
+          h2: ({ node, ...props }: any) => <h2 className="mt-5 mb-3 text-lg font-bold text-gray-900" {...props} />,
+          h3: ({ node, ...props }: any) => <h3 className="mt-4 mb-2 text-base font-semibold text-gray-900" {...props} />,
 
           // Custom paragraph styles
           p: ({ node, ...props }: any) => <p className="mb-3 text-[15px] leading-relaxed text-gray-700" {...props} />,
@@ -94,7 +94,7 @@ export function AssistantMessageContent({ content }: AssistantMessageContentProp
           // Custom link styles
           a: ({ node, ...props }: any) => (
             <a
-              className="font-medium text-indigo-600 underline decoration-indigo-300 decoration-2 underline-offset-2 transition-colors hover:text-indigo-700 hover:decoration-indigo-500"
+              className="font-medium text-purple-600 underline decoration-purple-300 decoration-2 underline-offset-2 transition-colors hover:text-purple-700 hover:decoration-purple-500"
               target="_blank"
               rel="noopener noreferrer"
               {...props}
@@ -103,7 +103,7 @@ export function AssistantMessageContent({ content }: AssistantMessageContentProp
 
           // Custom blockquote styles
           blockquote: ({ node, ...props }: any) => (
-            <blockquote className="my-4 border-l-4 border-indigo-500 bg-indigo-50 px-4 py-2 italic text-gray-700" {...props} />
+            <blockquote className="my-4 border-l-4 border-purple-500 bg-purple-50 px-4 py-2 text-gray-700 italic" {...props} />
           ),
 
           // Custom table styles
@@ -114,7 +114,7 @@ export function AssistantMessageContent({ content }: AssistantMessageContentProp
           ),
           thead: ({ node, ...props }: any) => <thead className="bg-gray-50" {...props} />,
           th: ({ node, ...props }: any) => (
-            <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-700" {...props} />
+            <th className="px-4 py-2 text-left text-xs font-semibold tracking-wider text-gray-700 uppercase" {...props} />
           ),
           td: ({ node, ...props }: any) => <td className="border-t border-gray-200 px-4 py-2 text-sm text-gray-700" {...props} />,
         }}

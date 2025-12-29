@@ -28,9 +28,20 @@ export async function POST(request: NextRequest) {
       sessionId,
       patientId,
       title,
-      referenceImage, // Base64 or URL for image-to-image
+      referenceImage, // Single image (backward compatibility)
+      referenceImages: rawReferenceImages, // Array of images (new)
       skipSave = false, // For batch generation - return URL without saving
     } = body;
+
+    // Support both single referenceImage and referenceImages array
+    // Merge them into a single array
+    const referenceImages: string[] = [];
+    if (rawReferenceImages && Array.isArray(rawReferenceImages)) {
+      referenceImages.push(...rawReferenceImages);
+    }
+    if (referenceImage && !referenceImages.includes(referenceImage)) {
+      referenceImages.push(referenceImage);
+    }
 
     console.log('[API /api/ai/generate-image] Request received:', {
       userId: user.dbUserId,
@@ -45,7 +56,7 @@ export async function POST(request: NextRequest) {
       sessionId,
       patientId: patientId || 'from patientIds array',
       title,
-      hasReferenceImage: !!referenceImage,
+      referenceImageCount: referenceImages.length,
       patientIds: body.patientIds,
       size: body.size,
     });
@@ -70,7 +81,7 @@ export async function POST(request: NextRequest) {
       seed,
       quality,
       style,
-      referenceImage,
+      referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
     });
 
     console.log('[API /api/ai/generate-image] Image generated successfully:', {

@@ -6,15 +6,15 @@
  * Displays quick action buttons above chat input for common therapeutic prompts
  */
 
-import { useState } from 'react';
 import type { QuickAction } from '@/types/BuildingBlocks';
-import { QUICK_ACTIONS, formatPromptTemplate } from '@/config/QuickActions';
+import { useState } from 'react';
+import { formatPromptTemplate, QUICK_ACTIONS } from '@/config/QuickActions';
 
-interface QuickActionBarProps {
+type QuickActionBarProps = {
   onSelectAction: (prompt: string, action: QuickAction) => void;
   selectedText?: string;
   sessionId?: string;
-}
+};
 
 export default function QuickActionBar({
   onSelectAction,
@@ -38,7 +38,7 @@ export default function QuickActionBar({
       <div className="flex items-center gap-2">
         <span className="text-xs font-medium text-gray-500">Quick Actions:</span>
         <div className="flex flex-wrap items-center gap-1.5">
-          {QUICK_ACTIONS.map((action) => (
+          {QUICK_ACTIONS.map(action => (
             <button
               key={action.id}
               onClick={() => handleActionClick(action)}
@@ -52,9 +52,9 @@ export default function QuickActionBar({
 
               {/* Tooltip */}
               {hoveredAction === action.id && (
-                <div className="absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-gray-900 px-3 py-2 text-xs text-white shadow-lg">
+                <div className="absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs whitespace-nowrap text-white shadow-lg">
                   {action.description}
-                  <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                  <div className="absolute top-full left-1/2 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
                 </div>
               )}
             </button>

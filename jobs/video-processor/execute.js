@@ -204,11 +204,15 @@ async function uploadToGCS(localPath, gcsPath) {
  */
 function generateThumbnail(videoPath, thumbnailPath) {
   execFileSync('ffmpeg', [
-    '-i', videoPath,
-    '-ss', '00:00:01',
-    '-vframes', '1',
-    '-vf', 'scale=640:-1',
-    thumbnailPath
+    '-i',
+    videoPath,
+    '-ss',
+    '00:00:01',
+    '-vframes',
+    '1',
+    '-vf',
+    'scale=640:-1',
+    thumbnailPath,
   ], { stdio: 'pipe' });
 }
 
@@ -279,12 +283,17 @@ async function executeJob() {
         const videoPath = clip.localPath.replace('.jpg', '-video.mp4');
         // Use execFileSync to avoid shell interpretation of parentheses
         execFileSync('ffmpeg', [
-          '-loop', '1',
-          '-i', clip.localPath,
-          '-t', String(clip.duration),
-          '-pix_fmt', 'yuv420p',
-          '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2',
-          videoPath
+          '-loop',
+          '1',
+          '-i',
+          clip.localPath,
+          '-t',
+          String(clip.duration),
+          '-pix_fmt',
+          'yuv420p',
+          '-vf',
+          'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2',
+          videoPath,
         ], { stdio: 'pipe' });
         return `file '${videoPath}'`;
       }
@@ -297,11 +306,15 @@ async function executeJob() {
 
     // Concatenate clips
     execFileSync('ffmpeg', [
-      '-f', 'concat',
-      '-safe', '0',
-      '-i', concatFile,
-      '-c', 'copy',
-      outputPath
+      '-f',
+      'concat',
+      '-safe',
+      '0',
+      '-i',
+      concatFile,
+      '-c',
+      'copy',
+      outputPath,
     ], { stdio: 'pipe' });
 
     await updateJobStatus('processing', 70, 'Video clips assembled');
@@ -323,12 +336,16 @@ async function executeJob() {
       const outputWithAudio = path.join(tempDir, `scene-${sceneId}-with-audio.mp4`);
 
       execFileSync('ffmpeg', [
-        '-i', outputPath,
-        '-i', audioPath,
-        '-c:v', 'copy',
-        '-c:a', 'aac',
+        '-i',
+        outputPath,
+        '-i',
+        audioPath,
+        '-c:v',
+        'copy',
+        '-c:a',
+        'aac',
         '-shortest',
-        outputWithAudio
+        outputWithAudio,
       ], { stdio: 'pipe' });
 
       fs.renameSync(outputWithAudio, outputPath);

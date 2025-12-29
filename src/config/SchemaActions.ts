@@ -108,24 +108,13 @@ export const SCHEMA_ACTIONS: Record<JSONSchemaType, SchemaAction[]> = {
   ],
 
   // Reflection Questions Actions
+  // Note: Saves to Therapist's template library (reusable templates)
   reflection_questions: [
     {
       id: 'save_to_template_library',
       label: 'Save to Template Library',
       icon: 'bookmark',
       handler: 'handleSaveToTemplateLibrary',
-    },
-    {
-      id: 'add_to_module',
-      label: 'Add to Module',
-      icon: 'plus-circle',
-      handler: 'handleAddReflectionsToModule',
-    },
-    {
-      id: 'save_as_note',
-      label: 'Save as Note',
-      icon: 'file-text',
-      handler: 'handleSaveAsNote',
     },
   ],
 

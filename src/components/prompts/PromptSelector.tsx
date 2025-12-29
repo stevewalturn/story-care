@@ -5,9 +5,10 @@
  * Multi-select component for choosing AI prompts from the library
  */
 
+import type { PromptTemplate } from '@/models/Schema';
 import { Check, Search } from 'lucide-react';
-import { useEffect, useState } from 'react';
 
+import { useEffect, useState } from 'react';
 import {
   getCategoryClasses,
   getCategoryData,
@@ -16,7 +17,6 @@ import {
   OUTPUT_TYPES,
 } from '@/constants/PromptConstants';
 import { useAuth } from '@/contexts/AuthContext';
-import type { PromptTemplate } from '@/models/Schema';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type PromptSelectorProps = {
@@ -106,13 +106,13 @@ export function PromptSelector({
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search prompts..."
-            className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-9 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+            className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-9 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
           />
         </div>
         <select
           value={selectedCategory}
           onChange={e => setSelectedCategory(e.target.value)}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
         >
           <option value="all">All Categories</option>
           {categories.map((cat) => {
@@ -148,7 +148,7 @@ export function PromptSelector({
                 key={prompt.id}
                 className={`flex cursor-pointer items-start gap-3 rounded-lg border-2 p-3 transition-all ${
                   isSelected
-                    ? 'border-indigo-500 bg-indigo-50'
+                    ? 'border-purple-500 bg-purple-50'
                     : 'border-transparent bg-white hover:border-gray-300'
                 }`}
               >
@@ -156,7 +156,7 @@ export function PromptSelector({
                   <div
                     className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-all ${
                       isSelected
-                        ? 'border-indigo-600 bg-indigo-600'
+                        ? 'border-purple-600 bg-purple-600'
                         : 'border-gray-300 bg-white'
                     }`}
                   >
@@ -184,12 +184,13 @@ export function PromptSelector({
                     </span>
                     {prompt.outputType && (
                       <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
-                        {OUTPUT_TYPES[prompt.outputType as keyof typeof OUTPUT_TYPES]?.icon}{' '}
+                        {OUTPUT_TYPES[prompt.outputType as keyof typeof OUTPUT_TYPES]?.icon}
+                        {' '}
                         {OUTPUT_TYPES[prompt.outputType as keyof typeof OUTPUT_TYPES]?.label || prompt.outputType}
                       </span>
                     )}
                     {schemaTypeLabel && (
-                      <span className="rounded bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
+                      <span className="rounded bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
                         {schemaTypeLabel}
                       </span>
                     )}

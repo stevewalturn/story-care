@@ -131,15 +131,13 @@ export async function generatePresignedUrl(
     decodedUrl = urlOrPath;
   }
 
-  // If it's already a signed URL (contains Google Cloud signature parameters), return as-is
-  if (isPresignedUrlUtil(decodedUrl)) {
-    return urlOrPath; // Return original (not decoded) to preserve signature
-  }
-
+  // Always extract the path and regenerate the signature
+  // This ensures we get a fresh signature even if the stored URL has expired
   const path = extractGcsPath(decodedUrl);
   if (!path) {
     // If we can't extract a path, return original URL
-    console.warn(`[GCS] Could not extract path from URL: ${decodedUrl}`);
+    console.warn(`[GCS] Could not extract path from URL: ${decodedUrl.substring(0, 100)}...`);
+    console.warn(`[GCS] URL starts with http: ${decodedUrl.startsWith('http')}, gs: ${decodedUrl.startsWith('gs://')}`);
     return urlOrPath;
   }
 

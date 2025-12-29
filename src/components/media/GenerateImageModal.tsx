@@ -1,12 +1,12 @@
 'use client';
 
-import { Check, Edit2, Image as ImageIcon, Loader2, Save, Star, StarOff, Trash2, User, X } from 'lucide-react';
+import type { PatientReferenceImage } from '@/models/Schema';
+import { Check, Edit2, HelpCircle, Image as ImageIcon, Loader2, Plus, Save, Sparkles, Star, StarOff, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAvailableImageModels } from '@/libs/ModelMetadata';
-import type { PatientReferenceImage } from '@/models/Schema';
 
 type Patient = {
   id: string;
@@ -43,23 +43,19 @@ type GenerateImageModalProps = {
   initialStyle?: string;
 };
 
-// Get models from centralized metadata (Atlas models appear first)
-const IMAGE_MODELS_RAW = getAvailableImageModels();
+// Atlas Cloud models from centralized metadata
+const ATLAS_TEXT_TO_IMAGE_MODELS = [
+  { id: 'flux-schnell', name: 'Flux Schnell', description: 'Fastest generation', supportsReference: false },
+  { id: 'flux-dev', name: 'Flux Dev', description: 'High quality output', supportsReference: false },
+];
 
-// Convert to UI format with descriptions (keep supportsReference flag)
-const IMAGE_MODELS = Object.entries(IMAGE_MODELS_RAW).reduce(
-  (acc, [provider, models]) => {
-    acc[provider] = models.map(m => ({
-      id: m.value,
-      name: m.label,
-      description: m.label.includes('$') ? m.label : `${m.label} - High quality generation`,
-      maxLength: 10000,
-      supportsReference: m.supportsReference,
-    }));
-    return acc;
-  },
-  {} as Record<string, Array<{ id: string; name: string; description: string; maxLength: number; supportsReference: boolean }>>,
-);
+const ATLAS_IMAGE_TO_IMAGE_MODELS = [
+  { id: 'flux-redux-dev', name: 'Flux Redux Dev', description: 'Image-to-Image generation', supportsReference: true },
+  { id: 'gemini-2.5-flash-image', name: 'Nano Banana', description: 'Gemini 2.5 Flash Image', supportsReference: true },
+];
+
+// Suppress unused import warning - kept for potential future use
+void getAvailableImageModels;
 
 export function GenerateImageModal({
   isOpen,
@@ -76,19 +72,25 @@ export function GenerateImageModal({
   initialSourceQuote = '',
   initialStyle = '',
 }: GenerateImageModalProps) {
-  // Suppress unused warning - onGenerate kept for backward compatibility
+  // Suppress unused warnings - kept for backward compatibility
   void onGenerate;
+  void patients;
   const { user } = useAuth();
   const [prompt, setPrompt] = useState(initialPrompt);
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
   const [sourceQuote, setSourceQuote] = useState(initialSourceQuote);
   const [style, setStyle] = useState(initialStyle);
-  const [selectedModel, setSelectedModel] = useState('flux-schnell'); // Atlas Cloud default
-  const [selectedPatients, setSelectedPatients] = useState<string[]>([]);
-  const [uploadedReferenceImage, setUploadedReferenceImage] = useState<string | null>(null); // Base64 or URL
-  const [useReference, setUseReference] = useState(true);
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const [uploadedReferenceImage, setUploadedReferenceImage] = useState<string | null>(null);
+  const [savingAsReference, setSavingAsReference] = useState(false);
+  const [useReference, setUseReference] = useState(false); // Default to text-to-image
+
+  // Get available models based on useReference toggle
+  const availableModels = useReference ? ATLAS_IMAGE_TO_IMAGE_MODELS : ATLAS_TEXT_TO_IMAGE_MODELS;
+  const [selectedModel, setSelectedModel] = useState(availableModels[0]?.id || 'flux-schnell');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isOptimizing, setIsOptimizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Reference images management
@@ -96,6 +98,7 @@ export function GenerateImageModal({
   const [loadingReferenceImages, setLoadingReferenceImages] = useState(false);
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [labelValue, setLabelValue] = useState('');
+  const [selectedRefImageIds, setSelectedRefImageIds] = useState<string[]>([]); // Multi-select for reference images
 
   // Batch generation state (4 variations)
   type GeneratedImage = {
@@ -109,6 +112,9 @@ export function GenerateImageModal({
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [generatingSlots, setGeneratingSlots] = useState<number[]>([]);
 
+  // Check if we have generated any images (determines layout)
+  const hasGeneratedImages = generatedImages.length > 0 || generatingSlots.length > 0;
+
   // Update state when initial props change (when modal opens with new data from JSON actions)
   useEffect(() => {
     if (isOpen) {
@@ -119,6 +125,15 @@ export function GenerateImageModal({
       setStyle(initialStyle);
     }
   }, [isOpen, initialPrompt, initialTitle, initialDescription, initialSourceQuote, initialStyle]);
+
+  // Switch model when useReference changes
+  useEffect(() => {
+    const models = useReference ? ATLAS_IMAGE_TO_IMAGE_MODELS : ATLAS_TEXT_TO_IMAGE_MODELS;
+    // If current model is not in new list, switch to first available
+    if (!models.find(m => m.id === selectedModel)) {
+      setSelectedModel(models[0]?.id || 'flux-schnell');
+    }
+  }, [useReference, selectedModel]);
 
   // Fetch reference images for the patient (transcript page)
   useEffect(() => {
@@ -144,7 +159,10 @@ export function GenerateImageModal({
         }
 
         const data = await response.json();
-        setReferenceImages(data.images || []);
+        const images = data.images || [];
+        setReferenceImages(images);
+        // Auto-select all reference images by default (user can deselect if needed)
+        setSelectedRefImageIds(images.map((img: PatientReferenceImage) => img.id));
       } catch (err) {
         console.error('Error fetching reference images:', err);
       } finally {
@@ -155,36 +173,11 @@ export function GenerateImageModal({
     fetchReferenceImages();
   }, [isOpen, patientId, user]);
 
-  // Auto-switch model when reference image availability changes
-  useEffect(() => {
-    if (!isOpen) return;
-
-    // Find the currently selected model in the metadata
-    const currentModel = Object.values(IMAGE_MODELS)
-      .flat()
-      .find(m => m.id === selectedModel);
-
-    if (!currentModel) return;
-
-    const hasRef = !!(uploadedReferenceImage || (useReference && (patientReferenceImage || (selectedPatients.length > 0 && patients.find(p => p.id === selectedPatients[0])?.referenceImageUrl))));
-
-    // If current model requires reference but there's no reference, switch to first non-reference model
-    if (currentModel.supportsReference === true && !hasRef) {
-      const firstTextToImageModel = Object.values(IMAGE_MODELS)
-        .flat()
-        .find(m => m.supportsReference !== true);
-
-      if (firstTextToImageModel) {
-        console.log('[GenerateImageModal] Auto-switching from image-to-image model to text-to-image model:', firstTextToImageModel.id);
-        setSelectedModel(firstTextToImageModel.id);
-      }
-    }
-  }, [isOpen, uploadedReferenceImage, useReference, patientReferenceImage, selectedPatients, patients, selectedModel]);
-
   // Handle saving uploaded image as reference
   const handleSaveAsReference = async () => {
-    if (!uploadedReferenceImage || !patientId) return;
+    if (!uploadedReferenceImage || !patientId || savingAsReference) return;
 
+    setSavingAsReference(true);
     try {
       const idToken = await user?.getIdToken();
       if (!idToken) {
@@ -201,7 +194,7 @@ export function GenerateImageModal({
 
       // Decode base64 to binary
       const byteCharacters = atob(base64Data);
-      const byteNumbers = new Array(byteCharacters.length);
+      const byteNumbers = new Array<number>(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
         byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
@@ -225,17 +218,19 @@ export function GenerateImageModal({
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save reference image');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save reference image');
       }
 
-      // Refresh reference images
+      // Refresh reference images and clear the uploaded image (hides the save prompt)
       const data = await response.json();
       setReferenceImages(prev => [data.image, ...prev]);
-      alert('Reference image saved successfully!');
+      setUploadedReferenceImage(null); // Hide the "Save as reference" prompt
     } catch (err) {
       console.error('Error saving reference image:', err);
       alert(err instanceof Error ? err.message : 'Failed to save reference image');
+    } finally {
+      setSavingAsReference(false);
     }
   };
 
@@ -250,7 +245,7 @@ export function GenerateImageModal({
       const response = await fetch(`/api/patients/${patientId}/reference-images/${imageId}`, {
         method: 'PATCH',
         headers: {
-          Authorization: `Bearer ${idToken}`,
+          'Authorization': `Bearer ${idToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ action: 'set_primary' }),
@@ -265,7 +260,7 @@ export function GenerateImageModal({
         prev.map(img => ({
           ...img,
           isPrimary: img.id === imageId,
-        }))
+        })),
       );
     } catch (err) {
       console.error('Error setting primary image:', err);
@@ -314,7 +309,7 @@ export function GenerateImageModal({
       const response = await fetch(`/api/patients/${patientId}/reference-images/${imageId}`, {
         method: 'PATCH',
         headers: {
-          Authorization: `Bearer ${idToken}`,
+          'Authorization': `Bearer ${idToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ action: 'update_label', label: labelValue }),
@@ -327,8 +322,8 @@ export function GenerateImageModal({
       // Update local state
       setReferenceImages(prev =>
         prev.map(img =>
-          img.id === imageId ? { ...img, label: labelValue } : img
-        )
+          img.id === imageId ? { ...img, label: labelValue } : img,
+        ),
       );
       setEditingLabelId(null);
       setLabelValue('');
@@ -338,12 +333,22 @@ export function GenerateImageModal({
     }
   };
 
-  const handlePatientToggle = (patientId: string) => {
-    setSelectedPatients(prev =>
-      prev.includes(patientId)
-        ? prev.filter(id => id !== patientId)
-        : [...prev, patientId],
+  // Toggle reference image selection
+  const toggleRefImageSelection = (imageId: string) => {
+    setSelectedRefImageIds(prev =>
+      prev.includes(imageId)
+        ? prev.filter(id => id !== imageId)
+        : [...prev, imageId],
     );
+  };
+
+  // Select/deselect all reference images
+  const toggleAllRefImages = () => {
+    if (selectedRefImageIds.length === referenceImages.length) {
+      setSelectedRefImageIds([]); // Deselect all
+    } else {
+      setSelectedRefImageIds(referenceImages.map(img => img.id)); // Select all
+    }
   };
 
   const handleReferenceImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -366,30 +371,35 @@ export function GenerateImageModal({
     reader.readAsDataURL(file);
   };
 
-  // Check if we have an actual reference image source (uploaded OR patient with image)
-  const selectedPatientWithAvatar = selectedPatients.length > 0
-    ? patients.find(p => p.id === selectedPatients[0])
-    : null;
+  // Optimize prompt with AI
+  const handleOptimizePrompt = async () => {
+    if (!prompt.trim()) return;
 
-  // Check BOTH referenceImageUrl (priority) and avatarUrl (fallback)
-  const patientImageUrl = selectedPatientWithAvatar?.referenceImageUrl
-    || selectedPatientWithAvatar?.avatarUrl
-    || patientReferenceImage; // For transcript page
+    setIsOptimizing(true);
+    try {
+      const idToken = await user?.getIdToken();
+      if (!idToken) throw new Error('Not authenticated');
 
-  // Force image-to-image mode when any reference image exists (regardless of toggle)
-  const hasReferenceImage = uploadedReferenceImage !== null || !!patientImageUrl;
+      const response = await fetch('/api/ai/optimize-prompt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ prompt, type: 'image' }),
+      });
 
-  const enhancePromptWithPatients = (basePrompt: string) => {
-    if (selectedPatients.length === 0) {
-      return basePrompt;
+      if (!response.ok) {
+        throw new Error('Failed to optimize prompt');
+      }
+
+      const data = await response.json();
+      setPrompt(data.optimizedPrompt || prompt);
+    } catch (err) {
+      console.error('Error optimizing prompt:', err);
+    } finally {
+      setIsOptimizing(false);
     }
-
-    const patientNames = selectedPatients
-      .map(id => patients.find(p => p.id === id)?.name)
-      .filter(Boolean)
-      .join(', ');
-
-    return `${basePrompt}\n\nInclude character representations for: ${patientNames}. Use their reference images for consistent character appearance.`;
   };
 
   const handleGenerate = async () => {
@@ -404,19 +414,23 @@ export function GenerateImageModal({
     setGeneratingSlots([0, 1, 2, 3]); // All 4 slots are generating
 
     try {
-      const enhancedPrompt = enhancePromptWithPatients(prompt);
+      // Build reference images array from selected images
+      const selectedReferenceImages: string[] = [];
 
-      // Get reference image (priority: uploaded > selected patient > transcript page patient)
-      let referenceImage: string | undefined;
+      // First priority: uploaded image
       if (uploadedReferenceImage) {
-        referenceImage = uploadedReferenceImage;
-      } else if (selectedPatients.length > 0) {
-        const firstPatient = patients.find(p => p.id === selectedPatients[0]);
-        // Check both referenceImageUrl (priority) and avatarUrl (fallback)
-        referenceImage = firstPatient?.referenceImageUrl || firstPatient?.avatarUrl;
+        selectedReferenceImages.push(uploadedReferenceImage);
+      }
+
+      // Second priority: selected patient reference images
+      if (useReference && selectedRefImageIds.length > 0) {
+        const selectedImages = referenceImages
+          .filter(img => selectedRefImageIds.includes(img.id))
+          .map(img => img.imageUrl);
+        selectedReferenceImages.push(...selectedImages);
       } else if (useReference && patientReferenceImage) {
-        // Use transcript page patient reference image
-        referenceImage = patientReferenceImage;
+        // Fallback: legacy single reference image
+        selectedReferenceImages.push(patientReferenceImage);
       }
 
       // Generate 4 variations in parallel with different seeds for variety
@@ -430,13 +444,13 @@ export function GenerateImageModal({
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${await user?.getIdToken()}`,
+              'Authorization': `Bearer ${await user?.getIdToken()}`,
             },
             body: JSON.stringify({
-              prompt: enhancedPrompt,
+              prompt,
               model: selectedModel,
               useReference,
-              referenceImage,
+              referenceImages: selectedReferenceImages.length > 0 ? selectedReferenceImages : undefined,
               title: title.trim() || undefined,
               description: description.trim() || undefined,
               sourceQuote: sourceQuote.trim() || undefined,
@@ -457,7 +471,7 @@ export function GenerateImageModal({
             const newImages = [...prev];
             newImages[index] = {
               url: data.imageUrl,
-              prompt: enhancedPrompt,
+              prompt,
               model: selectedModel,
               index,
               saved: false,
@@ -467,13 +481,13 @@ export function GenerateImageModal({
           });
 
           // Remove this slot from generating list
-          setGeneratingSlots((prev) => prev.filter(slot => slot !== index));
+          setGeneratingSlots(prev => prev.filter(slot => slot !== index));
 
           return data;
         } catch (err: any) {
           console.error(`Error generating image ${index + 1}:`, err);
           // Remove this slot from generating list
-          setGeneratingSlots((prev) => prev.filter(slot => slot !== index));
+          setGeneratingSlots(prev => prev.filter(slot => slot !== index));
           return null;
         }
       });
@@ -494,10 +508,10 @@ export function GenerateImageModal({
     if (image.saved || image.saving) return;
 
     // Mark as saving
-    setGeneratedImages((prev) =>
-      prev.map((img) =>
-        img && img.index === image.index ? { ...img, saving: true } : img
-      )
+    setGeneratedImages(prev =>
+      prev.map(img =>
+        img && img.index === image.index ? { ...img, saving: true } : img,
+      ),
     );
 
     try {
@@ -510,7 +524,7 @@ export function GenerateImageModal({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
+          'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({
           imageUrl: image.url,
@@ -520,7 +534,7 @@ export function GenerateImageModal({
           description: description.trim() || undefined,
           sourceQuote: sourceQuote.trim() || undefined,
           style: style.trim() || undefined,
-          patientId: patientId || (selectedPatients.length > 0 ? selectedPatients[0] : undefined),
+          patientId: patientId || undefined,
           sessionId: sessionId || undefined,
         }),
       });
@@ -531,10 +545,10 @@ export function GenerateImageModal({
       }
 
       // Mark as saved
-      setGeneratedImages((prev) =>
-        prev.map((img) =>
-          img && img.index === image.index ? { ...img, saved: true, saving: false } : img
-        )
+      setGeneratedImages(prev =>
+        prev.map(img =>
+          img && img.index === image.index ? { ...img, saved: true, saving: false } : img,
+        ),
       );
 
       // Trigger media library refresh (if parent provides callback)
@@ -543,10 +557,10 @@ export function GenerateImageModal({
       console.error('Error saving image:', err);
       alert(err.message || 'Failed to save image');
       // Revert saving state
-      setGeneratedImages((prev) =>
-        prev.map((img) =>
-          img.index === image.index ? { ...img, saving: false } : img
-        )
+      setGeneratedImages(prev =>
+        prev.map(img =>
+          img.index === image.index ? { ...img, saving: false } : img,
+        ),
       );
     }
   };
@@ -557,12 +571,13 @@ export function GenerateImageModal({
     setDescription('');
     setSourceQuote('');
     setStyle('');
-    setSelectedPatients([]);
     setUploadedReferenceImage(null);
     setUseReference(true);
     setError(null);
     setGeneratedImages([]);
     setGeneratingSlots([]);
+    setShowModelDropdown(false);
+    setSelectedRefImageIds([]); // Reset selected reference images
     onClose();
   };
 
@@ -570,256 +585,305 @@ export function GenerateImageModal({
     return null;
   }
 
-  // Find current model from any provider
-  const getCurrentModel = () => {
-    for (const provider of Object.values(IMAGE_MODELS)) {
-      const model = provider.find(m => m.id === selectedModel);
-      if (model) {
-        return model;
-      }
-    }
-    return null;
-  };
-
-  const currentModel = getCurrentModel();
+  // Get current model info from available models
+  const currentModel = availableModels.find(m => m.id === selectedModel) || availableModels[0];
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Generate Image"
-      description="Transform symbolic prompts into visual imagery"
-      size="2xl"
+      size={hasGeneratedImages ? '2xl' : 'lg'}
+      hideHeader
       footer={(
-        <>
-          <Button variant="secondary" onClick={handleClose} disabled={isGenerating}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
+        <div className="flex w-full items-center justify-between">
+          <button
+            onClick={handleClose}
+            disabled={isGenerating}
+            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Close
+          </button>
+          <button
             onClick={handleGenerate}
             disabled={!prompt.trim() || isGenerating}
-            isLoading={isGenerating}
+            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isGenerating ? 'Generating 4 Variations...' : 'Generate 4 Variations'}
-          </Button>
-        </>
+            {isGenerating ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            {hasGeneratedImages ? 'Regenerate Images' : 'Generate Images'}
+          </button>
+        </div>
       )}
     >
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Left Column - Configuration */}
-        <div className="space-y-6">
-          {/* AI Model */}
-          <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700">
-              AI Model
-              {hasReferenceImage && (
-                <span className="ml-2 text-xs text-indigo-600">(Using reference image - only image-to-image models shown)</span>
-              )}
-              {!hasReferenceImage && (
-                <span className="ml-2 text-xs text-gray-500">(Image-to-image models hidden - add reference image to enable)</span>
-              )}
-            </label>
-            <div className="max-h-64 space-y-4 overflow-y-auto rounded-lg border border-gray-200 p-3">
-              {Object.entries(IMAGE_MODELS).map(([provider, models]) => {
-                // Filter models based on reference image availability
-                const filteredModels = hasReferenceImage
-                  ? models.filter(m => m.supportsReference === true)  // Show only image-to-image models when reference exists
-                  : models.filter(m => m.supportsReference !== true); // Hide image-to-image models when no reference
-
-                // Skip provider if no models match
-                if (filteredModels.length === 0) {
-                  return null;
-                }
-
-                return (
-                  <div key={provider} className="space-y-2">
-                    <div className="text-xs font-semibold tracking-wide text-gray-500 uppercase">
-                      {provider}
-                    </div>
-                    <div className="space-y-2">
-                      {filteredModels.map(model => (
-                      <button
-                        key={model.id}
-                        type="button"
-                        onClick={() => setSelectedModel(model.id)}
-                        className={`w-full rounded-lg border-2 p-3 text-left transition-all ${
-                          selectedModel === model.id
-                            ? 'border-indigo-500 bg-indigo-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <div className="font-medium text-gray-900">{model.name}</div>
-                        <div className="text-xs text-gray-600">{model.description}</div>
-                      </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+      {/* Custom Header */}
+      <div className="mb-6 flex items-center justify-between border-b border-gray-200 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
+            <ImageIcon className="h-5 w-5 text-purple-600" />
           </div>
+          <h2 className="text-lg font-semibold text-gray-900">Generate Image</h2>
+        </div>
+        <button
+          onClick={handleClose}
+          className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
 
-          {/* Prompt */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Prompt *
-            </label>
-            <textarea
-              value={prompt}
-              onChange={e => setPrompt(e.target.value)}
-              placeholder="Describe the image you want to generate..."
-              className="h-32 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              maxLength={currentModel?.maxLength}
-            />
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>Be specific and detailed for best results</span>
-              <span>
-                {prompt.length}
-                {' '}
-                /
-                {currentModel?.maxLength}
-              </span>
-            </div>
-          </div>
-
-          {/* Title (Optional) */}
-          <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">Title (Optional)</label>
-            <input
-              type="text"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder="Give this image a title..."
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            />
-          </div>
-
-          {/* Description (Optional) */}
-          <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">Description (Optional)</label>
-            <textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Describe the therapeutic purpose or meaning..."
-              rows={3}
-              className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            />
-          </div>
-
-          {/* Source Quote (Display only if provided) */}
-          {sourceQuote && (
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">Source Quote</label>
-              <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
-                <p className="text-sm text-blue-900 italic">
-                  "
-                  {sourceQuote}
-                  "
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Style (Display only if provided) */}
-          {style && (
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">Style</label>
-              <input
-                type="text"
-                value={style}
-                onChange={e => setStyle(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-              />
-            </div>
-          )}
-
-          {/* Reference Image Upload */}
-          <div className="space-y-3">
+      <div className={`grid gap-6 ${hasGeneratedImages ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        {/* Left Column - Form */}
+        <div className="space-y-5">
+          {/* Reference Image Section */}
+          <div className={`space-y-3 ${isGenerating ? 'opacity-50' : ''}`}>
+            {/* Reference Image Header */}
             <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-gray-700">
-                Reference Image (Optional)
-              </label>
-              {/* Only show toggle when NO reference images exist */}
-              {!hasReferenceImage && (
-                <label className="flex items-center gap-2">
-                  <span className="text-xs text-gray-600">Use Reference</span>
-                  <button
-                    onClick={() => setUseReference(!useReference)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      useReference ? 'bg-indigo-600' : 'bg-gray-200'
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700">Reference Image</span>
+                <HelpCircle className="h-4 w-4 text-gray-400" />
+              </div>
+              <label className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Use Reference</span>
+                <button
+                  onClick={() => !isGenerating && setUseReference(!useReference)}
+                  disabled={isGenerating}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:cursor-not-allowed ${
+                    useReference ? 'bg-purple-600' : 'bg-gray-200'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      useReference ? 'translate-x-6' : 'translate-x-1'
                     }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        useReference ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </label>
-              )}
+                  />
+                </button>
+              </label>
             </div>
 
-            {/* Show "Save as Reference" button for uploaded images */}
-            {uploadedReferenceImage && patientId && (
-              <div className="flex items-center gap-2 rounded-lg bg-blue-50 p-2">
-                <p className="flex-1 text-xs text-blue-700">
-                  Want to save this as a reference image for {patientName}?
-                </p>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleSaveAsReference}
-                  className="flex items-center gap-1"
-                >
-                  <Save className="h-3 w-3" />
-                  Save
-                </Button>
-              </div>
-            )}
-
-            <p className="text-xs text-gray-600">
-              {uploadedReferenceImage
-                ? 'Using uploaded reference image'
-                : patientImageUrl
-                  ? `Using ${patientName || selectedPatientWithAvatar?.name || 'patient'}'s reference image`
-                  : 'Upload a reference image for image-to-image generation'}
-            </p>
-            <div className="relative">
-              {uploadedReferenceImage
-                ? (
-                    <div className="relative">
-                      <img
-                        src={uploadedReferenceImage}
-                        alt="Reference"
-                        className="h-32 w-full rounded-lg object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setUploadedReferenceImage(null)}
-                        className="absolute top-2 right-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
+            {/* Reference Images Section - Always visible when toggle is ON */}
+            {useReference && (
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                {patientId && patientName ? (
+                  <>
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-700">Active Patient Reference</span>
+                      <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
+                        {patientName}
+                      </span>
                     </div>
-                  )
-                : patientImageUrl && useReference
-                  ? (
-                      <div className="relative">
-                        <img
-                          src={patientImageUrl}
-                          alt="Patient reference"
-                          className="h-32 w-full rounded-lg object-cover"
-                        />
-                        <div className="absolute bottom-2 left-2 rounded-md bg-black bg-opacity-70 px-2 py-1 text-xs text-white">
-                          {patientName || selectedPatientWithAvatar?.name || 'Patient'}
-                        </div>
+                    <p className="mb-3 text-xs text-gray-500">
+                      This patient reference image will be used for visual consistency.
+                    </p>
+
+                    {loadingReferenceImages ? (
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading reference images...
                       </div>
-                    )
-                  : (
-                      <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-4 transition-colors hover:border-indigo-500">
-                        <ImageIcon className="mb-2 h-8 w-8 text-gray-400" />
-                        <span className="text-sm text-gray-600">Click to upload</span>
+                    ) : (
+                      <>
+                        {/* Select All / Deselect All toggle */}
+                        {referenceImages.length > 0 && (
+                          <div className="mb-2 flex items-center gap-2">
+                            <button
+                              onClick={toggleAllRefImages}
+                              className="text-xs text-purple-600 hover:text-purple-700"
+                            >
+                              {selectedRefImageIds.length === referenceImages.length ? 'Deselect All' : 'Select All'}
+                            </button>
+                            <span className="text-xs text-gray-500">
+                              (
+                              {selectedRefImageIds.length}
+                              {' '}
+                              of
+                              {' '}
+                              {referenceImages.length}
+                              {' '}
+                              selected)
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                          {referenceImages.map(img => (
+                            <div
+                              key={img.id}
+                              className="group relative cursor-pointer"
+                              onClick={() => toggleRefImageSelection(img.id)}
+                            >
+                              <img
+                                src={img.imageUrl.startsWith('http') ? img.imageUrl : `/api/media/signed-url?path=${encodeURIComponent(img.imageUrl)}`}
+                                alt={img.label || 'Reference'}
+                                className={`h-16 w-16 rounded-lg border-2 object-cover transition-all ${
+                                  selectedRefImageIds.includes(img.id)
+                                    ? 'border-purple-500 ring-2 ring-purple-300'
+                                    : 'border-gray-200 opacity-60'
+                                }`}
+                              />
+                              {/* Selection checkbox indicator */}
+                              <div
+                                className={`absolute -top-1 -left-1 flex h-5 w-5 items-center justify-center rounded-full border-2 ${
+                                  selectedRefImageIds.includes(img.id)
+                                    ? 'border-purple-500 bg-purple-500'
+                                    : 'border-gray-300 bg-white'
+                                }`}
+                              >
+                                {selectedRefImageIds.includes(img.id) && (
+                                  <Check className="h-3 w-3 text-white" />
+                                )}
+                              </div>
+                              {/* Primary indicator */}
+                              {img.isPrimary && (
+                                <div className="absolute -top-1 -right-1 rounded-full bg-purple-500 p-0.5">
+                                  <Star className="h-2.5 w-2.5 fill-white text-white" />
+                                </div>
+                              )}
+                              {/* Action buttons on hover */}
+                              <div
+                                className="absolute inset-0 flex items-center justify-center gap-1 rounded-lg bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
+                                onClick={e => e.stopPropagation()} // Prevent toggle when clicking actions
+                              >
+                                {!img.isPrimary && (
+                                  <button
+                                    onClick={() => handleSetPrimary(img.id)}
+                                    className="rounded-full bg-white p-1 hover:bg-gray-100"
+                                    title="Set as primary"
+                                  >
+                                    <StarOff className="h-3 w-3 text-gray-700" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => {
+                                    setEditingLabelId(img.id);
+                                    setLabelValue(img.label || '');
+                                  }}
+                                  className="rounded-full bg-white p-1 hover:bg-gray-100"
+                                  title="Edit label"
+                                >
+                                  <Edit2 className="h-3 w-3 text-gray-700" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteReference(img.id)}
+                                  className="rounded-full bg-white p-1 hover:bg-gray-100"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-3 w-3 text-red-600" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* Upload new reference image button */}
+                          <label className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-white transition-colors hover:border-purple-400">
+                            <Plus className="h-6 w-6 text-gray-400" />
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleReferenceImageUpload}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Show "Save as Reference" button for uploaded images */}
+                    {uploadedReferenceImage && (
+                      <div className="mt-3 flex items-center gap-2 rounded-lg bg-blue-50 p-2">
+                        <img src={uploadedReferenceImage} alt="Uploaded" className="h-10 w-10 rounded object-cover" />
+                        <p className="flex-1 text-xs text-blue-700">
+                          Save this as a reference for
+                          {' '}
+                          {patientName}
+                          ?
+                        </p>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={handleSaveAsReference}
+                          disabled={savingAsReference}
+                          className="flex items-center gap-1"
+                        >
+                          {savingAsReference ? (
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="h-3 w-3" />
+                              Save
+                            </>
+                          )}
+                        </Button>
+                        <button
+                          onClick={() => setUploadedReferenceImage(null)}
+                          disabled={savingAsReference}
+                          className="rounded p-1 text-gray-500 hover:bg-gray-100 disabled:opacity-50"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Label editing modal */}
+                    {editingLabelId && (
+                      <div className="mt-2 flex gap-2">
+                        <input
+                          type="text"
+                          value={labelValue}
+                          onChange={e => setLabelValue(e.target.value)}
+                          placeholder="Enter label"
+                          className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-purple-500 focus:outline-none"
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => handleUpdateLabel(editingLabelId)}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setEditingLabelId(null);
+                            setLabelValue('');
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* No patient context - show upload only */}
+                    <div className="mb-2">
+                      <span className="text-sm font-medium text-gray-700">Upload Reference Image</span>
+                    </div>
+                    <p className="mb-3 text-xs text-gray-500">
+                      Upload an image to use as a reference for image-to-image generation.
+                    </p>
+
+                    {uploadedReferenceImage ? (
+                      <div className="flex items-center gap-3">
+                        <img src={uploadedReferenceImage} alt="Uploaded" className="h-20 w-20 rounded-lg border-2 border-purple-500 object-cover" />
+                        <button
+                          onClick={() => setUploadedReferenceImage(null)}
+                          className="flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+                        >
+                          <X className="h-4 w-4" />
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex h-20 w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-white transition-colors hover:border-purple-400">
+                        <div className="flex items-center gap-2 text-gray-500">
+                          <Plus className="h-5 w-5" />
+                          <span className="text-sm">Click to upload reference image</span>
+                        </div>
                         <input
                           type="file"
                           accept="image/*"
@@ -828,164 +892,115 @@ export function GenerateImageModal({
                         />
                       </label>
                     )}
-            </div>
-            {/* Show upload option even when patient is selected */}
-            {!uploadedReferenceImage && patientImageUrl && useReference && (
-              <label className="flex cursor-pointer items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 transition-colors hover:border-indigo-500 hover:bg-gray-50">
-                <ImageIcon className="mr-2 h-4 w-4" />
-                <span>Or upload a different reference image</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleReferenceImageUpload}
-                  className="hidden"
-                />
-              </label>
-            )}
-
-            {/* Active Patient Reference Images (when on transcript page) */}
-            {patientId && patientName && (
-              <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium text-gray-700">
-                    {patientName}'s Reference Images
-                  </h4>
-                  {loadingReferenceImages && (
-                    <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                  )}
-                </div>
-
-                {referenceImages.length === 0 && !loadingReferenceImages ? (
-                  <p className="text-xs text-gray-500">
-                    No reference images yet. Upload an image above and save it as a reference.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-3 gap-2">
-                    {referenceImages.map((img) => (
-                      <div key={img.id} className="group relative">
-                        <div className="relative aspect-square overflow-hidden rounded-lg bg-white">
-                          <img
-                            src={img.imageUrl.startsWith('http') ? img.imageUrl : `/api/media/signed-url?path=${encodeURIComponent(img.imageUrl)}`}
-                            alt={img.label || 'Reference'}
-                            className="size-full object-cover"
-                          />
-                          {img.isPrimary && (
-                            <div className="absolute left-1 top-1 rounded-full bg-yellow-400 p-1">
-                              <Star className="h-2 w-2 fill-white text-white" />
-                            </div>
-                          )}
-                          {/* Action buttons on hover */}
-                          <div className="absolute inset-0 flex items-center justify-center gap-1 bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
-                            {!img.isPrimary && (
-                              <button
-                                onClick={() => handleSetPrimary(img.id)}
-                                className="rounded-full bg-white p-1.5 hover:bg-gray-100"
-                                title="Set as primary"
-                              >
-                                <StarOff className="h-3 w-3 text-gray-700" />
-                              </button>
-                            )}
-                            <button
-                              onClick={() => {
-                                setEditingLabelId(img.id);
-                                setLabelValue(img.label || '');
-                              }}
-                              className="rounded-full bg-white p-1.5 hover:bg-gray-100"
-                              title="Edit label"
-                            >
-                              <Edit2 className="h-3 w-3 text-gray-700" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteReference(img.id)}
-                              className="rounded-full bg-white p-1.5 hover:bg-gray-100"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-3 w-3 text-red-600" />
-                            </button>
-                          </div>
-                        </div>
-                        {/* Label editing */}
-                        {editingLabelId === img.id ? (
-                          <div className="mt-1 flex gap-1">
-                            <input
-                              type="text"
-                              value={labelValue}
-                              onChange={(e) => setLabelValue(e.target.value)}
-                              placeholder="Label"
-                              className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs"
-                            />
-                            <Button
-                              size="sm"
-                              onClick={() => handleUpdateLabel(img.id)}
-                              className="px-2 py-1 text-xs"
-                            >
-                              <Check className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <p className="mt-1 truncate text-xs text-gray-600">
-                            {img.label || 'Untitled'}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                  </>
                 )}
               </div>
             )}
           </div>
 
-          {/* Reference Patients (Only show if patients array provided - Assets page) */}
-          {patients.length > 0 && (
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700">
-                Include Patients (Optional)
-              </label>
-              <p className="text-xs text-gray-600">
-                Select patients to include their likeness in the generated image
-              </p>
-              <div className="grid max-h-32 grid-cols-2 gap-2 overflow-y-auto">
-                {patients.map(patient => (
-                  <button
-                    key={patient.id}
-                    type="button"
-                    onClick={() => handlePatientToggle(patient.id)}
-                    className={`flex items-center gap-2 rounded-lg border-2 p-2 transition-all ${
-                      selectedPatients.includes(patient.id)
-                        ? 'border-indigo-500 bg-indigo-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    {patient.referenceImageUrl || patient.avatarUrl
-                      ? (
-                          <img
-                            src={patient.referenceImageUrl || patient.avatarUrl}
-                            alt={patient.name}
-                            className="h-8 w-8 rounded-full object-cover"
-                          />
-                        )
-                      : (
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200">
-                            <User className="h-4 w-4 text-gray-600" />
-                          </div>
-                        )}
-                    <span className="flex-1 truncate text-left text-sm font-medium text-gray-900">
-                      {patient.name}
-                    </span>
-                    {selectedPatients.includes(patient.id) && (
-                      <Check className="h-4 w-4 text-indigo-600" />
-                    )}
-                  </button>
-                ))}
-              </div>
-              {/* Show warning if patient selected but no image */}
-              {selectedPatients.length > 0 && !patientImageUrl && (
-                <div className="rounded-md bg-yellow-50 p-3">
-                  <p className="text-xs text-yellow-800">
-                    <strong>Note:</strong> This patient doesn't have a reference image set. Image-to-image models won't be available. Please upload a reference image above or select a patient with an avatar.
-                  </p>
+          {/* Image Name */}
+          <div className={isGenerating ? 'opacity-50' : ''}>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Image name</label>
+            <input
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Give this image a name..."
+              disabled={isGenerating}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
+            />
+          </div>
+
+          {/* Model Dropdown */}
+          <div className={isGenerating ? 'opacity-50' : ''}>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Model</label>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => !isGenerating && setShowModelDropdown(!showModelDropdown)}
+                disabled={isGenerating}
+                className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-sm transition-colors hover:border-gray-300 disabled:cursor-not-allowed disabled:bg-gray-50"
+              >
+                <div>
+                  <span className="font-medium text-gray-900">{currentModel?.name}</span>
+                  <span className="ml-2 text-gray-500">
+                    -
+                    {currentModel?.description}
+                  </span>
+                </div>
+                <svg className={`h-5 w-5 text-gray-400 transition-transform ${showModelDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {showModelDropdown && (
+                <div className="absolute top-full right-0 left-0 z-10 mt-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                  {availableModels.map(model => (
+                    <button
+                      key={model.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedModel(model.id);
+                        setShowModelDropdown(false);
+                      }}
+                      className={`flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-gray-50 ${
+                        selectedModel === model.id ? 'bg-purple-50' : ''
+                      }`}
+                    >
+                      <div>
+                        <span className="font-medium text-gray-900">{model.name}</span>
+                        <span className="ml-2 text-gray-500">
+                          -
+                          {model.description}
+                        </span>
+                      </div>
+                      {selectedModel === model.id && (
+                        <Check className="h-4 w-4 text-purple-600" />
+                      )}
+                    </button>
+                  ))}
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Prompt with Optimize button */}
+          <div className={isGenerating ? 'opacity-50' : ''}>
+            <div className="mb-2 flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-700">Prompt</label>
+              <button
+                type="button"
+                onClick={handleOptimizePrompt}
+                disabled={!prompt.trim() || isOptimizing || isGenerating}
+                className="flex items-center gap-1 text-sm text-purple-600 transition-colors hover:text-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isOptimizing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                Optimize
+              </button>
+            </div>
+            <textarea
+              value={prompt}
+              onChange={e => setPrompt(e.target.value)}
+              placeholder="Describe the image you want to generate..."
+              rows={4}
+              disabled={isGenerating}
+              className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
+            />
+          </div>
+
+          {/* Source Quote (Display only if provided) */}
+          {sourceQuote && (
+            <div className="rounded-lg border border-purple-200 bg-purple-50 p-3">
+              <p className="mb-1 text-xs font-medium text-purple-700">Source Quote</p>
+              <p className="text-sm text-purple-900 italic">
+                "
+                {sourceQuote}
+                "
+              </p>
             </div>
           )}
 
@@ -997,84 +1012,87 @@ export function GenerateImageModal({
           )}
         </div>
 
-        {/* Right Column - 4 Variations Grid */}
-        <div className="space-y-4">
-          <div className="mb-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Generated Variations
-            </label>
-            <p className="mt-1 text-xs text-gray-500">
-              Each variation uses a different seed for unique results
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {[0, 1, 2, 3].map((slotIndex) => {
-              const image = generatedImages.find(img => img && img.index === slotIndex);
-              const isGenerating = generatingSlots.includes(slotIndex);
+        {/* Right Column - Generated Variations (only shown after generation) */}
+        {hasGeneratedImages && (
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-sm font-medium text-gray-700">Generated Variations</h4>
+              <p className="mt-1 text-xs text-gray-500">
+                Each variation uses a different seed for unique results
+              </p>
+            </div>
 
-              return (
-                <div key={slotIndex} className="relative aspect-square overflow-hidden rounded-lg border-2 border-gray-200 bg-gray-50">
-                  {isGenerating ? (
-                    // Loading state
-                    <div className="flex h-full items-center justify-center">
-                      <div className="text-center">
-                        <Loader2 className="mx-auto mb-2 h-8 w-8 animate-spin text-indigo-600" />
-                        <p className="text-xs text-gray-600">Generating...</p>
+            <div className="grid grid-cols-2 gap-3">
+              {[0, 1, 2, 3].map((slotIndex) => {
+                const image = generatedImages.find(img => img && img.index === slotIndex);
+                const isGeneratingSlot = generatingSlots.includes(slotIndex);
+
+                return (
+                  <div
+                    key={slotIndex}
+                    className="relative aspect-square overflow-hidden rounded-lg border-2 border-dashed border-gray-200 bg-gray-50"
+                  >
+                    {isGeneratingSlot ? (
+                      // Loading state
+                      <div className="flex h-full items-center justify-center">
+                        <div className="text-center">
+                          <Loader2 className="mx-auto mb-2 h-8 w-8 animate-spin text-purple-600" />
+                          <p className="text-xs text-gray-600">Generating...</p>
+                        </div>
                       </div>
-                    </div>
-                  ) : image ? (
-                    // Image generated
-                    <>
-                      <img
-                        src={image.url}
-                        alt={`Variation ${slotIndex + 1}`}
-                        className="h-full w-full object-cover"
-                      />
-                      {/* Save button overlay */}
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-                        <Button
-                          size="sm"
-                          variant={image.saved ? 'secondary' : 'primary'}
-                          onClick={() => handleSaveImage(image)}
-                          disabled={image.saved || image.saving}
-                          isLoading={image.saving}
-                          className="w-full"
-                        >
-                          {image.saved ? (
-                            <>
-                              <Check className="mr-1 h-3 w-3" />
-                              Saved
-                            </>
-                          ) : image.saving ? (
-                            'Saving...'
-                          ) : (
-                            <>
-                              <Save className="mr-1 h-3 w-3" />
-                              Save
-                            </>
-                          )}
-                        </Button>
+                    ) : image ? (
+                      // Image generated
+                      <>
+                        <img
+                          src={image.url}
+                          alt={`Variation ${slotIndex + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                        {/* Save button overlay */}
+                        <div className="absolute right-2 bottom-2">
+                          <button
+                            onClick={() => handleSaveImage(image)}
+                            disabled={image.saved || image.saving}
+                            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium shadow-lg transition-all ${
+                              image.saved
+                                ? 'bg-green-500 text-white'
+                                : 'bg-purple-600 text-white hover:bg-purple-700'
+                            } disabled:cursor-not-allowed`}
+                          >
+                            {image.saved ? (
+                              <>
+                                <Check className="h-3.5 w-3.5" />
+                                Saved
+                              </>
+                            ) : image.saving ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Save className="h-3.5 w-3.5" />
+                                Save
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      // Empty slot
+                      <div className="flex h-full items-center justify-center">
+                        <div className="text-center">
+                          <ImageIcon className="mx-auto mb-2 h-8 w-8 text-gray-300" />
+                          <p className="text-xs text-gray-400">
+                            Variation
+                            {slotIndex + 1}
+                          </p>
+                        </div>
                       </div>
-                    </>
-                  ) : (
-                    // Empty slot
-                    <div className="flex h-full items-center justify-center">
-                      <div className="text-center">
-                        <ImageIcon className="mx-auto mb-2 h-8 w-8 text-gray-300" />
-                        <p className="text-xs text-gray-400">Variation {slotIndex + 1}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          {generatedImages.length === 0 && generatingSlots.length === 0 && (
-            <p className="text-center text-xs text-gray-500">
-              Click "Generate 4 Variations" to create different versions with varying seeds. Review all variations and save your favorites to the media library.
-            </p>
-          )}
-        </div>
+        )}
       </div>
     </Modal>
   );

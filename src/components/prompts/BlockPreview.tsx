@@ -7,16 +7,16 @@
  * Click to expand into full BlockForm
  */
 
-import { ChevronRight, AlertCircle } from 'lucide-react';
 import type { BlockInstance, ValidationError } from '@/types/BuildingBlocks';
+import { AlertCircle, ChevronRight } from 'lucide-react';
 import { getBlockDefinition } from '@/config/BlockDefinitions';
 
-interface BlockPreviewProps {
+type BlockPreviewProps = {
   blockId: string;
   instance: BlockInstance;
   onExpand: () => void;
   errors?: ValidationError[];
-}
+};
 
 export default function BlockPreview({
   blockId: _blockId,
@@ -32,7 +32,10 @@ export default function BlockPreview({
         onClick={onExpand}
         className="cursor-pointer rounded-lg border border-red-300 bg-red-50 p-3 hover:border-red-400"
       >
-        <p className="text-sm text-red-600">Unknown block type: {instance.blockId}</p>
+        <p className="text-sm text-red-600">
+          Unknown block type:
+          {instance.blockId}
+        </p>
       </div>
     );
   }
@@ -92,27 +95,27 @@ export default function BlockPreview({
         {/* Icon */}
         <div
           className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${
-            hasErrors ? 'bg-red-100' : 'bg-indigo-100'
+            hasErrors ? 'bg-red-100' : 'bg-purple-100'
           }`}
         >
           <span className="text-base">
-            {definition.icon === 'image' ? '🖼️' :
-              definition.icon === 'video' ? '🎬' :
-              definition.icon === 'music' ? '🎵' :
-              definition.icon === 'quote' ? '💬' :
-              definition.icon === 'file-text' ? '📝' :
-              definition.icon === 'help-circle' ? '💭' :
-              definition.icon === 'list-checks' ? '📋' :
-              definition.icon === 'film' ? '🎬' :
-              definition.icon === 'play-circle' ? '▶️' :
-              definition.icon === 'layers' ? '📚' :
-              definition.icon === 'square-stack' ? '📚' :
-              '✨'}
+            {definition.icon === 'image' ? '🖼️'
+              : definition.icon === 'video' ? '🎬'
+                : definition.icon === 'music' ? '🎵'
+                  : definition.icon === 'quote' ? '💬'
+                    : definition.icon === 'file-text' ? '📝'
+                      : definition.icon === 'help-circle' ? '💭'
+                        : definition.icon === 'list-checks' ? '📋'
+                          : definition.icon === 'film' ? '🎬'
+                            : definition.icon === 'play-circle' ? '▶️'
+                              : definition.icon === 'layers' ? '📚'
+                                : definition.icon === 'square-stack' ? '📚'
+                                  : '✨'}
           </span>
         </div>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h4 className={`text-sm font-medium ${hasErrors ? 'text-red-900' : 'text-gray-900'}`}>
               {definition.label}
@@ -120,12 +123,17 @@ export default function BlockPreview({
             {hasErrors && (
               <div className="flex items-center gap-1 text-xs text-red-600">
                 <AlertCircle className="h-3 w-3" />
-                <span>{errors.length} error{errors.length !== 1 ? 's' : ''}</span>
+                <span>
+                  {errors.length}
+                  {' '}
+                  error
+                  {errors.length !== 1 ? 's' : ''}
+                </span>
               </div>
             )}
           </div>
-          <p className="text-xs text-gray-500 truncate">{previewText}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{fieldsSummary}</p>
+          <p className="truncate text-xs text-gray-500">{previewText}</p>
+          <p className="mt-0.5 text-xs text-gray-400">{fieldsSummary}</p>
         </div>
 
         {/* Expand icon */}
@@ -137,12 +145,19 @@ export default function BlockPreview({
         <div className="mt-2 space-y-1 border-t border-red-200 pt-2">
           {errors.slice(0, 2).map((error, idx) => (
             <p key={idx} className="text-xs text-red-600">
-              • {error.message}
+              •
+              {' '}
+              {error.message}
             </p>
           ))}
           {errors.length > 2 && (
             <p className="text-xs text-red-600">
-              • ... and {errors.length - 2} more error{errors.length - 2 !== 1 ? 's' : ''}
+              • ... and
+              {' '}
+              {errors.length - 2}
+              {' '}
+              more error
+              {errors.length - 2 !== 1 ? 's' : ''}
             </p>
           )}
         </div>

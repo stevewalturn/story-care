@@ -19,7 +19,7 @@ export function ModuleAnalysisPanel({ module, onAnalyzeWithModule }: ModuleAnaly
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
-    <div className="rounded-lg border border-indigo-200 bg-gradient-to-br from-indigo-50 to-purple-50">
+    <div className="rounded-lg border border-purple-200 bg-gradient-to-br from-purple-50 to-purple-50">
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -27,7 +27,7 @@ export function ModuleAnalysisPanel({ module, onAnalyzeWithModule }: ModuleAnaly
         type="button"
       >
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-600">
             <Target className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -50,7 +50,7 @@ export function ModuleAnalysisPanel({ module, onAnalyzeWithModule }: ModuleAnaly
 
       {/* Content */}
       {isExpanded && (
-        <div className="space-y-4 border-t border-indigo-200 p-4">
+        <div className="space-y-4 border-t border-purple-200 p-4">
           {/* Therapeutic Aim */}
           <div>
             <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900">
@@ -64,7 +64,7 @@ export function ModuleAnalysisPanel({ module, onAnalyzeWithModule }: ModuleAnaly
           {onAnalyzeWithModule && (
             <button
               onClick={onAnalyzeWithModule}
-              className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+              className="w-full rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-purple-700"
               type="button"
             >
               Analyze Full Transcript with Module
@@ -72,7 +72,7 @@ export function ModuleAnalysisPanel({ module, onAnalyzeWithModule }: ModuleAnaly
           )}
 
           {/* Info Footer */}
-          <div className="rounded-lg border border-indigo-200 bg-white/50 p-3">
+          <div className="rounded-lg border border-purple-200 bg-white/50 p-3">
             <p className="text-xs text-gray-600">
               <span className="font-semibold">Protocol Guidance:</span>
               {' '}
@@ -92,8 +92,8 @@ export function ModuleAnalysisPanel({ module, onAnalyzeWithModule }: ModuleAnaly
  */
 export function CompactModuleIndicator({ module }: { module: TreatmentModule }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2">
-      <Target className="h-4 w-4 text-indigo-600" />
+    <div className="flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2">
+      <Target className="h-4 w-4 text-purple-600" />
       <span className="text-xs font-medium text-gray-700">Protocol:</span>
       <ModuleBadge
         moduleName={module.name}

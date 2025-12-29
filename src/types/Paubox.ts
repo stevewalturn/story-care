@@ -7,59 +7,59 @@
 /**
  * Email message content with HTML and plain text
  */
-export interface PauboxMessageContent {
+export type PauboxMessageContent = {
   'text/html'?: string;
   'text/plain'?: string;
-}
+};
 
 /**
  * Email message headers
  */
-export interface PauboxMessageHeaders {
-  subject: string;
-  from: string;
+export type PauboxMessageHeaders = {
+  'subject': string;
+  'from': string;
   'reply-to'?: string;
-}
+};
 
 /**
  * Email attachment
  */
-export interface PauboxAttachment {
+export type PauboxAttachment = {
   fileName: string;
   contentType: string;
   content: string; // Base64 encoded
-}
+};
 
 /**
  * Single email message structure
  */
-export interface PauboxMessage {
+export type PauboxMessage = {
   recipients: string[];
   headers: PauboxMessageHeaders;
   content: PauboxMessageContent;
   attachments?: PauboxAttachment[];
-}
+};
 
 /**
  * Request body for sending a single email
  */
-export interface PauboxSendRequest {
+export type PauboxSendRequest = {
   data: {
     message: PauboxMessage;
     override_open_tracking?: boolean;
     override_link_tracking?: boolean;
     unsubscribe_url?: string;
   };
-}
+};
 
 /**
  * Response from Paubox send email API
  */
-export interface PauboxSendResponse {
+export type PauboxSendResponse = {
   data: string; // "Service OK"
   sourceTrackingId: string; // UUID for tracking this message
   customHeaders?: Record<string, string>;
-}
+};
 
 /**
  * Delivery status from Paubox
@@ -75,7 +75,7 @@ export type PauboxDeliveryStatus
 /**
  * Delivery information for a message
  */
-export interface PauboxMessageDelivery {
+export type PauboxMessageDelivery = {
   recipient: string;
   status: PauboxDeliveryStatus;
   deliveredAt?: string; // ISO 8601 timestamp
@@ -83,20 +83,20 @@ export interface PauboxMessageDelivery {
   clickedAt?: string;
   bouncedAt?: string;
   bounceReason?: string;
-}
+};
 
 /**
  * Click tracking data
  */
-export interface PauboxClickData {
+export type PauboxClickData = {
   url: string;
   clickedAt: string;
-}
+};
 
 /**
  * Response from get message receipt API
  */
-export interface PauboxMessageReceiptResponse {
+export type PauboxMessageReceiptResponse = {
   data: {
     message: {
       id: string;
@@ -106,18 +106,18 @@ export interface PauboxMessageReceiptResponse {
     };
   };
   sourceTrackingId: string;
-}
+};
 
 /**
  * Error response from Paubox API
  */
-export interface PauboxErrorResponse {
+export type PauboxErrorResponse = {
   errors: Array<{
     code: string;
     title: string;
     detail: string;
   }>;
-}
+};
 
 /**
  * Webhook event types from Paubox
@@ -131,7 +131,7 @@ export type PauboxWebhookEventType
 /**
  * Webhook payload from Paubox
  */
-export interface PauboxWebhookEvent {
+export type PauboxWebhookEvent = {
   event: PauboxWebhookEventType;
   data: {
     sourceTrackingId: string;
@@ -141,25 +141,25 @@ export interface PauboxWebhookEvent {
     bounceReason?: string;
     clickedUrl?: string;
   };
-}
+};
 
 /**
  * Configuration for Paubox client
  */
-export interface PauboxConfig {
+export type PauboxConfig = {
   apiKey: string;
   apiUsername: string;
   baseUrl?: string; // Optional override for testing
   timeout?: number; // Request timeout in milliseconds
   maxRetries?: number; // Maximum retry attempts
-}
+};
 
 /**
  * Send email result
  */
-export interface PauboxSendResult {
+export type PauboxSendResult = {
   success: boolean;
   sourceTrackingId?: string;
   error?: string;
   errorCode?: string;
-}
+};

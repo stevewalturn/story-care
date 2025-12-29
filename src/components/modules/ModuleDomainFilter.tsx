@@ -69,7 +69,7 @@ export function ModuleDomainFilter({ selectedDomain, onSelectDomain }: ModuleDom
         {selectedDomain && (
           <button
             onClick={() => onSelectDomain(null)}
-            className="text-sm text-indigo-600 hover:text-indigo-700"
+            className="text-sm text-purple-600 hover:text-purple-700"
             type="button"
           >
             Clear filter

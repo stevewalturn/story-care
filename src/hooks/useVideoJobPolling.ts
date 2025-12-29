@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
-interface VideoJob {
+type VideoJob = {
   jobId: string;
   sceneId: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
@@ -21,16 +21,16 @@ interface VideoJob {
   startedAt?: string;
   completedAt?: string;
   durationSeconds?: number;
-}
+};
 
-interface UseVideoJobPollingOptions {
+type UseVideoJobPollingOptions = {
   jobId?: string;
   sceneId?: string;
   enabled?: boolean;
   pollInterval?: number; // milliseconds
   onComplete?: (job: VideoJob) => void;
   onError?: (error: string) => void;
-}
+};
 
 export function useVideoJobPolling({
   jobId,
@@ -69,6 +69,12 @@ export function useVideoJobPolling({
           : `/api/scenes/${sceneId}/assemble-async`;
 
         const response = await authenticatedFetch(endpoint, user);
+
+        // Handle 404 gracefully - job might not exist yet (race condition)
+        if (response.status === 404) {
+          console.log('[VideoJobPolling] Job not found yet, will retry...');
+          return; // Don't error, just wait for next poll
+        }
 
         if (!response.ok) {
           throw new Error(`Failed to fetch job status: ${response.statusText}`);

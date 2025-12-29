@@ -3,11 +3,12 @@
  * Manages async video assembly jobs processed on Cloud Run
  */
 
+import type { NextRequest } from 'next/server';
+import { and, desc, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { Env } from '@/libs/Env';
 import { videoProcessingJobs } from '@/models/Schema';
-import { and, desc, eq } from 'drizzle-orm';
-import { type NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/video-jobs
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
         error: 'Failed to fetch video jobs',
         details: error.message,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
           error: 'Missing required fields',
           required: ['sceneId', 'jobType', 'inputData'],
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -107,7 +108,7 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${webhookSecret}`,
+          'Authorization': `Bearer ${webhookSecret}`,
         },
         body: JSON.stringify({
           jobId: job.id,
@@ -151,7 +152,7 @@ export async function POST(request: NextRequest) {
           jobId: job.id,
           details: error.message,
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -160,7 +161,7 @@ export async function POST(request: NextRequest) {
         job,
         message: 'Video processing job created and triggered',
       },
-      { status: 202 }
+      { status: 202 },
     );
   } catch (error: any) {
     console.error('Error creating video job:', error);
@@ -169,7 +170,7 @@ export async function POST(request: NextRequest) {
         error: 'Failed to create video job',
         details: error.message,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -65,7 +65,7 @@ export function TherapistPatientsTab({ patients, onAssignPatients }: TherapistPa
             placeholder="Search patients..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="block w-full max-w-md rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="block w-full max-w-md rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
           />
         </div>
         {onAssignPatients && (
@@ -82,31 +82,31 @@ export function TherapistPatientsTab({ patients, onAssignPatients }: TherapistPa
             <tr>
               <th
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
               >
                 Patient
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
               >
                 Status
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
               >
                 Sessions
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
               >
                 Last Session
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
               >
                 Last Login
               </th>
@@ -127,9 +127,9 @@ export function TherapistPatientsTab({ patients, onAssignPatients }: TherapistPa
               : (
                   filteredPatients.map(patient => (
                     <tr key={patient.id} className="hover:bg-gray-50">
-                      <td className="whitespace-nowrap px-6 py-4">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100">
+                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-purple-100">
                             {patient.avatarUrl
                               ? (
                                   <img
@@ -139,7 +139,7 @@ export function TherapistPatientsTab({ patients, onAssignPatients }: TherapistPa
                                   />
                                 )
                               : (
-                                  <User className="h-5 w-5 text-indigo-600" />
+                                  <User className="h-5 w-5 text-purple-600" />
                                 )}
                           </div>
                           <div className="ml-4">
@@ -148,7 +148,7 @@ export function TherapistPatientsTab({ patients, onAssignPatients }: TherapistPa
                           </div>
                         </div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                             patient.status === 'active'
@@ -161,10 +161,10 @@ export function TherapistPatientsTab({ patients, onAssignPatients }: TherapistPa
                           {patient.status}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                      <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-900">
                         {patient.sessionCount}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                      <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
                         {patient.lastSessionDate
                           ? (
                               <div className="flex items-center">
@@ -180,21 +180,21 @@ export function TherapistPatientsTab({ patients, onAssignPatients }: TherapistPa
                               <span className="text-gray-400">No sessions</span>
                             )}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                      <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
                         {patient.lastLoginAt
                           ? new Date(patient.lastLoginAt).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })
                           : (
                               <span className="text-gray-400">Never</span>
                             )}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                      <td className="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
                         <Link
                           href={`/org-admin/patients/${patient.id}`}
-                          className="text-indigo-600 hover:text-indigo-900"
+                          className="text-purple-600 hover:text-purple-900"
                         >
                           View
                         </Link>
@@ -209,7 +209,15 @@ export function TherapistPatientsTab({ patients, onAssignPatients }: TherapistPa
       {/* Summary */}
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
         <p className="text-sm text-gray-600">
-          Showing {filteredPatients.length} of {patients.length} patients
+          Showing
+          {' '}
+          {filteredPatients.length}
+          {' '}
+          of
+          {' '}
+          {patients.length}
+          {' '}
+          patients
         </p>
       </div>
     </div>

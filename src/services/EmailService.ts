@@ -3,11 +3,11 @@
  * Handle email notifications via SendGrid
  */
 
+import type { PauboxMessage } from '@/types/Paubox';
 import { and, desc, eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { getPauboxClient, isPauboxConfigured } from '@/libs/Paubox';
 import { emailNotificationsSchema, platformSettingsSchema } from '@/models/Schema';
-import type { PauboxMessage } from '@/types/Paubox';
 
 export type NotificationType
   = | 'story_page_published'
@@ -1389,11 +1389,11 @@ function generateSurveyReminderEmailContent(params: {
 
   const dueDateStr = params.dueDate
     ? params.dueDate.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    })
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
     : null;
 
   const bodyText = `

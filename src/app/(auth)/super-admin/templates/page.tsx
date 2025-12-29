@@ -27,6 +27,7 @@ type Template = {
   scope: TemplateScope;
   questions: any[];
   useCount: number;
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -123,7 +124,7 @@ export default function SuperAdminTemplatesPage() {
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-purple-600">
                 <FileText className="h-5 w-5 text-white" />
               </div>
               <div>
@@ -133,7 +134,7 @@ export default function SuperAdminTemplatesPage() {
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
               type="button"
             >
               <Plus className="h-4 w-4" />
@@ -150,7 +151,7 @@ export default function SuperAdminTemplatesPage() {
               onClick={() => setActiveType(type.id)}
               className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
                 activeType === type.id
-                  ? 'border-indigo-600 text-indigo-600'
+                  ? 'border-purple-600 text-purple-600'
                   : 'border-transparent text-gray-600 hover:text-gray-900'
               }`}
               type="button"
@@ -159,7 +160,7 @@ export default function SuperAdminTemplatesPage() {
               <span
                 className={`rounded-full px-2 py-0.5 text-xs ${
                   activeType === type.id
-                    ? 'bg-indigo-100 text-indigo-600'
+                    ? 'bg-purple-100 text-purple-600'
                     : 'bg-gray-100 text-gray-600'
                 }`}
               >
@@ -205,7 +206,7 @@ export default function SuperAdminTemplatesPage() {
               placeholder="Search templates..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-9 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-9 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
             />
           </div>
         </div>
@@ -213,7 +214,7 @@ export default function SuperAdminTemplatesPage() {
         {/* Content */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
           </div>
         ) : error ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4">
@@ -320,7 +321,7 @@ function TemplateCard({ template, onView, onEdit }: TemplateCardProps) {
             <span
               className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
                 template.type === 'reflection'
-                  ? 'bg-indigo-100 text-indigo-700'
+                  ? 'bg-purple-100 text-purple-700'
                   : 'bg-green-100 text-green-700'
               }`}
             >
@@ -366,7 +367,7 @@ function TemplateCard({ template, onView, onEdit }: TemplateCardProps) {
             console.log('[TemplateCard] View Details clicked for:', template.title);
             onView();
           }}
-          className="flex-1 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+          className="flex-1 rounded-lg border border-purple-300 bg-purple-50 px-3 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100"
           type="button"
         >
           View Details
@@ -376,7 +377,7 @@ function TemplateCard({ template, onView, onEdit }: TemplateCardProps) {
             console.log('[TemplateCard] Edit clicked for:', template.title);
             onEdit();
           }}
-          className="flex-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+          className="flex-1 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700"
           type="button"
         >
           Edit

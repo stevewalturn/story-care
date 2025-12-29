@@ -4,7 +4,34 @@
  * Documentation: https://docs.atlascloud.ai/
  */
 
-export type AtlasImageModel = 'flux-schnell' | 'flux-dev' | 'flux-redux-dev';
+export type AtlasImageModel =
+  // Text-to-Image
+  | 'flux-schnell'
+  | 'flux-dev'
+  // Image-to-Image (existing)
+  | 'flux-redux-dev'
+  // Image-to-Image (Alibaba/Qwen)
+  | 'wan-2.6-i2i'
+  | 'wan-2.5-edit'
+  | 'qwen-image-edit'
+  | 'qwen-image-edit-plus'
+  // Image-to-Image (ByteDance/Seedream)
+  | 'seedream-4.5-edit'
+  | 'seedream-4.5-edit-seq'
+  | 'seedream-4-edit'
+  | 'seedream-4-edit-seq'
+  // Image-to-Image (Google/Nano Banana)
+  | 'nano-banana-pro-edit-ultra'
+  | 'nano-banana-pro-edit'
+  | 'nano-banana-pro-edit-dev'
+  | 'nano-banana-edit-dev'
+  | 'nano-banana-edit'
+  // Upscaling
+  | 'recraft-crisp-upscale'
+  // Style Transfer
+  | 'plastic-bubble-figure'
+  | 'my-world'
+  | 'micro-landscape-mini-world';
 
 export type AtlasVideoModel = 'seedance-1-lite';
 
@@ -17,7 +44,7 @@ export type AtlasImageGenerateOptions = {
   guidanceScale?: number;
   numInferenceSteps?: number;
   enableSafetyChecker?: boolean;
-  referenceImage?: string; // URL or base64 - for image-to-image generation (Flux Redux)
+  referenceImages?: string[]; // Array of URLs or base64 - for image-to-image generation
 };
 
 export type AtlasVideoGenerateOptions = {
@@ -56,9 +83,33 @@ export async function generateImageWithAtlas(
 
   // Map model to Atlas format
   const modelNames: Record<AtlasImageModel, string> = {
+    // Text-to-Image
     'flux-schnell': 'black-forest-labs/flux-schnell',
     'flux-dev': 'black-forest-labs/flux-dev',
+    // Image-to-Image (existing)
     'flux-redux-dev': 'black-forest-labs/flux-redux-dev',
+    // Image-to-Image (Alibaba/Qwen)
+    'wan-2.6-i2i': 'alibaba/wan-2.6/image-edit',
+    'wan-2.5-edit': 'alibaba/wan-2.5/image-edit',
+    'qwen-image-edit': 'alibaba/qwen/image-edit',
+    'qwen-image-edit-plus': 'alibaba/qwen/image-edit-plus',
+    // Image-to-Image (ByteDance/Seedream)
+    'seedream-4.5-edit': 'bytedance/seedream-v4.5/edit',
+    'seedream-4.5-edit-seq': 'bytedance/seedream-v4.5/edit-sequential',
+    'seedream-4-edit': 'bytedance/seedream-v4/edit',
+    'seedream-4-edit-seq': 'bytedance/seedream-v4/edit-sequential',
+    // Image-to-Image (Google/Nano Banana)
+    'nano-banana-pro-edit-ultra': 'google/nano-banana-pro/edit-ultra',
+    'nano-banana-pro-edit': 'google/nano-banana-pro/edit',
+    'nano-banana-pro-edit-dev': 'google/nano-banana-pro/edit-dev',
+    'nano-banana-edit-dev': 'google/nano-banana/edit-dev',
+    'nano-banana-edit': 'google/nano-banana/edit',
+    // Upscaling
+    'recraft-crisp-upscale': 'recraft/crisp-upscale',
+    // Style Transfer
+    'plastic-bubble-figure': 'style/plastic-bubble-figure',
+    'my-world': 'style/my-world',
+    'micro-landscape-mini-world': 'style/micro-landscape-mini-world',
   };
 
   const atlasModel = modelNames[model];
@@ -78,9 +129,16 @@ export async function generateImageWithAtlas(
     enable_safety_checker: options.enableSafetyChecker ?? true,
   };
 
-  // Add reference image for Flux Redux (image-to-image generation)
-  if (options.referenceImage) {
-    requestBody.image = options.referenceImage; // Can be URL or base64
+  // Add reference images based on model type
+  if (options.referenceImages && options.referenceImages.length > 0) {
+    if (model === 'flux-redux-dev') {
+      // Flux Redux uses singular 'image' parameter (only first image)
+      requestBody.image = options.referenceImages[0];
+    } else {
+      // Other I2I models (Seedream, Nano Banana, Qwen, Wan, etc.) use 'images' array
+      // These models support multiple reference images
+      requestBody.images = options.referenceImages;
+    }
   }
 
   // Step 1: Start image generation
@@ -90,7 +148,7 @@ export async function generateImageWithAtlas(
     prompt: options.prompt.substring(0, 100) + (options.prompt.length > 100 ? '...' : ''),
     size: requestBody.size,
     numImages: requestBody.num_images,
-    hasReferenceImage: !!options.referenceImage,
+    referenceImageCount: options.referenceImages?.length || 0,
     requestBody,
   });
 
@@ -274,15 +332,18 @@ export function getAtlasImageModels(): Array<{
   name: string;
   description: string;
   pricing: string;
-  supportsImageToImage?: boolean;
+  supportsImageToImage: boolean;
+  category: 'text-to-image' | 'image-editing' | 'upscaling' | 'style-transfer';
 }> {
   return [
+    // Text-to-Image
     {
       id: 'flux-schnell',
       name: 'Flux Schnell',
       description: 'Fastest image generation (4 steps) - 12B parameter model',
       pricing: '$0.0024/image',
       supportsImageToImage: false,
+      category: 'text-to-image',
     },
     {
       id: 'flux-dev',
@@ -290,13 +351,154 @@ export function getAtlasImageModels(): Array<{
       description: 'High quality image generation (28 steps) - 12B parameter model',
       pricing: '$0.0096/image',
       supportsImageToImage: false,
+      category: 'text-to-image',
     },
+    // Image Editing
     {
       id: 'flux-redux-dev',
       name: 'Flux Redux Dev',
-      description: 'Image-to-image generation with reference image support (28 steps)',
+      description: 'Image-to-image generation with reference image support',
       pricing: '$0.0096/image',
       supportsImageToImage: true,
+      category: 'image-editing',
+    },
+    {
+      id: 'seedream-4.5-edit',
+      name: 'Seedream v4.5 Edit',
+      description: 'Preserves facial features, lighting, color tones (Best Quality)',
+      pricing: '$0.04/image',
+      supportsImageToImage: true,
+      category: 'image-editing',
+    },
+    {
+      id: 'seedream-4.5-edit-seq',
+      name: 'Seedream v4.5 Sequential',
+      description: 'Batch editing with feature preservation',
+      pricing: '$0.04/image',
+      supportsImageToImage: true,
+      category: 'image-editing',
+    },
+    {
+      id: 'seedream-4-edit',
+      name: 'Seedream v4 Edit',
+      description: 'Advanced image editing',
+      pricing: '$0.027/image',
+      supportsImageToImage: true,
+      category: 'image-editing',
+    },
+    {
+      id: 'seedream-4-edit-seq',
+      name: 'Seedream v4 Sequential',
+      description: 'Batch editing support',
+      pricing: '$0.027/image',
+      supportsImageToImage: true,
+      category: 'image-editing',
+    },
+    {
+      id: 'nano-banana-pro-edit-ultra',
+      name: 'Nano Banana Pro Ultra',
+      description: 'Premium AI-powered adjustments',
+      pricing: '$0.15/image',
+      supportsImageToImage: true,
+      category: 'image-editing',
+    },
+    {
+      id: 'nano-banana-pro-edit',
+      name: 'Nano Banana Pro Edit',
+      description: 'Precise AI-powered visual adjustments',
+      pricing: '$0.119/image',
+      supportsImageToImage: true,
+      category: 'image-editing',
+    },
+    {
+      id: 'nano-banana-pro-edit-dev',
+      name: 'Nano Banana Pro Dev',
+      description: 'Developer version',
+      pricing: '$0.07/image',
+      supportsImageToImage: true,
+      category: 'image-editing',
+    },
+    {
+      id: 'nano-banana-edit',
+      name: 'Nano Banana Edit',
+      description: 'Google state-of-the-art editing',
+      pricing: '$0.038/image',
+      supportsImageToImage: true,
+      category: 'image-editing',
+    },
+    {
+      id: 'nano-banana-edit-dev',
+      name: 'Nano Banana Edit Dev',
+      description: 'Cheapest editing option',
+      pricing: '$0.019/image',
+      supportsImageToImage: true,
+      category: 'image-editing',
+    },
+    {
+      id: 'qwen-image-edit',
+      name: 'Qwen Image Edit',
+      description: '20B MMDiT model for image editing',
+      pricing: '$0.02/image',
+      supportsImageToImage: true,
+      category: 'image-editing',
+    },
+    {
+      id: 'qwen-image-edit-plus',
+      name: 'Qwen Image Edit Plus',
+      description: 'Enhanced 20B MMDiT model',
+      pricing: '$0.02/image',
+      supportsImageToImage: true,
+      category: 'image-editing',
+    },
+    {
+      id: 'wan-2.6-i2i',
+      name: 'Wan-2.6 Image Edit',
+      description: 'Supports image editing and mixed text/image output',
+      pricing: '$0.0225/image',
+      supportsImageToImage: true,
+      category: 'image-editing',
+    },
+    {
+      id: 'wan-2.5-edit',
+      name: 'Wan-2.5 Image Edit',
+      description: 'Large-scale image generative',
+      pricing: '$0.035/image',
+      supportsImageToImage: true,
+      category: 'image-editing',
+    },
+    // Upscaling
+    {
+      id: 'recraft-crisp-upscale',
+      name: 'Recraft Crisp Upscale',
+      description: 'Image upscaling',
+      pricing: '$0.004/image',
+      supportsImageToImage: true,
+      category: 'upscaling',
+    },
+    // Style Transfer
+    {
+      id: 'plastic-bubble-figure',
+      name: 'Plastic Bubble Figure',
+      description: 'Artistic style transfer',
+      pricing: '$0.02/image',
+      supportsImageToImage: true,
+      category: 'style-transfer',
+    },
+    {
+      id: 'my-world',
+      name: 'My World',
+      description: 'Artistic style transfer',
+      pricing: '$0.02/image',
+      supportsImageToImage: true,
+      category: 'style-transfer',
+    },
+    {
+      id: 'micro-landscape-mini-world',
+      name: 'Micro Landscape Mini World',
+      description: 'Miniature world style transfer',
+      pricing: '$0.02/image',
+      supportsImageToImage: true,
+      category: 'style-transfer',
     },
   ];
 }

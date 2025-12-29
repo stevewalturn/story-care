@@ -1,71 +1,79 @@
 'use client';
 
-import { ArrowLeft } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import type { SceneCardData } from './SceneCard';
+import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useVideoJobPolling } from '@/hooks/useVideoJobPolling';
+import { getFilteredImageModels } from '@/libs/ModelMetadata';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 import { generateSceneDescription, generateSceneTitle } from '@/utils/SceneHelpers';
+import { CompilationProgressModal } from './CompilationProgressModal';
 import { MusicGenerationOptionsModal } from './MusicGenerationOptionsModal';
 import { MusicGenerationPanel } from './MusicGenerationPanel';
 import { PatientReferenceModal } from './PatientReferenceModal';
-import type { SceneCardData } from './SceneCard';
 import { SceneCardSequence } from './SceneCardSequence';
 import { SceneCompilationModal } from './SceneCompilationModal';
 import { SceneGenerationTopBar } from './SceneGenerationTopBar';
 import { SelectMusicModal } from './SelectMusicModal';
-import { CompilationProgressModal } from './CompilationProgressModal';
 
-interface Patient {
+type Patient = {
   id: string;
   name: string;
   avatarUrl?: string;
-}
+};
 
-interface AIModel {
-  id: string;
-  name: string;
-  provider: 'OpenAI' | 'Anthropic' | 'Google';
-}
-
-interface ReferenceImage {
+type ReferenceImage = {
   id: string;
   url: string;
   name?: string;
-}
+};
 
-interface SceneGenerationLayoutProps {
+type MusicOption = {
+  title: string;
+  genre_tags?: string[];
+  mood?: string;
+  music_description?: string;
+  style_prompt?: string;
+  suggested_lyrics?: string;
+};
+
+type SceneGenerationLayoutProps = {
   isOpen: boolean;
   onClose: () => void;
+  onBackToLibrary?: () => void; // Navigate back to scenes library
   initialScenes?: SceneCardData[];
-  patient: Patient;
+  patient?: Patient; // NOW OPTIONAL - will show patient selector if not provided
   sessionId?: string | null; // Session ID to link the scene to a transcript session
-}
-
-// Mock AI models
-const AI_MODELS: AIModel[] = [
-  { id: 'gpt-4-1', name: 'GPT-4.1', provider: 'OpenAI' },
-  { id: 'gpt-4-1-mini', name: 'GPT-4.1 Mini', provider: 'OpenAI' },
-  { id: 'gpt-4-1-nano', name: 'GPT-4.1 Nano', provider: 'OpenAI' },
-  { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI' },
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI' },
-  { id: 'gpt-35-turbo', name: 'GPT-3.5 Turbo', provider: 'OpenAI' },
-  { id: 'claude-haiku-4', name: 'Claude Haiku 4', provider: 'Anthropic' },
-  { id: 'claude-37-sonnet', name: 'Claude 3.7 Sonnet', provider: 'Anthropic' },
-];
+  aiMusicOptions?: {
+    instrumental?: MusicOption;
+    lyrical?: MusicOption;
+  };
+  mode?: 'create' | 'edit'; // Operation mode
+  existingSceneId?: string; // For editing existing scenes
+};
 
 export function SceneGenerationLayout({
   isOpen,
   onClose,
+  onBackToLibrary: _onBackToLibrary,
   initialScenes = [],
-  patient,
+  patient: patientProp,
   sessionId = null,
+  aiMusicOptions,
+  mode = 'create',
+  existingSceneId,
 }: SceneGenerationLayoutProps) {
   const { user } = useAuth();
+
+  // Patient state - use prop if provided, otherwise allow selection
+  const [patient, setPatient] = useState<Patient | undefined>(patientProp);
+  const [availablePatients, setAvailablePatients] = useState<Patient[]>([]);
+  const [loadingPatients, setLoadingPatients] = useState(false);
+
   const [scenes, setScenes] = useState<SceneCardData[]>(initialScenes);
-  const [selectedModel, setSelectedModel] = useState('gpt-4-1');
-  const [isGeneratingAnyImage, setIsGeneratingAnyImage] = useState(false);
+  // Ref to track current scenes for async operations (prevents stale closure issues)
+  const scenesRef = useRef<SceneCardData[]>(scenes);
   const [selectedImageModel, setSelectedImageModel] = useState(() => {
     // Load persisted image model from localStorage
     if (typeof window !== 'undefined') {
@@ -73,6 +81,14 @@ export function SceneGenerationLayout({
       return saved || 'flux-dev';
     }
     return 'flux-dev';
+  });
+  const [selectedVideoModel, setSelectedVideoModel] = useState(() => {
+    // Load persisted video model from localStorage
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sceneGeneration_videoModel');
+      return saved || 'seedance-1-lite';
+    }
+    return 'seedance-1-lite';
   });
   const [useReference, setUseReference] = useState(true);
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
@@ -89,7 +105,13 @@ export function SceneGenerationLayout({
   const [showMusicOptionsModal, setShowMusicOptionsModal] = useState(false);
   const [showSelectMusicModal, setShowSelectMusicModal] = useState(false);
   const [isCompiling, setIsCompiling] = useState(false); // Track compilation state
+  const [generatedMusicOptions, setGeneratedMusicOptions] = useState<{
+    instrumental?: MusicOption;
+    lyrical?: MusicOption;
+  } | null>(null);
+  const [isLoadingMusicSuggestions, setIsLoadingMusicSuggestions] = useState(false);
   const [showProgressModal, setShowProgressModal] = useState(false);
+  const [musicPrompt, setMusicPrompt] = useState<string>('');
   const [compilationProgress, setCompilationProgress] = useState({
     status: 'processing' as 'processing' | 'completed' | 'failed',
     step: '',
@@ -98,12 +120,188 @@ export function SceneGenerationLayout({
     errorMessage: '',
   });
 
+  // Compilation settings
+  const [loopAudio, setLoopAudio] = useState(true); // Default: always loop music
+  const [loopScenes, setLoopScenes] = useState(false); // Default: don't loop scenes
+  const [sceneDuration, setSceneDuration] = useState(10); // Default: 10 seconds per scene
+
+  // Use video job polling hook for compilation progress tracking
+  const { job: videoJob, isProcessing: _isJobProcessing } = useVideoJobPolling({
+    sceneId: compilationProgress.sceneId || undefined,
+    enabled: compilationProgress.status === 'processing' && !!compilationProgress.sceneId,
+    pollInterval: 2000,
+    onComplete: (_job) => {
+      setCompilationProgress(prev => ({
+        ...prev,
+        status: 'completed',
+        step: 'Video assembled successfully!',
+        progress: 100,
+      }));
+      toast.success('Scene compiled and saved successfully!', { id: 'compile' });
+      setIsCompiling(false);
+
+      // Auto-close modal after 3 seconds and close the generation modal
+      setTimeout(() => {
+        setShowProgressModal(false);
+        onClose();
+      }, 3000);
+    },
+    onError: (error) => {
+      setCompilationProgress(prev => ({
+        ...prev,
+        status: 'failed',
+        errorMessage: error,
+      }));
+      toast.error(error, { id: 'compile' });
+      setIsCompiling(false);
+    },
+  });
+
+  // Update compilation progress from polling
+  useEffect(() => {
+    if (videoJob && compilationProgress.status === 'processing') {
+      const progress = videoJob.progress || 50;
+      const step = videoJob.currentStep || 'Processing';
+
+      // Calculate actual progress (70-95% during assembly)
+      const assemblyProgress = Math.min(70 + (progress * 0.25), 95);
+
+      setCompilationProgress(prev => ({
+        ...prev,
+        step: `Assembling video: ${step}`,
+        progress: Math.round(assemblyProgress),
+      }));
+      toast.loading(`Assembling video: ${step} (${progress}%)`, { id: 'compile' });
+    }
+  }, [videoJob, compilationProgress.status]);
+
   // Persist image model selection to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('sceneGeneration_imageModel', selectedImageModel);
     }
   }, [selectedImageModel]);
+
+  // Persist video model selection to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sceneGeneration_videoModel', selectedVideoModel);
+    }
+  }, [selectedVideoModel]);
+
+  // Keep scenesRef in sync with state for async operations
+  useEffect(() => {
+    scenesRef.current = scenes;
+  }, [scenes]);
+
+  // Fetch available patients when no patient is provided
+  useEffect(() => {
+    async function fetchPatients() {
+      if (patientProp || !user || !isOpen) return; // Skip if patient provided or modal closed
+
+      setLoadingPatients(true);
+      try {
+        const response = await authenticatedFetch('/api/patients', user);
+        if (!response.ok) {
+          throw new Error('Failed to fetch patients');
+        }
+
+        const data = await response.json();
+        setAvailablePatients(data.patients || []);
+      } catch (error) {
+        console.error('[SceneGeneration] Error fetching patients:', error);
+        toast.error('Failed to load patients');
+        setAvailablePatients([]);
+      } finally {
+        setLoadingPatients(false);
+      }
+    }
+
+    fetchPatients();
+  }, [isOpen, patientProp, user]);
+
+  // Load existing scene data when in edit mode
+  useEffect(() => {
+    async function loadExistingScene() {
+      if (mode !== 'edit' || !existingSceneId || !user) return;
+
+      try {
+        toast.loading('Loading scene...', { id: 'load-scene' });
+
+        // Fetch scene data
+        const sceneResponse = await authenticatedFetch(`/api/scenes/${existingSceneId}`, user);
+        if (!sceneResponse.ok) {
+          throw new Error('Failed to load scene');
+        }
+
+        const sceneData = await sceneResponse.json();
+
+        // Set patient from scene data
+        if (sceneData.scene.patient) {
+          setPatient({
+            id: sceneData.scene.patient.id,
+            name: sceneData.scene.patient.name,
+            avatarUrl: sceneData.scene.patient.avatarUrl,
+          });
+        }
+
+        // Fetch clips and convert to SceneCardData format
+        const clipsResponse = await authenticatedFetch(`/api/scenes/${existingSceneId}/clips`, user);
+        if (clipsResponse.ok) {
+          const clipsData = await clipsResponse.json();
+
+          // Convert clips to SceneCardData format
+          const sceneCards: SceneCardData[] = clipsData.clips.map((clip: any, index: number) => ({
+            id: `scene-${clip.id}`,
+            sequence: index + 1,
+            title: `Scene ${index + 1}`,
+            prompt: clip.generationPrompt || '', // Load prompt from media library
+            status: 'ready',
+            imageUrl: clip.mediaType === 'image' ? clip.mediaUrl : undefined,
+            imageMediaId: clip.mediaType === 'image' ? clip.mediaId : undefined,
+            videoUrl: clip.mediaType === 'video' ? clip.mediaUrl : undefined,
+            videoMediaId: clip.mediaType === 'video' ? clip.mediaId : undefined,
+          }));
+
+          setScenes(sceneCards);
+        }
+
+        // Load audio tracks (music)
+        const audioResponse = await authenticatedFetch(`/api/scenes/${existingSceneId}/audio-tracks`, user);
+        if (audioResponse.ok) {
+          const audioData = await audioResponse.json();
+          if (audioData.audioTracks && audioData.audioTracks.length > 0) {
+            const firstAudio = audioData.audioTracks[0];
+            setMusicUrl(firstAudio.audioUrl); // Fixed: was trackUrl, should be audioUrl
+            setMusicMediaId(firstAudio.audioId);
+            setMusicDuration(parseFloat(firstAudio.durationSeconds) || 120);
+            setMusicWaveform(Array.from({ length: 100 }, () => Math.random()));
+          }
+        }
+
+        toast.success('Scene loaded successfully', { id: 'load-scene' });
+      } catch (error) {
+        console.error('[SceneGeneration] Error loading scene:', error);
+        toast.error('Failed to load scene', { id: 'load-scene' });
+      }
+    }
+
+    loadExistingScene();
+  }, [mode, existingSceneId, user]);
+
+  // Always reset to first available model when useReference changes
+  useEffect(() => {
+    const imageModels = getFilteredImageModels(useReference);
+    const allAvailableModels = Object.values(imageModels).flat();
+
+    // Always reset to first model when useReference changes
+    if (allAvailableModels.length > 0) {
+      const firstModel = allAvailableModels[0];
+      if (firstModel && firstModel.value !== selectedImageModel) {
+        setSelectedImageModel(firstModel.value);
+      }
+    }
+  }, [useReference]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch patient reference images from API
   useEffect(() => {
@@ -240,36 +438,128 @@ export function SceneGenerationLayout({
   if (!isOpen) return null;
 
   const handleUpdateScene = (id: string, updates: Partial<SceneCardData>) => {
-    setScenes(scenes.map(scene =>
+    setScenes(prev => prev.map(scene =>
       scene.id === id ? { ...scene, ...updates } : scene));
   };
 
   const handleDeleteScene = (id: string) => {
-    setScenes(scenes.filter(scene => scene.id !== id));
+    setScenes(prev => prev.filter(scene => scene.id !== id));
+  };
+
+  const handleAddScene = () => {
+    const newSequence = scenes.length + 1;
+    const newScene: SceneCardData = {
+      id: `scene-${Date.now()}`,
+      sequence: newSequence,
+      title: `Scene ${newSequence}`,
+      prompt: '',
+      status: 'draft',
+    };
+    setScenes(prev => [...prev, newScene]);
+    toast.success(`Scene ${newSequence} added`);
   };
 
   const handleOptimizePrompt = async (id: string) => {
     const scene = scenes.find(s => s.id === id);
-    if (!scene) return;
+    if (!scene || !user) return;
 
     toast.loading('Optimizing prompt...', { id: 'optimize' });
 
-    // TODO: Call API to optimize prompt
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      // Call AI API to optimize prompt
+      const response = await authenticatedFetch(
+        '/api/ai/optimize-prompt',
+        user,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt: scene.prompt,
+            optimizeFor: 'image',
+            model: 'gpt-4',
+          }),
+        },
+      );
 
-    const optimizedPrompt = `${scene.prompt} [Enhanced with cinematic lighting, depth of field, and emotional resonance]`;
+      if (!response.ok) {
+        throw new Error('Failed to optimize prompt');
+      }
 
-    handleUpdateScene(id, { prompt: optimizedPrompt });
-    toast.success('Prompt optimized!', { id: 'optimize' });
+      const data = await response.json();
+
+      // Replace prompt with optimized version (not append)
+      handleUpdateScene(id, { prompt: data.optimizedPrompt });
+
+      toast.success('Prompt optimized!', { id: 'optimize' });
+    }
+    catch (error) {
+      console.error('Error optimizing prompt:', error);
+      toast.error('Failed to optimize prompt', { id: 'optimize' });
+    }
+  };
+
+  const handleOptimizeMusicPrompt = async () => {
+    if (!user) return;
+
+    toast.loading('Optimizing music prompt...', { id: 'optimize-music' });
+
+    try {
+      // Call AI API to optimize music prompt
+      const response = await authenticatedFetch(
+        '/api/ai/optimize-prompt',
+        user,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt: musicPrompt || 'Calm, therapeutic background music with gentle piano and ambient sounds',
+            optimizeFor: 'music',
+            model: 'gpt-4',
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to optimize music prompt');
+      }
+
+      const data = await response.json();
+
+      // Replace music prompt with optimized version (not append)
+      setMusicPrompt(data.optimizedPrompt);
+
+      toast.success('Music prompt optimized!', { id: 'optimize-music' });
+    }
+    catch (error) {
+      console.error('Error optimizing music prompt:', error);
+      toast.error('Failed to optimize music prompt', { id: 'optimize-music' });
+    }
   };
 
   const handleGenerateImage = async (id: string) => {
-    const scene = scenes.find(s => s.id === id);
-    if (!scene) return;
+    // Use ref to get latest scenes state, not stale closure
+    const scene = scenesRef.current.find(s => s.id === id);
+    if (!scene) {
+      console.error('[Image Generation] Scene not found:', id);
+      return;
+    }
 
-    // Check for concurrent image generation
-    if (isGeneratingAnyImage) {
-      toast.error('Please wait for the current image to finish generating');
+    // Capture data immediately before any async operations
+    const promptToUse = scene.prompt;
+    const titleToUse = scene.title;
+    const sequenceToUse = scene.sequence;
+
+    // Log to verify correct prompt is being used for each scene
+    console.log('[Image Generation] Scene ID:', id);
+    console.log('[Image Generation] Prompt:', promptToUse);
+
+    // Check if this specific scene is already generating
+    if (scene.status === 'generating_image') {
+      toast.error(`Scene ${sequenceToUse} is already generating an image`);
       return;
     }
 
@@ -278,48 +568,37 @@ export function SceneGenerationLayout({
       return;
     }
 
-    // Set global lock
-    setIsGeneratingAnyImage(true);
-
-    // Debug logging
-    console.log('[Debug] User object exists:', !!user);
-    console.log('[Debug] User email:', user.email);
-    console.log('[Debug] User email verified:', user.emailVerified);
-    console.log('[Debug] Selected image model:', selectedImageModel);
-    console.log('[Debug] Use reference:', useReference);
-    console.log('[Debug] Reference images:', referenceImages.length);
-    try {
-      const token = await user.getIdToken();
-      console.log('[Debug] Token obtained:', !!token);
-    } catch (tokenError) {
-      console.error('[Debug] Token error:', tokenError);
+    if (!patient) {
+      toast.error('Please select a patient first');
+      return;
     }
 
     handleUpdateScene(id, { status: 'generating_image' });
-    toast.loading(`Generating image for Scene ${scene.sequence}...`, { id: 'image-gen' });
+    toast.loading(`Generating image for Scene ${sequenceToUse}...`, { id: `image-gen-${id}` });
 
     try {
-      // Prepare reference image if useReference is enabled
-      const referenceImage = useReference && referenceImages.length > 0 && referenceImages[0]
-        ? referenceImages[0].url
+      // Prepare reference images array if useReference is enabled
+      // Use ALL reference images for models that support multiple references
+      const selectedReferenceImages = useReference && referenceImages.length > 0
+        ? referenceImages.map(img => img.url)
         : undefined;
 
       console.log('[Image Generation] Request payload:', {
-        prompt: scene.prompt,
-        title: scene.title,
+        prompt: promptToUse,
+        title: titleToUse,
         model: selectedImageModel,
         patientId: patient.id,
         sessionId,
-        referenceImage: referenceImage ? 'provided' : 'none',
+        referenceImageCount: selectedReferenceImages?.length || 0,
       });
 
       const response = await authenticatedPost('/api/ai/generate-image', user, {
-        prompt: scene.prompt,
-        title: scene.title,
-        model: selectedImageModel, // Use selected model instead of hardcoded
+        prompt: promptToUse,
+        title: titleToUse,
+        model: selectedImageModel,
         patientId: patient.id,
         sessionId,
-        referenceImage, // Include reference image if enabled
+        referenceImages: selectedReferenceImages,
       });
 
       if (!response.ok) {
@@ -333,18 +612,15 @@ export function SceneGenerationLayout({
 
       handleUpdateScene(id, {
         status: 'draft',
-        imageUrl: data.media.mediaUrl, // Presigned URL from GCS
-        imageMediaId: data.media.id, // Store media library ID
+        imageUrl: data.media.mediaUrl,
+        imageMediaId: data.media.id,
       });
 
-      toast.success('Image generated and saved to assets!', { id: 'image-gen' });
+      toast.success(`Image generated for Scene ${sequenceToUse}!`, { id: `image-gen-${id}` });
     } catch (error) {
       console.error('Image generation error:', error);
       handleUpdateScene(id, { status: 'draft' });
-      toast.error(error instanceof Error ? error.message : 'Failed to generate image', { id: 'image-gen' });
-    } finally {
-      // Always release the lock
-      setIsGeneratingAnyImage(false);
+      toast.error(error instanceof Error ? error.message : 'Failed to generate image', { id: `image-gen-${id}` });
     }
   };
 
@@ -357,6 +633,11 @@ export function SceneGenerationLayout({
       return;
     }
 
+    if (!patient) {
+      toast.error('Please select a patient first');
+      return;
+    }
+
     handleUpdateScene(id, { status: 'animating', progress: 0 });
     toast.loading('Animating to video...', { id: `vid-${id}` });
 
@@ -365,7 +646,7 @@ export function SceneGenerationLayout({
       const response = await authenticatedPost('/api/ai/generate-video', user, {
         prompt: scene.prompt,
         title: scene.title,
-        model: 'seedance-1-lite',
+        model: selectedVideoModel, // Use selected video model from TopBar
         referenceImage: scene.imageUrl,
         patientId: patient.id,
         sessionId,
@@ -426,7 +707,6 @@ export function SceneGenerationLayout({
           toast.error('Failed to check video status', { id: `vid-${id}` });
         }
       }, 2000); // Poll every 2 seconds
-
     } catch (error) {
       console.error('Video animation error:', error);
       handleUpdateScene(id, { status: 'draft', progress: 0 });
@@ -434,8 +714,39 @@ export function SceneGenerationLayout({
     }
   };
 
-  // Open music generation options modal
-  const handleGenerateMusic = () => {
+  // Open music generation options modal with AI-suggested options based on scenes
+  const handleGenerateMusic = async () => {
+    // If we have scene prompts and no existing AI options, generate suggestions
+    const scenePrompts = scenes
+      .filter(s => s.prompt && s.prompt.trim() !== '')
+      .map(s => s.prompt);
+
+    if (scenePrompts.length > 0 && !aiMusicOptions && !generatedMusicOptions && user && patient) {
+      setIsLoadingMusicSuggestions(true);
+      toast.loading('Generating music suggestions based on your scenes...', { id: 'music-suggestions' });
+
+      try {
+        const response = await authenticatedPost('/api/ai/suggest-music-options', user, {
+          scenePrompts,
+          patientName: patient.name,
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setGeneratedMusicOptions(data.options);
+          toast.success('Music suggestions ready!', { id: 'music-suggestions' });
+        } else {
+          console.error('Failed to generate music suggestions');
+          toast.dismiss('music-suggestions');
+        }
+      } catch (error) {
+        console.error('Error generating music suggestions:', error);
+        toast.dismiss('music-suggestions');
+      } finally {
+        setIsLoadingMusicSuggestions(false);
+      }
+    }
+
     setShowMusicOptionsModal(true);
   };
 
@@ -451,9 +762,15 @@ export function SceneGenerationLayout({
       return;
     }
 
+    if (!patient) {
+      toast.error('Please select a patient first');
+      return;
+    }
+
     setIsGeneratingMusic(true);
     setMusicGenerationProgress(0);
     setMusicGenerationStatus('pending');
+    setMusicPrompt(params.prompt); // Store prompt in state so textarea displays it
     toast.loading('Generating music with Suno AI...', { id: 'music' });
 
     try {
@@ -560,6 +877,13 @@ export function SceneGenerationLayout({
       return;
     }
 
+    if (!patient) {
+      toast.error('Please select a patient first');
+      setIsCompiling(false);
+      setShowProgressModal(false);
+      return;
+    }
+
     try {
       // Step 1: Create scene record
       setCompilationProgress(prev => ({
@@ -576,6 +900,8 @@ export function SceneGenerationLayout({
         sessionId: sessionId || undefined,
         title,
         description,
+        loopAudio, // Loop background music to fit video length
+        loopScenes, // Loop scenes to fit music length
       });
 
       if (!createSceneResponse.ok) {
@@ -586,10 +912,10 @@ export function SceneGenerationLayout({
       const { scene: newScene } = await createSceneResponse.json();
       console.log('[Scene Compilation] Scene created:', newScene.id);
 
-      // Update with scene ID
+      // Note: Don't set sceneId here - wait until after the job is created
+      // to avoid triggering polling before the job exists
       setCompilationProgress(prev => ({
         ...prev,
-        sceneId: newScene.id,
         progress: 25,
       }));
 
@@ -604,28 +930,50 @@ export function SceneGenerationLayout({
       // Add scene clips for each scene with media
       const scenesWithMedia = scenes.filter(s => s.videoMediaId || s.imageMediaId);
 
-      for (let i = 0; i < scenesWithMedia.length; i++) {
-        const scene = scenesWithMedia[i];
-        if (!scene) continue;
+      // Calculate if we need to loop scenes
+      const totalBaseDuration = scenesWithMedia.length * sceneDuration;
+      const musicDurationSec = musicDuration || 0;
+      const needsLooping = loopScenes && musicDurationSec > totalBaseDuration;
+      const loopCount = needsLooping
+        ? Math.ceil(musicDurationSec / totalBaseDuration)
+        : 1;
 
-        const mediaId = scene.videoMediaId || scene.imageMediaId; // Prefer video over image
-        if (!mediaId) continue;
+      console.log(`[Scene Compilation] Loop settings:`, {
+        loopScenes,
+        musicDuration: musicDurationSec,
+        totalBaseDuration,
+        needsLooping,
+        loopCount,
+      });
 
-        const clipResponse = await authenticatedPost(
-          `/api/scenes/${newScene.id}/clips`,
-          user,
-          {
-            mediaId,
-            sequenceNumber: i,
-            startTimeSeconds: 0,
-            endTimeSeconds: null,
-          },
-        );
+      // Build clips array (with looping if needed)
+      let clipIndex = 0;
+      for (let loop = 0; loop < loopCount; loop++) {
+        for (let i = 0; i < scenesWithMedia.length; i++) {
+          const scene = scenesWithMedia[i];
+          if (!scene) continue;
 
-        if (!clipResponse.ok) {
-          console.error(`Failed to add clip ${i}:`, await clipResponse.text());
-        } else {
-          console.log(`[Scene Compilation] Added clip ${i + 1}/${scenesWithMedia.length}`);
+          const mediaId = scene.videoMediaId || scene.imageMediaId; // Prefer video over image
+          if (!mediaId) continue;
+
+          const clipResponse = await authenticatedPost(
+            `/api/scenes/${newScene.id}/clips`,
+            user,
+            {
+              mediaId,
+              sequenceNumber: clipIndex,
+              startTimeSeconds: 0,
+              endTimeSeconds: sceneDuration, // Use selected duration (5/10/15/20 seconds)
+            },
+          );
+
+          if (!clipResponse.ok) {
+            console.error(`Failed to add clip ${clipIndex}:`, await clipResponse.text());
+          } else {
+            console.log(`[Scene Compilation] Added clip ${clipIndex + 1}/${scenesWithMedia.length * loopCount} (loop ${loop + 1}/${loopCount})`);
+          }
+
+          clipIndex++;
         }
       }
 
@@ -683,9 +1031,13 @@ export function SceneGenerationLayout({
       const assembleData = await assembleResponse.json();
       console.log('[Scene Compilation] Assembly started, jobId:', assembleData.jobId);
 
-      // Step 5: Poll for completion
-      await pollAssemblyStatus(newScene.id);
-
+      // Step 5: Start polling with useVideoJobPolling hook
+      // The hook will automatically start polling once sceneId is set and status is 'processing'
+      setCompilationProgress(prev => ({
+        ...prev,
+        sceneId: newScene.id,
+        progress: 70,
+      }));
     } catch (error) {
       console.error('Scene compilation error:', error);
       setIsCompiling(false);
@@ -699,98 +1051,6 @@ export function SceneGenerationLayout({
         { id: 'compile' },
       );
     }
-  };
-
-  // Poll assembly status
-  const pollAssemblyStatus = async (sceneId: string) => {
-    const maxAttempts = 60; // Poll for up to 5 minutes (every 5 seconds)
-    let attempts = 0;
-
-    const checkStatus = async (): Promise<void> => {
-      if (!user) return;
-
-      try {
-        const statusResponse = await authenticatedFetch(
-          `/api/scenes/${sceneId}/assemble-async`,
-          user,
-        );
-
-        if (!statusResponse.ok) {
-          throw new Error('Failed to check assembly status');
-        }
-
-        const statusData = await statusResponse.json();
-
-        if (statusData.status === 'completed') {
-          // Success - update modal to completed state
-          setCompilationProgress(prev => ({
-            ...prev,
-            status: 'completed',
-            step: 'Video assembled successfully!',
-            progress: 100,
-          }));
-          toast.success('Scene compiled and saved successfully!', { id: 'compile' });
-          setIsCompiling(false);
-
-          // Auto-close modal after 3 seconds and refresh media panel
-          setTimeout(() => {
-            setShowProgressModal(false);
-            onClose();
-          }, 3000);
-        } else if (statusData.status === 'failed') {
-          throw new Error(statusData.errorMessage || 'Video assembly failed');
-        } else {
-          // Still processing, update progress in modal
-          const progress = statusData.progress || 50;
-          const step = statusData.currentStep || 'Processing';
-
-          // Calculate actual progress (70-95% during assembly)
-          const assemblyProgress = Math.min(70 + (progress * 0.25), 95);
-
-          setCompilationProgress(prev => ({
-            ...prev,
-            step: `Assembling video: ${step}`,
-            progress: Math.round(assemblyProgress),
-          }));
-          toast.loading(`Assembling video: ${step} (${progress}%)`, { id: 'compile' });
-
-          attempts++;
-          if (attempts < maxAttempts) {
-            setTimeout(checkStatus, 5000); // Poll every 5 seconds
-          } else {
-            // Timeout - scene saved but still processing
-            setCompilationProgress(prev => ({
-              ...prev,
-              status: 'completed',
-              step: 'Scene saved! Assembly is taking longer than expected.',
-              progress: 95,
-            }));
-            toast.success(
-              'Scene saved! Video assembly is taking longer than expected. Check the Scenes page for the final video.',
-              { id: 'compile', duration: 6000 },
-            );
-            setIsCompiling(false);
-
-            // Keep modal open so user can navigate to scenes page
-          }
-        }
-      } catch (error) {
-        console.error('Assembly polling error:', error);
-        setIsCompiling(false);
-        setCompilationProgress(prev => ({
-          ...prev,
-          status: 'failed',
-          errorMessage: error instanceof Error ? error.message : 'Assembly failed',
-        }));
-        toast.error(
-          error instanceof Error ? error.message : 'Assembly failed',
-          { id: 'compile' },
-        );
-      }
-    };
-
-    // Start polling
-    checkStatus();
   };
 
   const handleAddReferenceImage = (file: File) => {
@@ -809,6 +1069,63 @@ export function SceneGenerationLayout({
     toast.success('Reference image removed');
   };
 
+  // Handle uploading a custom image to a scene
+  const handleUploadImage = async (sceneId: string, file: File) => {
+    if (!user || !patient?.id) return;
+
+    const scene = scenes.find(s => s.id === sceneId);
+    if (!scene) return;
+
+    handleUpdateScene(sceneId, { status: 'generating_image' });
+    toast.loading('Uploading image...', { id: `upload-${sceneId}` });
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('patientId', patient.id);
+      formData.append('title', scene.title || 'Scene Image');
+      formData.append('mediaType', 'image');
+      if (sessionId) {
+        formData.append('sessionId', sessionId);
+      }
+
+      const token = await user.getIdToken();
+      const response = await fetch('/api/media/upload', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const data = await response.json();
+
+      handleUpdateScene(sceneId, {
+        status: 'draft',
+        imageUrl: data.media.mediaUrl,
+        imageMediaId: data.media.id,
+      });
+
+      toast.success('Image uploaded successfully!', { id: `upload-${sceneId}` });
+    } catch (error) {
+      console.error('Image upload error:', error);
+      handleUpdateScene(sceneId, { status: 'draft' });
+      toast.error(error instanceof Error ? error.message : 'Failed to upload image', { id: `upload-${sceneId}` });
+    }
+  };
+
+  // Check if any scene is actively generating (locks settings only during generation)
+  const isGeneratingAnyImage = scenes.some(s =>
+    s.status === 'generating_image' || s.status === 'animating',
+  );
+  console.log('[Settings Lock Debug] isGeneratingAnyImage:', isGeneratingAnyImage);
+  console.log('[Settings Lock Debug] scenes statuses:', scenes.map(s => ({ id: s.id, status: s.status })));
+
   return (
     <>
       {/* Full-Screen Modal Backdrop */}
@@ -818,16 +1135,54 @@ export function SceneGenerationLayout({
       <div className="fixed inset-0 z-50 flex flex-col bg-white">
         {/* Top Bar */}
         <SceneGenerationTopBar
-          patientName={patient.name}
-          selectedModel={selectedModel}
-          models={AI_MODELS}
-          onModelChange={setSelectedModel}
+          patientName={patient?.name || 'Select Patient'}
+          patientAvatarUrl={patient?.avatarUrl}
           selectedImageModel={selectedImageModel}
           onImageModelChange={setSelectedImageModel}
+          selectedVideoModel={selectedVideoModel}
+          onVideoModelChange={setSelectedVideoModel}
           useReference={useReference}
           onUseReferenceChange={setUseReference}
           onShowReferenceModal={() => setShowReferenceModal(true)}
+          referenceImages={referenceImages}
+          settingsLocked={isGeneratingAnyImage}
         />
+
+        {/* Patient Selector - Only show when no patient provided */}
+        {!patientProp && (
+          <div className="border-b border-gray-200 bg-purple-50 px-8 py-4">
+            <div className="mx-auto max-w-4xl">
+              <label className="mb-2 block text-sm font-semibold text-gray-900">
+                Select Patient
+                {' '}
+                <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={patient?.id || ''}
+                onChange={(e) => {
+                  const selectedPatient = availablePatients.find(p => p.id === e.target.value);
+                  setPatient(selectedPatient);
+                }}
+                disabled={loadingPatients || mode === 'edit'}
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">
+                  {loadingPatients ? 'Loading patients...' : 'Choose a patient to create scenes for'}
+                </option>
+                {availablePatients.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              {!patient && !loadingPatients && (
+                <p className="mt-2 text-xs text-gray-600">
+                  Please select a patient before generating scenes
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Main Content Area */}
         <div className="flex flex-1 flex-col overflow-y-auto p-8">
@@ -839,8 +1194,10 @@ export function SceneGenerationLayout({
               onDeleteScene={handleDeleteScene}
               onOptimizePrompt={handleOptimizePrompt}
               onGenerateImage={handleGenerateImage}
+              onUploadImage={handleUploadImage}
               onAnimateVideo={handleAnimateVideo}
-              maxScenes={5}
+              onAddScene={handleAddScene}
+              maxScenes={10}
             />
           </div>
 
@@ -853,11 +1210,14 @@ export function SceneGenerationLayout({
               isGenerating={isGeneratingMusic}
               generationProgress={musicGenerationProgress}
               generationStatus={musicGenerationStatus}
+              musicPrompt={musicPrompt}
               onGenerate={handleGenerateMusic}
               onChooseFromLibrary={handleChooseFromLibrary}
               onRegenerate={handleRegenerateMusic}
               onDownload={handleDownloadMusic}
               onRemove={handleRemoveMusic}
+              onOptimizePrompt={handleOptimizeMusicPrompt}
+              onPromptChange={setMusicPrompt}
             />
           </div>
         </div>
@@ -865,24 +1225,30 @@ export function SceneGenerationLayout({
         {/* Bottom Action Bar */}
         <div className="border-t border-gray-200 bg-white px-8 py-4">
           <div className="flex items-center justify-between">
-            <Button
+            {/* Back Button - Gray outline style */}
+            <button
               onClick={onClose}
-              variant="ghost"
               disabled={isCompiling}
+              className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-6 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <ArrowLeft className="mr-2 h-4 w-4" />
               Back
-            </Button>
+            </button>
 
-            <Button
+            {/* Compile Button - Purple filled style */}
+            <button
               onClick={handleCompile}
-              variant="primary"
-              size="lg"
-              disabled={!musicUrl || isCompiling}
-              title={!musicUrl ? 'Generate background music first' : 'Compile scenes into video'}
+              disabled={!patient || !musicUrl || isCompiling}
+              title={
+                !patient
+                  ? 'Select a patient first'
+                  : !musicUrl
+                      ? 'Generate background music first'
+                      : 'Compile scenes into video'
+              }
+              className="flex items-center gap-2 rounded-lg bg-purple-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isCompiling ? 'Compiling...' : 'Compile'}
-            </Button>
+            </button>
           </div>
         </div>
       </div>
@@ -891,7 +1257,7 @@ export function SceneGenerationLayout({
       <PatientReferenceModal
         isOpen={showReferenceModal}
         onClose={() => setShowReferenceModal(false)}
-        patientName={patient.name}
+        patientName={patient?.name || 'Patient'}
         referenceImages={referenceImages}
         onToggleReference={setUseReference}
         useReference={useReference}
@@ -904,6 +1270,14 @@ export function SceneGenerationLayout({
         onClose={() => setShowCompilationModal(false)}
         onCompileNow={handleCompileNow}
         sceneCount={scenes.filter(s => s.imageUrl || s.videoUrl).length}
+        isCompiling={isCompiling}
+        loopAudio={loopAudio}
+        onLoopAudioChange={setLoopAudio}
+        loopScenes={loopScenes}
+        onLoopScenesChange={setLoopScenes}
+        sceneDuration={sceneDuration}
+        onSceneDurationChange={setSceneDuration}
+        musicDuration={musicDuration}
       />
 
       <CompilationProgressModal
@@ -920,14 +1294,14 @@ export function SceneGenerationLayout({
         isOpen={showMusicOptionsModal}
         onClose={() => setShowMusicOptionsModal(false)}
         onGenerate={handleGenerateMusicWithOptions}
-        instrumentalOption={{
+        instrumentalOption={aiMusicOptions?.instrumental || generatedMusicOptions?.instrumental || {
           title: 'Therapeutic Instrumental Music',
           genre_tags: ['ambient', 'therapeutic', 'calming'],
           mood: 'Peaceful and calming',
           music_description: 'Gentle background music designed to create a therapeutic atmosphere with soft instrumentation and ambient sounds',
           style_prompt: 'calm therapeutic background music with gentle piano and ambient sounds',
         }}
-        lyricalOption={{
+        lyricalOption={aiMusicOptions?.lyrical || generatedMusicOptions?.lyrical || {
           title: 'Therapeutic Song with Lyrics',
           genre_tags: ['therapeutic', 'healing', 'narrative'],
           mood: 'Hopeful and encouraging',
@@ -935,13 +1309,15 @@ export function SceneGenerationLayout({
           style_prompt: 'therapeutic song with meaningful lyrics about healing and growth',
           suggested_lyrics: 'Gentle verses about hope, healing, and personal growth that complement the therapeutic narrative',
         }}
+        hasAiSuggestions={!!(aiMusicOptions?.instrumental || aiMusicOptions?.lyrical || generatedMusicOptions?.instrumental || generatedMusicOptions?.lyrical)}
+        isLoadingSuggestions={isLoadingMusicSuggestions}
       />
 
       <SelectMusicModal
         isOpen={showSelectMusicModal}
         onClose={() => setShowSelectMusicModal(false)}
         onSelect={handleSelectMusic}
-        patientId={patient.id}
+        patientId={patient?.id || ''}
         sessionId={sessionId}
         user={user}
       />

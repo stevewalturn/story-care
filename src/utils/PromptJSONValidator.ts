@@ -10,11 +10,11 @@
 import type { SchemaType } from '@/config/PromptJSONTemplates';
 import { getAllSchemaTypes } from '@/config/PromptJSONTemplates';
 
-export interface ValidationResult {
+export type ValidationResult = {
   isValid: boolean;
   errors: string[];
   warnings: string[];
-}
+};
 
 /**
  * Detect if JSON is a JSON Schema definition or output data
@@ -373,6 +373,88 @@ function validateSchemaStructure(data: any, schemaType: SchemaType): string[] {
         });
       }
       break;
+
+    case 'therapeutic_scene_card': {
+      const cardData = data as Record<string, any>;
+
+      // Validate required root fields
+      if (!cardData.title || typeof cardData.title !== 'string') {
+        errors.push('Missing or invalid "title" field (must be string)');
+      }
+      if (!cardData.patient || typeof cardData.patient !== 'string') {
+        errors.push('Missing or invalid "patient" field (must be string)');
+      }
+      if (!Array.isArray(cardData.scenes)) {
+        errors.push('Missing or invalid "scenes" field (must be array)');
+      }
+      else if (cardData.scenes.length === 0) {
+        errors.push('The "scenes" array cannot be empty');
+      }
+      else {
+        // Validate each scene
+        cardData.scenes.forEach((scene: any, index: number) => {
+          if (!scene.sceneNumber || typeof scene.sceneNumber !== 'number') {
+            errors.push(`Scene ${index + 1}: Missing or invalid "sceneNumber" field`);
+          }
+
+          // Critical: Validate sections object
+          if (!scene.sections || typeof scene.sections !== 'object') {
+            errors.push(`Scene ${index + 1}: Missing "sections" object`);
+          }
+          else {
+            const requiredSections = ['patientQuote', 'meaning', 'imagePrompt', 'imageToScene'];
+
+            requiredSections.forEach((sectionName) => {
+              const section = scene.sections[sectionName];
+              if (!section) {
+                errors.push(`Scene ${index + 1}: Missing "${sectionName}" section`);
+              }
+              else {
+                if (!section.label || typeof section.label !== 'string') {
+                  errors.push(`Scene ${index + 1}.${sectionName}: Missing or invalid "label"`);
+                }
+                if (!section.content || typeof section.content !== 'string') {
+                  errors.push(`Scene ${index + 1}.${sectionName}: Missing or invalid "content"`);
+                }
+              }
+            });
+          }
+        });
+      }
+
+      if (!cardData.status || !['pending', 'completed'].includes(cardData.status)) {
+        errors.push('Missing or invalid "status" field (must be "pending" or "completed")');
+      }
+      break;
+    }
+
+    case 'scene_visualization': {
+      const vizData = data as Record<string, any>;
+
+      // Validate required fields
+      if (!vizData.title || typeof vizData.title !== 'string') {
+        errors.push('Missing or invalid "title" field');
+      }
+      if (!vizData.description || typeof vizData.description !== 'string') {
+        errors.push('Missing or invalid "description" field');
+      }
+      if (!vizData.dalle_prompt || typeof vizData.dalle_prompt !== 'string') {
+        errors.push('Missing or invalid "dalle_prompt" field (must use underscore, not camelCase)');
+      }
+      if (!vizData.mood || typeof vizData.mood !== 'string') {
+        errors.push('Missing or invalid "mood" field');
+      }
+      if (!Array.isArray(vizData.symbolic_elements)) {
+        errors.push('Missing or invalid "symbolic_elements" field (must be array)');
+      }
+      else if (vizData.symbolic_elements.length === 0) {
+        errors.push('The "symbolic_elements" array must contain at least one element');
+      }
+      if (!vizData.therapeutic_purpose || typeof vizData.therapeutic_purpose !== 'string') {
+        errors.push('Missing or invalid "therapeutic_purpose" field');
+      }
+      break;
+    }
 
     default:
       // Unknown schema type (already caught in previous validation)

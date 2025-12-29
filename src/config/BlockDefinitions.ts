@@ -5,7 +5,7 @@
  * that therapists can use to create structured AI prompts.
  */
 
-import type { BuildingBlock, BlockType, ValidationRule } from '@/types/BuildingBlocks';
+import type { BlockType, BuildingBlock, ValidationRule } from '@/types/BuildingBlocks';
 
 /**
  * Complete registry of all building block definitions

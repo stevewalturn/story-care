@@ -3,9 +3,9 @@
  * Use this to clean database before re-seeding
  */
 
+import { eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { treatmentModulesSchema } from '@/models/Schema';
-import { eq } from 'drizzle-orm';
 
 async function deleteModules() {
   console.log('🗑️  Deleting all treatment modules...');

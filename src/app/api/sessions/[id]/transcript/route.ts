@@ -41,6 +41,7 @@ export async function GET(
           speakerName: speakers.speakerName,
           userId: speakers.userId,
         },
+        userName: users.name,
         userAvatarUrl: users.avatarUrl,
         userReferenceImageUrl: users.referenceImageUrl,
       })
@@ -55,8 +56,8 @@ export async function GET(
       utterancesList.map(async (utterance) => {
         let signedAvatarUrl = null;
 
-        // Priority: referenceImageUrl (patient-specific) > avatarUrl (general)
-        const imageUrl = utterance.userReferenceImageUrl || utterance.userAvatarUrl;
+        // Priority: avatarUrl (display image) > referenceImageUrl (AI generation reference)
+        const imageUrl = utterance.userAvatarUrl || utterance.userReferenceImageUrl;
 
         if (imageUrl) {
           try {
@@ -73,7 +74,11 @@ export async function GET(
           startTimeSeconds: utterance.startTimeSeconds,
           endTimeSeconds: utterance.endTimeSeconds,
           confidenceScore: utterance.confidenceScore,
-          speaker: utterance.speaker,
+          speaker: {
+            ...utterance.speaker,
+            // Use actual user name instead of speaker label
+            speakerName: utterance.userName || utterance.speaker?.speakerName || utterance.speaker?.speakerLabel,
+          },
           avatarUrl: signedAvatarUrl || undefined,
         };
       }),

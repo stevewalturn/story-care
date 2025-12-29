@@ -3,17 +3,17 @@
  * Updates patients to inherit organizationId from their assigned therapist
  */
 
+import path from 'node:path';
 // Load environment variables
 import dotenv from 'dotenv';
-import path from 'node:path';
-
-// Load .env.local first (takes precedence), then .env
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 import { eq } from 'drizzle-orm';
 import { db } from '../src/libs/DB';
 import { users } from '../src/models/Schema';
+
+// Load .env.local first (takes precedence), then .env
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 async function fixPatientOrganizations() {
   console.log('Starting patient organization fix...\n');

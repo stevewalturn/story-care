@@ -157,13 +157,13 @@ export function TemplateSelector({
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search templates..."
-            className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-9 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+            className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-9 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
           />
         </div>
         <select
           value={selectedCategory}
           onChange={e => setSelectedCategory(e.target.value)}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
         >
           <option value="all">All Categories</option>
           {categories.map(cat => (
@@ -194,7 +194,7 @@ export function TemplateSelector({
                   key={template.id}
                   className={`flex cursor-pointer items-start gap-3 rounded-lg border-2 p-3 transition-all ${
                     isSelected
-                      ? 'border-indigo-500 bg-indigo-50'
+                      ? 'border-purple-500 bg-purple-50'
                       : 'border-transparent bg-white hover:border-gray-300'
                   }`}
                 >
@@ -203,7 +203,7 @@ export function TemplateSelector({
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => handleToggleTemplate(template.id)}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/20"
+                      className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-2 focus:ring-purple-500/20"
                     />
                   </div>
 
@@ -242,7 +242,7 @@ export function TemplateSelector({
                   </div>
 
                   <FileText className={`h-4 w-4 flex-shrink-0 ${
-                    isSelected ? 'text-indigo-600' : 'text-gray-400'
+                    isSelected ? 'text-purple-600' : 'text-gray-400'
                   }`}
                   />
                 </label>

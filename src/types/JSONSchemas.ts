@@ -118,7 +118,7 @@ export type MusicGenerationSchema = {
   instrumental_option: {
     music_description: string; // Description of the instrumental piece
     mood: string; // Comma-separated mood descriptors
-    genre_tags: string; // Comma-separated genre tags
+    genre_tags: string[]; // Array of genre tags (changed from string)
     title: string; // Track title
     style_prompt: string; // Single prompt for music model
     tempo_hint?: string; // Tempo description
@@ -133,7 +133,7 @@ export type MusicGenerationSchema = {
     suggested_lyrics: string; // Full draft lyrics (PHI-free)
     suggested_lyrical_themes: string[]; // Themes for inspiration
     mood: string; // Comma-separated mood descriptors
-    genre_tags: string; // Comma-separated genre tags
+    genre_tags: string[]; // Array of genre tags (changed from string)
     title: string; // Song title
     style_prompt: string; // Single prompt for music model
     vocal_feel?: string; // How vocals should sound
@@ -141,6 +141,7 @@ export type MusicGenerationSchema = {
     symbolic_sources: string[]; // Key metaphors
     source_quotes: string[]; // PHI-free quotes from transcript
     rationale: string; // Explanation of lyrical choices
+    music_description?: string; // Description of the vocal piece (added missing field)
   };
 } & BaseJSONSchema;
 
@@ -174,6 +175,11 @@ export type ImageReferencesSchema = {
     style: string; // Visual style (e.g., 'photorealistic', 'painterly')
     therapeutic_purpose: string; // Why this image is therapeutically relevant
     source_quote?: string; // Optional quote that inspired the image
+    // Rich perspective card fields (optional for backward compatibility)
+    timestamp?: string; // e.g., "14:32"
+    sequenceNumber?: number; // e.g., 4
+    speaker?: string; // e.g., "Patient"
+    conceptDescription?: string; // Longer explanation of image concept
   }>;
 } & BaseJSONSchema;
 

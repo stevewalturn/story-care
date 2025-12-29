@@ -52,7 +52,6 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
 
   const fetchMedia = async () => {
     if (!patientId) {
-      console.log('No patientId provided, skipping media fetch');
       return;
     }
 
@@ -67,17 +66,13 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
         params.append('search', searchQuery);
       }
 
-      console.log('Fetching media with params:', params.toString());
       const response = await authenticatedFetch(`/api/media?${params}`, user);
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Media fetch failed:', response.status, errorText);
         throw new Error('Failed to fetch media');
       }
 
       const data = await response.json();
-      console.log('Media fetch successful:', data);
 
       // Transform API data to MediaItem format
       const transformedMedia: MediaItem[] = (data.media || []).map((item: any) => ({
@@ -89,7 +84,6 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
         duration: item.durationSeconds,
       }));
 
-      console.log('Transformed media items:', transformedMedia);
       setMedia(transformedMedia);
     } catch (error) {
       console.error('Failed to fetch media:', error);
@@ -173,7 +167,7 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
           onClick={() => setFilterType('all')}
           className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
             filterType === 'all'
-              ? 'border-b-2 border-indigo-600 bg-indigo-50 text-indigo-600'
+              ? 'border-b-2 border-purple-600 bg-purple-50 text-purple-600'
               : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
           }`}
         >
@@ -183,7 +177,7 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
           onClick={() => setFilterType('image')}
           className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
             filterType === 'image'
-              ? 'border-b-2 border-indigo-600 bg-indigo-50 text-indigo-600'
+              ? 'border-b-2 border-purple-600 bg-purple-50 text-purple-600'
               : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
           }`}
         >
@@ -193,7 +187,7 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
           onClick={() => setFilterType('video')}
           className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
             filterType === 'video'
-              ? 'border-b-2 border-indigo-600 bg-indigo-50 text-indigo-600'
+              ? 'border-b-2 border-purple-600 bg-purple-50 text-purple-600'
               : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
           }`}
         >
@@ -203,7 +197,7 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
           onClick={() => setFilterType('audio')}
           className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
             filterType === 'audio'
-              ? 'border-b-2 border-indigo-600 bg-indigo-50 text-indigo-600'
+              ? 'border-b-2 border-purple-600 bg-purple-50 text-purple-600'
               : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
           }`}
         >
@@ -231,7 +225,7 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
       <div className="flex-1 overflow-y-auto p-4">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-indigo-600" />
+            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-purple-600" />
           </div>
         ) : (
           <div className="space-y-2">
@@ -309,7 +303,6 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
                     size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      console.log('Adding clip to timeline:', item);
                       onAddToTimeline(item, item.duration || 5);
                     }}
                   >

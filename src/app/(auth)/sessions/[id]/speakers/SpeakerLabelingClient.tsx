@@ -140,7 +140,7 @@ export function SpeakerLabelingClient({
     return (
       <div className="mx-auto max-w-4xl p-8">
         <div className="py-16 text-center">
-          <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+          <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
           <p className="text-gray-500">Loading speakers...</p>
         </div>
       </div>
@@ -155,7 +155,7 @@ export function SpeakerLabelingClient({
           <p className="mb-4 text-gray-500">{error}</p>
           <button
             onClick={() => router.push(`/sessions`)}
-            className="text-indigo-600 hover:text-indigo-700"
+            className="text-purple-600 hover:text-purple-700"
           >
             Back to Sessions
           </button>

@@ -1,4 +1,4 @@
-import { extractJSONFromMarkdown, detectAndExtractJSON } from './src/utils/JSONSchemaDetector';
+import { detectAndExtractJSON, extractJSONFromMarkdown } from './src/utils/JSONSchemaDetector';
 
 // Test case 1: JSON with ```json marker
 const test1 = `\`\`\`json

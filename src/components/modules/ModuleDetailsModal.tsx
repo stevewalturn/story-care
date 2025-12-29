@@ -80,7 +80,7 @@ export function ModuleDetailsModal({ module, onClose, onEdit, onCopy }: ModuleDe
                     onClick={() => setActiveTab('overview')}
                     className={`pb-3 text-sm font-medium transition-colors ${
                       activeTab === 'overview'
-                        ? 'border-b-2 border-indigo-600 text-indigo-600'
+                        ? 'border-b-2 border-purple-600 text-purple-600'
                         : 'text-gray-600 hover:text-gray-900'
                     }`}
                     type="button"
@@ -92,7 +92,7 @@ export function ModuleDetailsModal({ module, onClose, onEdit, onCopy }: ModuleDe
                   onClick={() => setActiveTab('prompts')}
                   className={`pb-3 text-sm font-medium transition-colors ${
                     activeTab === 'prompts'
-                      ? 'border-b-2 border-indigo-600 text-indigo-600'
+                      ? 'border-b-2 border-purple-600 text-purple-600'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                   type="button"
@@ -100,7 +100,7 @@ export function ModuleDetailsModal({ module, onClose, onEdit, onCopy }: ModuleDe
                   AI Prompts
                   {' '}
                   {module.linkedPrompts && module.linkedPrompts.length > 0 && (
-                    <span className="ml-1 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-600">
+                    <span className="ml-1 rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-600">
                       {module.linkedPrompts.length}
                     </span>
                   )}
@@ -169,15 +169,15 @@ export function ModuleDetailsModal({ module, onClose, onEdit, onCopy }: ModuleDe
                     Core AI prompt stored directly on this module. Always executed during analysis.
                   </p>
 
-                  <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+                  <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
                     <div className="mb-3 flex items-center gap-2">
-                      <Sparkles className="h-5 w-5 text-indigo-600" />
+                      <Sparkles className="h-5 w-5 text-purple-600" />
                       <h4 className="font-semibold text-gray-900">Base Analysis Prompt</h4>
-                      <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
+                      <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
                         Required
                       </span>
                     </div>
-                    <div className="rounded-md border border-indigo-300 bg-white p-3">
+                    <div className="rounded-md border border-purple-300 bg-white p-3">
                       <pre className="font-mono text-xs whitespace-pre-wrap text-gray-700">
                         {module.aiPromptText}
                       </pre>
@@ -280,7 +280,7 @@ export function ModuleDetailsModal({ module, onClose, onEdit, onCopy }: ModuleDe
               {onEdit && (
                 <button
                   onClick={onEdit}
-                  className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                  className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
                   type="button"
                 >
                   <Pencil className="h-4 w-4" />

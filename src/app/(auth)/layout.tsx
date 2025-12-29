@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -10,10 +10,6 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 function AuthLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
-
-  // Check if we're on the transcript page
-  const isTranscriptPage = pathname?.includes('/transcript');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -25,7 +21,7 @@ function AuthLayoutContent({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+          <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -36,40 +32,7 @@ function AuthLayoutContent({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  // Full-screen layout for transcript page (no sidebar/topbar)
-  if (isTranscriptPage) {
-    return (
-      <div className="h-screen bg-gray-50">
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: '#fff',
-              color: '#363636',
-            },
-            success: {
-              duration: 3000,
-              iconTheme: {
-                primary: '#10b981',
-                secondary: '#fff',
-              },
-            },
-            error: {
-              duration: 5000,
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#fff',
-              },
-            },
-          }}
-        />
-        <main className="h-full">{children}</main>
-      </div>
-    );
-  }
-
-  // Regular layout with sidebar and topbar
+  // Regular layout with sidebar and topbar for all authenticated pages
   return (
     <div className="flex h-screen bg-gray-50">
       <Toaster

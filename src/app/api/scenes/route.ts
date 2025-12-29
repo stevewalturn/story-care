@@ -147,6 +147,8 @@ export async function POST(request: NextRequest) {
       sessionId,
       title,
       description,
+      loopAudio,
+      loopScenes,
       sceneData: _sceneData,
       focusInstruction: _focusInstruction,
       keyQuote: _keyQuote,
@@ -215,6 +217,8 @@ export async function POST(request: NextRequest) {
         description: description || null,
         status: 'draft',
         durationSeconds: '0',
+        loopAudio: loopAudio ?? true, // Default to true if not provided
+        loopScenes: loopScenes ?? false, // Default to false if not provided
       })
       .returning();
 

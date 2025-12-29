@@ -8,11 +8,13 @@ import { Button } from './Button';
 type ModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  title: string;
+  title?: ReactNode;
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  hideHeader?: boolean;
+  hideFooter?: boolean;
 };
 
 export function Modal({
@@ -23,6 +25,8 @@ export function Modal({
   children,
   footer,
   size = 'lg',
+  hideHeader = false,
+  hideFooter = false,
 }: ModalProps) {
   useEffect(() => {
     if (isOpen) {
@@ -74,28 +78,30 @@ export function Modal({
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between border-b border-gray-200 p-6">
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-            {description && (
-              <p className="mt-1 text-sm text-gray-500">{description}</p>
-            )}
+        {!hideHeader && (
+          <div className="flex items-start justify-between border-b border-gray-200 p-6">
+            <div className="flex-1">
+              <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+              {description && (
+                <p className="mt-1 text-sm text-gray-500">{description}</p>
+              )}
+            </div>
+            <button
+              onClick={onClose}
+              className="ml-4 text-gray-400 transition-colors hover:text-gray-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="ml-4 text-gray-400 transition-colors hover:text-gray-600"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+        )}
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className={`flex-1 overflow-y-auto ${hideHeader && hideFooter ? '' : 'p-6'}`}>
           {children}
         </div>
 
         {/* Footer */}
-        {footer && (
+        {!hideFooter && footer && (
           <div className="flex items-center justify-end gap-3 border-t border-gray-200 p-4">
             {footer}
           </div>

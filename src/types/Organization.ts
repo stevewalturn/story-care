@@ -15,6 +15,7 @@ export type AuthenticatedUser = {
   emailVerified: boolean;
   role: 'super_admin' | 'org_admin' | 'therapist' | 'patient';
   status: 'invited' | 'active' | 'inactive';
+  avatarUrl: string | null;
 };
 
 // ============================================================================

@@ -3,12 +3,13 @@
  * Creates a video processing job and triggers Cloud Run processing
  */
 
+import type { NextRequest } from 'next/server';
+import { and, desc, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { Env } from '@/libs/Env';
 import { generatePresignedUrl } from '@/libs/GCS';
 import { mediaLibrary, sceneAudioTracks, sceneClips, scenes, videoProcessingJobs } from '@/models/Schema';
-import { desc, eq } from 'drizzle-orm';
-import { type NextRequest, NextResponse } from 'next/server';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -47,7 +48,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     if (clips.length === 0) {
       return NextResponse.json(
         { error: 'Scene has no clips to assemble' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -70,11 +71,11 @@ export async function POST(_request: NextRequest, context: RouteContext) {
           mediaUrl: presignedUrl,
           startTime: Number.parseFloat(c.clip.startTimeSeconds || '0'),
           duration:
-            Number.parseFloat(c.clip.endTimeSeconds || '0') -
-            Number.parseFloat(c.clip.startTimeSeconds || '0'),
+            Number.parseFloat(c.clip.endTimeSeconds || '0')
+            - Number.parseFloat(c.clip.startTimeSeconds || '0'),
           type: (c.media.mediaType === 'video' ? 'video' : 'image') as 'video' | 'image',
         };
-      })
+      }),
     );
 
     // Get audio tracks
@@ -108,7 +109,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
           volume: track.volume || 100,
           startTimeSeconds: Number.parseFloat(track.startTimeSeconds || '0'),
         };
-      })
+      }),
     );
 
     // Prepare input data for Cloud Run
@@ -117,6 +118,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       clips: videoClips,
       audioTracks,
       loopAudio: scene.loopAudio || false,
+      loopScenes: scene.loopScenes || false,
       fitAudioToDuration: scene.fitAudioToDuration || false,
     };
 
@@ -207,7 +209,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
           status: 'processing',
           message: 'Video processing job created and triggered',
         },
-        { status: 202 }
+        { status: 202 },
       );
     } catch (error: any) {
       console.error(`❌ Failed to trigger Cloud Run Job for ${job.id}:`, error);
@@ -236,7 +238,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
           jobId: job.id,
           details: error.message,
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
   } catch (error: any) {
@@ -262,7 +264,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
         error: 'Failed to create video processing job',
         details: error.message,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -286,7 +288,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     if (!job) {
       return NextResponse.json(
         { error: 'No processing job found for this scene' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -306,6 +308,39 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     }
     if (job.status === 'completed' && job.thumbnailUrl) {
       thumbnailUrl = await generatePresignedUrl(job.thumbnailUrl, 1);
+    }
+
+    // Create media library record when job completes (if not already created)
+    if (job.status === 'completed' && job.outputUrl && scene) {
+      // Check if media record already exists for this scene
+      const [existingMedia] = await db
+        .select()
+        .from(mediaLibrary)
+        .where(
+          and(
+            eq(mediaLibrary.sceneId, sceneId),
+            eq(mediaLibrary.mediaType, 'video'),
+          ),
+        )
+        .limit(1);
+
+      if (!existingMedia) {
+        // Create new media record for the scene video
+        await db.insert(mediaLibrary).values({
+          patientId: scene.patientId,
+          createdByTherapistId: scene.createdByTherapistId || '',
+          title: scene.title || 'Scene Video',
+          description: scene.description || undefined,
+          mediaType: 'video',
+          mediaUrl: job.outputUrl,
+          thumbnailUrl: job.thumbnailUrl || undefined,
+          durationSeconds: job.durationSeconds || undefined,
+          sourceType: 'scene',
+          sceneId,
+          status: 'completed',
+        });
+        console.log(`[Scene Assembly] Created media library record for scene ${sceneId}`);
+      }
     }
 
     return NextResponse.json({
@@ -329,7 +364,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         error: 'Failed to check assembly status',
         details: error.message,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

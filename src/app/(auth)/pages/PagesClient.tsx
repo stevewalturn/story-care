@@ -1,12 +1,28 @@
 'use client';
 
-import { CheckCircle, Copy, Edit2, FileText, Link2, Plus, Share2, Trash2, Upload, X } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
-import { PageEditor } from '@/components/pages/PageEditor';
+import {
+  Calendar,
+  CheckCircle,
+  Clock,
+  Copy,
+  Edit2,
+  FileText,
+  Link2,
+  Plus,
+  Search,
+  Share2,
+  Trash2,
+  Upload,
+  Users,
+  X,
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { } from '@/components/ui/Modal';
+import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedDelete, authenticatedFetch, authenticatedPost, authenticatedPut } from '@/utils/AuthenticatedFetch';
+import 'react-day-picker/dist/style.css';
 
 type StoryPage = {
   id: string;
@@ -25,25 +41,32 @@ type Patient = {
   name: string;
 };
 
-type ContentBlock = {
-  id: string;
-  type: 'text' | 'image' | 'video' | 'quote' | 'scene' | 'reflection' | 'survey';
-  order: number;
-  content: any;
-};
-
 export function PagesClient() {
   const { user } = useAuth();
+  const router = useRouter();
   const [pages, setPages] = useState<StoryPage[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showEditor, setShowEditor] = useState(false);
-  const [editingPageId, setEditingPageId] = useState<string | null>(null);
-  const [editingPageData, setEditingPageData] = useState<{
-    title: string;
-    blocks: ContentBlock[];
-    patientId: string;
-  } | null>(null);
+
+  // Search and filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedPatientIds, setSelectedPatientIds] = useState<string[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState<'all' | 'draft' | 'published'>('all');
+  const [showPatientsFilter, setShowPatientsFilter] = useState(false);
+  const [showStatusFilter, setShowStatusFilter] = useState(false);
+
+  // Refs for filter buttons
+  const patientsButtonRef = useRef<HTMLDivElement>(null);
+  const statusButtonRef = useRef<HTMLDivElement>(null);
+
+  // Dropdown positions
+  const [patientsFilterPos, setPatientsFilterPos] = useState({ top: 0, left: 0 });
+  const [statusFilterPos, setStatusFilterPos] = useState({ top: 0, left: 0 });
+
+  // Selection mode states for bulk operations
+  const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(new Set());
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Share modal state
   const [showShareModal, setShowShareModal] = useState(false);
@@ -101,174 +124,164 @@ export function PagesClient() {
     }
   }, [user, fetchPages, fetchPatients]);
 
-  const handleCreatePage = () => {
-    setEditingPageId(null);
-    setEditingPageData(null);
-    setShowEditor(true);
+  // Helper function to close all dropdowns
+  const closeAllDropdowns = () => {
+    setShowPatientsFilter(false);
+    setShowStatusFilter(false);
   };
 
-  const handleEditPage = async (pageId: string) => {
-    try {
-      // Fetch page data with blocks
-      const response = await authenticatedFetch(`/api/pages/${pageId}`, user);
-      if (!response.ok) {
-        throw new Error('Failed to fetch page');
+  // Toggle functions with mutual exclusivity
+  const togglePatientsFilter = () => {
+    const newState = !showPatientsFilter;
+    setShowStatusFilter(false);
+    setShowPatientsFilter(newState);
+  };
+
+  const toggleStatusFilter = () => {
+    const newState = !showStatusFilter;
+    setShowPatientsFilter(false);
+    setShowStatusFilter(newState);
+  };
+
+  // Click outside to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      const isOutside
+        = !patientsButtonRef.current?.contains(target)
+          && !statusButtonRef.current?.contains(target);
+
+      const clickedElement = event.target as HTMLElement;
+      const isInsideDropdown = clickedElement.closest('.fixed.z-50');
+
+      if (isOutside && !isInsideDropdown) {
+        closeAllDropdowns();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Calculate position for Patients filter
+  useEffect(() => {
+    if (showPatientsFilter && patientsButtonRef.current) {
+      const rect = patientsButtonRef.current.getBoundingClientRect();
+      const dropdownWidth = 256;
+      let left = rect.left;
+
+      if (left + dropdownWidth > window.innerWidth - 16) {
+        left = window.innerWidth - dropdownWidth - 16;
       }
 
-      const data = await response.json();
-      const { page, blocks: dbBlocks } = data;
+      setPatientsFilterPos({
+        top: rect.bottom + 8,
+        left: Math.max(16, left),
+      });
+    }
+  }, [showPatientsFilter]);
 
-      // Get reflection block IDs
-      const reflectionBlockIds = dbBlocks
-        .filter((b: any) => b.blockType === 'reflection')
-        .map((b: any) => b.id);
+  // Calculate position for Status filter
+  useEffect(() => {
+    if (showStatusFilter && statusButtonRef.current) {
+      const rect = statusButtonRef.current.getBoundingClientRect();
+      const dropdownWidth = 200;
+      let left = rect.left;
 
-      // Get survey block IDs
-      const surveyBlockIds = dbBlocks
-        .filter((b: any) => b.blockType === 'survey')
-        .map((b: any) => b.id);
-
-      // Fetch reflection questions if any reflection blocks exist
-      let reflectionQuestionsData: any[] = [];
-      if (reflectionBlockIds.length > 0) {
-        const questionsResponse = await authenticatedFetch(
-          `/api/questions/reflection?blockIds=${reflectionBlockIds.join(',')}`,
-          user,
-        );
-        if (questionsResponse.ok) {
-          const questionsJson = await questionsResponse.json();
-          reflectionQuestionsData = questionsJson.questions || [];
-        }
+      if (left + dropdownWidth > window.innerWidth - 16) {
+        left = window.innerWidth - dropdownWidth - 16;
       }
 
-      // Fetch survey questions if any survey blocks exist
-      let surveyQuestionsData: any[] = [];
-      if (surveyBlockIds.length > 0) {
-        const questionsResponse = await authenticatedFetch(
-          `/api/questions/survey?blockIds=${surveyBlockIds.join(',')}`,
-          user,
-        );
-        if (questionsResponse.ok) {
-          const questionsJson = await questionsResponse.json();
-          surveyQuestionsData = questionsJson.questions || [];
-        }
-      }
+      setStatusFilterPos({
+        top: rect.bottom + 8,
+        left: Math.max(16, left),
+      });
+    }
+  }, [showStatusFilter]);
 
-      // Fetch scene information for scene blocks
-      const sceneBlockIds = dbBlocks
-        .filter((b: any) => b.blockType === 'scene' && b.sceneId)
-        .map((b: any) => b.sceneId);
+  // Filter pages based on search, patient, and status
+  const filteredPages = useMemo(() => {
+    let filtered = pages;
 
-      const scenesData: any = {};
-      if (sceneBlockIds.length > 0) {
-        for (const sceneId of sceneBlockIds) {
-          try {
-            const sceneResponse = await authenticatedFetch(`/api/scenes/${sceneId}`, user);
-            if (sceneResponse.ok) {
-              const sceneJson = await sceneResponse.json();
-              scenesData[sceneId] = sceneJson.scene;
-            }
-          } catch (error) {
-            console.error(`Failed to fetch scene ${sceneId}:`, error);
-          }
-        }
-      }
+    // Search filter
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        page =>
+          page.title.toLowerCase().includes(search)
+          || page.patientName?.toLowerCase().includes(search),
+      );
+    }
 
-      // Transform database blocks to PageEditor format
-      const transformedBlocks: ContentBlock[] = dbBlocks.map((block: any) => {
-        const baseBlock = {
-          id: block.id,
-          type: block.blockType,
-          order: block.sequenceNumber,
-          content: {
-            text: block.textContent || undefined,
-            sceneId: block.sceneId || undefined,
-            mediaUrl: block.mediaUrl || undefined,
-            ...(block.settings || {}),
+    // Patient filter
+    if (selectedPatientIds.length > 0) {
+      filtered = filtered.filter(page => selectedPatientIds.includes(page.patientId));
+    }
+
+    // Status filter
+    if (selectedStatus !== 'all') {
+      filtered = filtered.filter(page => page.status === selectedStatus);
+    }
+
+    return filtered;
+  }, [pages, searchTerm, selectedPatientIds, selectedStatus]);
+
+  // Get recent pages for "Continue Your Work" section
+  const recentPages = useMemo(() => {
+    return [...pages]
+      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+      .slice(0, 3);
+  }, [pages]);
+
+  // Group pages by patient
+  const groupedPages = useMemo(() => {
+    const groups: Record<string, { patient: { id: string; name: string }; pages: StoryPage[] }> = {};
+
+    filteredPages.forEach((page) => {
+      const patientId = page.patientId || 'unassigned';
+      if (!groups[patientId]) {
+        groups[patientId] = {
+          patient: {
+            id: patientId,
+            name: page.patientName || 'Unassigned',
           },
+          pages: [],
         };
+      }
+      groups[patientId].pages.push(page);
+    });
 
-        // Add scene information if this is a scene block
-        if (block.blockType === 'scene' && block.sceneId && scenesData[block.sceneId]) {
-          const scene = scenesData[block.sceneId];
-          baseBlock.content.sceneTitle = scene.title;
-          baseBlock.content.mediaUrl = scene.assembledVideoUrl || scene.thumbnailUrl || baseBlock.content.mediaUrl;
-        }
+    return Object.values(groups).sort((a, b) =>
+      a.patient.name.localeCompare(b.patient.name),
+    );
+  }, [filteredPages]);
 
-        // Add reflection questions if this is a reflection block
-        if (block.blockType === 'reflection') {
-          const blockQuestions = reflectionQuestionsData
-            .filter(q => q.blockId === block.id)
-            .sort((a, b) => a.sequenceNumber - b.sequenceNumber)
-            .map(q => ({
-              id: q.id,
-              text: q.questionText,
-              type: q.questionType,
-              sequenceNumber: q.sequenceNumber,
-            }));
-
-          baseBlock.content.questions = blockQuestions.length > 0
-            ? blockQuestions
-            : [{ id: `q-default`, text: '', type: 'open_text', sequenceNumber: 0 }];
-        }
-
-        // Add survey questions if this is a survey block
-        if (block.blockType === 'survey') {
-          const blockQuestions = surveyQuestionsData
-            .filter(q => q.blockId === block.id)
-            .sort((a, b) => a.sequenceNumber - b.sequenceNumber)
-            .map(q => ({
-              id: q.id,
-              text: q.questionText,
-              type: q.questionType,
-              sequenceNumber: q.sequenceNumber,
-              scaleMin: q.scaleMin,
-              scaleMax: q.scaleMax,
-              scaleMinLabel: q.scaleMinLabel,
-              scaleMaxLabel: q.scaleMaxLabel,
-              options: q.options,
-            }));
-
-          baseBlock.content.surveyQuestions = blockQuestions.length > 0
-            ? blockQuestions
-            : [{ id: `sq-default`, text: '', type: 'open_text', sequenceNumber: 0 }];
-        }
-
-        return baseBlock;
-      });
-
-      setEditingPageId(pageId);
-      setEditingPageData({
-        title: page.title,
-        blocks: transformedBlocks,
-        patientId: page.patientId,
-      });
-      setShowEditor(true);
-    } catch (error) {
-      console.error('Failed to load page:', error);
-      alert('Failed to load page. Please try again.');
-    }
+  // Selection mode handlers
+  const togglePageSelection = (pageId: string) => {
+    setSelectedPageIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(pageId)) {
+        newSet.delete(pageId);
+      } else {
+        newSet.add(pageId);
+      }
+      return newSet;
+    });
   };
 
-  const handleSavePage = async (title: string, blocks: any[], patientId: string | null) => {
-    try {
-      let response;
-      if (editingPageId) {
-        response = await authenticatedPut(`/api/pages/${editingPageId}`, user, { title, blocks, patientId });
-      } else {
-        response = await authenticatedPost('/api/pages', user, { title, blocks, patientId });
-      }
+  const clearSelection = () => {
+    setSelectedPageIds(new Set());
+    setIsSelectionMode(false);
+  };
 
-      if (!response.ok) {
-        throw new Error('Failed to save page');
-      }
+  // Navigate to create new page (full screen)
+  const handleCreatePage = () => {
+    router.push('/pages/new');
+  };
 
-      await fetchPages();
-      setShowEditor(false);
-    } catch (error) {
-      console.error('Failed to save page:', error);
-      alert('Failed to save page. Please try again.');
-    }
+  // Navigate to edit page (full screen)
+  const handleEditPage = (pageId: string) => {
+    router.push(`/pages/${pageId}/edit`);
   };
 
   const handleDeletePage = async (pageId: string) => {
@@ -287,6 +300,34 @@ export function PagesClient() {
     } catch (error) {
       console.error('Failed to delete page:', error);
       alert('Failed to delete page. Please try again.');
+    }
+  };
+
+  // Bulk delete handler
+  const handleBulkDelete = async () => {
+    if (selectedPageIds.size === 0) return;
+
+    const count = selectedPageIds.size;
+    if (!confirm(`Delete ${count} page${count > 1 ? 's' : ''}? This action cannot be undone.`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      for (const pageId of selectedPageIds) {
+        const response = await authenticatedDelete(`/api/pages/${pageId}`, user);
+        if (!response.ok) {
+          throw new Error('Failed to delete page');
+        }
+      }
+
+      setSelectedPageIds(new Set());
+      setIsSelectionMode(false);
+      await fetchPages();
+    } catch (error) {
+      alert('Failed to delete some pages. Please try again.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -377,7 +418,7 @@ export function PagesClient() {
   const formatDate = (date: Date) => {
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) {
       return 'Today';
@@ -388,155 +429,428 @@ export function PagesClient() {
     if (diffDays < 7) {
       return `${diffDays} days ago`;
     }
-    return date.toLocaleDateString();
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  // Get initials for avatar
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Get avatar color based on name
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      'bg-blue-100 text-blue-600',
+      'bg-green-100 text-green-600',
+      'bg-purple-100 text-purple-600',
+      'bg-pink-100 text-pink-600',
+      'bg-yellow-100 text-yellow-600',
+      'bg-indigo-100 text-indigo-600',
+    ];
+    const index = name.charCodeAt(0) % colors.length;
+    return colors[index];
   };
 
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-indigo-600" />
+        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-purple-600" />
       </div>
     );
   }
 
   return (
-    <div className="p-8">
+    <div className="relative p-8">
+      {/* Full-screen Loading Overlay for Bulk Delete */}
+      {isDeleting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="rounded-lg bg-white p-8 text-center shadow-xl">
+            <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
+            <p className="text-lg font-medium text-gray-900">Deleting pages...</p>
+            <p className="mt-1 text-sm text-gray-500">Please wait</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
-      <div className="mb-6">
-        <div className="mb-2 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
           <h1 className="text-2xl font-bold text-gray-900">Story Pages</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Welcome back,
+            {' '}
+            {user?.displayName || 'Therapist'}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              if (isSelectionMode) {
+                clearSelection();
+              } else {
+                setIsSelectionMode(true);
+              }
+            }}
+          >
+            {isSelectionMode ? 'Done' : 'Select'}
+          </Button>
           <Button variant="primary" onClick={handleCreatePage}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-5 w-5" />
             Create Page
           </Button>
         </div>
-        <p className="text-sm text-gray-600">
-          Create interactive story pages with media, reflections, and surveys for patients
-        </p>
       </div>
 
-      {/* Pages Grid */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {pages.map(page => (
-          <div
-            key={page.id}
-            className="group overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:shadow-lg"
-          >
-            {/* Header */}
-            <div className="border-b border-gray-200 bg-gradient-to-br from-indigo-50 to-purple-50 p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="mb-1 line-clamp-2 font-semibold text-gray-900">
-                    {page.title}
-                  </h3>
-                  <p className="text-sm text-gray-600">{page.patientName}</p>
-                </div>
-                <div className={`rounded px-2 py-1 text-xs font-medium ${
-                  page.isPublished
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-gray-100 text-gray-700'
-                }`}
-                >
-                  {page.isPublished ? 'Published' : 'Draft'}
-                </div>
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="p-4">
-              <div className="mb-4 flex items-center gap-4 text-sm text-gray-600">
-                <div className="flex items-center gap-1">
-                  <FileText className="h-4 w-4" />
-                  <span>
-                    {page.blockCount}
-                    {' '}
-                    blocks
-                  </span>
-                </div>
-                <div>
-                  Updated
-                  {' '}
-                  {formatDate(page.updatedAt)}
+      {/* Continue Your Work Section */}
+      {recentPages.length > 0 && !loading && (
+        <div className="mb-6">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-700">
+            <Clock className="h-4 w-4" />
+            Continue Your Work
+          </h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {recentPages.map(page => (
+              <div
+                key={page.id}
+                onClick={() => handleEditPage(page.id)}
+                className="group cursor-pointer rounded-xl border border-gray-200 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-purple-300 hover:shadow-lg"
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${getAvatarColor(page.patientName || 'U')}`}>
+                    <span className="text-sm font-semibold">{getInitials(page.patientName || 'U')}</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-sm font-semibold text-gray-900">{page.title}</h3>
+                    <p className="mt-0.5 text-xs text-gray-500">{page.patientName || 'Unassigned'}</p>
+                    <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-500">
+                      <span>{formatDate(page.updatedAt)}</span>
+                      <span>•</span>
+                      <span>{page.blockCount} blocks</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => handleEditPage(page.id)}
-                  className="flex-1"
-                >
-                  <Edit2 className="mr-2 h-4 w-4" />
-                  Edit
-                </Button>
-                <Button
-                  variant={page.status === 'published' ? 'ghost' : 'primary'}
-                  size="sm"
-                  onClick={() => handleTogglePublish(page.id, page.status)}
-                  title={page.status === 'published' ? 'Unpublish page' : 'Publish page'}
-                >
-                  {page.status === 'published' ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <Upload className="h-4 w-4" />
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleOpenShareModal(page.id)}
-                  title="Share page"
-                >
-                  <Share2 className="h-4 w-4 text-indigo-600" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDeletePage(page.id)}
-                >
-                  <Trash2 className="h-4 w-4 text-red-600" />
-                </Button>
-              </div>
-            </div>
+            ))}
           </div>
-        ))}
+        </div>
+      )}
 
-        {/* Empty state */}
-        {pages.length === 0 && (
-          <div className="col-span-full rounded-lg border-2 border-dashed border-gray-300 py-16 text-center">
-            <FileText className="mx-auto mb-4 h-16 w-16 text-gray-400" />
-            <p className="mb-4 text-gray-600">No story pages yet</p>
+      {/* Search and Filters */}
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <div className="min-w-[300px] flex-1">
+          <Input
+            placeholder="Search by title or patient name..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            leftIcon={<Search className="h-4 w-4 text-gray-400" />}
+          />
+        </div>
+
+        {/* Patients Filter */}
+        <div className="relative" ref={patientsButtonRef}>
+          <Button
+            variant="secondary"
+            className={`justify-start gap-2 ${selectedPatientIds.length > 0 ? 'border-purple-500 bg-purple-50' : ''}`}
+            onClick={togglePatientsFilter}
+          >
+            <Users className="h-4 w-4" />
+            Patients
+            {selectedPatientIds.length > 0 && (
+              <span className="ml-1 rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700">
+                {selectedPatientIds.length}
+              </span>
+            )}
+          </Button>
+          {showPatientsFilter && (
+            <div
+              className="fixed z-50 w-64 rounded-lg border border-gray-200 bg-white p-3 shadow-lg"
+              style={{ top: `${patientsFilterPos.top}px`, left: `${patientsFilterPos.left}px` }}
+            >
+              <div className="mb-2 text-sm font-medium text-gray-700">Select Patients</div>
+              {patients.length === 0 ? (
+                <p className="text-sm text-gray-500">No patients found</p>
+              ) : (
+                <div className="max-h-48 space-y-1 overflow-y-auto">
+                  {patients.map(patient => (
+                    <label key={patient.id} className="flex cursor-pointer items-center gap-2 rounded-md p-2 hover:bg-gray-50">
+                      <input
+                        type="checkbox"
+                        checked={selectedPatientIds.includes(patient.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedPatientIds([...selectedPatientIds, patient.id]);
+                          } else {
+                            setSelectedPatientIds(selectedPatientIds.filter(id => id !== patient.id));
+                          }
+                        }}
+                        className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                      />
+                      <span className="text-sm text-gray-700">{patient.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              <div className="mt-3 flex gap-2 border-t border-gray-200 pt-3">
+                <button
+                  onClick={() => {
+                    setSelectedPatientIds([]);
+                    setShowPatientsFilter(false);
+                  }}
+                  className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  Clear
+                </button>
+                <button
+                  onClick={() => setShowPatientsFilter(false)}
+                  className="flex-1 rounded-md bg-purple-600 px-3 py-1.5 text-sm text-white hover:bg-purple-700"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Status Filter */}
+        <div className="relative" ref={statusButtonRef}>
+          <Button
+            variant="secondary"
+            className={`justify-start gap-2 ${selectedStatus !== 'all' ? 'border-purple-500 bg-purple-50' : ''}`}
+            onClick={toggleStatusFilter}
+          >
+            <FileText className="h-4 w-4" />
+            {selectedStatus === 'all' ? 'All Status' : selectedStatus === 'published' ? 'Published' : 'Draft'}
+          </Button>
+          {showStatusFilter && (
+            <div
+              className="fixed z-50 w-48 rounded-lg border border-gray-200 bg-white p-2 shadow-lg"
+              style={{ top: `${statusFilterPos.top}px`, left: `${statusFilterPos.left}px` }}
+            >
+              {['all', 'draft', 'published'].map(status => (
+                <button
+                  key={status}
+                  onClick={() => {
+                    setSelectedStatus(status as 'all' | 'draft' | 'published');
+                    setShowStatusFilter(false);
+                  }}
+                  className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                    selectedStatus === status
+                      ? 'bg-purple-50 text-purple-700'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {status === 'all' ? 'All Status' : status.charAt(0).toUpperCase() + status.slice(1)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Bulk Action Bar */}
+      {isSelectionMode && selectedPageIds.size > 0 && (
+        <div className="mb-4 flex items-center justify-between rounded-lg bg-purple-50 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-purple-700">
+              {selectedPageIds.size}
+              {' '}
+              selected
+            </span>
+            <button
+              onClick={clearSelection}
+              className="text-sm text-gray-600 hover:text-gray-800"
+            >
+              Cancel
+            </button>
+          </div>
+          <Button
+            variant="primary"
+            onClick={handleBulkDelete}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete Selected
+          </Button>
+        </div>
+      )}
+
+      {/* Patient-Grouped Page List */}
+      {filteredPages.length === 0 ? (
+        <div className="py-16 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+            {searchTerm || selectedPatientIds.length > 0 || selectedStatus !== 'all' ? (
+              <Search className="h-8 w-8 text-gray-400" />
+            ) : (
+              <FileText className="h-8 w-8 text-gray-400" />
+            )}
+          </div>
+          <h3 className="mb-2 text-lg font-semibold text-gray-900">
+            {searchTerm || selectedPatientIds.length > 0 || selectedStatus !== 'all'
+              ? 'No pages found'
+              : 'No story pages yet'}
+          </h3>
+          <p className="mb-6 text-gray-500">
+            {searchTerm || selectedPatientIds.length > 0 || selectedStatus !== 'all'
+              ? 'Try adjusting your filters or search'
+              : 'Create interactive story pages for your patients'}
+          </p>
+          {!searchTerm && selectedPatientIds.length === 0 && selectedStatus === 'all' && (
             <Button variant="primary" onClick={handleCreatePage}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-2 h-5 w-5" />
               Create Your First Page
             </Button>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {groupedPages.map(group => (
+            <div
+              key={group.patient.id}
+              className="overflow-hidden rounded-xl border border-gray-200 bg-white transition-shadow hover:shadow-sm"
+            >
+              {/* Patient Header */}
+              <div className="flex items-center gap-3 border-b border-gray-100 bg-gray-50 px-6 py-4">
+                <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${getAvatarColor(group.patient.name)}`}>
+                  <span className="text-sm font-semibold">{getInitials(group.patient.name)}</span>
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-900">{group.patient.name}</h3>
+                  <p className="text-sm text-gray-500">
+                    {group.pages.length} {group.pages.length === 1 ? 'page' : 'pages'}
+                  </p>
+                </div>
+              </div>
 
-      {/* Page Editor Modal */}
-      {showEditor && (
-        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-gray-900 p-4">
-          <div className="h-[90vh] w-full max-w-6xl overflow-auto rounded-lg bg-white shadow-xl">
-            <PageEditor
-              pageId={editingPageId || undefined}
-              initialTitle={editingPageData?.title}
-              initialBlocks={editingPageData?.blocks}
-              initialPatientId={editingPageData?.patientId}
-              patients={patients}
-              onSave={handleSavePage}
-              onClose={() => setShowEditor(false)}
-            />
-          </div>
+              {/* Pages Grid */}
+              <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 lg:grid-cols-3">
+                {group.pages.map(page => (
+                  <div
+                    key={page.id}
+                    className={`group relative overflow-hidden rounded-lg border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${
+                      selectedPageIds.has(page.id)
+                        ? 'border-purple-500 bg-purple-50'
+                        : 'border-gray-200 bg-white hover:border-purple-300'
+                    }`}
+                  >
+                    {/* Selection Checkbox */}
+                    {isSelectionMode && (
+                      <div className="absolute left-3 top-3 z-10">
+                        <input
+                          type="checkbox"
+                          checked={selectedPageIds.has(page.id)}
+                          onChange={() => togglePageSelection(page.id)}
+                          className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          onClick={e => e.stopPropagation()}
+                        />
+                      </div>
+                    )}
+
+                    {/* Card Header */}
+                    <div
+                      className={`cursor-pointer border-b border-gray-100 bg-gradient-to-br from-purple-50 to-indigo-50 p-4 ${isSelectionMode ? 'pl-10' : ''}`}
+                      onClick={() => !isSelectionMode && handleEditPage(page.id)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="truncate font-semibold text-gray-900">
+                            {page.title}
+                          </h4>
+                        </div>
+                        <div className={`ml-2 flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
+                          page.status === 'published'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}
+                        >
+                          {page.status === 'published' ? 'Published' : 'Draft'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card Body */}
+                    <div className="p-4">
+                      <div className="mb-3 flex items-center gap-4 text-sm text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <FileText className="h-4 w-4" />
+                          <span>{page.blockCount} blocks</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          <span>{formatDate(page.updatedAt)}</span>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditPage(page.id);
+                          }}
+                          className="flex-1"
+                        >
+                          <Edit2 className="mr-1.5 h-3.5 w-3.5" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant={page.status === 'published' ? 'ghost' : 'primary'}
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTogglePublish(page.id, page.status);
+                          }}
+                          title={page.status === 'published' ? 'Unpublish' : 'Publish'}
+                        >
+                          {page.status === 'published' ? (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenShareModal(page.id);
+                          }}
+                          title="Share"
+                        >
+                          <Share2 className="h-4 w-4 text-purple-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeletePage(page.id);
+                          }}
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
       {/* Share Modal */}
       {showShareModal && (
-        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-gray-900 p-4">
-          <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
+          <div className="w-full max-w-2xl rounded-xl bg-white shadow-xl">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-gray-200 p-6">
               <div>
@@ -545,7 +859,7 @@ export function PagesClient() {
               </div>
               <button
                 onClick={() => setShowShareModal(false)}
-                className="text-gray-400 transition-colors hover:text-gray-600"
+                className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -554,8 +868,8 @@ export function PagesClient() {
             {/* Body */}
             <div className="max-h-[60vh] overflow-y-auto p-6">
               {/* Create New Link */}
-              <div className="mb-6 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
-                <h4 className="mb-3 font-medium text-indigo-900">Create New Share Link</h4>
+              <div className="mb-6 rounded-xl border border-purple-200 bg-purple-50 p-4">
+                <h4 className="mb-3 font-medium text-purple-900">Create New Share Link</h4>
                 <div className="flex items-end gap-3">
                   <div className="flex-1">
                     <label className="mb-1 block text-sm font-medium text-gray-700">
@@ -565,7 +879,7 @@ export function PagesClient() {
                       type="number"
                       value={expiryMinutes}
                       onChange={e => setExpiryMinutes(parseInt(e.target.value) || 60)}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
                       placeholder="60"
                       min="1"
                       max="10080"
@@ -590,12 +904,12 @@ export function PagesClient() {
                 <h4 className="mb-3 font-medium text-gray-900">Active Share Links</h4>
                 {loadingShare && (
                   <div className="flex items-center justify-center py-12">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
                   </div>
                 )}
 
                 {!loadingShare && shareLinks.length === 0 && (
-                  <div className="rounded-lg border-2 border-dashed border-gray-300 py-12 text-center">
+                  <div className="rounded-xl border-2 border-dashed border-gray-300 py-12 text-center">
                     <Link2 className="mx-auto mb-2 h-12 w-12 text-gray-400" />
                     <p className="text-sm text-gray-600">No active share links</p>
                     <p className="text-xs text-gray-500">Create a link above to get started</p>
@@ -609,13 +923,13 @@ export function PagesClient() {
                       return (
                         <div
                           key={link.id}
-                          className={`rounded-lg border p-4 ${
+                          className={`rounded-xl border p-4 ${
                             isExpired ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'
                           }`}
                         >
                           <div className="mb-2 flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <span className={`rounded px-2 py-1 text-xs font-medium ${
+                              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                                 isExpired
                                   ? 'bg-red-100 text-red-700'
                                   : 'bg-green-100 text-green-700'
@@ -624,16 +938,14 @@ export function PagesClient() {
                                 {isExpired ? 'Expired' : 'Active'}
                               </span>
                               <span className="text-xs text-gray-600">
-                                Expires:
-                                {' '}
-                                {new Date(link.expiresAt).toLocaleString()}
+                                Expires: {new Date(link.expiresAt).toLocaleString()}
                               </span>
                             </div>
                             <div className="flex items-center gap-1">
                               {!isExpired && (
                                 <button
                                   onClick={() => handleCopyLink(link.shareUrl, link.id)}
-                                  className="rounded p-1 text-gray-600 transition-colors hover:bg-gray-100 hover:text-indigo-600"
+                                  className="rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-purple-600"
                                   title="Copy link"
                                 >
                                   {copiedLink === link.id ? (
@@ -645,7 +957,7 @@ export function PagesClient() {
                               )}
                               <button
                                 onClick={() => handleRevokeShareLink(link.id)}
-                                className="rounded p-1 text-gray-600 transition-colors hover:bg-red-100 hover:text-red-600"
+                                className="rounded-lg p-2 text-gray-600 transition-colors hover:bg-red-100 hover:text-red-600"
                                 title="Revoke link"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -657,22 +969,12 @@ export function PagesClient() {
                               type="text"
                               value={link.shareUrl}
                               readOnly
-                              className="w-full truncate rounded border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700"
+                              className="w-full truncate rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700"
                             />
                           </div>
                           <div className="mt-2 flex items-center gap-4 text-xs text-gray-600">
-                            <span>
-                              Duration:
-                              {link.expiryDurationMinutes}
-                              {' '}
-                              minutes
-                            </span>
-                            <span>
-                              Accessed:
-                              {link.accessCount}
-                              {' '}
-                              times
-                            </span>
+                            <span>Duration: {link.expiryDurationMinutes} minutes</span>
+                            <span>Accessed: {link.accessCount} times</span>
                           </div>
                         </div>
                       );

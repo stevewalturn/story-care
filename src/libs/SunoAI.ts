@@ -56,7 +56,7 @@ export function getWebhookUrl(baseUrl?: string): string {
  */
 export async function generateSunoMusic(
   options: SunoGenerateOptions,
-  includeCallback = true
+  includeCallback = true,
 ): Promise<SunoGenerateResponse> {
   const apiKey = process.env.SUNO_API_KEY;
 

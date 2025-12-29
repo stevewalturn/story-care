@@ -1,7 +1,7 @@
 // JSON Action Handlers Service
 // Contains handler functions for processing JSON outputs from AI Assistant
 
-import { authenticatedPost } from '@/utils/AuthenticatedFetch';
+import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 
 export type ActionContext = {
   jsonData: any;
@@ -26,6 +26,14 @@ export type ActionContext = {
   onOpenMusicModal?: (data: {
     instrumentalOption?: any;
     lyricalOption?: any;
+  }) => void;
+  onOpenModuleSelector?: (options: {
+    onModuleSelected: (moduleId: string) => void;
+  }) => void;
+  onOpenSaveNoteModal?: (data: {
+    title: string;
+    content: string;
+    tags?: string[];
   }) => void;
   imageIndex?: number; // For image_references and video_references actions
 };
@@ -217,12 +225,23 @@ export async function handleSaveReflections(ctx: ActionContext) {
  */
 export async function handleGenerateInstrumental(ctx: ActionContext) {
   const { jsonData, onOpenMusicModal } = ctx;
-  const instrumental = jsonData.instrumental_option;
 
-  if (!instrumental) {
-    console.error('No instrumental data found in music_generation JSON');
+  // ✅ More descriptive error logging
+  if (!jsonData) {
+    console.error('[Music Generation] No JSON data provided to handler');
     return;
   }
+
+  if (!jsonData.instrumental_option) {
+    console.error('[Music Generation] No instrumental_option found in JSON:', {
+      schemaType: jsonData.schemaType,
+      hasLyricalOption: !!jsonData.lyrical_option,
+      jsonKeys: Object.keys(jsonData),
+    });
+    return;
+  }
+
+  const instrumental = jsonData.instrumental_option;
 
   // Open the GenerateMusicModal with pre-filled instrumental data
   if (onOpenMusicModal) {
@@ -231,7 +250,7 @@ export async function handleGenerateInstrumental(ctx: ActionContext) {
       lyricalOption: undefined,
     });
   } else {
-    console.error('onOpenMusicModal callback not provided');
+    console.error('[Music Generation] onOpenMusicModal callback not provided');
   }
 }
 
@@ -241,12 +260,23 @@ export async function handleGenerateInstrumental(ctx: ActionContext) {
  */
 export async function handleGenerateLyrical(ctx: ActionContext) {
   const { jsonData, onOpenMusicModal } = ctx;
-  const lyrical = jsonData.lyrical_option;
 
-  if (!lyrical) {
-    console.error('No lyrical data found in music_generation JSON');
+  // ✅ More descriptive error logging
+  if (!jsonData) {
+    console.error('[Music Generation] No JSON data provided to handler');
     return;
   }
+
+  if (!jsonData.lyrical_option) {
+    console.error('[Music Generation] No lyrical_option found in JSON:', {
+      schemaType: jsonData.schemaType,
+      hasInstrumentalOption: !!jsonData.instrumental_option,
+      jsonKeys: Object.keys(jsonData),
+    });
+    return;
+  }
+
+  const lyrical = jsonData.lyrical_option;
 
   // Open the GenerateMusicModal with pre-filled lyrical data
   if (onOpenMusicModal) {
@@ -255,7 +285,7 @@ export async function handleGenerateLyrical(ctx: ActionContext) {
       lyricalOption: lyrical,
     });
   } else {
-    console.error('onOpenMusicModal callback not provided');
+    console.error('[Music Generation] onOpenMusicModal callback not provided');
   }
 }
 
@@ -431,24 +461,49 @@ export async function handleSaveToTemplateLibrary(ctx: ActionContext) {
   onProgress('💾 Saving to template library...');
 
   try {
-    // Extract questions from JSON
-    const questions =
-      jsonData.patient_questions ||
-      jsonData.reflection_questions ||
-      [];
-    const groupQuestions = jsonData.group_questions || [];
+    // Helper to extract question text from string or object
+    const extractQuestionText = (q: any): string | null => {
+      if (typeof q === 'string') return q;
+      if (q && typeof q === 'object' && q.question) return q.question;
+      return null;
+    };
 
-    // Combine into template format
+    // Support multiple JSON formats from AI:
+    // 1. questions: [{ question, rationale?, placement? }] or string[]
+    // 2. patient_questions: string[] or object[]
+    // 3. reflection_questions: string[] or object[]
+    // 4. group_questions: string[] or object[]
+    const questionsArray = jsonData.questions || [];
+    const patientQuestionsRaw = jsonData.patient_questions || jsonData.reflection_questions || [];
+    const groupQuestionsRaw = jsonData.group_questions || [];
+
+    // Normalize ALL arrays (handle both object and string formats)
+    const normalizedQuestions = questionsArray.map(extractQuestionText).filter(Boolean) as string[];
+    const normalizedPatientQuestions = patientQuestionsRaw.map(extractQuestionText).filter(Boolean) as string[];
+    const normalizedGroupQuestions = groupQuestionsRaw.map(extractQuestionText).filter(Boolean) as string[];
+
+    // Combine all questions into template format (using standard field names)
     const allQuestions = [
-      ...questions.map((q: string) => ({
-        text: q,
-        type: 'open_text' as const,
+      ...normalizedQuestions.map((q: string, index: number) => ({
+        id: crypto.randomUUID(),
+        questionText: q,
+        questionType: 'open_text' as const,
         required: false,
+        order: index,
       })),
-      ...groupQuestions.map((q: string) => ({
-        text: `[Group] ${q}`,
-        type: 'open_text' as const,
+      ...normalizedPatientQuestions.map((q: string, index: number) => ({
+        id: crypto.randomUUID(),
+        questionText: q,
+        questionType: 'open_text' as const,
         required: false,
+        order: normalizedQuestions.length + index,
+      })),
+      ...normalizedGroupQuestions.map((q: string, index: number) => ({
+        id: crypto.randomUUID(),
+        questionText: `[Group] ${q}`,
+        questionType: 'open_text' as const,
+        required: false,
+        order: normalizedQuestions.length + normalizedPatientQuestions.length + index,
       })),
     ];
 
@@ -497,14 +552,77 @@ export async function handleSaveToTemplateLibrary(ctx: ActionContext) {
  * Add reflection questions to module
  */
 export async function handleAddReflectionsToModule(ctx: ActionContext) {
-  const { jsonData: _jsonData, onProgress, onComplete } = ctx;
+  const { sessionId, user, onProgress, onComplete, onOpenModuleSelector } = ctx;
 
   onProgress('💭 Adding reflection questions to module...');
 
-  // TODO: Implement module integration
-  onComplete({
-    message: '⚠️ Module integration coming soon. Questions saved to session.',
-  });
+  try {
+    // Check if module selector callback is available
+    if (!onOpenModuleSelector) {
+      onComplete({
+        message: '⚠️ Module selection not available. Please try again.',
+      });
+      return;
+    }
+
+    // Fetch session info
+    const sessionResponse = await authenticatedFetch(`/api/sessions/${sessionId}`, user);
+
+    if (!sessionResponse.ok) {
+      throw new Error('Failed to fetch session details');
+    }
+
+    const { session: _session } = await sessionResponse.json();
+
+    // Open module selector and wait for user selection
+    let selectedModuleId: string | null = null;
+
+    await new Promise<void>((resolve, reject) => {
+      onOpenModuleSelector({
+        onModuleSelected: (moduleId: string) => {
+          selectedModuleId = moduleId;
+          resolve();
+        },
+      });
+
+      // Timeout after 5 minutes
+      setTimeout(() => reject(new Error('Module selection timed out')), 300000);
+    });
+
+    // Check if user selected a module
+    if (!selectedModuleId) {
+      onComplete({
+        message: '⚠️ No module selected.',
+      });
+      return;
+    }
+
+    // Assign module to session
+    onProgress('💭 Assigning module to session...');
+
+    const assignResponse = await authenticatedPost(
+      `/api/sessions/${sessionId}/assign-module`,
+      user,
+      {
+        moduleId: selectedModuleId,
+        notes: 'Reflection questions to be incorporated in module analysis',
+      },
+    );
+
+    if (!assignResponse.ok) {
+      const errorData = await assignResponse.json();
+      throw new Error(errorData.error || 'Failed to assign module');
+    }
+
+    onComplete({
+      message: '✅ Module assigned to session. Questions will be incorporated in analysis.',
+    });
+  }
+  catch (error) {
+    onComplete({
+      message: `❌ Failed to add to module: ${(error as Error).message}`,
+    });
+  }
 }
 
 /**
@@ -516,10 +634,28 @@ export async function handleSaveAsNote(ctx: ActionContext) {
   onProgress('📝 Saving as note...');
 
   try {
+    // Fetch session to get patientId
+    const sessionResponse = await authenticatedFetch(`/api/sessions/${sessionId}`, user);
+
+    if (!sessionResponse.ok) {
+      throw new Error('Failed to fetch session details');
+    }
+
+    const { session } = await sessionResponse.json();
+
+    // Handle group sessions (no patientId)
+    if (!session.patientId) {
+      onComplete({
+        message: '⚠️ Cannot save notes for group sessions. Use "Save to Template Library" instead.',
+      });
+      return;
+    }
+
     const questions = jsonData.patient_questions || jsonData.reflection_questions || [];
     const content = questions.map((q: string, i: number) => `${i + 1}. ${q}`).join('\n');
 
     const response = await authenticatedPost('/api/notes', user, {
+      patientId: session.patientId, // NOW INCLUDED
       sessionId,
       title: 'Reflection Questions',
       content,
@@ -543,31 +679,24 @@ export async function handleSaveAsNote(ctx: ActionContext) {
 // ============================================================================
 
 /**
- * Save therapeutic note
+ * Save therapeutic note - Opens modal for patient selection
  */
 export async function handleSaveTherapeuticNote(ctx: ActionContext) {
-  const { jsonData, sessionId, user, onProgress, onComplete } = ctx;
+  const { jsonData, onOpenSaveNoteModal, onComplete } = ctx;
 
-  onProgress('📝 Saving therapeutic note...');
-
-  try {
-    const response = await authenticatedPost('/api/notes', user, {
-      sessionId,
-      title: jsonData.note_title,
-      content: jsonData.note_content,
-      tags: jsonData.tags || ['therapeutic', 'ai-generated'],
-    });
-
-    if (!response.ok) throw new Error('Failed to save note');
-
-    onComplete({
-      message: '✅ Therapeutic note saved.',
-    });
-  } catch (error) {
-    onComplete({
-      message: `❌ Failed to save note: ${(error as Error).message}`,
-    });
+  if (!onOpenSaveNoteModal) {
+    onComplete({ message: '❌ Save note modal is not available' });
+    return;
   }
+
+  // Open the modal with pre-filled content
+  onOpenSaveNoteModal({
+    title: jsonData.note_title || 'Therapeutic Note',
+    content: jsonData.note_content || '',
+    tags: jsonData.tags || ['therapeutic', 'ai-generated'],
+  });
+
+  onComplete({ message: '✅ Opening save note modal...' });
 }
 
 // ============================================================================

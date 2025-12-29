@@ -7,8 +7,8 @@
 import type {
   BlockInstance,
   BlockType,
-  ValidationResult,
   ValidationError,
+  ValidationResult,
 } from '@/types/BuildingBlocks';
 import { BLOCK_DEFINITIONS, VALIDATION_RULES } from '@/config/BlockDefinitions';
 
@@ -43,9 +43,9 @@ function detectSchemaType(blocks: BlockInstance[]): string | null {
 
   // Check for scene_card pattern
   if (
-    blockTypes.includes('video_introduction') &&
-    blockTypes.includes('scene_assembly') &&
-    (blockTypes.includes('image_prompt') || blockTypes.includes('video_prompt'))
+    blockTypes.includes('video_introduction')
+    && blockTypes.includes('scene_assembly')
+    && (blockTypes.includes('image_prompt') || blockTypes.includes('video_prompt'))
   ) {
     return 'scene_card';
   }
@@ -639,9 +639,9 @@ function parseGenericJSONSchema(jsonSchema: any): BlockInstance[] {
 
   // Pattern 1: Therapeutic Note (has title, content, tags, keyInsights, actionItems)
   if (
-    propertyKeys.includes('title') &&
-    propertyKeys.includes('content') &&
-    (propertyKeys.includes('tags') || propertyKeys.includes('keyInsights') || propertyKeys.includes('actionItems'))
+    propertyKeys.includes('title')
+    && propertyKeys.includes('content')
+    && (propertyKeys.includes('tags') || propertyKeys.includes('keyInsights') || propertyKeys.includes('actionItems'))
   ) {
     blocks.push({
       blockId: 'therapeutic_note',
@@ -680,10 +680,10 @@ function parseGenericJSONSchema(jsonSchema: any): BlockInstance[] {
   }
   // Pattern 4: Images (has images array, image_url, or prompt)
   else if (
-    propertyKeys.includes('images') ||
-    propertyKeys.includes('image_url') ||
-    propertyKeys.includes('imageUrl') ||
-    (propertyKeys.includes('prompt') && propertyKeys.includes('style'))
+    propertyKeys.includes('images')
+    || propertyKeys.includes('image_url')
+    || propertyKeys.includes('imageUrl')
+    || (propertyKeys.includes('prompt') && propertyKeys.includes('style'))
   ) {
     blocks.push({
       blockId: 'image_prompt',
@@ -698,10 +698,10 @@ function parseGenericJSONSchema(jsonSchema: any): BlockInstance[] {
   }
   // Pattern 5: Music/Audio (has audio_url, lyrics, musicStyle, etc.)
   else if (
-    propertyKeys.includes('audio_url') ||
-    propertyKeys.includes('audioUrl') ||
-    propertyKeys.includes('lyrics') ||
-    propertyKeys.includes('musicStyle')
+    propertyKeys.includes('audio_url')
+    || propertyKeys.includes('audioUrl')
+    || propertyKeys.includes('lyrics')
+    || propertyKeys.includes('musicStyle')
   ) {
     blocks.push({
       blockId: 'music_generation',

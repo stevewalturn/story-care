@@ -107,7 +107,7 @@ export function ModuleLibrary() {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-purple-200 border-t-purple-600" />
           <p className="text-sm text-gray-600">Loading modules...</p>
         </div>
       </div>
@@ -141,14 +141,14 @@ export function ModuleLibrary() {
             placeholder="Search modules..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+            className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
           />
         </div>
 
         {/* Create Button */}
         <button
           onClick={handleCreateModule}
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none"
+          className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:outline-none"
           type="button"
         >
           <Plus className="h-5 w-5" />
@@ -204,7 +204,7 @@ export function ModuleLibrary() {
               </p>
               <button
                 onClick={handleCreateModule}
-                className="mt-4 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                className="mt-4 text-sm font-medium text-purple-600 hover:text-purple-700"
                 type="button"
               >
                 Create your first module
@@ -230,7 +230,7 @@ export function ModuleLibrary() {
               <p className="text-gray-600">No modules in this domain yet.</p>
               <button
                 onClick={handleCreateModule}
-                className="mt-4 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                className="mt-4 text-sm font-medium text-purple-600 hover:text-purple-700"
                 type="button"
               >
                 Create a module

@@ -35,9 +35,13 @@ export async function generateText(
 
   // Route to OpenAI
   if (
-    model === 'gpt-4o'
+    model === 'gpt-4.1'
+    || model === 'gpt-4.1-mini'
+    || model === 'gpt-4.1-nano'
+    || model === 'gpt-4o'
     || model === 'gpt-4o-mini'
     || model === 'gpt-4-turbo'
+    || model === 'gpt-3.5-turbo'
     || model === 'o3-mini'
     || model === 'o3'
     || model === 'o3-pro'

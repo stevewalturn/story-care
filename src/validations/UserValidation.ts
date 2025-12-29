@@ -47,8 +47,10 @@ export const invitePatientSchema = z.object({
   name: z.string()
     .min(2, 'Name must be at least 2 characters')
     .max(255, 'Name must not exceed 255 characters'),
-  email: z.string()
-    .email('Invalid email address'),
+  email: z.union([
+    z.string().email('Invalid email address'),
+    z.literal(''),
+  ]).optional(),
   dateOfBirth: z.string()
     .optional(),
   referenceImageUrl: z.string().optional(),

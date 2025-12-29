@@ -155,9 +155,9 @@ export default function SignUpPage() {
                 <div
                   className={`flex h-10 w-10 items-center justify-center rounded-full border-2 font-semibold transition-colors ${
                     currentStep > step.num
-                      ? 'border-indigo-600 bg-indigo-600 text-white'
+                      ? 'border-purple-600 bg-purple-600 text-white'
                       : currentStep === step.num
-                        ? 'border-indigo-600 text-indigo-600'
+                        ? 'border-purple-600 text-purple-600'
                         : 'border-gray-300 text-gray-300'
                   }`}
                 >
@@ -174,7 +174,7 @@ export default function SignUpPage() {
               {index < steps.length - 1 && (
                 <div
                   className={`flex-1 border-t-2 transition-colors ${
-                    currentStep > step.num ? 'border-indigo-600' : 'border-gray-300'
+                    currentStep > step.num ? 'border-purple-600' : 'border-gray-300'
                   }`}
                 />
               )}
@@ -186,12 +186,12 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-50 px-4 py-12">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="mb-8 text-center">
           <Link href="/" className="inline-block">
-            <h1 className="mb-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-4xl font-bold text-transparent">
+            <h1 className="mb-2 bg-gradient-to-r from-purple-600 to-purple-600 bg-clip-text text-4xl font-bold text-transparent">
               StoryCare
             </h1>
           </Link>
@@ -289,10 +289,10 @@ export default function SignUpPage() {
                 </p>
               </div>
 
-              <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+              <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
                 <div className="flex items-start">
-                  <Building2 className="mr-3 h-5 w-5 text-indigo-600" />
-                  <div className="text-sm text-indigo-700">
+                  <Building2 className="mr-3 h-5 w-5 text-purple-600" />
+                  <div className="text-sm text-purple-700">
                     <p className="font-medium">New Organization</p>
                     <p className="mt-1">You'll be the first administrator</p>
                   </div>
@@ -433,7 +433,7 @@ export default function SignUpPage() {
               {' '}
               <Link
                 href="/sign-in"
-                className="font-medium text-indigo-600 hover:text-indigo-700"
+                className="font-medium text-purple-600 hover:text-purple-700"
               >
                 Sign in
               </Link>

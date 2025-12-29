@@ -3,8 +3,8 @@
  * Removes all system-level templates to allow re-seeding with corrected data
  */
 
-import { eq } from 'drizzle-orm';
 import * as dotenv from 'dotenv';
+import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import {

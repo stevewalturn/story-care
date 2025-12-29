@@ -114,7 +114,7 @@ export function TranscriptAnalysis({ sessionId, transcriptText }: TranscriptAnal
     <div className="rounded-lg border border-gray-200 bg-white p-6">
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-purple-600">
             <Sparkles className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -156,7 +156,7 @@ export function TranscriptAnalysis({ sessionId, transcriptText }: TranscriptAnal
           {/* Sentiment Analysis */}
           <div className="space-y-3">
             <h4 className="flex items-center gap-2 font-medium text-gray-900">
-              <Heart className="h-4 w-4 text-indigo-600" />
+              <Heart className="h-4 w-4 text-purple-600" />
               Sentiment Analysis
             </h4>
             <div className={`rounded-lg border p-4 ${getSentimentColor(analysis.sentiment.overall)}`}>
@@ -224,19 +224,19 @@ export function TranscriptAnalysis({ sessionId, transcriptText }: TranscriptAnal
           {/* Key Quotes */}
           <div className="space-y-3">
             <h4 className="flex items-center gap-2 font-medium text-gray-900">
-              <Quote className="h-4 w-4 text-indigo-600" />
+              <Quote className="h-4 w-4 text-purple-600" />
               Key Quotes
             </h4>
             <div className="space-y-3">
               {analysis.keyQuotes.map((quote, index) => (
-                <div key={index} className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+                <div key={index} className="rounded-lg border border-purple-200 bg-purple-50 p-4">
                   <p className="mb-2 text-sm text-gray-900 italic">
                     "
                     {quote.text}
                     "
                   </p>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-indigo-700">
+                    <span className="font-medium text-purple-700">
                       —
                       {quote.speaker}
                     </span>
@@ -250,14 +250,14 @@ export function TranscriptAnalysis({ sessionId, transcriptText }: TranscriptAnal
           {/* Therapeutic Insights */}
           <div className="space-y-3">
             <h4 className="flex items-center gap-2 font-medium text-gray-900">
-              <Lightbulb className="h-4 w-4 text-indigo-600" />
+              <Lightbulb className="h-4 w-4 text-purple-600" />
               Therapeutic Insights
             </h4>
             <div className="space-y-2">
               {analysis.therapeuticInsights.map((insight, index) => (
                 <div key={index} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                   <div className="flex items-start gap-3">
-                    <span className="rounded bg-indigo-100 px-2 py-1 text-xs font-medium text-indigo-700">
+                    <span className="rounded bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700">
                       {insight.category}
                     </span>
                     {insight.timestamp && (
@@ -273,7 +273,7 @@ export function TranscriptAnalysis({ sessionId, transcriptText }: TranscriptAnal
           {/* Progress Indicators */}
           <div className="space-y-3">
             <h4 className="flex items-center gap-2 font-medium text-gray-900">
-              <TrendingUp className="h-4 w-4 text-indigo-600" />
+              <TrendingUp className="h-4 w-4 text-purple-600" />
               Progress Indicators
             </h4>
             <div className="space-y-2">

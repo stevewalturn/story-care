@@ -7,22 +7,75 @@
 
 import type { AIAssistantPanelProps } from '../types/transcript.types';
 import type { AIPromptOption } from '@/components/sessions/AnalyzeSelectionModal';
+import type { PatientOption } from '@/components/sessions/SaveNoteModal';
+import { ChevronDown, FileText, Quote } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { Code2, FileText } from 'lucide-react';
 import { AssistantMessageContent } from '@/components/sessions/AssistantMessageContent';
 import { JSONOutputRenderer } from '@/components/sessions/JSONOutputRenderer';
-import { getAvailableTextModels } from '@/libs/ModelMetadata';
+import { ModuleSelectorModal } from '@/components/sessions/ModuleSelectorModal';
+import { SaveNoteModal } from '@/components/sessions/SaveNoteModal';
+import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
+
+import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 import { detectAndExtractJSON } from '@/utils/JSONSchemaDetector';
 
+// AI Models grouped by provider - matching Figma design
+const AI_MODEL_GROUPS = [
+  {
+    provider: 'OpenAI',
+    models: [
+      { id: 'gpt-4.1', name: 'GPT-4.1' },
+      { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini' },
+      { id: 'gpt-4.1-nano', name: 'GPT-4.1 Nano' },
+      { id: 'gpt-4o', name: 'GPT-4o' },
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
+      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' },
+    ],
+  },
+  {
+    provider: 'Anthropic',
+    models: [
+      { id: 'claude-haiku-4', name: 'Claude Haiku 4' },
+      { id: 'claude-3.7-sonnet', name: 'Claude 3.7 Sonnet' },
+    ],
+  },
+  {
+    provider: 'Google',
+    models: [
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+    ],
+  },
+];
+
+// Helper to get model display name
+const getModelDisplayName = (modelId: string): string => {
+  for (const group of AI_MODEL_GROUPS) {
+    const model = group.models.find(m => m.id === modelId);
+    if (model) return model.name;
+  }
+  return modelId;
+};
+
+// Helper to format message timestamp
+const formatMessageTime = (date: Date): string => {
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+};
+
 export function AIAssistantPanel({
   sessionId,
-  patientName,
+  patientName: _patientName,
   user,
+  speakers,
   assignedModule,
   triggerPrompt,
   onPromptSent,
-  onAssignModule,
+  onAssignModule: _onAssignModule,
   onTextSelection,
   onOpenImageModal,
   onOpenVideoModal,
@@ -31,23 +84,172 @@ export function AIAssistantPanel({
   onLibraryRefresh,
   analyzeMode,
   onAnalyzeModeChange,
+  onClose: _onClose,
 }: AIAssistantPanelProps) {
+  // Get dbUser for avatar
+  const { dbUser } = useAuth();
+
   const [prompt, setPrompt] = useState('');
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date }>>([]);
   const [visibleMessageCount, setVisibleMessageCount] = useState(10); // Pagination state
   const [isLoading, setIsLoading] = useState(false);
   const [_isLoadingHistory, _setIsLoadingHistory] = useState(true);
-  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash');
+  const [selectedModel, setSelectedModel] = useState('gpt-4.1');
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const [showPromptDropdown, setShowPromptDropdown] = useState(false);
+  const [hoveredPromptId, setHoveredPromptId] = useState<string | null>(null);
+  const [showParticipantDropdown, setShowParticipantDropdown] = useState(false);
+  const [showModuleDropdown, setShowModuleDropdown] = useState(false);
+  const [availableModules, setAvailableModules] = useState<any[]>([]);
+  const [isLoadingModules, setIsLoadingModules] = useState(false);
+  const [selectedParticipant, setSelectedParticipant] = useState<string>('all');
+  const [showModuleSelectorModal, setShowModuleSelectorModal] = useState(false);
+  const [moduleSelectionCallback, setModuleSelectionCallback] = useState<((moduleId: string) => void) | null>(null);
+  // Save Note Modal state
+  const [showSaveNoteModal, setShowSaveNoteModal] = useState(false);
+  const [selectedTextForNote, setSelectedTextForNote] = useState('');
+  const [noteTitle, setNoteTitle] = useState('');
+  const [noteTags, setNoteTags] = useState<string[]>([]);
+  // Save Quote Modal state
+  const [showSaveQuoteModal, setShowSaveQuoteModal] = useState(false);
+  const [selectedTextForQuote, setSelectedTextForQuote] = useState('');
+  // Patients list for modals
+  const [sessionPatients, setSessionPatients] = useState<PatientOption[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputContainerRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const moduleDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Module selector callback
+  const handleOpenModuleSelector = (options: { onModuleSelected: (moduleId: string) => void }) => {
+    setModuleSelectionCallback(() => options.onModuleSelected);
+    setShowModuleSelectorModal(true);
+  };
+
+  const handleModuleSelected = (moduleId: string) => {
+    if (moduleSelectionCallback) {
+      moduleSelectionCallback(moduleId);
+      setModuleSelectionCallback(null);
+    }
+  };
+
+  const handleCloseModuleSelector = () => {
+    setShowModuleSelectorModal(false);
+    setModuleSelectionCallback(null);
+  };
+
+  // Save Note Modal handlers
+  const handleOpenSaveNoteModal = (content: string) => {
+    setSelectedTextForNote(content);
+    setNoteTitle('');
+    setNoteTags([]);
+    setShowSaveNoteModal(true);
+  };
+
+  // Save Note Modal handler for JSON output (with pre-filled data)
+  const handleOpenSaveNoteModalFromJSON = (data: { title: string; content: string; tags?: string[] }) => {
+    setSelectedTextForNote(data.content);
+    setNoteTitle(data.title);
+    setNoteTags(data.tags || []);
+    setShowSaveNoteModal(true);
+  };
+
+  const handleCloseSaveNoteModal = () => {
+    setShowSaveNoteModal(false);
+    setSelectedTextForNote('');
+    setNoteTitle('');
+    setNoteTags([]);
+  };
+
+  const handleSaveNote = async (noteData: { patientId?: string; title: string; content: string; tags: string[] }) => {
+    // patientId comes from the modal's patient selector
+    const patientId = noteData.patientId;
+
+    if (!patientId) {
+      throw new Error('Please select a patient to save this note.');
+    }
+
+    // Save the note
+    const response = await authenticatedPost('/api/notes', user, {
+      patientId,
+      sessionId,
+      title: noteData.title,
+      content: noteData.content,
+      tags: noteData.tags,
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to save note');
+    }
+
+    // Refresh library if callback exists
+    if (onLibraryRefresh) {
+      onLibraryRefresh();
+    }
+  };
+
+  // Save Quote Modal handlers
+  const handleOpenSaveQuoteModal = (content: string) => {
+    setSelectedTextForQuote(content);
+    setShowSaveQuoteModal(true);
+  };
+
+  const handleCloseSaveQuoteModal = () => {
+    setShowSaveQuoteModal(false);
+    setSelectedTextForQuote('');
+  };
+
+  const handleSaveQuote = async (quoteData: { patientId: string; quoteText: string; speaker: string }) => {
+    // Save the quote
+    const response = await authenticatedPost('/api/quotes', user, {
+      patientId: quoteData.patientId,
+      sessionId,
+      quoteText: quoteData.quoteText,
+      speaker: quoteData.speaker,
+      source: 'ai_conversation',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to save quote');
+    }
+
+    // Refresh library if callback exists
+    if (onLibraryRefresh) {
+      onLibraryRefresh();
+    }
+  };
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      // Close input area dropdowns
+      if (inputContainerRef.current && !inputContainerRef.current.contains(target)) {
+        setShowParticipantDropdown(false);
+        setShowPromptDropdown(false);
+      }
+      // Close header model dropdown
+      if (headerRef.current && !headerRef.current.contains(target)) {
+        setShowModelDropdown(false);
+      }
+      // Close module dropdown
+      if (moduleDropdownRef.current && !moduleDropdownRef.current.contains(target)) {
+        setShowModuleDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Dynamic AI Prompts system
-  const [aiPrompts, setAiPrompts] = useState<AIPromptOption[]>([]); // Module prompts
+  const [modulePrompts, setModulePrompts] = useState<AIPromptOption[]>([]); // Module-linked prompts
   const [libraryPrompts, setLibraryPrompts] = useState<AIPromptOption[]>([]); // Library prompts
-  const [moduleAiPromptText, setModuleAiPromptText] = useState<string | null>(null);
-  const [isLoadingPrompts, setIsLoadingPrompts] = useState(false);
-  const [outputTypeFilter, setOutputTypeFilter] = useState<'all' | 'text' | 'json'>('all');
-  const [showAllPrompts, setShowAllPrompts] = useState(false);
+  const [_moduleAiPromptText, setModuleAiPromptText] = useState<string | null>(null);
+  const [_isLoadingPrompts, setIsLoadingPrompts] = useState(false);
+  const [_outputTypeFilter, _setOutputTypeFilter] = useState<'all' | 'text' | 'json'>('all');
+  const [_showAllPrompts, _setShowAllPrompts] = useState(false);
   const [selectedPromptId, setSelectedPromptId] = useState('');
   const [selectedSystemPrompt, setSelectedSystemPrompt] = useState<string | null>(null); // Hidden system prompt
 
@@ -63,6 +265,7 @@ export function AIAssistantPanel({
           const loadedMessages = data.messages.map((msg: any) => ({
             role: msg.role,
             content: msg.content,
+            timestamp: msg.createdAt ? new Date(msg.createdAt) : new Date(),
           }));
           setMessages(loadedMessages);
         }
@@ -74,6 +277,51 @@ export function AIAssistantPanel({
     };
 
     loadChatHistory();
+  }, [sessionId, user]);
+
+  // Load session data to get patients list for modals
+  useEffect(() => {
+    const fetchSessionPatients = async () => {
+      if (!user || !sessionId) return;
+
+      try {
+        const response = await authenticatedFetch(`/api/sessions/${sessionId}`, user);
+        if (response.ok) {
+          const data = await response.json();
+          const session = data.session; // API returns { session: { ... } }
+          const patients: PatientOption[] = [];
+
+          // Handle individual session with patient
+          if (session.patient) {
+            patients.push({
+              id: session.patient.id,
+              name: session.patient.name,
+              avatarUrl: session.patient.avatarUrl || null,
+            });
+          }
+
+          // Handle group session with members
+          if (session.group?.members) {
+            for (const member of session.group.members) {
+              // Avoid duplicates
+              if (!patients.find(p => p.id === member.id)) {
+                patients.push({
+                  id: member.id,
+                  name: member.name,
+                  avatarUrl: member.avatarUrl || null,
+                });
+              }
+            }
+          }
+
+          setSessionPatients(patients);
+        }
+      } catch (error) {
+        console.error('Error fetching session patients:', error);
+      }
+    };
+
+    fetchSessionPatients();
   }, [sessionId, user]);
 
   // Load AI prompts (module + library)
@@ -90,7 +338,7 @@ export function AIAssistantPanel({
         if (moduleResponse.ok) {
           const moduleData = await moduleResponse.json();
           modulePrompts = moduleData.prompts || [];
-          setAiPrompts(modulePrompts);
+          setModulePrompts(modulePrompts);
 
           // Store module's inline AI prompt text
           if (moduleData.module?.aiPromptText) {
@@ -124,6 +372,29 @@ export function AIAssistantPanel({
     fetchAiPrompts();
   }, [sessionId, user, assignedModule]); // Re-fetch when module changes
 
+  // Load available treatment modules
+  useEffect(() => {
+    const fetchModules = async () => {
+      if (!user) return;
+
+      try {
+        setIsLoadingModules(true);
+        const response = await authenticatedFetch('/api/modules', user);
+
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableModules(data.modules || []);
+        }
+      } catch (error) {
+        console.error('Error fetching modules:', error);
+      } finally {
+        setIsLoadingModules(false);
+      }
+    };
+
+    fetchModules();
+  }, [user]);
+
   // Watch for trigger prompt from analyze modal
   useEffect(() => {
     if (triggerPrompt) {
@@ -148,12 +419,20 @@ export function AIAssistantPanel({
       fullPrompt = `${selectedSystemPrompt}\n\n${userText}`;
     }
 
+    // Add participant filter context to the prompt
+    if (selectedParticipant !== 'all') {
+      const participantContext = selectedParticipant === 'therapist'
+        ? `[Focus your analysis on the therapist's contributions in this session.]`
+        : `[Focus your analysis on ${speakers?.find(s => s.id === selectedParticipant)?.name || 'the selected participant'}'s contributions in this session.]`;
+      fullPrompt = `${participantContext}\n\n${fullPrompt}`;
+    }
+
     if (!fullPrompt.trim() || isLoading) {
       return;
     }
 
     // Show only user's text in chat history (not the system prompt)
-    const userMessage = { role: 'user' as const, content: userText };
+    const userMessage = { role: 'user' as const, content: userText, timestamp: new Date() };
     setMessages(prev => [...prev, userMessage]);
     setPrompt('');
     setIsLoading(true);
@@ -175,12 +454,12 @@ export function AIAssistantPanel({
       }
 
       const data = await response.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.message }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: new Date() }]);
     } catch (error) {
       console.error('Error sending message:', error);
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' },
+        { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.', timestamp: new Date() },
       ]);
     } finally {
       setIsLoading(false);
@@ -213,42 +492,70 @@ export function AIAssistantPanel({
     setVisibleMessageCount(prev => prev + 10);
   };
 
-  // Filter prompts by output type
-  const filterByOutputType = (prompts: AIPromptOption[]) => {
-    if (outputTypeFilter === 'all') return prompts;
-    return prompts.filter((prompt) => {
-      if (!prompt.outputType) return outputTypeFilter === 'text'; // Default to text if not specified
-      return prompt.outputType === outputTypeFilter;
-    });
+  // Note: filterByOutputType function removed - can be re-added when prompt filtering UI is implemented
+  // Filter logic would be: if outputTypeFilter === 'all' return all; else filter by prompt.outputType
+
+  // Handle module assignment - auto-select without modal
+  const handleModuleSelection = async (module: any) => {
+    try {
+      // Show loading state
+      setIsLoadingModules(true);
+
+      // Assign module to session via API
+      const response = await authenticatedPost(`/api/sessions/${sessionId}/assign-module`, user, {
+        moduleId: module.id,
+      });
+
+      if (response.ok) {
+        // Close dropdown
+        setShowModuleDropdown(false);
+        // Refresh the page to show updated module
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Error assigning module:', error);
+      setIsLoadingModules(false);
+    }
   };
 
-  // Handle prompt selection with module context
-  const handlePromptSelection = (promptId: string, prompt: AIPromptOption) => {
+  // Helper to get selected prompt name for display
+  const getSelectedPromptName = (): string => {
+    if (!selectedPromptId) return 'Prompt';
+
+    // Check module prompts
+    const modulePrompt = modulePrompts.find(p => p.id === selectedPromptId);
+    if (modulePrompt) return modulePrompt.name;
+
+    // Check library prompts
+    const libraryPrompt = libraryPrompts.find(p => p.id === selectedPromptId);
+    if (libraryPrompt) return libraryPrompt.name;
+
+    return 'Prompt';
+  };
+
+  // Handle prompt selection with module context - sets up prompt as context for next message
+  const handlePromptSelection = (promptData: AIPromptOption | { id: string; name: string; prompt: string }) => {
+    // Get the system prompt text
+    const systemPrompt = 'promptText' in promptData ? promptData.promptText : promptData.prompt;
+    const promptId = promptData.id;
+
     setSelectedPromptId(promptId);
 
-    // Get the system prompt (hidden from user) - use systemPrompt if available, fallback to promptText
-    const systemPrompt = prompt.systemPrompt || prompt.promptText;
-
     // Check if this is a module-linked prompt
-    const isModulePrompt = aiPrompts.some(p => p.id === promptId);
+    const isModulePrompt = modulePrompts.some(p => p.id === promptId);
 
     // Combine module's inline prompt with system prompt if it's a module prompt
     let finalSystemPrompt = systemPrompt;
-    if (isModulePrompt && moduleAiPromptText) {
+    if (isModulePrompt && _moduleAiPromptText) {
       // Prepend module's inline prompt for module-linked prompts
-      finalSystemPrompt = `${moduleAiPromptText}\n\n---\n\n${systemPrompt}`;
+      finalSystemPrompt = `${_moduleAiPromptText}\n\n---\n\n${systemPrompt}`;
     }
 
-    // Store system prompt separately (NOT shown in textarea)
+    // Store system prompt separately
     setSelectedSystemPrompt(finalSystemPrompt);
 
-    // Only show user-facing prompt in textarea (if it exists)
-    if (prompt.userPrompt) {
-      setPrompt(prompt.userPrompt);
-    } else {
-      // Don't populate textarea with system prompt - keep it empty for user to type
-      setPrompt('');
-    }
+    // Keep textarea empty - prompt is handled as hidden system message
+    setPrompt('');
   };
 
   // Calculate visible messages (show last N messages)
@@ -256,210 +563,224 @@ export function AIAssistantPanel({
   const hasMoreMessages = messages.length > visibleMessageCount;
 
   // Get filtered prompts
-  const filteredModulePrompts = filterByOutputType(aiPrompts);
-  const filteredLibraryPrompts = filterByOutputType(libraryPrompts);
+  // TODO: These will be used when filter UI is implemented
+  // const filteredModulePrompts = filterByOutputType(modulePrompts);
+  // const filteredLibraryPrompts = filterByOutputType(libraryPrompts);
 
   // Calculate counts for filter buttons
-  const allPromptsCount = aiPrompts.length + libraryPrompts.length;
-  const textOnlyCount = filterByOutputType([...aiPrompts, ...libraryPrompts]).filter(p =>
-    !p.outputType || p.outputType === 'text'
-  ).length;
-  const jsonOnlyCount = filterByOutputType([...aiPrompts, ...libraryPrompts]).filter(p =>
-    p.outputType === 'json'
-  ).length;
+  // TODO: These will be used when filter UI is implemented
+  // const allPromptsCount = modulePrompts.length + libraryPrompts.length;
+  // const textOnlyCount = filterByOutputType([...modulePrompts, ...libraryPrompts]).filter(p =>
+  //   !p.outputType || p.outputType === 'text'
+  // ).length;
+  // const jsonOnlyCount = filterByOutputType([...modulePrompts, ...libraryPrompts]).filter(p =>
+  //   p.outputType === 'json'
+  // ).length;
 
   return (
-    <>
+    <div className="flex h-full flex-col bg-white">
       {/* Header */}
-      <div className="border-b border-gray-200 bg-white p-4">
+      <div ref={headerRef} className="flex-shrink-0 border-b border-gray-200 bg-white px-4 py-2.5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold text-gray-900">
-              AI Assistant (
-              {patientName}
-              's Narrative)
-            </h2>
-            {/* Module Badge or Assign Button */}
-            {assignedModule ? (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 rounded-full bg-indigo-100 px-3 py-1">
-                  <svg className="h-3.5 w-3.5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                    <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-xs font-medium text-indigo-900">{assignedModule.name}</span>
-                </div>
-                <button
-                  onClick={onAssignModule}
-                  className="flex items-center gap-1 text-xs font-medium text-indigo-600 transition-colors hover:text-indigo-700"
-                  title="Change Module"
-                >
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                  Change
-                </button>
-              </div>
-            ) : (
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-[#111827]">AI Assistant</h2>
+            {/* AI Model Dropdown with Grouped Options */}
+            <div className="relative">
               <button
-                onClick={onAssignModule}
-                className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-medium text-white shadow-md transition-all hover:from-indigo-700 hover:to-purple-700 hover:shadow-lg"
+                onClick={() => setShowModelDropdown(!showModelDropdown)}
+                className="flex items-center gap-1 rounded-md bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-100"
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Assign Treatment Module
+                {getModelDisplayName(selectedModel)}
+                <ChevronDown className="h-3 w-3 text-gray-400" />
               </button>
-            )}
+              {showModelDropdown && (
+                <div className="absolute top-full left-0 z-50 mt-1 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                  {AI_MODEL_GROUPS.map(group => (
+                    <div key={group.provider}>
+                      <div className="px-3 py-1.5 text-xs font-semibold tracking-wide text-gray-400 uppercase">
+                        {group.provider}
+                      </div>
+                      {group.models.map(model => (
+                        <button
+                          key={model.id}
+                          onClick={() => {
+                            setSelectedModel(model.id);
+                            setShowModelDropdown(false);
+                          }}
+                          className={`w-full px-3 py-1.5 text-left text-sm transition-colors hover:bg-gray-100 ${
+                            selectedModel === model.id ? 'bg-purple-50 text-purple-700' : 'text-gray-700'
+                          }`}
+                        >
+                          {model.name}
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setMessages([])}
-              className="text-gray-500 hover:text-gray-700"
-              title="Clear chat"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Model Selector & Analyze Mode */}
-        <div className="border-t border-gray-200 bg-gray-50 px-4 py-3">
-          <div className="flex items-center gap-4">
-            {/* Model Selector */}
-            <div className="flex flex-1 items-center gap-2">
-              <label htmlFor="ai-model" className="text-sm font-medium text-gray-700">
-                Model:
-              </label>
-              <select
-                id="ai-model"
-                value={selectedModel}
-                onChange={e => setSelectedModel(e.target.value)}
-                className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
-              >
-                {Object.entries(getAvailableTextModels()).map(([provider, models]) => (
-                  <optgroup key={provider} label={provider}>
-                    {models.map(model => (
-                      <option key={model.value} value={model.value}>
-                        {model.label}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
-
             {/* Analyze Mode Toggle */}
             <button
-              onClick={() => onAnalyzeModeChange(!analyzeMode)}
-              className={`flex items-center gap-2 rounded-lg border px-4 py-1.5 text-sm font-medium transition-all ${
+              onClick={() => onAnalyzeModeChange?.(!analyzeMode)}
+              className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-colors ${
                 analyzeMode
-                  ? 'border-indigo-600 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
-                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                  ? 'bg-green-50 text-green-700 hover:bg-green-100'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
-              title={analyzeMode ? 'Analyze Mode: ON - Select text to analyze' : 'Analyze Mode: OFF - Click to enable'}
+              title={analyzeMode ? 'Click to disable text selection analysis' : 'Click to enable text selection analysis'}
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-              </svg>
-              <span>{analyzeMode ? 'Analyze Mode: ON' : 'Analyze Mode: OFF'}</span>
+              <div className={`h-1.5 w-1.5 rounded-full ${analyzeMode ? 'bg-green-500' : 'bg-gray-400'}`} />
+              Analyze
+              {' '}
+              {analyzeMode ? 'On' : 'Off'}
             </button>
           </div>
         </div>
+      </div>
 
+      {/* Module Selector Row - Compact Inline */}
+      <div ref={moduleDropdownRef} className="relative flex-shrink-0 border-b border-gray-200 bg-white px-4 py-2">
+        <button
+          onClick={() => setShowModuleDropdown(!showModuleDropdown)}
+          disabled={isLoadingModules}
+          className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-xs font-medium transition-all ${
+            assignedModule
+              ? 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+              : showModuleDropdown
+                ? 'bg-purple-50 text-purple-700'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+          } ${isLoadingModules ? 'cursor-not-allowed opacity-60' : ''}`}
+        >
+          <div className="flex items-center gap-2">
+            {isLoadingModules ? (
+              <svg className="h-3.5 w-3.5 animate-spin text-purple-600" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+            ) : (
+              <svg className={`h-3.5 w-3.5 ${assignedModule ? 'text-purple-600' : 'text-gray-500'}`} fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+              </svg>
+            )}
+            <span className="truncate">
+              {isLoadingModules ? 'Assigning module...' : assignedModule?.name || 'Select Treatment Module'}
+            </span>
+          </div>
+          {!isLoadingModules && (
+            <ChevronDown className={`h-3 w-3 flex-shrink-0 transition-transform ${showModuleDropdown ? 'rotate-180' : ''} ${assignedModule ? 'text-purple-500' : 'text-gray-400'}`} />
+          )}
+        </button>
+
+        {/* Module Dropdown - Compact Style */}
+        {showModuleDropdown && !isLoadingModules && (
+          <div className="absolute top-full right-4 left-4 z-50 mt-1 max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+            {availableModules.length === 0 ? (
+              <div className="px-3 py-4 text-center">
+                <p className="text-xs text-gray-500">No modules available</p>
+              </div>
+            ) : (
+              availableModules.map((module, index) => (
+                <button
+                  key={module.id}
+                  onClick={() => handleModuleSelection(module)}
+                  className={`flex w-full items-center justify-between px-3 py-2 text-left transition-colors ${
+                    index !== availableModules.length - 1 ? 'border-b border-gray-100' : ''
+                  } ${
+                    assignedModule?.id === module.id
+                      ? 'bg-purple-50 text-purple-700'
+                      : 'text-gray-700 hover:bg-purple-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <svg className={`h-3.5 w-3.5 flex-shrink-0 ${assignedModule?.id === module.id ? 'text-purple-600' : 'text-gray-400'}`} fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                      <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-xs font-medium">{module.name}</span>
+                  </div>
+                  {assignedModule?.id === module.id && (
+                    <svg className="h-3.5 w-3.5 flex-shrink-0 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {/* Chat Messages or Empty State */}
-      <div className="flex-1 overflow-y-auto p-4" onMouseUp={onTextSelection}>
+      <div className="flex-1 overflow-y-auto bg-white p-4" onMouseUp={onTextSelection}>
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center">
             <div className="max-w-md text-center">
-              {/* Chat Icon */}
-              <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-blue-50">
-                <svg className="h-12 w-12 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              {/* Purple Sparkle Icon - Exact Figma Styling */}
+              <div
+                className="mx-auto mb-6 flex items-center justify-center bg-white"
+                style={{
+                  width: '84px',
+                  height: '84px',
+                  borderRadius: '10.542px',
+                  border: '1.318px solid #f0f0f3',
+                  boxShadow: '0px 3px 6px 0px rgba(148, 148, 148, 0.03)',
+                  padding: '10.542px',
+                }}
+              >
+                <svg className="h-10 w-10 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2L9.19 8.63L2 9.24L7.46 13.97L5.82 21L12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.63L12 2Z" />
                 </svg>
               </div>
 
               <h3 className="mb-2 text-lg font-semibold text-gray-900">Therapeutic Chat Assistant</h3>
-              <p className="mb-4 text-sm text-gray-500">
+              <p className="mb-6 text-sm text-gray-500">
                 Ask questions about this session, request insights, or describe what you'd like to visualize.
               </p>
 
-              {/* No Module Assigned Notice */}
-              {!assignedModule && (
-                <div className="mb-6 rounded-lg border-2 border-dashed border-indigo-300 bg-indigo-50 p-4">
-                  <div className="flex items-start gap-3">
-                    <svg className="h-5 w-5 flex-shrink-0 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div className="flex-1 text-left">
-                      <h4 className="mb-1 text-sm font-semibold text-indigo-900">No Treatment Module Assigned</h4>
-                      <p className="mb-3 text-xs text-indigo-700">
-                        Assign a treatment module to unlock specialized prompts and therapeutic workflows tailored to this patient's needs.
-                      </p>
-                      <button
-                        onClick={onAssignModule}
-                        className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-700"
-                      >
-                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                        Assign Module Now
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Example Prompts */}
-              <div className="mb-6 space-y-3 text-left">
-                <div className="mb-2 text-xs font-medium text-gray-700">For Analysis:</div>
-                <div className="space-y-2">
-                  <button
-                    onClick={() => handleExamplePrompt('What are the key themes in this session?')}
-                    className="w-full rounded p-2 text-left text-xs text-gray-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
-                  >
-                    "What are the key themes in this session?"
-                  </button>
-                  <button
-                    onClick={() => handleExamplePrompt('How is the patient progressing?')}
-                    className="w-full rounded p-2 text-left text-xs text-gray-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
-                  >
-                    "How is the patient progressing?"
-                  </button>
-                </div>
-
-                <div className="mt-4 mb-2 text-xs font-medium text-gray-700">For Media:</div>
-                <div className="space-y-2">
-                  <button
-                    onClick={() => handleExamplePrompt('Create an image showing the patient\'s main metaphor')}
-                    className="w-full rounded p-2 text-left text-xs text-gray-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
-                  >
-                    "Create an image showing the patient's main metaphor"
-                  </button>
-                  <button
-                    onClick={() => handleExamplePrompt('Visualize the patient\'s journey from problem to solution')}
-                    className="w-full rounded p-2 text-left text-xs text-gray-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
-                  >
-                    "Visualize the patient's journey from problem to solution"
-                  </button>
-                </div>
-              </div>
-
-              {/* Prompt Selector */}
-              <div className="mb-4">
-                <div className="mb-2 flex items-center gap-2">
-                  <svg className="h-4 w-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              {/* Prompt Suggestion Buttons - Exact Figma Styling */}
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleExamplePrompt('What are the key themes?')}
+                  className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white text-left text-sm font-normal text-gray-900 transition-colors hover:border-purple-300 hover:bg-purple-50"
+                  style={{
+                    padding: '15px',
+                    boxShadow: '0px 3px 5px 0px rgba(0, 0, 0, 0.05)',
+                  }}
+                >
+                  <svg className="h-4 w-4 flex-shrink-0 text-purple-600" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M8 0l1.5 4.5L14 6l-4.5 1.5L8 12l-1.5-4.5L2 6l4.5-1.5L8 0z" />
                   </svg>
-                  <span className="text-xs font-medium text-gray-700">Choose a favorite prompt...</span>
-                  <svg className="ml-auto h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <span>What are the key themes?</span>
+                </button>
+                <button
+                  onClick={() => handleExamplePrompt('How is the patient progressing?')}
+                  className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white text-left text-sm font-normal text-gray-900 transition-colors hover:border-purple-300 hover:bg-purple-50"
+                  style={{
+                    padding: '15px',
+                    boxShadow: '0px 3px 5px 0px rgba(0, 0, 0, 0.05)',
+                  }}
+                >
+                  <svg className="h-4 w-4 flex-shrink-0 text-purple-600" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M8 0l1.5 4.5L14 6l-4.5 1.5L8 12l-1.5-4.5L2 6l4.5-1.5L8 0z" />
                   </svg>
-                </div>
+                  <span>How is the patient progressing?</span>
+                </button>
+                <button
+                  onClick={() => handleExamplePrompt('Visualize the patient\'s metaphor')}
+                  className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white text-left text-sm font-normal text-gray-900 transition-colors hover:border-purple-300 hover:bg-purple-50"
+                  style={{
+                    padding: '15px',
+                    boxShadow: '0px 3px 5px 0px rgba(0, 0, 0, 0.05)',
+                  }}
+                >
+                  <svg className="h-4 w-4 flex-shrink-0 text-purple-600" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M8 0l1.5 4.5L14 6l-4.5 1.5L8 12l-1.5-4.5L2 6l4.5-1.5L8 0z" />
+                  </svg>
+                  <span>Visualize the patient's metaphor</span>
+                </button>
               </div>
             </div>
           </div>
@@ -470,13 +791,13 @@ export function AIAssistantPanel({
               <div className="flex items-center justify-center pb-4">
                 <button
                   onClick={loadMoreMessages}
-                  className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-all hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+                  className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-all hover:border-purple-500 hover:bg-purple-50 hover:text-purple-700"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                   </svg>
                   Load More Previous Messages
-                  <span className="ml-1 text-xs text-gray-500">
+                  <span className="ml-1 text-xs text-gray-400">
                     (Showing
                     {' '}
                     {visibleMessages.length}
@@ -503,25 +824,33 @@ export function AIAssistantPanel({
                   <div
                     className={`relative ${message.role === 'user' ? 'flex flex-col items-end' : 'flex flex-col items-start'}`}
                   >
-                    {/* User/Assistant Label */}
+                    {/* User/Assistant Label with Timestamp */}
                     <div className="mb-1.5 flex items-center gap-2 px-1">
                       {message.role === 'assistant' ? (
                         <>
-                          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500 to-purple-600">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-purple-600 to-purple-600">
                             <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
                           </div>
                           <span className="text-xs font-semibold text-gray-900">AI Assistant</span>
+                          <span className="text-[10px] text-gray-400">{formatMessageTime(message.timestamp)}</span>
                         </>
                       ) : (
                         <>
+                          <span className="text-[10px] text-gray-400">{formatMessageTime(message.timestamp)}</span>
                           <span className="text-xs font-semibold text-gray-700">You</span>
-                          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gray-200">
-                            <svg className="h-3.5 w-3.5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                          </div>
+                          {dbUser?.avatarUrl ? (
+                            <img
+                              src={dbUser.avatarUrl}
+                              alt="Your avatar"
+                              className="h-6 w-6 rounded-md object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-purple-100 text-xs font-medium text-purple-700">
+                              {dbUser?.name?.charAt(0) || user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                            </div>
+                          )}
                         </>
                       )}
                     </div>
@@ -530,10 +859,10 @@ export function AIAssistantPanel({
                     <div
                       className={`relative ${
                         message.role === 'user'
-                          ? 'rounded-2xl rounded-tr-sm bg-gradient-to-br from-indigo-600 to-indigo-700 px-4 py-3 text-white shadow-lg shadow-indigo-600/20'
+                          ? 'rounded-2xl rounded-tr-sm bg-purple-600 px-4 py-3 text-white shadow-lg shadow-purple-600/20'
                           : jsonData
                             ? 'w-full'
-                            : 'rounded-2xl rounded-tl-sm border border-gray-200 bg-white px-4 py-3 text-gray-900 shadow-sm'
+                            : 'rounded-2xl rounded-tl-sm border border-gray-100 bg-white px-4 py-3 text-gray-900 shadow-sm'
                       }`}
                     >
                       {message.role === 'assistant' ? (
@@ -542,31 +871,33 @@ export function AIAssistantPanel({
                             jsonData={jsonData}
                             sessionId={sessionId}
                             user={user}
-                            onActionComplete={(result) => {
+                            onActionComplete={(_result) => {
                               if (onLibraryRefresh) {
                                 onLibraryRefresh();
                               }
-                              console.log('Action completed:', result.message);
                             }}
-                            onProgress={(update) => {
-                              console.log('Progress update:', update);
+                            onProgress={() => {
+                              // Progress updates can be handled here if needed
                             }}
                             onOpenImageModal={onOpenImageModal}
                             onOpenVideoModal={onOpenVideoModal}
                             onOpenMusicModal={onOpenMusicModal}
                             onOpenSceneGeneration={onOpenSceneGeneration}
+                            onOpenModuleSelector={handleOpenModuleSelector}
+                            onOpenSaveNoteModal={handleOpenSaveNoteModalFromJSON}
                           />
                         ) : (
                           <AssistantMessageContent content={message.content} />
                         )
                       ) : (
-                        <p className="whitespace-pre-wrap text-[15px] leading-relaxed">{message.content}</p>
+                        <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{message.content}</p>
                       )}
                     </div>
 
-                    {/* Action Buttons (Assistant messages only) */}
+                    {/* Action Buttons (Non-JSON messages only - Save to Notes/Quotes) */}
                     {message.role === 'assistant' && !jsonData && (
                       <div className="mt-2 flex items-center gap-1 px-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        {/* Copy button */}
                         <button
                           type="button"
                           className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
@@ -577,6 +908,24 @@ export function AIAssistantPanel({
                             <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                           </svg>
                         </button>
+                        {/* Save as Note button */}
+                        <button
+                          type="button"
+                          className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                          title="Save as Note"
+                          onClick={() => handleOpenSaveNoteModal(message.content)}
+                        >
+                          <FileText className="h-4 w-4" />
+                        </button>
+                        {/* Save as Quote button */}
+                        <button
+                          type="button"
+                          className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                          title="Save as Quote"
+                          onClick={() => handleOpenSaveQuoteModal(message.content)}
+                        >
+                          <Quote className="h-4 w-4" />
+                        </button>
                       </div>
                     )}
                   </div>
@@ -586,25 +935,19 @@ export function AIAssistantPanel({
             {isLoading && (
               <div className="mr-12">
                 <div className="mb-1.5 flex items-center gap-2 px-1">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500 to-purple-600">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-purple-600 to-purple-600">
                     <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                   </div>
                   <span className="text-xs font-semibold text-gray-900">AI Assistant</span>
-                  <span className="text-xs text-gray-500">is thinking...</span>
                 </div>
 
-                <div className="rounded-2xl rounded-tl-sm border border-gray-200 bg-white px-5 py-4 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    {/* Animated dots */}
-                    <div className="flex gap-1.5">
-                      <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-indigo-500" style={{ animationDelay: '0ms' }} />
-                      <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-indigo-400" style={{ animationDelay: '150ms' }} />
-                      <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-indigo-300" style={{ animationDelay: '300ms' }} />
-                    </div>
-                    <span className="text-sm text-gray-500">Analyzing and generating response...</span>
-                  </div>
+                <div className="inline-flex items-center gap-1 rounded-2xl rounded-tl-sm border border-gray-100 bg-white px-4 py-3 shadow-sm">
+                  {/* Typing indicator dots */}
+                  <div className="animate-typing-dot h-2 w-2 rounded-full bg-gray-400" style={{ animationDelay: '0ms' }} />
+                  <div className="animate-typing-dot h-2 w-2 rounded-full bg-gray-400" style={{ animationDelay: '200ms' }} />
+                  <div className="animate-typing-dot h-2 w-2 rounded-full bg-gray-400" style={{ animationDelay: '400ms' }} />
                 </div>
               </div>
             )}
@@ -614,157 +957,228 @@ export function AIAssistantPanel({
         )}
       </div>
 
-      {/* Chat Input */}
-      <div className="border-t border-gray-200 bg-white p-4">
-        {/* Output Type Filter Buttons */}
-        <div className="mb-3 flex gap-2">
-          <button
-            onClick={() => setOutputTypeFilter('all')}
-            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
-              outputTypeFilter === 'all'
-                ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-            disabled={isLoadingPrompts}
-          >
-            All
-            <span className="text-[10px] text-gray-500">({allPromptsCount})</span>
-          </button>
-          <button
-            onClick={() => setOutputTypeFilter('text')}
-            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
-              outputTypeFilter === 'text'
-                ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-            disabled={isLoadingPrompts}
-          >
-            <FileText className="h-3 w-3" />
-            Text
-            <span className="text-[10px] text-gray-500">({textOnlyCount})</span>
-          </button>
-          <button
-            onClick={() => setOutputTypeFilter('json')}
-            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
-              outputTypeFilter === 'json'
-                ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-            disabled={isLoadingPrompts}
-          >
-            <Code2 className="h-3 w-3" />
-            JSON
-            <span className="text-[10px] text-gray-500">({jsonOnlyCount})</span>
-          </button>
-        </div>
-
-        {/* Dynamic AI Prompts Dropdown */}
-        <div className="mb-3">
-          <select
-            value={selectedPromptId}
-            onChange={(e) => {
-              const selectedId = e.target.value;
-              if (!selectedId) {
-                setSelectedPromptId('');
-                setPrompt('');
-                setSelectedSystemPrompt(null);
-                return;
-              }
-              const prompt = [...aiPrompts, ...libraryPrompts].find(p => p.id === selectedId);
-              if (prompt) {
-                handlePromptSelection(selectedId, prompt); // Pass full prompt object
-              }
-            }}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            disabled={isLoading || isLoadingPrompts}
-          >
-            <option value="">
-              {isLoadingPrompts ? 'Loading prompts...' : 'Choose a prompt or write custom...'}
-            </option>
-
-            {/* Module Prompts */}
-            {filteredModulePrompts.length > 0 && (
-              <optgroup label={`${assignedModule?.name || 'Module'} Prompts ${moduleAiPromptText ? '(+ Context)' : ''}`}>
-                {filteredModulePrompts.map(p => (
-                  <option key={p.id} value={p.id}>
-                    [{p.category}] {p.name} {p.outputType === 'json' ? '(JSON)' : ''}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-
-            {/* Library Prompts */}
-            {filteredLibraryPrompts.length > 0 && (
-              <optgroup label={filteredModulePrompts.length > 0 ? 'Other Available Prompts (Library)' : 'Library Prompts'}>
-                {(showAllPrompts ? filteredLibraryPrompts : filteredLibraryPrompts.slice(0, 5)).map(p => (
-                  <option key={p.id} value={p.id}>
-                    [{p.category}] {p.name} {p.outputType === 'json' ? '(JSON)' : ''}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-          </select>
-
-          {/* Show All Button */}
-          {!showAllPrompts && filteredLibraryPrompts.length > 5 && (
-            <button
-              onClick={() => setShowAllPrompts(true)}
-              className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-all hover:bg-gray-50"
-              disabled={isLoading}
-            >
-              + Show {filteredLibraryPrompts.length - 5} more prompts
-            </button>
-          )}
-        </div>
-
-        {/* Visual Indicator for Active System Prompt */}
-        {selectedSystemPrompt && (
-          <div className="mb-3 flex items-center gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-xs">
-            <svg className="h-4 w-4 flex-shrink-0 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="flex-1 text-indigo-700">
-              Using <strong>{[...aiPrompts, ...libraryPrompts].find(p => p.id === selectedPromptId)?.name}</strong> prompt template
-            </span>
-            <button
-              onClick={() => {
-                setSelectedSystemPrompt(null);
-                setSelectedPromptId('');
-              }}
-              className="flex-shrink-0 text-indigo-600 transition-colors hover:text-indigo-800"
-              title="Clear prompt template"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
-        <div className="relative">
-          {/* Textarea for multi-line support */}
+      {/* Chat Input - Exact Figma Specifications */}
+      <div ref={inputContainerRef} className="flex-shrink-0 border-t border-gray-200 bg-white p-4">
+        {/* Chat Input Area - Exact Figma Styling */}
+        <div
+          className="border border-gray-200 bg-white"
+          style={{
+            borderRadius: '16px',
+            padding: '16px',
+            boxShadow: '0px 2px 4px 0px rgba(0, 0, 0, 0.04)',
+          }}
+        >
           <textarea
             ref={textareaRef}
             value={prompt}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            rows={1}
-            placeholder="Message AI Assistant..."
-            className="w-full resize-none rounded-xl border-2 border-gray-200 bg-gray-50 py-3.5 pr-24 pl-4 text-[15px] leading-relaxed transition-all placeholder:text-gray-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10"
+            rows={2}
+            placeholder="Chat about the transcript, or select text to begin"
+            className="w-full resize-none bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
             disabled={isLoading}
             style={{
-              minHeight: '52px',
-              maxHeight: '200px',
+              minHeight: '48px',
+              maxHeight: '120px',
             }}
           />
 
-          {/* Action buttons */}
-          <div className="absolute bottom-2 right-2 flex items-center gap-2">
-            {/* Send button */}
+          {/* Bottom Action Bar */}
+          <div className="mt-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {/* Participant Filter Button with Dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowParticipantDropdown(!showParticipantDropdown);
+                    setShowPromptDropdown(false);
+                  }}
+                  className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-100"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  {selectedParticipant === 'all'
+                    ? 'All Participants'
+                    : selectedParticipant === 'therapist'
+                      ? `${dbUser?.name || 'Therapist'} (You)`
+                      : speakers?.find(s => s.id === selectedParticipant)?.name || 'Participant'}
+                </button>
+                {showParticipantDropdown && (
+                  <div className="absolute bottom-full left-0 z-50 mb-2 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                    <div className="border-b border-gray-100 px-3 py-2 text-xs font-semibold tracking-wide text-gray-400 uppercase">
+                      Filter by Participant
+                    </div>
+                    {/* All Participants Option */}
+                    <button
+                      onClick={() => {
+                        setSelectedParticipant('all');
+                        setShowParticipantDropdown(false);
+                      }}
+                      className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-purple-50 hover:text-purple-700 ${
+                        selectedParticipant === 'all' ? 'bg-purple-50 text-purple-700' : 'text-gray-700'
+                      }`}
+                    >
+                      All Participants
+                    </button>
+                    {/* Therapist (You) Option */}
+                    <button
+                      onClick={() => {
+                        setSelectedParticipant('therapist');
+                        setShowParticipantDropdown(false);
+                      }}
+                      className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-purple-50 hover:text-purple-700 ${
+                        selectedParticipant === 'therapist' ? 'bg-purple-50 text-purple-700' : 'text-gray-700'
+                      }`}
+                    >
+                      {dbUser?.name || 'Therapist'}
+                      {' '}
+                      (You)
+                    </button>
+                    {/* Dynamic Speaker Options */}
+                    {speakers && speakers.length > 0 && (
+                      <>
+                        {speakers.map(speaker => (
+                          <button
+                            key={speaker.id}
+                            onClick={() => {
+                              setSelectedParticipant(speaker.id);
+                              setShowParticipantDropdown(false);
+                            }}
+                            className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-purple-50 hover:text-purple-700 ${
+                              selectedParticipant === speaker.id ? 'bg-purple-50 text-purple-700' : 'text-gray-700'
+                            }`}
+                          >
+                            {speaker.name}
+                          </button>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Prompt Button with Dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPromptDropdown(!showPromptDropdown);
+                    setShowParticipantDropdown(false);
+                  }}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                    selectedPromptId
+                      ? 'bg-purple-600 text-white hover:bg-purple-700'
+                      : 'bg-white text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <svg className="h-4 w-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                  {getSelectedPromptName()}
+                </button>
+                {showPromptDropdown && (
+                  <div className="absolute bottom-full left-0 z-50 mb-2 max-h-96 w-72 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                    {/* Module Prompts - Show FIRST when a module is selected */}
+                    {modulePrompts.length > 0 && (
+                      <>
+                        <div className="border-b border-purple-100 bg-purple-50 px-3 py-2 text-xs font-semibold tracking-wide text-purple-600 uppercase">
+                          <span className="flex items-center gap-1.5">
+                            <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                            </svg>
+                            Module Prompts
+                          </span>
+                        </div>
+                        {modulePrompts.map(p => (
+                          <div key={p.id} className="relative">
+                            <button
+                              onClick={() => {
+                                handlePromptSelection(p);
+                                setShowPromptDropdown(false);
+                              }}
+                              onMouseEnter={() => setHoveredPromptId(p.id)}
+                              onMouseLeave={() => setHoveredPromptId(null)}
+                              className={`w-full border-l-2 px-3 py-2 text-left text-sm transition-colors ${
+                                selectedPromptId === p.id
+                                  ? 'border-purple-600 bg-purple-100 text-purple-700'
+                                  : 'border-purple-400 text-gray-700 hover:bg-purple-50 hover:text-purple-700'
+                              }`}
+                            >
+                              <span className="font-medium">{p.name}</span>
+                              {p.description && (
+                                <span className="block truncate text-xs text-gray-500">{p.description}</span>
+                              )}
+                            </button>
+
+                            {/* Tooltip on Hover */}
+                            {hoveredPromptId === p.id && p.description && (
+                              <div className="absolute top-0 left-full z-50 ml-2 w-72 rounded-lg bg-gray-900 px-3 py-2.5 text-xs leading-relaxed text-white shadow-xl">
+                                <p className="mb-1 font-medium">{p.name}</p>
+                                <p className="text-gray-300">{p.description}</p>
+                                {/* Arrow pointing left */}
+                                <div className="absolute top-3 right-full h-0 w-0 border-[6px] border-transparent border-r-gray-900" />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    {/* Library Prompts */}
+                    {libraryPrompts.length > 0 && (
+                      <>
+                        <div className="mt-1 border-t border-gray-100 px-3 py-2 text-xs font-semibold tracking-wide text-gray-400 uppercase">
+                          Library Prompts
+                        </div>
+                        {libraryPrompts.map(p => (
+                          <div key={p.id} className="relative">
+                            <button
+                              onClick={() => {
+                                handlePromptSelection(p);
+                                setShowPromptDropdown(false);
+                              }}
+                              onMouseEnter={() => setHoveredPromptId(p.id)}
+                              onMouseLeave={() => setHoveredPromptId(null)}
+                              className={`w-full px-3 py-2 text-left text-sm transition-colors ${
+                                selectedPromptId === p.id
+                                  ? 'bg-purple-100 text-purple-700'
+                                  : 'text-gray-700 hover:bg-purple-50 hover:text-purple-700'
+                              }`}
+                            >
+                              <span className="font-medium">{p.name}</span>
+                            </button>
+
+                            {/* Tooltip on Hover */}
+                            {hoveredPromptId === p.id && p.description && (
+                              <div className="absolute top-0 left-full z-50 ml-2 w-72 rounded-lg bg-gray-900 px-3 py-2.5 text-xs leading-relaxed text-white shadow-xl">
+                                <p className="mb-1 font-medium">{p.name}</p>
+                                <p className="text-gray-300">{p.description}</p>
+                                {/* Arrow pointing left */}
+                                <div className="absolute top-3 right-full h-0 w-0 border-[6px] border-transparent border-r-gray-900" />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* Send Button - Black Circle with Up Arrow (Exact Figma: 32x32px) */}
             <button
               type="button"
               onClick={() => handleSendMessage()}
               disabled={isLoading || !prompt.trim()}
-              className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-600/30 transition-all hover:from-indigo-700 hover:to-indigo-800 hover:shadow-xl hover:shadow-indigo-600/40 disabled:cursor-not-allowed disabled:from-gray-300 disabled:to-gray-400 disabled:shadow-none"
-              title={prompt.trim() ? 'Send message (Enter)' : 'Type a message'}
+              className="flex items-center justify-center rounded-full bg-gray-900 text-white transition-all hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300"
+              style={{
+                width: '32px',
+                height: '32px',
+              }}
+              title={prompt.trim() ? 'Send message' : 'Type a message'}
             >
               {isLoading ? (
                 <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -772,23 +1186,42 @@ export function AIAssistantPanel({
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
               ) : (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
                 </svg>
               )}
             </button>
           </div>
-
-          {/* Keyboard hint */}
-          <div className="absolute -bottom-6 right-0 flex items-center gap-1 text-xs text-gray-400">
-            <kbd className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs">Enter</kbd>
-            <span>to send</span>
-            <span className="mx-1">•</span>
-            <kbd className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs">Shift + Enter</kbd>
-            <span>for new line</span>
-          </div>
         </div>
       </div>
-    </>
+
+      {/* Module Selector Modal */}
+      <ModuleSelectorModal
+        user={user}
+        isOpen={showModuleSelectorModal}
+        onModuleSelected={handleModuleSelected}
+        onClose={handleCloseModuleSelector}
+      />
+
+      {/* Save Note Modal */}
+      <SaveNoteModal
+        isOpen={showSaveNoteModal}
+        onClose={handleCloseSaveNoteModal}
+        selectedText={selectedTextForNote}
+        patients={sessionPatients}
+        initialTitle={noteTitle}
+        initialTags={noteTags}
+        onSave={handleSaveNote}
+      />
+
+      {/* Save Quote Modal */}
+      <SaveQuoteModal
+        isOpen={showSaveQuoteModal}
+        onClose={handleCloseSaveQuoteModal}
+        selectedText={selectedTextForQuote}
+        patients={sessionPatients}
+        onSave={handleSaveQuote}
+      />
+    </div>
   );
 }

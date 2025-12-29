@@ -1,10 +1,10 @@
 import type { NextRequest } from 'next/server';
+import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
-import { VideoTranscodingService } from '@/services/VideoTranscodingService';
 import { videoTranscodingJobs } from '@/models/Schema';
-import { eq } from 'drizzle-orm';
+import { VideoTranscodingService } from '@/services/VideoTranscodingService';
 
 // Configure runtime for consistent behavior
 export const runtime = 'nodejs';

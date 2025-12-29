@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Library, Music, Search } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -63,8 +63,8 @@ export function SelectMusicModal({
       setFilteredMusicList(
         musicList.filter(
           item =>
-            item.title.toLowerCase().includes(query) ||
-            item.tags?.some(tag => tag.toLowerCase().includes(query)),
+            item.title.toLowerCase().includes(query)
+            || item.tags?.some(tag => tag.toLowerCase().includes(query)),
         ),
       );
     } else {
@@ -144,7 +144,7 @@ export function SelectMusicModal({
           onClick={() => setFilterType('patient')}
           className={`px-4 py-2 text-sm font-medium transition-colors ${
             filterType === 'patient'
-              ? 'border-b-2 border-indigo-500 text-indigo-600'
+              ? 'border-b-2 border-purple-500 text-purple-600'
               : 'text-gray-500 hover:text-gray-700'
           }`}
         >
@@ -155,7 +155,7 @@ export function SelectMusicModal({
             onClick={() => setFilterType('session')}
             className={`px-4 py-2 text-sm font-medium transition-colors ${
               filterType === 'session'
-                ? 'border-b-2 border-indigo-500 text-indigo-600'
+                ? 'border-b-2 border-purple-500 text-purple-600'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -166,7 +166,7 @@ export function SelectMusicModal({
           onClick={() => setFilterType('all')}
           className={`px-4 py-2 text-sm font-medium transition-colors ${
             filterType === 'all'
-              ? 'border-b-2 border-indigo-500 text-indigo-600'
+              ? 'border-b-2 border-purple-500 text-purple-600'
               : 'text-gray-500 hover:text-gray-700'
           }`}
         >
@@ -177,13 +177,13 @@ export function SelectMusicModal({
       {/* Search Bar */}
       <div className="mb-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search by title or tags..."
-            className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-20"
+            className="focus:ring-opacity-20 w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 text-sm transition-colors focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
           />
         </div>
       </div>
@@ -232,7 +232,7 @@ export function SelectMusicModal({
                     <Music className="h-6 w-6" />
                   </div>
                   {music.durationSeconds && (
-                    <div className="absolute bottom-2 right-2 rounded bg-black bg-opacity-75 px-2 py-1 text-xs font-medium text-white">
+                    <div className="bg-opacity-75 absolute right-2 bottom-2 rounded bg-black px-2 py-1 text-xs font-medium text-white">
                       {formatDuration(music.durationSeconds)}
                     </div>
                   )}
@@ -269,7 +269,8 @@ export function SelectMusicModal({
                       ))}
                       {music.tags.length > 3 && (
                         <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                          +{music.tags.length - 3}
+                          +
+                          {music.tags.length - 3}
                         </span>
                       )}
                     </div>

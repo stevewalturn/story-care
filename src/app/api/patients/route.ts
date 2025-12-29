@@ -5,12 +5,19 @@
  */
 
 import type { NextRequest } from 'next/server';
-import { and, desc, eq, ilike, isNull } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { Env } from '@/libs/Env';
 import { generatePresignedUrl, generatePresignedUrlsForPatients } from '@/libs/GCS';
-import { patientReferenceImagesSchema, users } from '@/models/Schema';
+import {
+  patientReferenceImagesSchema,
+  reflectionResponses as reflectionResponsesSchema,
+  sessions as sessionsSchema,
+  storyPages as storyPagesSchema,
+  surveyResponses as surveyResponsesSchema,
+  users,
+} from '@/models/Schema';
 import { sendPatientInvitationEmail } from '@/services/EmailService';
 import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
 import { invitePatientSchema } from '@/validations/UserValidation';
@@ -109,9 +116,10 @@ export async function GET(request: NextRequest) {
     // Generate presigned URLs for patient images (HIPAA compliant, 1-hour expiration)
     const patientsWithSignedUrls = await generatePresignedUrlsForPatients(patientsList, 1);
 
-    // Fetch reference images for each patient and generate presigned URLs
-    const patientsWithReferenceImages = await Promise.all(
+    // Fetch reference images and counts for each patient
+    const patientsWithReferenceImagesAndCounts = await Promise.all(
       patientsWithSignedUrls.map(async (patient) => {
+        // Fetch reference images
         const referenceImages = await db
           .select()
           .from(patientReferenceImagesSchema)
@@ -138,14 +146,39 @@ export async function GET(request: NextRequest) {
           }),
         );
 
+        // Calculate counts for this patient
+        const [sessionCountResult] = await db
+          .select({ count: count() })
+          .from(sessionsSchema)
+          .where(eq(sessionsSchema.patientId, patient.id));
+
+        const [pageCountResult] = await db
+          .select({ count: count() })
+          .from(storyPagesSchema)
+          .where(eq(storyPagesSchema.patientId, patient.id));
+
+        const [surveyCountResult] = await db
+          .select({ count: count() })
+          .from(surveyResponsesSchema)
+          .where(eq(surveyResponsesSchema.patientId, patient.id));
+
+        const [reflectionCountResult] = await db
+          .select({ count: count() })
+          .from(reflectionResponsesSchema)
+          .where(eq(reflectionResponsesSchema.patientId, patient.id));
+
         return {
           ...patient,
           referenceImages: referenceImagesWithSignedUrls,
+          sessionCount: sessionCountResult?.count || 0,
+          pageCount: pageCountResult?.count || 0,
+          surveyCount: surveyCountResult?.count || 0,
+          reflectionCount: reflectionCountResult?.count || 0,
         };
       }),
     );
 
-    return NextResponse.json({ patients: patientsWithReferenceImages });
+    return NextResponse.json({ patients: patientsWithReferenceImagesAndCounts });
   } catch (error) {
     console.error('Failed to fetch patients:', error);
     return handleAuthError(error);

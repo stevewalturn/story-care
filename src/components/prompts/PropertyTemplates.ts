@@ -4,7 +4,7 @@
  * Based on exact patterns from seed-system-prompts.ts database schemas
  */
 
-export interface PropertyTemplateItem {
+export type PropertyTemplateItem = {
   name: string;
   type: 'string' | 'number' | 'boolean' | 'array' | 'object';
   required: boolean;
@@ -14,15 +14,15 @@ export interface PropertyTemplateItem {
     properties?: PropertyTemplateItem[];
   };
   properties?: PropertyTemplateItem[];
-}
+};
 
-export interface PropertyTemplate {
+export type PropertyTemplate = {
   propertyName: string;
   autoPopulate: boolean;
   category: string;
   description: string;
   structure: PropertyTemplateItem;
-}
+};
 
 /**
  * All property templates with exact structures from database
@@ -398,14 +398,14 @@ export const PROPERTY_TEMPLATES: PropertyTemplate[] = [
  * Get template by property name
  */
 export function getPropertyTemplate(propertyName: string): PropertyTemplate | undefined {
-  return PROPERTY_TEMPLATES.find((t) => t.propertyName === propertyName);
+  return PROPERTY_TEMPLATES.find(t => t.propertyName === propertyName);
 }
 
 /**
  * Get all properties that have auto-populate templates
  */
 export function getAutoPopulatePropertyNames(): string[] {
-  return PROPERTY_TEMPLATES.filter((t) => t.autoPopulate).map((t) => t.propertyName);
+  return PROPERTY_TEMPLATES.filter(t => t.autoPopulate).map(t => t.propertyName);
 }
 
 /**

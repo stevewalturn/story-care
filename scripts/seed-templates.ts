@@ -3,11 +3,11 @@
  * Populates reflection and survey templates available to all users
  */
 
-import { eq } from 'drizzle-orm';
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import * as dotenv from 'dotenv';
+import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import {
   reflectionTemplatesSchema,
   surveyTemplatesSchema,

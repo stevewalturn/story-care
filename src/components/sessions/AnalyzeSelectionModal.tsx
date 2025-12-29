@@ -68,7 +68,7 @@ const getIconColor = (category: string) => {
     analysis: 'text-blue-500',
     creative: 'text-purple-500',
     extraction: 'text-green-500',
-    reflection: 'text-indigo-500',
+    reflection: 'text-purple-500',
   };
   return colorMap[category] || 'text-gray-500';
 };
@@ -79,7 +79,7 @@ const getBadgeColor = (category: string) => {
     analysis: 'bg-blue-100 text-blue-700',
     creative: 'bg-purple-100 text-purple-700',
     extraction: 'bg-green-100 text-green-700',
-    reflection: 'bg-indigo-100 text-indigo-700',
+    reflection: 'bg-purple-100 text-purple-700',
   };
   return colorMap[category] || 'bg-gray-100 text-gray-600';
 };
@@ -181,7 +181,7 @@ export function AnalyzeSelectionModal({
                 onClick={() => setOutputTypeFilter('all')}
                 className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
                   outputTypeFilter === 'all'
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'bg-purple-600 text-white shadow-sm'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -191,7 +191,7 @@ export function AnalyzeSelectionModal({
                 onClick={() => setOutputTypeFilter('text')}
                 className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
                   outputTypeFilter === 'text'
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'bg-purple-600 text-white shadow-sm'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -202,7 +202,7 @@ export function AnalyzeSelectionModal({
                 onClick={() => setOutputTypeFilter('json')}
                 className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
                   outputTypeFilter === 'json'
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'bg-purple-600 text-white shadow-sm'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -228,7 +228,7 @@ export function AnalyzeSelectionModal({
             <div>
               <div className="mb-3 flex items-center justify-between border-b border-gray-200 pb-2">
                 <div className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-indigo-600" />
+                  <Target className="h-4 w-4 text-purple-600" />
                   <span className="text-sm font-semibold text-gray-900">
                     Prompts for
                     {' '}
@@ -250,7 +250,7 @@ export function AnalyzeSelectionModal({
                   )}
                 </div>
                 {moduleAiPromptText && (
-                  <span className="flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-1 text-xs font-medium text-indigo-700">
+                  <span className="flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700">
                     <Sparkles className="h-3 w-3" />
                     + Module Context
                   </span>
@@ -276,8 +276,8 @@ export function AnalyzeSelectionModal({
                       onMouseLeave={() => setSelectedOption(null)}
                       className={`w-full rounded-lg border-2 text-left transition-all ${
                         selectedOption === prompt.id
-                          ? 'border-indigo-500 bg-indigo-50'
-                          : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50'
+                          ? 'border-purple-500 bg-purple-50'
+                          : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50/50'
                       }`}
                     >
                       <div className="p-4">
@@ -301,7 +301,7 @@ export function AnalyzeSelectionModal({
                                 </span>
                               )}
                               {moduleAiPromptText && (
-                                <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600">
+                                <span className="rounded bg-purple-50 px-1.5 py-0.5 text-[10px] font-medium text-purple-600">
                                   + Context
                                 </span>
                               )}
@@ -371,8 +371,8 @@ export function AnalyzeSelectionModal({
                       onMouseLeave={() => setSelectedOption(null)}
                       className={`w-full rounded-lg border-2 text-left transition-all ${
                         selectedOption === prompt.id
-                          ? 'border-indigo-500 bg-indigo-50'
-                          : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50'
+                          ? 'border-purple-500 bg-purple-50'
+                          : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50/50'
                       }`}
                     >
                       <div className="p-4">
@@ -421,7 +421,7 @@ export function AnalyzeSelectionModal({
                 <div className="mt-4 flex justify-center">
                   <button
                     onClick={() => setShowAllPrompts(!showAllPrompts)}
-                    className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-all hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+                    className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-all hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700"
                   >
                     {showAllPrompts ? (
                       <>

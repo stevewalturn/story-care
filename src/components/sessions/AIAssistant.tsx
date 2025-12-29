@@ -121,9 +121,9 @@ export function AIAssistant({
   return (
     <div className="flex h-full flex-col bg-white">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50 p-4">
+      <div className="flex items-center justify-between border-b border-gray-200 bg-gradient-to-r from-purple-50 to-purple-50 p-4">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-indigo-600" />
+          <Sparkles className="h-5 w-5 text-purple-600" />
           <h3 className="font-semibold text-gray-900">AI Assistant</h3>
         </div>
         <Button variant="icon" onClick={onClose}>
@@ -158,7 +158,7 @@ export function AIAssistant({
               <div
                 className={`max-w-[80%] rounded-lg p-3 ${
                   message.role === 'user'
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-purple-600 text-white'
                     : 'bg-gray-100 text-gray-900'
                 }`}
               >

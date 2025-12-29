@@ -175,7 +175,7 @@ export function interpolateObject(
       result[key] = interpolateTemplate(value, context, options);
     } else if (Array.isArray(value)) {
       // Recursively interpolate arrays
-      result[key] = value.map(item => {
+      result[key] = value.map((item) => {
         if (typeof item === 'string') {
           return interpolateTemplate(item, context, options);
         }

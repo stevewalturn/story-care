@@ -122,9 +122,9 @@ export function filterSlashCommands(query: string): SlashCommand[] {
 
   return SLASH_COMMANDS.filter(
     cmd =>
-      cmd.trigger.toLowerCase().includes(lowerQuery) ||
-      cmd.label.toLowerCase().includes(lowerQuery) ||
-      cmd.description?.toLowerCase().includes(lowerQuery),
+      cmd.trigger.toLowerCase().includes(lowerQuery)
+      || cmd.label.toLowerCase().includes(lowerQuery)
+      || cmd.description?.toLowerCase().includes(lowerQuery),
   );
 }
 

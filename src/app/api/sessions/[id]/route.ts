@@ -103,6 +103,7 @@ export async function GET(
         .select({
           id: users.id,
           name: users.name,
+          email: users.email,
           avatarUrl: users.avatarUrl,
         })
         .from(groupMembers)

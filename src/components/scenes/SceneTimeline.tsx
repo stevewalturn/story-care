@@ -75,7 +75,7 @@ function SortableClipItem({
       onClick={onClick}
       className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 p-3 transition-all ${
         isSelected
-          ? 'border-indigo-500 bg-indigo-50'
+          ? 'border-purple-500 bg-purple-50'
           : 'border-gray-200 bg-white hover:border-gray-300'
       }`}
     >
@@ -394,7 +394,7 @@ export function SceneTimeline({
                   style={position}
                   className={`absolute top-1 h-[calc(100%-8px)] overflow-hidden rounded border-2 transition-all ${
                     isSelected
-                      ? 'border-indigo-500 shadow-lg'
+                      ? 'border-purple-500 shadow-lg'
                       : 'border-gray-300 hover:border-gray-400'
                   }`}
                 >

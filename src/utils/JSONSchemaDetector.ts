@@ -81,8 +81,11 @@ function inferSchemaType(data: any): JSONSchemaType | null {
     if (!structureMatches) {
       console.warn(
         `[JSONSchemaDetector] Schema mismatch: Explicit schemaType="${explicitType}" but structure doesn't match expected fields.`,
-        '\nReceived data:', data,
-        '\nExpected fields for', explicitType, 'not found.'
+        '\nReceived data:',
+        data,
+        '\nExpected fields for',
+        explicitType,
+        'not found.',
       );
     }
 
@@ -381,7 +384,7 @@ export function validateJSONSchema(data: any, schemaType: JSONSchemaType): boole
           && Array.isArray(data.scenes)
           && data.scenes.every((scene: any) =>
             hasRequiredKeys(scene, ['sceneNumber', 'sections'])
-            && hasRequiredKeys(scene.sections, ['patientQuote', 'meaning', 'imagePrompt', 'imageToScene'])
+            && hasRequiredKeys(scene.sections, ['patientQuote', 'meaning', 'imagePrompt', 'imageToScene']),
           )
         );
 

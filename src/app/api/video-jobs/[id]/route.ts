@@ -3,14 +3,15 @@
  * Get job status and details
  */
 
+import type { NextRequest } from 'next/server';
+import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { videoProcessingJobs } from '@/models/Schema';
-import { eq } from 'drizzle-orm';
-import { type NextRequest, NextResponse } from 'next/server';
 
-interface RouteContext {
+type RouteContext = {
   params: Promise<{ id: string }>;
-}
+};
 
 /**
  * GET /api/video-jobs/[id]
@@ -38,7 +39,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         error: 'Failed to fetch video job',
         details: error.message,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -68,7 +69,7 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
           error: 'Can only cancel pending jobs',
           currentStatus: job.status,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -93,7 +94,7 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
         error: 'Failed to cancel video job',
         details: error.message,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

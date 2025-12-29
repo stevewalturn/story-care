@@ -7,22 +7,24 @@
  * All field names use snake_case with underscores
  */
 
-export type SchemaType =
-  | 'scene_card'
-  | 'music_generation'
-  | 'scene_suggestions'
-  | 'image_references'
-  | 'video_references'
-  | 'reflection_questions'
-  | 'therapeutic_note'
-  | 'quote_extraction';
+export type SchemaType
+  = | 'scene_card'
+    | 'music_generation'
+    | 'scene_suggestions'
+    | 'image_references'
+    | 'video_references'
+    | 'reflection_questions'
+    | 'therapeutic_note'
+    | 'quote_extraction'
+    | 'scene_visualization'
+    | 'therapeutic_scene_card';
 
-export interface PromptJSONTemplate {
+export type PromptJSONTemplate = {
   schemaType: SchemaType;
   label: string;
   description: string;
   example: any;
-}
+};
 
 export const PROMPT_JSON_TEMPLATES: PromptJSONTemplate[] = [
   {

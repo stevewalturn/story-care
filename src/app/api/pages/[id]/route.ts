@@ -35,7 +35,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const blocksWithSignedUrls = await Promise.all(
       blocks.map(async (block) => {
         const settings = block.settings as any;
-        
+
         // Handle scene blocks - fetch scene data and generate presigned URL for video
         if (block.blockType === 'scene' && block.sceneId) {
           try {
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
             console.error('Error fetching scene data:', error);
           }
         }
-        
+
         // Handle regular media blocks
         if (settings && settings.mediaUrl) {
           // Generate presigned URL from raw GCS path

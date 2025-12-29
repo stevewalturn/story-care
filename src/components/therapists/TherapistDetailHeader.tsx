@@ -48,7 +48,7 @@ export function TherapistDetailHeader({
       <div className="flex items-start justify-between">
         <div className="flex items-start">
           {/* Avatar */}
-          <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-indigo-100">
+          <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-purple-100">
             {therapist.avatarUrl
               ? (
                   <img
@@ -58,7 +58,7 @@ export function TherapistDetailHeader({
                   />
                 )
               : (
-                  <User className="h-8 w-8 text-indigo-600" />
+                  <User className="h-8 w-8 text-purple-600" />
                 )}
           </div>
 
@@ -88,7 +88,9 @@ export function TherapistDetailHeader({
             <p className="mt-1 text-sm text-gray-600">{therapist.email}</p>
             {therapist.licenseNumber && (
               <p className="mt-1 text-xs text-gray-500">
-                License: {therapist.licenseNumber}
+                License:
+                {' '}
+                {therapist.licenseNumber}
               </p>
             )}
           </div>

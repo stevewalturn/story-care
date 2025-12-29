@@ -127,7 +127,7 @@ export function CreateOrganizationModal({
               required
               value={formData.name}
               onChange={e => handleNameChange(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
               placeholder="Acme Therapy Clinic"
             />
           </div>
@@ -145,7 +145,7 @@ export function CreateOrganizationModal({
               required
               value={formData.slug}
               onChange={e => setFormData(prev => ({ ...prev, slug: e.target.value }))}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
               placeholder="acme-therapy-clinic"
               pattern="[a-z0-9-]+"
             />
@@ -167,7 +167,7 @@ export function CreateOrganizationModal({
               required
               value={formData.contactEmail}
               onChange={e => setFormData(prev => ({ ...prev, contactEmail: e.target.value }))}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
               placeholder="contact@acmetherapy.com"
             />
             <p className="mt-1 text-xs text-gray-500">
@@ -194,7 +194,7 @@ export function CreateOrganizationModal({
                   required
                   value={formData.adminName}
                   onChange={e => setFormData(prev => ({ ...prev, adminName: e.target.value }))}
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
                   placeholder="John Doe"
                 />
               </div>
@@ -212,7 +212,7 @@ export function CreateOrganizationModal({
                   required
                   value={formData.adminEmail}
                   onChange={e => setFormData(prev => ({ ...prev, adminEmail: e.target.value }))}
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
                   placeholder="admin@acmetherapy.com"
                 />
                 <p className="mt-1 text-xs text-gray-500">

@@ -7,22 +7,22 @@
  * Shows execution status, step progress, and handles action button rendering.
  */
 
-import { useState } from 'react';
 import type {
   ActionExecutionRequest,
   ActionExecutionResult,
   BlockInstance,
   WorkflowExecution,
 } from '@/types/BuildingBlocks';
+import { ArrowRight, CheckCircle, Clock, Pause, Play, XCircle } from 'lucide-react';
+import { useState } from 'react';
 import { getBlockDefinition } from '@/config/BlockDefinitions';
 import { ActionButtonRenderer } from './ActionButtonRenderer';
-import { Play, Pause, CheckCircle, XCircle, Clock, ArrowRight } from 'lucide-react';
 
-interface WorkflowExecutionViewerProps {
+type WorkflowExecutionViewerProps = {
   execution: WorkflowExecution;
   onExecuteAction: (request: ActionExecutionRequest) => Promise<ActionExecutionResult>;
   onExecutionUpdate?: (execution: WorkflowExecution) => void;
-}
+};
 
 /**
  * Displays workflow execution with step-by-step visualization
@@ -38,7 +38,7 @@ export function WorkflowExecutionViewer({
     const result = await onExecuteAction(request);
 
     // Update local execution state
-    const updatedBlocks = localExecution.blocks.map(block => {
+    const updatedBlocks = localExecution.blocks.map((block) => {
       if (block.instanceId === request.blockInstanceId) {
         return {
           ...block,
@@ -105,8 +105,8 @@ function ExecutionHeader({ execution }: { execution: WorkflowExecution }) {
     <div className="rounded-lg border border-gray-200 bg-white p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg bg-${config.color}-100`}>
-            <Icon className={`h-5 w-5 text-${config.color}-600`} />
+          <div className={`bg- rounded-lg p-2${config.color}-100`}>
+            <Icon className={`text- h-5 w-5${config.color}-600`} />
           </div>
           <div>
             <h3 className="font-medium text-gray-900">Workflow Execution</h3>
@@ -115,8 +115,10 @@ function ExecutionHeader({ execution }: { execution: WorkflowExecution }) {
         </div>
 
         {execution.error && (
-          <div className="text-sm text-red-600 max-w-md">
-            <strong>Error:</strong> {execution.error}
+          <div className="max-w-md text-sm text-red-600">
+            <strong>Error:</strong>
+            {' '}
+            {execution.error}
           </div>
         )}
       </div>
@@ -134,15 +136,20 @@ function WorkflowProgress({ execution }: { execution: WorkflowExecution }) {
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <div className="flex items-center justify-between mb-2">
+      <div className="mb-2 flex items-center justify-between">
         <span className="text-sm font-medium text-gray-700">Progress</span>
         <span className="text-sm text-gray-600">
-          {completedSteps} / {totalSteps} steps
+          {completedSteps}
+          {' '}
+          /
+          {totalSteps}
+          {' '}
+          steps
         </span>
       </div>
-      <div className="w-full bg-gray-200 rounded-full h-2">
+      <div className="h-2 w-full rounded-full bg-gray-200">
         <div
-          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+          className="h-2 rounded-full bg-blue-600 transition-all duration-300"
           style={{ width: `${progress}%` }}
         />
       </div>
@@ -195,11 +202,11 @@ function StepCard({
       {/* Step Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full p-4 flex items-center gap-3 hover:bg-opacity-80 transition-colors"
+        className="hover:bg-opacity-80 flex w-full items-center gap-3 p-4 transition-colors"
       >
         {/* Step Number */}
         <div
-          className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-medium text-sm ${
+          className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm font-medium ${
             status === 'completed'
               ? 'bg-green-600 text-white'
               : status === 'processing'
@@ -222,13 +229,16 @@ function StepCard({
         <div className="flex-1 text-left">
           <div className="font-medium text-gray-900">{blockDef.label}</div>
           <div className="text-sm text-gray-600">
-            {blockDef.category} • {isManualAction ? 'Manual Action' : 'Auto-execute'}
+            {blockDef.category}
+            {' '}
+            •
+            {isManualAction ? 'Manual Action' : 'Auto-execute'}
           </div>
         </div>
 
         {/* Status Badge */}
         <div
-          className={`px-3 py-1 rounded-full text-xs font-medium ${
+          className={`rounded-full px-3 py-1 text-xs font-medium ${
             status === 'completed'
               ? 'bg-green-100 text-green-800'
               : status === 'processing'
@@ -251,18 +261,22 @@ function StepCard({
 
       {/* Step Content */}
       {isExpanded && (
-        <div className="px-4 pb-4 space-y-3">
+        <div className="space-y-3 px-4 pb-4">
           {/* Block Description */}
           <p className="text-sm text-gray-700">{blockDef.description}</p>
 
           {/* Block Values */}
           {Object.keys(block.values).length > 0 && (
-            <div className="bg-white rounded-lg p-3 border border-gray-200">
-              <div className="text-xs font-medium text-gray-700 mb-2">Configuration:</div>
+            <div className="rounded-lg border border-gray-200 bg-white p-3">
+              <div className="mb-2 text-xs font-medium text-gray-700">Configuration:</div>
               <div className="space-y-1">
                 {Object.entries(block.values).map(([key, value]) => (
                   <div key={key} className="text-xs">
-                    <span className="text-gray-600">{key}:</span>{' '}
+                    <span className="text-gray-600">
+                      {key}
+                      :
+                    </span>
+                    {' '}
                     <span className="text-gray-900">
                       {typeof value === 'string' ? value : JSON.stringify(value)}
                     </span>
@@ -283,9 +297,9 @@ function StepCard({
 
           {/* Execution Result */}
           {status === 'completed' && block.executionResult && (
-            <div className="bg-white rounded-lg p-3 border border-green-200">
-              <div className="text-xs font-medium text-green-700 mb-2">Result:</div>
-              <pre className="text-xs text-gray-700 overflow-auto max-h-40">
+            <div className="rounded-lg border border-green-200 bg-white p-3">
+              <div className="mb-2 text-xs font-medium text-green-700">Result:</div>
+              <pre className="max-h-40 overflow-auto text-xs text-gray-700">
                 {JSON.stringify(block.executionResult, null, 2)}
               </pre>
             </div>
@@ -293,8 +307,8 @@ function StepCard({
 
           {/* Error Message */}
           {status === 'failed' && block.executionError && (
-            <div className="bg-white rounded-lg p-3 border border-red-200">
-              <div className="text-xs font-medium text-red-700 mb-2">Error:</div>
+            <div className="rounded-lg border border-red-200 bg-white p-3">
+              <div className="mb-2 text-xs font-medium text-red-700">Error:</div>
               <p className="text-xs text-red-600">{block.executionError}</p>
             </div>
           )}

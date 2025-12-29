@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { logPHICreate } from '@/libs/AuditLogger';
+import { getSignedUrl } from '@/libs/GCS';
 import { requireTherapist } from '@/utils/AuthHelpers';
 
 // Route segment config
@@ -44,14 +45,17 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    // 4. RETURN SUCCESS
+    // 4. GENERATE PRESIGNED URL: For preview/playback (1 hour expiration)
+    const url = await getSignedUrl(gcsPath, 1);
+
+    // 5. RETURN SUCCESS with presigned URL
     return NextResponse.json({
       success: true,
       fileId,
       gcsPath,
+      url, // Presigned URL for preview (expires in 1 hour)
       message: 'Upload confirmed and logged',
     });
-
   } catch (error) {
     console.error('Error confirming upload:', error);
     return NextResponse.json(

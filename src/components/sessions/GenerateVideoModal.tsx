@@ -25,6 +25,7 @@ export function GenerateVideoModal({
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null);
   const [showContextMetadata, setShowContextMetadata] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [useReference, setUseReference] = useState(true);
 
   if (!isOpen) {
     return null;
@@ -38,13 +39,12 @@ export function GenerateVideoModal({
     setIsGenerating(true);
     try {
       await onGenerate(selectedImage.id, duration);
-      // Simulate video generation for demo
-      setTimeout(() => {
-        setGeneratedVideoUrl(selectedImage.url); // In reality, this would be the video URL
-        setIsGenerating(false);
-      }, 2000);
+      // After successful generation, the video URL would come from the API
+      // For now, set a placeholder that indicates success
+      setGeneratedVideoUrl(selectedImage.url);
     } catch (error) {
       console.error('Error generating video:', error);
+    } finally {
       setIsGenerating(false);
     }
   };
@@ -102,9 +102,11 @@ export function GenerateVideoModal({
                 <label className="flex items-center gap-2">
                   <span className="text-xs text-gray-600">Use Reference</span>
                   <button
-                    className="relative inline-flex h-6 w-11 items-center rounded-full bg-indigo-600 transition-colors"
+                    type="button"
+                    onClick={() => setUseReference(!useReference)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${useReference ? 'bg-purple-600' : 'bg-gray-300'}`}
                   >
-                    <span className="inline-block h-4 w-4 translate-x-6 transform rounded-full bg-white transition-transform" />
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${useReference ? 'translate-x-6' : 'translate-x-1'}`} />
                   </button>
                 </label>
               </div>
@@ -251,13 +253,6 @@ export function GenerateVideoModal({
                   >
                     <track kind="captions" />
                   </video>
-                  <div className="absolute right-4 bottom-4 left-4 flex items-center justify-between">
-                    <button className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 transition-colors hover:bg-white">
-                      <svg className="h-5 w-5 text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.536a5 5 0 001.414 1.06m2.828-9.9a9 9 0 012.828 0" />
-                      </svg>
-                    </button>
-                  </div>
                 </div>
               )
             : (

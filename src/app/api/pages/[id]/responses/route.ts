@@ -39,7 +39,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           await db.insert(reflectionResponses).values({
             questionId: response.questionId,
             patientId: authUser.dbUserId,
-            pageId: pageId, // Use pageId from URL parameter
+            pageId, // Use pageId from URL parameter
             responseText: response.responseText,
           });
         }
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           await db.insert(surveyResponses).values({
             questionId: response.questionId,
             patientId: authUser.dbUserId,
-            pageId: pageId, // Use pageId from URL parameter
+            pageId, // Use pageId from URL parameter
             responseValue: typeof response.response === 'number' ? String(response.response) : String(response.response),
             responseNumeric: typeof response.response === 'number' ? response.response : null,
           });

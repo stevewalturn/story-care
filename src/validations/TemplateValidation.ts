@@ -26,9 +26,10 @@ export const templateStatusSchema = z.enum([
  */
 export const reflectionQuestionSchema = z.object({
   id: z.string().uuid().optional(),
-  text: z.string().min(5).max(500),
-  type: z.literal('open_text'), // Only open_text for reflection questions
+  questionText: z.string().min(5).max(500),
+  questionType: z.literal('open_text'), // Only open_text for reflection questions
   required: z.boolean().default(false),
+  order: z.number().optional(),
   metadata: z.record(z.string(), z.any()).optional(),
 });
 
@@ -37,9 +38,10 @@ export const reflectionQuestionSchema = z.object({
  */
 export const surveyQuestionSchema = z.object({
   id: z.string().uuid().optional(),
-  text: z.string().min(5).max(500),
-  type: z.enum(['open_text', 'multiple_choice', 'scale', 'emotion']),
+  questionText: z.string().min(5).max(500),
+  questionType: z.enum(['open_text', 'multiple_choice', 'scale', 'emotion']),
   required: z.boolean().default(false),
+  order: z.number().optional(),
   options: z.array(z.string()).optional(), // For multiple_choice
   scaleMin: z.number().optional(), // For scale type
   scaleMax: z.number().optional(), // For scale type

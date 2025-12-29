@@ -3,15 +3,21 @@
 /**
  * Library Panel Component
  * Main container for session library with tabs for media, quotes, notes, and profile
- * Collapsible panel that defaults to hidden
+ * Includes vertical navigation menu
  */
 
 import type { LibraryPanelProps } from '../types/transcript.types';
-import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { MediaTab } from './MediaTab';
 import { NotesTab } from './NotesTab';
 import { ProfileTab } from './ProfileTab';
 import { QuotesTab } from './QuotesTab';
+
+type ExtendedLibraryPanelProps = LibraryPanelProps & {
+  onEditQuote?: (quote: any) => void;
+  onDeleteQuote?: (quote: any) => void;
+};
 
 export function LibraryPanel({
   sessionId,
@@ -19,120 +25,336 @@ export function LibraryPanel({
   sessionData,
   onOpenUpload,
   refreshKey,
-}: LibraryPanelProps) {
+  onTaskComplete,
+  onClose,
+  onSelectedPatientChange,
+  onEditQuote,
+  onDeleteQuote,
+}: ExtendedLibraryPanelProps) {
+  // Main tab state for switching between Media, Quotes, Notes, Profile
   const [activeTab, setActiveTab] = useState<'media' | 'quotes' | 'notes' | 'profile'>('media');
-  const [isExpanded, setIsExpanded] = useState(false); // Default: hidden
+  // Media filter for Videos/Images/Musics tabs
+  const [mediaFilter, setMediaFilter] = useState<'all' | 'videos' | 'images' | 'musics'>('all');
+  // Patient dropdown state
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+  const patientDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Collapsed state - thin vertical bar
-  if (!isExpanded) {
-    return (
-      <div className="flex h-full w-14 flex-col items-center justify-start border-l border-gray-200 bg-white shadow-sm transition-all duration-300">
-        <button
-          onClick={() => setIsExpanded(true)}
-          className="group relative mt-4 flex w-full flex-col items-center gap-3 py-4 transition-all duration-200 hover:bg-gray-50"
-          title="Expand Library"
-        >
-          {/* Icon with background */}
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-purple-50 transition-all duration-200 group-hover:bg-purple-100 group-hover:scale-110">
-            <svg className="h-4 w-4 text-purple-600 transition-transform duration-200 group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </div>
+  // Get patients from sessionData
+  // For individual sessions: sessionData.patient (single object)
+  // For group sessions: sessionData.group.members (array)
+  const patients = sessionData?.group?.members || (sessionData?.patient ? [sessionData.patient] : []);
 
-          {/* Vertical text with better spacing */}
-          <div className="flex flex-col items-center gap-0.5">
-            {['L', 'I', 'B', 'R', 'A', 'R', 'Y'].map((letter, i) => (
-              <span
-                key={i}
-                className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 transition-colors duration-200 group-hover:text-purple-600"
-              >
-                {letter}
-              </span>
-            ))}
-          </div>
-        </button>
-      </div>
-    );
-  }
+  // Patient selector state - auto-select first patient if available
+  const [selectedPatient, setSelectedPatient] = useState<string>(() => {
+    if (patients.length > 0) {
+      return patients[0].id;
+    }
+    return '';
+  });
 
-  // Expanded state - full panel
+  // Update selected patient when patients data loads
+  useEffect(() => {
+    if (patients.length > 0 && (!selectedPatient || selectedPatient === 'all')) {
+      setSelectedPatient(patients[0].id);
+    }
+  }, [patients, selectedPatient]);
+
+  // Notify parent when selected patient changes
+  useEffect(() => {
+    if (selectedPatient && onSelectedPatientChange) {
+      const patient = patients.find((p: any) => p.id === selectedPatient);
+      if (patient) {
+        onSelectedPatientChange({
+          id: patient.id,
+          name: patient.name || patient.speakerName || 'Unknown',
+          avatarUrl: patient.avatarUrl,
+          referenceImageUrl: patient.referenceImageUrl,
+        });
+      }
+    }
+  }, [selectedPatient, patients, onSelectedPatientChange]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (patientDropdownRef.current && !patientDropdownRef.current.contains(event.target as Node)) {
+        setShowPatientDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Get selected patient name for display
+  const getSelectedPatientName = () => {
+    const patient = patients.find((p: any) => p.id === selectedPatient);
+    return patient?.name || patient?.speakerName || 'Select Patient';
+  };
+
+  // Get patient initial for avatar
+  const getPatientInitial = (patient: any) => {
+    const name = patient?.name || patient?.speakerName || 'U';
+    return name.charAt(0).toUpperCase();
+  };
+
+  // Full panel with vertical navigation menu on right
   return (
-    <div className="flex h-full w-96 flex-col bg-gray-50 border-l border-gray-200 transition-all duration-300">
-      {/* Header */}
-      <div className="border-b border-gray-200 bg-white p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Library</h2>
-          <div className="flex gap-2">
-            <button className="text-gray-500 hover:text-gray-700">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-              </svg>
-            </button>
-            <button className="text-gray-500 hover:text-gray-700">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
-              </svg>
-            </button>
-            <button
-              onClick={() => setIsExpanded(false)}
-              className="text-gray-500 hover:text-gray-700"
-              title="Collapse Library"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+    <div className="flex h-full w-96 border-l border-gray-200 bg-white transition-all duration-300">
+      {/* Left Content Area */}
+      <div className="flex flex-1 flex-col">
+        {/* Header - Compact */}
+        <div className="border-b border-gray-200 bg-white px-4 py-3">
+          <div className="mb-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-[#111827]">
+                {activeTab === 'media' ? 'Media'
+                  : activeTab === 'quotes' ? 'Quotes'
+                    : activeTab === 'notes' ? 'Notes' : 'Profile'}
+              </h2>
+              {/* Show patient selector for ALL tabs */}
+              <>
+                <span className="text-gray-300">•</span>
+
+                {patients.length === 1 ? (
+                // Single patient: Show name without dropdown
+                  <div className="flex items-center gap-1.5">
+                    {(patients[0].avatarUrl || patients[0].referenceImageUrl) ? (
+                      <img
+                        src={patients[0].avatarUrl || patients[0].referenceImageUrl}
+                        alt={patients[0].name || patients[0].speakerName || 'Unknown'}
+                        className="h-5 w-5 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-500 text-[10px] font-medium text-white">
+                        {getPatientInitial(patients[0])}
+                      </div>
+                    )}
+                    <span className="text-xs font-medium text-gray-700">
+                      {patients[0].name || patients[0].speakerName || 'Unknown'}
+                    </span>
+                  </div>
+                ) : (
+                // Multiple patients: Show dropdown
+                  <div className="relative" ref={patientDropdownRef}>
+                    <button
+                      onClick={() => setShowPatientDropdown(!showPatientDropdown)}
+                      className="flex items-center gap-1.5 text-xs text-gray-700 transition-colors hover:text-gray-900"
+                    >
+                      {/* Show patient photo or avatar */}
+                      {(() => {
+                        const patient = patients.find((p: any) => p.id === selectedPatient);
+                        if (!patient) return null;
+                        return (patient?.avatarUrl || patient?.referenceImageUrl) ? (
+                          <img
+                            src={patient.avatarUrl || patient.referenceImageUrl}
+                            alt={getSelectedPatientName()}
+                            className="h-5 w-5 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-500 text-[10px] font-medium text-white">
+                            {getPatientInitial(patient)}
+                          </div>
+                        );
+                      })()}
+                      <span className="font-medium">{getSelectedPatientName()}</span>
+                      <ChevronDown className={`h-3.5 w-3.5 text-gray-400 transition-transform ${showPatientDropdown ? 'rotate-180' : ''}`} />
+                    </button>
+                    {showPatientDropdown && (
+                      <div className="absolute top-full left-0 z-50 mt-1 w-40 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                        {patients.map((p: any) => (
+                          <button
+                            key={p.id}
+                            onClick={() => {
+                              setSelectedPatient(p.id);
+                              setShowPatientDropdown(false);
+                            }}
+                            className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors hover:bg-purple-50 hover:text-purple-700 ${
+                              selectedPatient === p.id ? 'bg-purple-50 text-purple-700' : 'text-gray-700'
+                            }`}
+                          >
+                            {(p.avatarUrl || p.referenceImageUrl) ? (
+                              <img
+                                src={p.avatarUrl || p.referenceImageUrl}
+                                alt={p.name || p.speakerName || 'Unknown'}
+                                className="h-5 w-5 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-500 text-[10px] font-medium text-white">
+                                {getPatientInitial(p)}
+                              </div>
+                            )}
+                            <span>{p.name || p.speakerName || 'Unknown'}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            </div>
+            <div className="flex items-center gap-1">
+              {/* Upload Button */}
+              <button
+                onClick={onOpenUpload}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                title="Upload media"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+              </button>
+              {/* Add Button - Opens upload as well */}
+              <button
+                onClick={onOpenUpload}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                title="Add media"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+              {/* Close Button */}
+              {onClose && (
+                <button
+                  onClick={onClose}
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                  title="Close Library"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Search Input - Compact */}
+          <div className="relative mb-2.5">
+            <svg className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search"
+              className="w-full rounded-lg border border-gray-200 bg-white py-1.5 pr-10 pl-10 text-sm placeholder:text-gray-400 focus:border-purple-500 focus:outline-none"
+            />
+            <button className="absolute top-1/2 right-3 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
               </svg>
             </button>
           </div>
+
+          {/* Media Sub-Tabs - Compact */}
+          {activeTab === 'media' && (
+            <div className="flex border-b border-gray-200">
+              {['All', 'Videos', 'Images', 'Musics'].map((tab) => {
+                const filterValue = tab.toLowerCase() as 'all' | 'videos' | 'images' | 'musics';
+                const isActive = mediaFilter === filterValue;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setMediaFilter(filterValue)}
+                    className={`border-b-2 px-3 py-1.5 text-xs font-medium transition-colors ${
+                      isActive
+                        ? 'border-purple-500 text-purple-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {/* Tabs */}
-        <div className="-mb-px flex gap-1 border-b border-gray-200">
-          {['Media', 'Quotes', 'Notes', 'Profile'].map(tab => (
+        {/* Tab Content */}
+        {activeTab === 'media' && (
+          <MediaTab
+            sessionId={sessionId}
+            user={user}
+            onOpenUpload={onOpenUpload}
+            refreshKey={refreshKey}
+            mediaFilter={mediaFilter}
+            selectedPatient={selectedPatient}
+            onTaskComplete={onTaskComplete}
+          />
+        )}
+
+        {activeTab === 'quotes' && (
+          <QuotesTab
+            sessionId={sessionId}
+            user={user}
+            refreshKey={refreshKey}
+            selectedPatient={selectedPatient}
+            onEditQuote={onEditQuote}
+            onDeleteQuote={onDeleteQuote}
+          />
+        )}
+
+        {activeTab === 'notes' && (
+          <NotesTab
+            sessionId={sessionId}
+            user={user}
+            sessionData={sessionData}
+            refreshKey={refreshKey}
+            selectedPatient={selectedPatient}
+          />
+        )}
+
+        {activeTab === 'profile' && (
+          <ProfileTab
+            sessionData={sessionData}
+            selectedPatient={selectedPatient}
+          />
+        )}
+      </div>
+
+      {/* Right Vertical Navigation Menu - Icons Only */}
+      <div className="flex w-16 flex-col border-l border-gray-200 bg-white">
+        {(['media', 'quotes', 'notes', 'profile'] as const).map((tab) => {
+          const isActive = activeTab === tab;
+          const icons = {
+            media: (
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            ),
+            quotes: (
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+              </svg>
+            ),
+            notes: (
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            ),
+            profile: (
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            ),
+          };
+
+          return (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab.toLowerCase() as any)}
-              className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === tab.toLowerCase()
-                  ? 'border-indigo-600 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              onClick={() => setActiveTab(tab)}
+              className={`flex items-center justify-center py-4 transition-colors ${
+                isActive
+                  ? 'border-l-4 border-purple-600 text-purple-600'
+                  : 'border-l-4 border-transparent text-gray-400 hover:text-gray-600'
               }`}
+              title={tab.charAt(0).toUpperCase() + tab.slice(1)}
             >
-              {tab}
+              {icons[tab]}
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
-
-      {/* Tab Content */}
-      {activeTab === 'media' && (
-        <MediaTab
-          sessionId={sessionId}
-          user={user}
-          onOpenUpload={onOpenUpload}
-          refreshKey={refreshKey}
-        />
-      )}
-
-      {activeTab === 'quotes' && (
-        <QuotesTab
-          sessionId={sessionId}
-          user={user}
-          refreshKey={refreshKey}
-        />
-      )}
-
-      {activeTab === 'notes' && (
-        <NotesTab
-          sessionId={sessionId}
-          user={user}
-          sessionData={sessionData}
-          refreshKey={refreshKey}
-        />
-      )}
-
-      {activeTab === 'profile' && (
-        <ProfileTab sessionData={sessionData} />
-      )}
     </div>
   );
 }

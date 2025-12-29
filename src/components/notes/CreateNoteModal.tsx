@@ -89,7 +89,7 @@ export function CreateNoteModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <div className="flex items-center gap-2">
-            <Save className="h-5 w-5 text-indigo-600" />
+            <Save className="h-5 w-5 text-purple-600" />
             <h3 className="text-lg font-semibold text-gray-900">New Note</h3>
           </div>
           <button
@@ -112,7 +112,7 @@ export function CreateNoteModal({
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="E.g., Session insights, Breakthrough moment"
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
             />
           </div>
 
@@ -128,7 +128,7 @@ export function CreateNoteModal({
               onChange={e => setContent(e.target.value)}
               rows={8}
               placeholder="Enter note content..."
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
               autoFocus
             />
             <p className="mt-1 text-xs text-gray-500">
@@ -150,7 +150,7 @@ export function CreateNoteModal({
                 onChange={e => setTagInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Add tags (e.g., insight, progress, concern)"
-                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
               />
               <Button
                 variant="secondary"

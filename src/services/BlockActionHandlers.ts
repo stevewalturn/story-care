@@ -7,8 +7,8 @@
  * Phase 5 Implementation: Universal Action Execution
  */
 
-import { getBlockDefinition } from '@/config/BlockDefinitions';
 import type { ActionExecutionRequest, ActionExecutionResult } from '@/types/BuildingBlocks';
+import { getBlockDefinition } from '@/config/BlockDefinitions';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { interpolateObject } from '@/utils/TemplateInterpolation';
 
@@ -226,7 +226,7 @@ export async function executeBlockAction(
     user: any;
     sessionId?: string;
     onProgress?: (message: string) => void;
-  }
+  },
 ): Promise<ActionExecutionResult> {
   const { blockType, values, context, user, sessionId, onProgress } = request;
 

@@ -6,8 +6,8 @@ on:
       - main
     paths:
       - 'jobs/video-processor/**'
-      - 'src/services/VideoService.ts'
-      - '.github/workflows/deploy-video-processor-dev.yml'
+      - src/services/VideoService.ts
+      - .github/workflows/deploy-video-processor-dev.yml
   workflow_dispatch:
 
 env:

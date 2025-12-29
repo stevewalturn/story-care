@@ -3,8 +3,8 @@
  * Handles GPU-accelerated video transcoding via Cloud Run Jobs
  */
 
+import { ExecutionsClient, JobsClient } from '@google-cloud/run';
 import { Storage } from '@google-cloud/storage';
-import { JobsClient, ExecutionsClient } from '@google-cloud/run';
 import { Env } from '@/libs/Env';
 
 export type TranscodingFormat = 'h264' | 'h265' | 'vp9' | 'av1';
@@ -80,8 +80,8 @@ export class VideoTranscodingService {
       const [exists1] = await preprocessingBucket.exists();
       if (!exists1) {
         errors.push(
-          `Preprocessing bucket not found: gs://${this.preprocessingBucket}. ` +
-          `Run setup script: ./scripts/setup-video-transcode-buckets.sh`
+          `Preprocessing bucket not found: gs://${this.preprocessingBucket}. `
+          + `Run setup script: ./scripts/setup-video-transcode-buckets.sh`,
         );
       }
 
@@ -90,14 +90,14 @@ export class VideoTranscodingService {
       const [exists2] = await transcodedBucket.exists();
       if (!exists2) {
         errors.push(
-          `Transcoded bucket not found: gs://${this.transcodedBucket}. ` +
-          `Run setup script: ./scripts/setup-video-transcode-buckets.sh`
+          `Transcoded bucket not found: gs://${this.transcodedBucket}. `
+          + `Run setup script: ./scripts/setup-video-transcode-buckets.sh`,
         );
       }
     } catch (error: any) {
       errors.push(
-        `GCS validation failed: ${error.message}. ` +
-        `Check your GCS credentials and project configuration.`
+        `GCS validation failed: ${error.message}. `
+        + `Check your GCS credentials and project configuration.`,
       );
     }
 
@@ -164,9 +164,9 @@ export class VideoTranscodingService {
       return filename;
     } catch (error: any) {
       throw new Error(
-        `Failed to upload to preprocessing bucket (gs://${this.preprocessingBucket}). ` +
-        `Ensure the bucket exists by running: ./scripts/setup-video-transcode-buckets.sh. ` +
-        `Original error: ${error.message}`
+        `Failed to upload to preprocessing bucket (gs://${this.preprocessingBucket}). `
+        + `Ensure the bucket exists by running: ./scripts/setup-video-transcode-buckets.sh. `
+        + `Original error: ${error.message}`,
       );
     }
   }

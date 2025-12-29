@@ -68,29 +68,28 @@ export function ModuleCard({
   };
 
   return (
-    <div className="group relative rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
-      {/* Domain gradient header */}
-      <div
-        className={`absolute top-0 left-0 h-1 w-full rounded-t-xl bg-gradient-to-r ${domainInfo.gradient}`}
-      />
+    <div className={`group relative rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md ${domainInfo.borderClass}`}>
 
       {/* Header */}
-      <div className="mb-4 flex items-start justify-between">
+      <div className="mb-3 flex items-start justify-between">
         <div className="flex-1">
-          {/* Domain badge */}
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${domainInfo.badgeClass}`}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${domainInfo.dotClass}`} />
-            {domainInfo.name}
-          </span>
-
-          {/* Scope badge */}
-          {module.scope !== 'system' && (
-            <span className="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
-              {module.scope === 'organization' ? 'Org' : 'Private'}
+          <h3 className="font-semibold text-gray-900">{module.name}</h3>
+          <div className="mt-1 flex items-center gap-2">
+            {/* Domain badge */}
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${domainInfo.badgeClass}`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${domainInfo.dotClass}`} />
+              {domainInfo.name}
             </span>
-          )}
+
+            {/* Scope badge */}
+            {module.scope !== 'system' && (
+              <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                {module.scope === 'organization' ? 'Org' : 'Private'}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Actions menu */}
@@ -176,45 +175,57 @@ export function ModuleCard({
         </div>
       </div>
 
-      {/* Content */}
-      <button
-        onClick={() => onView && onView(module)}
-        className="w-full text-left"
-        type="button"
-      >
-        <h3 className="mb-2 text-lg font-semibold text-gray-900 group-hover:text-indigo-600">
-          {module.name}
-        </h3>
-
+      {/* Description */}
+      {module.description && (
         <p className="mb-4 line-clamp-2 text-sm text-gray-600">
           {module.description}
         </p>
+      )}
 
-        {/* Stats */}
-        <div className="flex items-center gap-4 text-xs text-gray-500">
+      {/* Metadata */}
+      <div className="mb-4 space-y-1 text-xs text-gray-500">
+        <div className="flex items-center gap-1">
+          <TrendingUp className="h-3.5 w-3.5" />
+          <span>
+            Used
+            {' '}
+            {module.useCount}
+            {' '}
+            times
+          </span>
+        </div>
+        {module.linkedPrompts && module.linkedPrompts.length > 0 && (
           <div className="flex items-center gap-1">
-            <TrendingUp className="h-3.5 w-3.5" />
+            <Sparkles className="h-3.5 w-3.5" />
             <span>
-              Used
+              {module.linkedPrompts.length}
               {' '}
-              {module.useCount}
-              {' '}
-              times
+              AI Prompt
+              {module.linkedPrompts.length !== 1 ? 's' : ''}
             </span>
           </div>
-          {module.linkedPrompts && module.linkedPrompts.length > 0 && (
-            <div className="flex items-center gap-1">
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>
-                {module.linkedPrompts.length}
-                {' '}
-                AI Prompt
-                {module.linkedPrompts.length !== 1 ? 's' : ''}
-              </span>
-            </div>
-          )}
-        </div>
-      </button>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => onView && onView(module)}
+          className="flex-1 rounded-lg border border-purple-300 bg-purple-50 px-3 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100"
+          type="button"
+        >
+          View Details
+        </button>
+        {onEdit && (
+          <button
+            onClick={() => onEdit(module)}
+            className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+            type="button"
+          >
+            Edit
+          </button>
+        )}
+      </div>
 
       {/* Footer - Status indicator */}
       {module.status !== 'active' && (
@@ -235,25 +246,25 @@ function getDomainInfo(domain: string) {
   const domains = {
     self_strength: {
       name: 'Self & Strength',
-      gradient: 'from-blue-500 to-cyan-500',
+      borderClass: 'border-l-4 border-l-blue-500',
       badgeClass: 'bg-blue-50 text-blue-700',
       dotClass: 'bg-blue-500',
     },
     relationships_repair: {
       name: 'Relationships & Repair',
-      gradient: 'from-green-500 to-emerald-500',
+      borderClass: 'border-l-4 border-l-green-500',
       badgeClass: 'bg-green-50 text-green-700',
       dotClass: 'bg-green-500',
     },
     identity_transformation: {
       name: 'Identity & Transformation',
-      gradient: 'from-purple-500 to-pink-500',
+      borderClass: 'border-l-4 border-l-purple-500',
       badgeClass: 'bg-purple-50 text-purple-700',
       dotClass: 'bg-purple-500',
     },
     purpose_future: {
       name: 'Purpose & Future',
-      gradient: 'from-orange-500 to-amber-500',
+      borderClass: 'border-l-4 border-l-orange-500',
       badgeClass: 'bg-orange-50 text-orange-700',
       dotClass: 'bg-orange-500',
     },

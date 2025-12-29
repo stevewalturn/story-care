@@ -14,9 +14,9 @@ import type {
   WorkflowExecution,
 } from '@/types/BuildingBlocks';
 import { getBlockDefinition } from '@/config/BlockDefinitions';
-import { interpolateObject } from '@/utils/TemplateInterpolation';
 import { db } from '@/libs/DB';
 import { mediaLibrary, quotes } from '@/models/Schema';
+import { interpolateObject } from '@/utils/TemplateInterpolation';
 
 /**
  * Workflow Executor

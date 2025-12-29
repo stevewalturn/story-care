@@ -105,7 +105,7 @@ export function BrowseSceneModal({
         <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
             <div className="flex h-full items-center justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4">
@@ -113,7 +113,7 @@ export function BrowseSceneModal({
                 <button
                   key={scene.id}
                   onClick={() => handleSelect(scene)}
-                  className="group overflow-hidden rounded-lg border border-gray-200 transition-all hover:border-indigo-500 hover:shadow-lg"
+                  className="group overflow-hidden rounded-lg border border-gray-200 transition-all hover:border-purple-500 hover:shadow-lg"
                 >
                   <div className="relative aspect-video overflow-hidden bg-gray-100">
                     {scene.thumbnailUrl ? (

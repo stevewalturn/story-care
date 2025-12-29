@@ -1,9 +1,10 @@
 import type { NextRequest } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { logPHICreate } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { transcribeAudio } from '@/libs/Deepgram';
+import { generatePresignedUrl } from '@/libs/GCS';
 import { requireSessionAccess } from '@/middleware/RBACMiddleware';
 import { sessions, speakers, transcripts, utterances } from '@/models/Schema';
 import { handleAuthError } from '@/utils/AuthHelpers';
@@ -67,8 +68,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
         .where(eq(transcripts.id, existingTranscript.id));
     }
 
+    // Generate presigned URL for Deepgram (valid for 1 hour)
+    const audioPresignedUrl = await generatePresignedUrl(session.audioUrl, 1);
+    if (!audioPresignedUrl) {
+      return NextResponse.json({ error: 'Failed to generate audio URL' }, { status: 500 });
+    }
     // Transcribe audio
-    const result = await transcribeAudio(session.audioUrl);
+    const result = await transcribeAudio(audioPresignedUrl);
 
     // Create transcript
     const transcriptResult = await db
@@ -124,25 +130,32 @@ export async function POST(request: NextRequest, context: RouteContext) {
       }),
     );
 
-    // Create utterance records
-    await Promise.all(
-      result.utterances.map(async (utterance, index) => {
+    // Create utterance records using bulk insert to avoid connection pool exhaustion
+    const utteranceValues = result.utterances
+      .map((utterance, index) => {
         const speakerRecord = speakerRecords.find(
           s => s.speakerNum === utterance.speaker,
         );
-        if (speakerRecord && speakerRecord.speaker) {
-          await db.insert(utterances).values({
-            transcriptId: transcript.id,
-            speakerId: speakerRecord.speaker.id,
-            text: utterance.transcript,
-            startTimeSeconds: utterance.start.toString(),
-            endTimeSeconds: utterance.end.toString(),
-            confidenceScore: utterance.confidence ? utterance.confidence.toString() : null,
-            sequenceNumber: index,
-          });
+        if (!speakerRecord?.speaker) {
+          return null;
         }
-      }),
-    );
+
+        return {
+          transcriptId: transcript.id,
+          speakerId: speakerRecord.speaker.id,
+          text: utterance.transcript,
+          startTimeSeconds: utterance.start.toString(),
+          endTimeSeconds: utterance.end.toString(),
+          confidenceScore: utterance.confidence ? utterance.confidence.toString() : null,
+          sequenceNumber: index,
+        };
+      })
+      .filter((v): v is NonNullable<typeof v> => v !== null);
+
+    // Single bulk insert instead of 600+ concurrent operations
+    if (utteranceValues.length > 0) {
+      await db.insert(utterances).values(utteranceValues);
+    }
 
     // Update session status to transcribed
     await db
@@ -158,9 +171,26 @@ export async function POST(request: NextRequest, context: RouteContext) {
       duration: result.duration,
     });
 
+    // Fetch sample utterance for each speaker
+    const speakersWithSamples = await Promise.all(
+      speakerRecords.map(async (record) => {
+        const [sampleUtterance] = await db
+          .select({ text: utterances.text })
+          .from(utterances)
+          .where(eq(utterances.speakerId, record.speaker.id))
+          .orderBy(asc(utterances.sequenceNumber))
+          .limit(1);
+
+        return {
+          ...record.speaker,
+          sampleText: sampleUtterance?.text || null,
+        };
+      }),
+    );
+
     return NextResponse.json({
       transcript,
-      speakers: speakerRecords.map(s => s.speaker),
+      speakers: speakersWithSamples,
       utteranceCount: result.utterances.length,
     });
   } catch (error) {

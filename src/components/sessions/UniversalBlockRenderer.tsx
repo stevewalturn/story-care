@@ -13,45 +13,45 @@
  * - Uses block definitions to determine rendering style
  */
 
-import { useState } from 'react';
+import type { ActionExecutionRequest, BlockInstance, WorkflowContext } from '@/types/BuildingBlocks';
 import {
-  FileText,
-  Image as ImageIcon,
-  Music,
-  Bookmark,
-  Sparkles,
-  Quote as QuoteIcon,
-  MessageCircle,
-  CheckCircle2,
   AlertCircle,
-  Loader2,
+  Bookmark,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
+  FileText,
+  Image as ImageIcon,
+  Loader2,
+  MessageCircle,
+  Music,
+  Quote as QuoteIcon,
+  Sparkles,
 } from 'lucide-react';
-import type { BlockInstance, WorkflowContext, ActionExecutionRequest } from '@/types/BuildingBlocks';
+import { useState } from 'react';
 import { getBlockDefinition } from '@/config/BlockDefinitions';
 
-interface UniversalBlockRendererProps {
+type UniversalBlockRendererProps = {
   blocks: BlockInstance[];
   jsonOutput: any;
   context?: WorkflowContext;
   onActionExecute?: (request: ActionExecutionRequest) => Promise<{ success: boolean; data?: any; error?: string }>;
   sessionId?: string;
   user?: any;
-}
+};
 
-interface ActionButtonProps {
+type ActionButtonProps = {
   block: BlockInstance;
   context: WorkflowContext;
   onExecute: (request: ActionExecutionRequest) => Promise<{ success: boolean; data?: any; error?: string }>;
-}
+};
 
 /**
  * Renders an action button for manual execution blocks
  */
 function ActionButton({ block, context, onExecute }: ActionButtonProps) {
   const [status, setStatus] = useState<'pending' | 'processing' | 'completed' | 'failed'>(
-    block.executionStatus || 'pending'
+    block.executionStatus || 'pending',
   );
   const [error, setError] = useState<string | null>(null);
 
@@ -122,22 +122,21 @@ function ActionButton({ block, context, onExecute }: ActionButtonProps) {
           flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium
           transition-all disabled:cursor-not-allowed disabled:opacity-50
           ${status === 'completed'
-            ? 'bg-green-100 text-green-800 border border-green-300'
-            : status === 'failed'
-            ? 'bg-red-100 text-red-800 border border-red-300'
-            : 'bg-indigo-600 text-white hover:bg-indigo-700'
-          }
+      ? 'border border-green-300 bg-green-100 text-green-800'
+      : status === 'failed'
+        ? 'border border-red-300 bg-red-100 text-red-800'
+        : 'bg-purple-600 text-white hover:bg-purple-700'
+    }
         `}
       >
         {getStatusIcon()}
         {status === 'processing'
           ? 'Processing...'
           : status === 'completed'
-          ? 'Completed'
-          : status === 'failed'
-          ? 'Failed - Try Again'
-          : buttonLabel
-        }
+            ? 'Completed'
+            : status === 'failed'
+              ? 'Failed - Try Again'
+              : buttonLabel}
       </button>
 
       {error && (
@@ -163,7 +162,7 @@ function TextOutputRenderer({ block, output }: { block: BlockInstance; output: a
       case 'story':
         return <FileText className="h-5 w-5 text-blue-600" />;
       case 'instructions':
-        return <MessageCircle className="h-5 w-5 text-indigo-600" />;
+        return <MessageCircle className="h-5 w-5 text-purple-600" />;
       default:
         return <FileText className="h-5 w-5 text-gray-600" />;
     }
@@ -172,7 +171,7 @@ function TextOutputRenderer({ block, output }: { block: BlockInstance; output: a
   return (
     <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
       <div
-        className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50"
+        className="flex cursor-pointer items-center justify-between p-4 hover:bg-gray-50"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-3">
@@ -190,9 +189,10 @@ function TextOutputRenderer({ block, output }: { block: BlockInstance; output: a
       {isExpanded && content && (
         <div className="border-t border-gray-200 p-4">
           <div className={`
-            text-sm text-gray-700 whitespace-pre-wrap
+            text-sm whitespace-pre-wrap text-gray-700
             ${contentType === 'lyrics' ? 'font-mono' : ''}
-          `}>
+          `}
+          >
             {content}
           </div>
         </div>
@@ -210,10 +210,10 @@ function ImageOutputRenderer({ block, output }: { block: BlockInstance; output: 
   const prompt = output?.prompt || block.values.prompt;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
-      <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-purple-50 to-indigo-50">
+    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="flex items-center gap-3 bg-gradient-to-r from-purple-50 to-purple-50 p-4">
         <div className="rounded-lg bg-white p-2">
-          <ImageIcon className="h-5 w-5 text-indigo-600" />
+          <ImageIcon className="h-5 w-5 text-purple-600" />
         </div>
         <div>
           <h4 className="font-medium text-gray-900">{title}</h4>
@@ -232,8 +232,8 @@ function ImageOutputRenderer({ block, output }: { block: BlockInstance; output: 
       )}
 
       {prompt && (
-        <div className="border-t border-gray-200 p-4 bg-gray-50">
-          <p className="text-xs text-gray-600 mb-1 font-medium">Prompt:</p>
+        <div className="border-t border-gray-200 bg-gray-50 p-4">
+          <p className="mb-1 text-xs font-medium text-gray-600">Prompt:</p>
           <p className="text-sm text-gray-700">{prompt}</p>
         </div>
       )}
@@ -251,8 +251,8 @@ function MusicOutputRenderer({ block, output }: { block: BlockInstance; output: 
   const musicStyle = output?.music_style || block.values.music_style;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
-      <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-pink-50 to-purple-50">
+    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="flex items-center gap-3 bg-gradient-to-r from-pink-50 to-purple-50 p-4">
         <div className="rounded-lg bg-white p-2">
           <Music className="h-5 w-5 text-purple-600" />
         </div>
@@ -272,9 +272,9 @@ function MusicOutputRenderer({ block, output }: { block: BlockInstance; output: 
       )}
 
       {lyrics && (
-        <div className="border-t border-gray-200 p-4 bg-gray-50">
-          <p className="text-xs text-gray-600 mb-2 font-medium">Lyrics:</p>
-          <p className="text-sm text-gray-700 whitespace-pre-wrap font-mono">{lyrics}</p>
+        <div className="border-t border-gray-200 bg-gray-50 p-4">
+          <p className="mb-2 text-xs font-medium text-gray-600">Lyrics:</p>
+          <p className="font-mono text-sm whitespace-pre-wrap text-gray-700">{lyrics}</p>
         </div>
       )}
     </div>
@@ -290,19 +290,24 @@ function QuoteOutputRenderer({ block, output }: { block: BlockInstance; output: 
   const significance = output?.therapeutic_significance || block.values.therapeutic_significance;
 
   return (
-    <div className="rounded-lg border-l-4 border-indigo-600 bg-gradient-to-r from-indigo-50 to-white p-4 shadow-sm">
+    <div className="rounded-lg border-l-4 border-purple-600 bg-gradient-to-r from-purple-50 to-white p-4 shadow-sm">
       <div className="flex items-start gap-3">
-        <QuoteIcon className="h-5 w-5 text-indigo-600 flex-shrink-0 mt-1" />
+        <QuoteIcon className="mt-1 h-5 w-5 flex-shrink-0 text-purple-600" />
         <div className="flex-1">
-          <blockquote className="text-gray-900 text-base italic mb-2">
-            "{quoteText}"
+          <blockquote className="mb-2 text-base text-gray-900 italic">
+            "
+            {quoteText}
+            "
           </blockquote>
           {speaker && (
-            <p className="text-sm text-gray-600 mb-2">— {speaker}</p>
+            <p className="mb-2 text-sm text-gray-600">
+              —
+              {speaker}
+            </p>
           )}
           {significance && (
-            <div className="mt-3 pt-3 border-t border-indigo-200">
-              <p className="text-xs text-gray-600 font-medium mb-1">Therapeutic Significance:</p>
+            <div className="mt-3 border-t border-purple-200 pt-3">
+              <p className="mb-1 text-xs font-medium text-gray-600">Therapeutic Significance:</p>
               <p className="text-sm text-gray-700">{significance}</p>
             </div>
           )}
@@ -323,7 +328,7 @@ function GenericOutputRenderer({ block, output }: { block: BlockInstance; output
   return (
     <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
       <div
-        className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50"
+        className="flex cursor-pointer items-center justify-between p-4 hover:bg-gray-50"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-3">
@@ -337,7 +342,7 @@ function GenericOutputRenderer({ block, output }: { block: BlockInstance; output
 
       {isExpanded && (
         <div className="border-t border-gray-200 p-4">
-          <pre className="text-xs text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded">
+          <pre className="rounded bg-gray-50 p-3 text-xs whitespace-pre-wrap text-gray-700">
             {JSON.stringify(output, null, 2)}
           </pre>
         </div>
@@ -432,7 +437,7 @@ export function UniversalBlockRenderer({
 
       {blocks.length === 0 && (
         <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-center">
-          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+          <FileText className="mx-auto mb-3 h-12 w-12 text-gray-400" />
           <p className="text-gray-600">No blocks to display</p>
         </div>
       )}

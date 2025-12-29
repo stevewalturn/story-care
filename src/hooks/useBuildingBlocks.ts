@@ -4,12 +4,12 @@
  * Custom React hook for managing building block instances in prompt creation
  */
 
-import { useState, useCallback, useMemo } from 'react';
 import type {
   BlockInstance,
   BlockType,
   ValidationResult,
 } from '@/types/BuildingBlocks';
+import { useCallback, useMemo, useState } from 'react';
 import {
   generateJSONSchema,
   validateBlocks,

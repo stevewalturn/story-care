@@ -5,11 +5,11 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { PROMPT_JSON_TEMPLATES } from '@/config/PromptJSONTemplates';
 import { generateText } from '@/libs/TextGeneration';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
-import { aiRateLimit, checkRateLimit, getClientIP } from '@/utils/RateLimiter';
-import { PROMPT_JSON_TEMPLATES } from '@/config/PromptJSONTemplates';
 import { validatePromptJSON } from '@/utils/PromptJSONValidator';
+import { aiRateLimit, checkRateLimit, getClientIP } from '@/utils/RateLimiter';
 
 // POST /api/ai/generate-prompt-json - Generate JSON structure from description
 export async function POST(request: NextRequest) {

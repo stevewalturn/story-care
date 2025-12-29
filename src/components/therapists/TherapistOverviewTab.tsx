@@ -144,8 +144,8 @@ export function TherapistOverviewTab({ therapist, organization, metrics }: Thera
                 <p className="text-sm font-medium text-gray-500">Total Patients</p>
                 <p className="mt-1 text-2xl font-bold text-gray-900">{metrics.totalPatients}</p>
               </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100">
-                <Users className="h-6 w-6 text-indigo-600" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100">
+                <Users className="h-6 w-6 text-purple-600" />
               </div>
             </div>
           </div>
@@ -211,7 +211,8 @@ export function TherapistOverviewTab({ therapist, organization, metrics }: Thera
                   {Math.floor(
                     (new Date().getTime() - new Date(therapist.createdAt).getTime())
                     / (1000 * 60 * 60 * 24),
-                  )}{' '}
+                  )}
+                  {' '}
                   days
                 </p>
               </div>

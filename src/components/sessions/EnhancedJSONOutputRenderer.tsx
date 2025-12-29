@@ -11,15 +11,15 @@
  * Phase 3 Implementation: Replace Hardcoded Renderers
  */
 
-import { useState, useCallback } from 'react';
 import type { BlockInstance } from '@/types/BuildingBlocks';
 import type { AnyJSONSchema, JSONSchemaType } from '@/types/JSONSchemas';
-import { UniversalBlockRenderer } from './UniversalBlockRenderer';
+import { useCallback, useState } from 'react';
+import { executeBlockAction } from '@/services/BlockActionHandlers';
 import { GenericJSONCard } from './GenericJSONDisplay';
 import { JSONOutputRenderer } from './JSONOutputRenderer';
-import { executeBlockAction } from '@/services/BlockActionHandlers';
+import { UniversalBlockRenderer } from './UniversalBlockRenderer';
 
-interface EnhancedJSONOutputRendererProps {
+type EnhancedJSONOutputRendererProps = {
   // Common props
   jsonData: any;
   sessionId: string;
@@ -49,7 +49,7 @@ interface EnhancedJSONOutputRendererProps {
     instrumentalOption?: any;
     lyricalOption?: any;
   }) => void;
-}
+};
 
 /**
  * EnhancedJSONOutputRenderer
@@ -116,7 +116,7 @@ export function EnhancedJSONOutputRenderer({
         };
       }
     },
-    [user, sessionId, onProgress, onActionComplete]
+    [user, sessionId, onProgress, onActionComplete],
   );
 
   /**
@@ -159,8 +159,8 @@ export function EnhancedJSONOutputRenderer({
               actionStatus.message.startsWith('✅')
                 ? 'border-green-200 bg-green-50 text-green-800'
                 : actionStatus.message.startsWith('❌')
-                ? 'border-red-200 bg-red-50 text-red-800'
-                : 'border-blue-200 bg-blue-50 text-blue-800'
+                  ? 'border-red-200 bg-red-50 text-red-800'
+                  : 'border-blue-200 bg-blue-50 text-blue-800'
             }`}
           >
             {actionStatus.message}

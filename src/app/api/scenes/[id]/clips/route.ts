@@ -2,7 +2,8 @@ import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { sceneClips } from '@/models/Schema';
+import { generatePresignedUrl } from '@/libs/GCS';
+import { mediaLibrary, sceneClips } from '@/models/Schema';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -16,13 +17,49 @@ export async function GET(
   try {
     const { id: sceneId } = await context.params;
 
+    // Get clips with their associated media data
     const clips = await db
-      .select()
+      .select({
+        id: sceneClips.id,
+        sceneId: sceneClips.sceneId,
+        mediaId: sceneClips.mediaId,
+        sequenceNumber: sceneClips.sequenceNumber,
+        startTimeSeconds: sceneClips.startTimeSeconds,
+        endTimeSeconds: sceneClips.endTimeSeconds,
+        createdAt: sceneClips.createdAt,
+        // Media data
+        mediaType: mediaLibrary.mediaType,
+        mediaUrl: mediaLibrary.mediaUrl,
+        thumbnailUrl: mediaLibrary.thumbnailUrl,
+        generationPrompt: mediaLibrary.generationPrompt,
+      })
       .from(sceneClips)
+      .leftJoin(mediaLibrary, eq(sceneClips.mediaId, mediaLibrary.id))
       .where(eq(sceneClips.sceneId, sceneId))
       .orderBy(sceneClips.sequenceNumber);
 
-    return NextResponse.json({ clips });
+    // Generate presigned URLs for media
+    const clipsWithUrls = await Promise.all(
+      clips.map(async (clip) => {
+        let signedMediaUrl = clip.mediaUrl;
+        let signedThumbnailUrl = clip.thumbnailUrl;
+
+        if (clip.mediaUrl) {
+          signedMediaUrl = await generatePresignedUrl(clip.mediaUrl, 1) || clip.mediaUrl;
+        }
+        if (clip.thumbnailUrl) {
+          signedThumbnailUrl = await generatePresignedUrl(clip.thumbnailUrl, 1) || clip.thumbnailUrl;
+        }
+
+        return {
+          ...clip,
+          mediaUrl: signedMediaUrl,
+          thumbnailUrl: signedThumbnailUrl,
+        };
+      }),
+    );
+
+    return NextResponse.json({ clips: clipsWithUrls });
   } catch (error) {
     console.error('Error fetching clips:', error);
     return NextResponse.json(

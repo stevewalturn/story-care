@@ -121,7 +121,7 @@ export default function PublicSharePage({ params }: Props) {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-indigo-600" />
+        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-purple-600" />
       </div>
     );
   }
@@ -281,7 +281,7 @@ export default function PublicSharePage({ params }: Props) {
                 )}
 
                 {block.blockType === 'quote' && block.textContent && (
-                  <blockquote className="border-l-4 border-indigo-500 pl-4 text-gray-700 italic">
+                  <blockquote className="border-l-4 border-purple-500 pl-4 text-gray-700 italic">
                     "
                     {block.textContent}
                     "
@@ -305,10 +305,10 @@ export default function PublicSharePage({ params }: Props) {
                 )}
 
                 {block.blockType === 'reflection' && blockQuestions.length > 0 && (
-                  <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+                  <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
                     <div className="mb-3 flex items-center gap-2">
-                      <MessageCircle className="h-5 w-5 text-indigo-600" />
-                      <p className="font-medium text-indigo-900">Reflection Questions</p>
+                      <MessageCircle className="h-5 w-5 text-purple-600" />
+                      <p className="font-medium text-purple-900">Reflection Questions</p>
                     </div>
                     <div className="space-y-4">
                       {blockQuestions.map((q: any, i: number) => (
@@ -324,7 +324,7 @@ export default function PublicSharePage({ params }: Props) {
                             value={reflectionAnswers[q.id] || ''}
                             onChange={e => setReflectionAnswers({ ...reflectionAnswers, [q.id]: e.target.value })}
                             placeholder="Your response..."
-                            className="h-20 w-full resize-none rounded border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            className="h-20 w-full resize-none rounded border border-gray-300 bg-white px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
                             disabled={submitSuccess}
                           />
                         </div>
@@ -478,7 +478,7 @@ export default function PublicSharePage({ params }: Props) {
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="rounded-lg bg-indigo-600 px-8 py-3 font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg bg-purple-600 px-8 py-3 font-medium text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
               type="button"
             >
               {isSubmitting ? (

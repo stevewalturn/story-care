@@ -39,14 +39,14 @@ export default function AdminModulesPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="text-center">
         <div className="mb-4 flex justify-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600">
+          <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-purple-600">
             <Layers className="h-8 w-8 text-white" />
           </div>
         </div>
         <h2 className="mb-2 text-xl font-bold text-gray-900">Redirecting...</h2>
         <p className="text-sm text-gray-600">Taking you to your module management page</p>
         <div className="mt-4 flex justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-200 border-t-purple-600" />
         </div>
       </div>
     </div>

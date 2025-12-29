@@ -48,7 +48,7 @@ export function EngagementList({ patients }: EngagementListProps) {
           placeholder="Search patients..."
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
         />
       </div>
 

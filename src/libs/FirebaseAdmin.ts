@@ -54,6 +54,7 @@ export async function verifyIdToken(token: string) {
         organizationId: true,
         firebaseUid: true,
         status: true,
+        avatarUrl: true,
       },
     });
 
@@ -71,6 +72,7 @@ export async function verifyIdToken(token: string) {
           organizationId: true,
           firebaseUid: true,
           status: true,
+          avatarUrl: true,
         },
       });
 
@@ -91,6 +93,7 @@ export async function verifyIdToken(token: string) {
             organizationId: users.organizationId,
             firebaseUid: users.firebaseUid,
             status: users.status,
+            avatarUrl: users.avatarUrl,
           });
 
         dbUser = updatedUser;
@@ -111,6 +114,7 @@ export async function verifyIdToken(token: string) {
       emailVerified: decodedToken.email_verified || false,
       role: dbUser.role as 'super_admin' | 'org_admin' | 'therapist' | 'patient',
       status: dbUser.status as 'invited' | 'active' | 'inactive',
+      avatarUrl: dbUser.avatarUrl || null,
     };
   } catch (error) {
     console.error('Token verification failed:', error);

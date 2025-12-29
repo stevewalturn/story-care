@@ -6,14 +6,22 @@
  */
 
 import type { NotesTabProps } from '../types/transcript.types';
+import type { PatientOption } from '@/components/sessions/SaveNoteModal';
+import { Edit2, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { SaveNoteModal } from '@/components/sessions/SaveNoteModal';
+import { Modal } from '@/components/ui/Modal';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 
-export function NotesTab({ sessionId, user, sessionData, refreshKey }: NotesTabProps) {
+export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKey, selectedPatient }: NotesTabProps) {
   const [notes, setNotes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showNewNoteModal, setShowNewNoteModal] = useState(false);
+  const [sessionPatients, setSessionPatients] = useState<PatientOption[]>([]);
+  const [viewingNote, setViewingNote] = useState<any>(null);
+  const [editingNote, setEditingNote] = useState<any>(null);
+  const [showEditNoteModal, setShowEditNoteModal] = useState(false);
 
   // Load notes for this session (refreshes when refreshKey changes)
   useEffect(() => {
@@ -23,6 +31,11 @@ export function NotesTab({ sessionId, user, sessionData, refreshKey }: NotesTabP
         const params = new URLSearchParams({
           sessionId,
         });
+
+        // Filter by patient if selected
+        if (selectedPatient && selectedPatient !== 'all') {
+          params.append('patientId', selectedPatient);
+        }
 
         const response = await authenticatedFetch(`/api/notes?${params.toString()}`, user);
 
@@ -38,18 +51,62 @@ export function NotesTab({ sessionId, user, sessionData, refreshKey }: NotesTabP
     };
 
     loadNotes();
-  }, [sessionId, user, refreshKey]);
+  }, [sessionId, user, refreshKey, selectedPatient]);
+
+  // Load session patients for Save Note modal
+  useEffect(() => {
+    const fetchSessionPatients = async () => {
+      if (!user || !sessionId) return;
+
+      try {
+        const response = await authenticatedFetch(`/api/sessions/${sessionId}`, user);
+        if (response.ok) {
+          const data = await response.json();
+          const session = data.session;
+          const patients: PatientOption[] = [];
+
+          // Handle individual session with patient
+          if (session.patient) {
+            patients.push({
+              id: session.patient.id,
+              name: session.patient.name,
+              avatarUrl: session.patient.avatarUrl || null,
+            });
+          }
+
+          // Handle group session with members
+          if (session.group?.members) {
+            for (const member of session.group.members) {
+              // Avoid duplicates
+              if (!patients.find(p => p.id === member.id)) {
+                patients.push({
+                  id: member.id,
+                  name: member.name,
+                  avatarUrl: member.avatarUrl || null,
+                });
+              }
+            }
+          }
+
+          setSessionPatients(patients);
+        }
+      } catch (error) {
+        console.error('Error fetching session patients:', error);
+      }
+    };
+
+    fetchSessionPatients();
+  }, [sessionId, user]);
 
   // Handler for creating new note
-  const handleCreateNote = async (noteData: { title: string; content: string; tags: string[] }) => {
+  const handleCreateNote = async (noteData: { patientId?: string; title: string; content: string; tags: string[] }) => {
     try {
-      if (!sessionData?.patientId) {
-        throw new Error('No patient associated with this session');
+      if (!noteData.patientId) {
+        throw new Error('Please select a patient');
       }
 
       const response = await authenticatedPost('/api/notes', user, {
         ...noteData,
-        patientId: sessionData.patientId,
         sessionId,
       });
 
@@ -72,10 +129,65 @@ export function NotesTab({ sessionId, user, sessionData, refreshKey }: NotesTabP
     }
   };
 
+  // Handler for editing note
+  const handleEditNote = async (noteData: { patientId?: string; title: string; content: string; tags: string[] }) => {
+    try {
+      const response = await authenticatedFetch(`/api/notes/${editingNote.id}`, user, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(noteData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update note');
+      }
+
+      // Refresh notes list
+      const params = new URLSearchParams({ sessionId });
+      if (selectedPatient && selectedPatient !== 'all') {
+        params.append('patientId', selectedPatient);
+      }
+      const notesResponse = await authenticatedFetch(`/api/notes?${params.toString()}`, user);
+      if (notesResponse.ok) {
+        const data = await notesResponse.json();
+        setNotes(data.notes || []);
+      }
+
+      setShowEditNoteModal(false);
+      setEditingNote(null);
+    } catch (error) {
+      console.error('Error updating note:', error);
+      throw error;
+    }
+  };
+
+  // Handler for deleting note
+  const handleDeleteNote = async (noteId: string) => {
+    if (!confirm('Are you sure you want to delete this note?')) {
+      return;
+    }
+
+    try {
+      const response = await authenticatedFetch(`/api/notes/${noteId}`, user, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete note');
+      }
+
+      // Refresh notes list
+      setNotes(notes.filter(note => note.id !== noteId));
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      alert('Failed to delete note');
+    }
+  };
+
   return (
     <>
       {/* Notes Header with New Note Button */}
-      <div className="border-b border-gray-200 p-4">
+      <div className="border-b border-gray-200 bg-white p-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-900">
             Notes (
@@ -94,57 +206,95 @@ export function NotesTab({ sessionId, user, sessionData, refreshKey }: NotesTabP
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-gray-50 p-4">
+      <div className="flex-1 overflow-y-auto bg-white p-4">
         {isLoading ? (
           <div className="py-12 text-center">
-            <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+            <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
             <p className="text-sm text-gray-500">Loading notes...</p>
           </div>
         ) : notes.length === 0 ? (
           <div className="py-12 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-200">
-              <svg className="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+              <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <p className="text-sm text-gray-600">No notes for this session yet</p>
+            <p className="text-sm text-gray-700">No notes for this session yet</p>
             <p className="mt-1 text-xs text-gray-500">Click "New Note" to create your first note</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {notes.map(note => (
-              <div
-                key={note.id}
-                className="rounded-lg border border-gray-200 p-4 transition-all hover:border-indigo-300 hover:shadow-sm"
-              >
-                {/* Header */}
-                <div className="mb-2 flex items-start justify-between">
-                  <h4 className="font-medium text-gray-900">{note.title || 'Untitled Note'}</h4>
-                  <span className="text-xs text-gray-500">
-                    {note.createdAt ? new Date(note.createdAt).toLocaleDateString() : ''}
-                  </span>
-                </div>
+            {notes.map((note) => {
+              const shouldTruncate = note.content.length > 200;
+              const displayContent = shouldTruncate
+                ? `${note.content.slice(0, 200)}...`
+                : note.content;
 
-                {/* Content */}
-                <p className="text-sm leading-relaxed whitespace-pre-wrap text-gray-700">
-                  {note.content}
-                </p>
-
-                {/* Tags */}
-                {note.tags && note.tags.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {note.tags.map((tag: string, idx: number) => (
-                      <span
-                        key={idx}
-                        className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700"
-                      >
-                        {tag}
+              return (
+                <div
+                  key={note.id}
+                  className="rounded-lg border border-gray-200 bg-white p-4 transition-all hover:border-purple-500 hover:shadow-sm"
+                >
+                  {/* Header with Edit/Delete buttons */}
+                  <div className="mb-2 flex items-start justify-between">
+                    <h4 className="font-medium text-gray-900">{note.title || 'Untitled Note'}</h4>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-gray-500">
+                        {note.createdAt ? new Date(note.createdAt).toLocaleDateString() : ''}
                       </span>
-                    ))}
+                      {/* Edit button */}
+                      <button
+                        onClick={() => {
+                          setEditingNote(note);
+                          setShowEditNoteModal(true);
+                        }}
+                        className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-purple-600"
+                        title="Edit note"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                      {/* Delete button */}
+                      <button
+                        onClick={() => handleDeleteNote(note.id)}
+                        className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-red-600"
+                        title="Delete note"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {/* Markdown content */}
+                  <div className="prose prose-sm max-w-none text-sm leading-relaxed text-gray-700">
+                    <ReactMarkdown>{displayContent}</ReactMarkdown>
+                  </div>
+
+                  {/* Show more button - opens modal */}
+                  {shouldTruncate && (
+                    <button
+                      onClick={() => setViewingNote(note)}
+                      className="mt-2 text-xs font-medium text-purple-600 hover:text-purple-700"
+                    >
+                      Show more
+                    </button>
+                  )}
+
+                  {/* Tags */}
+                  {note.tags && note.tags.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1">
+                      {note.tags.map((tag: string, idx: number) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -155,8 +305,77 @@ export function NotesTab({ sessionId, user, sessionData, refreshKey }: NotesTabP
           isOpen={showNewNoteModal}
           onClose={() => setShowNewNoteModal(false)}
           selectedText=""
+          patients={sessionPatients}
           onSave={handleCreateNote}
         />
+      )}
+
+      {/* Edit Note Modal */}
+      {showEditNoteModal && editingNote && (
+        <SaveNoteModal
+          isOpen={showEditNoteModal}
+          onClose={() => {
+            setShowEditNoteModal(false);
+            setEditingNote(null);
+          }}
+          selectedText={editingNote.content}
+          initialTitle={editingNote.title}
+          initialTags={editingNote.tags || []}
+          patients={sessionPatients}
+          onSave={handleEditNote}
+        />
+      )}
+
+      {/* View Note Modal */}
+      {viewingNote && (
+        <Modal
+          isOpen={!!viewingNote}
+          onClose={() => setViewingNote(null)}
+          title={viewingNote.title || 'Untitled Note'}
+          size="lg"
+          hideFooter
+        >
+          <div className="space-y-4">
+            {/* Note metadata */}
+            <div className="flex items-center justify-between text-sm text-gray-500">
+              <span>
+                {viewingNote.createdAt ? new Date(viewingNote.createdAt).toLocaleDateString() : ''}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setViewingNote(null);
+                    setEditingNote(viewingNote);
+                    setShowEditNoteModal(true);
+                  }}
+                  className="flex items-center gap-1 rounded px-2 py-1 text-xs text-purple-600 transition-colors hover:bg-purple-50"
+                >
+                  <Edit2 className="h-3 w-3" />
+                  Edit
+                </button>
+              </div>
+            </div>
+
+            {/* Full note content with markdown */}
+            <div className="prose prose-sm max-w-none">
+              <ReactMarkdown>{viewingNote.content}</ReactMarkdown>
+            </div>
+
+            {/* Tags */}
+            {viewingNote.tags && viewingNote.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 border-t border-gray-200 pt-4">
+                {viewingNote.tags.map((tag: string, idx: number) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center rounded-full bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </Modal>
       )}
     </>
   );

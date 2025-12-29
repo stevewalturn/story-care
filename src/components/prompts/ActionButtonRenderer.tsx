@@ -7,23 +7,23 @@
  * Handles button clicks and action execution status (pending, processing, completed, failed).
  */
 
-import { useState } from 'react';
 import type {
   ActionExecutionRequest,
   ActionExecutionResult,
   BlockInstance,
   WorkflowContext,
 } from '@/types/BuildingBlocks';
-import { getBlockDefinition } from '@/config/BlockDefinitions';
+import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { getBlockDefinition } from '@/config/BlockDefinitions';
 
-interface ActionButtonRendererProps {
+type ActionButtonRendererProps = {
   block: BlockInstance;
   context: WorkflowContext;
   onExecute: (request: ActionExecutionRequest) => Promise<ActionExecutionResult>;
   onSuccess?: (result: ActionExecutionResult) => void;
   onError?: (error: string) => void;
-}
+};
 
 /**
  * Renders an action button for manual execution blocks
@@ -43,12 +43,17 @@ export function ActionButtonRenderer({
   const blockDef = getBlockDefinition(block.blockId);
 
   if (!blockDef) {
-    return <div className="text-red-600">Unknown block type: {block.blockId}</div>;
+    return (
+      <div className="text-red-600">
+        Unknown block type:
+        {block.blockId}
+      </div>
+    );
   }
 
   // Get button label from block values or use default
-  const buttonLabel =
-    block.values.button_label || blockDef.label || 'Execute Action';
+  const buttonLabel
+    = block.values.button_label || blockDef.label || 'Execute Action';
 
   const handleClick = async () => {
     setStatus('processing');
@@ -91,7 +96,7 @@ export function ActionButtonRenderer({
         >
           {status === 'processing' && (
             <svg
-              className="animate-spin -ml-1 mr-2 h-4 w-4"
+              className="mr-2 -ml-1 h-4 w-4 animate-spin"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
@@ -114,7 +119,7 @@ export function ActionButtonRenderer({
 
           {status === 'completed' && (
             <svg
-              className="-ml-1 mr-2 h-4 w-4"
+              className="mr-2 -ml-1 h-4 w-4"
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 20 20"
               fill="currentColor"
@@ -136,13 +141,13 @@ export function ActionButtonRenderer({
 
         {/* Status Badge */}
         {status === 'completed' && (
-          <span className="px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded">
+          <span className="rounded bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
             Success
           </span>
         )}
 
         {status === 'failed' && (
-          <span className="px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded">
+          <span className="rounded bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
             Failed
           </span>
         )}
@@ -150,7 +155,7 @@ export function ActionButtonRenderer({
 
       {/* Error Message */}
       {error && status === 'failed' && (
-        <div className="p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded">
+        <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {error}
         </div>
       )}
@@ -180,39 +185,54 @@ function ActionPreview({ block }: { block: BlockInstance }) {
   switch (block.blockId) {
     case 'save_quote_action':
       return (
-        <div className="p-3 text-sm bg-blue-50 border border-blue-200 rounded">
+        <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm">
           <div className="font-medium text-blue-900">Will save quote:</div>
           <div className="mt-1 text-blue-800 italic">
-            "{values.quote_source || '[Quote from previous step]'}"
+            "
+            {values.quote_source || '[Quote from previous step]'}
+            "
           </div>
           {values.speaker && (
-            <div className="mt-1 text-blue-700">- {values.speaker}</div>
+            <div className="mt-1 text-blue-700">
+              -
+              {values.speaker}
+            </div>
           )}
         </div>
       );
 
     case 'generate_image_action':
       return (
-        <div className="p-3 text-sm bg-purple-50 border border-purple-200 rounded">
+        <div className="rounded border border-purple-200 bg-purple-50 p-3 text-sm">
           <div className="font-medium text-purple-900">Will generate image:</div>
           <div className="mt-1 text-purple-800">
             {values.prompt_template || '[Image prompt from previous step]'}
           </div>
           {values.style && (
-            <div className="mt-1 text-purple-700">Style: {values.style}</div>
+            <div className="mt-1 text-purple-700">
+              Style:
+              {values.style}
+            </div>
           )}
         </div>
       );
 
     case 'generate_music_action':
       return (
-        <div className="p-3 text-sm bg-indigo-50 border border-indigo-200 rounded">
-          <div className="font-medium text-indigo-900">Will generate music:</div>
-          <div className="mt-1 text-indigo-800">
+        <div className="rounded border border-purple-200 bg-purple-50 p-3 text-sm">
+          <div className="font-medium text-purple-900">Will generate music:</div>
+          <div className="mt-1 text-purple-800">
             {values.music_prompt || '[Music prompt from previous step]'}
           </div>
-          <div className="mt-1 text-indigo-700">
-            Mood: {values.mood || 'calm'} | Duration: {values.duration || 30}s
+          <div className="mt-1 text-purple-700">
+            Mood:
+            {' '}
+            {values.mood || 'calm'}
+            {' '}
+            | Duration:
+            {' '}
+            {values.duration || 30}
+            s
           </div>
         </div>
       );
@@ -229,17 +249,20 @@ function ActionResult({ result, blockType }: { result: any; blockType: string })
   switch (blockType) {
     case 'save_quote_action':
       return (
-        <div className="p-3 text-sm bg-green-50 border border-green-200 rounded">
+        <div className="rounded border border-green-200 bg-green-50 p-3 text-sm">
           <div className="font-medium text-green-900">✓ Quote saved successfully</div>
           {result.quoteId && (
-            <div className="mt-1 text-green-700 text-xs">ID: {result.quoteId}</div>
+            <div className="mt-1 text-xs text-green-700">
+              ID:
+              {result.quoteId}
+            </div>
           )}
         </div>
       );
 
     case 'generate_image_action':
       return (
-        <div className="p-3 text-sm bg-green-50 border border-green-200 rounded space-y-2">
+        <div className="space-y-2 rounded border border-green-200 bg-green-50 p-3 text-sm">
           <div className="font-medium text-green-900">✓ Image generated successfully</div>
           {result.image_url && (
             <img
@@ -249,8 +272,10 @@ function ActionResult({ result, blockType }: { result: any; blockType: string })
             />
           )}
           {result.mediaId && (
-            <div className="text-green-700 text-xs">
-              Saved to library | ID: {result.mediaId}
+            <div className="text-xs text-green-700">
+              Saved to library | ID:
+              {' '}
+              {result.mediaId}
             </div>
           )}
         </div>
@@ -258,7 +283,7 @@ function ActionResult({ result, blockType }: { result: any; blockType: string })
 
     case 'generate_music_action':
       return (
-        <div className="p-3 text-sm bg-green-50 border border-green-200 rounded space-y-2">
+        <div className="space-y-2 rounded border border-green-200 bg-green-50 p-3 text-sm">
           <div className="font-medium text-green-900">✓ Music generated successfully</div>
           {result.audio_url && (
             <audio controls className="w-full max-w-sm">
@@ -267,8 +292,10 @@ function ActionResult({ result, blockType }: { result: any; blockType: string })
             </audio>
           )}
           {result.mediaId && (
-            <div className="text-green-700 text-xs">
-              Saved to library | ID: {result.mediaId}
+            <div className="text-xs text-green-700">
+              Saved to library | ID:
+              {' '}
+              {result.mediaId}
             </div>
           )}
         </div>
@@ -276,9 +303,9 @@ function ActionResult({ result, blockType }: { result: any; blockType: string })
 
     default:
       return (
-        <div className="p-3 text-sm bg-green-50 border border-green-200 rounded">
+        <div className="rounded border border-green-200 bg-green-50 p-3 text-sm">
           <div className="font-medium text-green-900">✓ Action completed</div>
-          <pre className="mt-1 text-xs text-green-700 overflow-auto">
+          <pre className="mt-1 overflow-auto text-xs text-green-700">
             {JSON.stringify(result, null, 2)}
           </pre>
         </div>

@@ -4,13 +4,13 @@ import { Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 
-interface ReferenceImage {
+type ReferenceImage = {
   id: string;
   url: string;
   name?: string;
-}
+};
 
-interface PatientReferenceModalProps {
+type PatientReferenceModalProps = {
   isOpen: boolean;
   onClose: () => void;
   patientName: string;
@@ -19,7 +19,7 @@ interface PatientReferenceModalProps {
   useReference: boolean;
   onAddImage?: (file: File) => void;
   onRemoveImage?: (imageId: string) => void;
-}
+};
 
 export function PatientReferenceModal({
   isOpen,
@@ -94,10 +94,10 @@ export function PatientReferenceModal({
                 <input
                   type="checkbox"
                   checked={useReference}
-                  onChange={(e) => onToggleReference(e.target.checked)}
+                  onChange={e => onToggleReference(e.target.checked)}
                   className="peer sr-only"
                 />
-                <div className="peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:top-0.5 after:left-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-focus:ring-2 peer-focus:ring-indigo-500" />
+                <div className="peer h-6 w-11 rounded-full bg-gray-300 peer-checked:bg-purple-600 peer-focus:ring-2 peer-focus:ring-purple-500 after:absolute after:top-0.5 after:left-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full" />
               </label>
             </div>
 
@@ -139,8 +139,8 @@ export function PatientReferenceModal({
                 <label
                   className={`relative flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-all ${
                     isDragging
-                      ? 'border-indigo-500 bg-indigo-50'
-                      : 'border-gray-300 bg-gray-50 hover:border-indigo-400 hover:bg-indigo-50'
+                      ? 'border-purple-500 bg-purple-50'
+                      : 'border-gray-300 bg-gray-50 hover:border-purple-400 hover:bg-purple-50'
                   }`}
                   onDragOver={(e) => {
                     e.preventDefault();

@@ -111,7 +111,7 @@ export default function TherapistModulesPage() {
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-purple-600">
                 <Layers className="h-5 w-5 text-white" />
               </div>
               <div>
@@ -126,7 +126,7 @@ export default function TherapistModulesPage() {
                 setEditableModule(null);
                 setIsEditorOpen(true);
               }}
-              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
               type="button"
             >
               <Plus className="h-4 w-4" />
@@ -135,193 +135,195 @@ export default function TherapistModulesPage() {
           </div>
         </div>
 
-        {/* View Mode Tabs */}
-        <div className="mb-6 flex gap-2 overflow-x-auto border-b border-gray-200">
-          <button
-            onClick={() => {
-              setViewMode('private');
-              setSearchQuery('');
-            }}
-            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
-              viewMode === 'private'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-            type="button"
-          >
-            My Private Modules
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs ${
-                viewMode === 'private'
-                  ? 'bg-indigo-100 text-indigo-600'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              {privateModules.length}
-            </span>
-          </button>
-          <button
-            onClick={() => {
-              setViewMode('organization');
-              setSearchQuery('');
-            }}
-            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
-              viewMode === 'organization'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-            type="button"
-          >
-            Organization Modules
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs ${
-                viewMode === 'organization'
-                  ? 'bg-indigo-100 text-indigo-600'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              {orgModules.length}
-            </span>
-          </button>
-          <button
-            onClick={() => {
-              setViewMode('templates');
-              setSearchQuery('');
-            }}
-            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
-              viewMode === 'templates'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-            type="button"
-          >
-            System Templates
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs ${
-                viewMode === 'templates'
-                  ? 'bg-indigo-100 text-indigo-600'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              {templates.length}
-            </span>
-          </button>
-        </div>
-
-        {/* Domain Tabs */}
-        <div className="mb-6 flex gap-2 overflow-x-auto border-b border-gray-200">
-          {domains.map(dom => (
+        {/* Main Content Area */}
+        <div>
+          {/* View Mode Tabs */}
+          <div className="mb-4 flex gap-1 border-b border-gray-200">
             <button
-              key={dom.id}
-              onClick={() => setActiveDomain(dom.id)}
-              className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
-                activeDomain === dom.id
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              onClick={() => {
+                setViewMode('private');
+                setSearchQuery('');
+              }}
+              className={`flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                viewMode === 'private'
+                  ? 'border-purple-600 text-purple-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
               type="button"
             >
-              {dom.label}
+              My Private Modules
               <span
-                className={`rounded-full px-2 py-0.5 text-xs ${
-                  activeDomain === dom.id
-                    ? 'bg-blue-100 text-blue-600'
+                className={`rounded-full px-1.5 py-0.5 text-xs ${
+                  viewMode === 'private'
+                    ? 'bg-purple-100 text-purple-600'
                     : 'bg-gray-100 text-gray-600'
                 }`}
               >
-                {getDomainCount(dom.id)}
+                {privateModules.length}
               </span>
             </button>
-          ))}
-        </div>
-
-        {/* Search */}
-        <div className="mb-6">
-          <div className="relative max-w-md">
-            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder={
-                viewMode === 'private'
-                  ? 'Search private modules...'
-                  : viewMode === 'organization'
-                    ? 'Search organization modules...'
-                    : 'Search templates...'
-              }
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-9 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
-            />
-          </div>
-        </div>
-
-        {/* Error State */}
-        {error && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {/* Content */}
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-          </div>
-        ) : filteredItems.length === 0 ? (
-          <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
-            <Layers className="mx-auto mb-3 h-12 w-12 text-gray-400" />
-            <h3 className="mb-1 text-lg font-semibold text-gray-900">
-              {searchQuery
-                ? 'No modules found'
-                : viewMode === 'private'
-                  ? 'No personal modules yet'
-                  : viewMode === 'organization'
-                    ? 'No organization modules'
-                    : 'No templates available'}
-            </h3>
-            <p className="mb-4 text-sm text-gray-600">
-              {searchQuery
-                ? 'Try adjusting your search or changing the domain filter'
-                : viewMode === 'private'
-                  ? 'Create your first personal module to get started'
-                  : viewMode === 'organization'
-                    ? 'Your organization hasn\'t created any modules yet'
-                    : 'No system templates available in this domain'}
-            </p>
-            {viewMode === 'private' && !searchQuery && (
-              <button
-                onClick={() => {
-                  setEditableModule(null);
-                  setIsEditorOpen(true);
-                }}
-                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            <button
+              onClick={() => {
+                setViewMode('organization');
+                setSearchQuery('');
+              }}
+              className={`flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                viewMode === 'organization'
+                  ? 'border-purple-600 text-purple-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+              type="button"
+            >
+              Organization Modules
+              <span
+                className={`rounded-full px-1.5 py-0.5 text-xs ${
+                  viewMode === 'organization'
+                    ? 'bg-purple-100 text-purple-600'
+                    : 'bg-gray-100 text-gray-600'
+                }`}
               >
-                <Plus className="h-4 w-4" />
-                Create Module
-              </button>
-            )}
+                {orgModules.length}
+              </span>
+            </button>
+            <button
+              onClick={() => {
+                setViewMode('templates');
+                setSearchQuery('');
+              }}
+              className={`flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                viewMode === 'templates'
+                  ? 'border-purple-600 text-purple-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+              type="button"
+            >
+              System Templates
+              <span
+                className={`rounded-full px-1.5 py-0.5 text-xs ${
+                  viewMode === 'templates'
+                    ? 'bg-purple-100 text-purple-600'
+                    : 'bg-gray-100 text-gray-600'
+                }`}
+              >
+                {templates.length}
+              </span>
+            </button>
           </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredItems.map(module => (
-              <ModuleCard
-                key={module.id}
-                module={module}
-                onView={() => {
-                  setSelectedModule(module);
-                  setIsDetailsOpen(true);
-                }}
-                onEdit={viewMode === 'private' ? () => {
-                  setEditableModule(module);
-                  setIsEditorOpen(true);
-                } : undefined}
-                onRefresh={fetchModules}
-                apiEndpoint={viewMode === 'private' ? '/api/therapist/modules' : undefined}
-                isTemplate={viewMode === 'templates'}
-              />
+
+          {/* Domain Filter Tabs */}
+          <div className="mb-4 flex flex-wrap gap-2">
+            {domains.map(dom => (
+              <button
+                key={dom.id}
+                onClick={() => setActiveDomain(dom.id)}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  activeDomain === dom.id
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+                type="button"
+              >
+                {dom.label}
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-xs ${
+                    activeDomain === dom.id
+                      ? 'bg-white/20 text-white'
+                      : 'bg-white text-gray-500'
+                  }`}
+                >
+                  {getDomainCount(dom.id)}
+                </span>
+              </button>
             ))}
           </div>
-        )}
+
+          {/* Search */}
+          <div className="mb-6">
+            <div className="relative max-w-md">
+              <Search className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search modules..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 bg-white py-2 pr-4 pl-9 text-sm text-gray-900 placeholder:text-gray-400 focus:border-purple-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Error State */}
+          {error && (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
+          {/* Content */}
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="text-center">
+                <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-purple-600 border-t-transparent" />
+                <p className="text-sm text-gray-500">Loading modules...</p>
+              </div>
+            </div>
+          ) : filteredItems.length === 0 ? (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-10 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
+                <Layers className="h-6 w-6 text-purple-600" />
+              </div>
+              <h3 className="mb-1 text-sm font-semibold text-gray-900">
+                {searchQuery
+                  ? 'No modules found'
+                  : viewMode === 'private'
+                    ? 'No personal modules yet'
+                    : viewMode === 'organization'
+                      ? 'No organization modules'
+                      : 'No templates available'}
+              </h3>
+              <p className="mb-4 text-xs text-gray-500">
+                {searchQuery
+                  ? 'Try adjusting your search or changing the domain filter'
+                  : viewMode === 'private'
+                    ? 'Create your first personal module to get started'
+                    : viewMode === 'organization'
+                      ? 'Your organization hasn\'t created any modules yet'
+                      : 'No system templates available in this domain'}
+              </p>
+              {viewMode === 'private' && !searchQuery && (
+                <button
+                  onClick={() => {
+                    setEditableModule(null);
+                    setIsEditorOpen(true);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create Module
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredItems.map(module => (
+                <ModuleCard
+                  key={module.id}
+                  module={module}
+                  onView={() => {
+                    setSelectedModule(module);
+                    setIsDetailsOpen(true);
+                  }}
+                  onEdit={viewMode === 'private' ? () => {
+                    setEditableModule(module);
+                    setIsEditorOpen(true);
+                  } : undefined}
+                  onRefresh={fetchModules}
+                  apiEndpoint={viewMode === 'private' ? '/api/therapist/modules' : undefined}
+                  isTemplate={viewMode === 'templates'}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Module Editor Modal */}

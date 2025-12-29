@@ -166,7 +166,7 @@ export default function OrganizationDetailPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
       </div>
     );
   }
@@ -196,8 +196,8 @@ export default function OrganizationDetailPage() {
 
         <div className="flex items-start justify-between">
           <div className="flex items-start">
-            <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-indigo-100">
-              <Building2 className="h-8 w-8 text-indigo-600" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-purple-100">
+              <Building2 className="h-8 w-8 text-purple-600" />
             </div>
             <div className="ml-4">
               <h1 className="text-3xl font-bold text-gray-900">{organization.name}</h1>
@@ -253,7 +253,7 @@ export default function OrganizationDetailPage() {
                         type="text"
                         value={formData.name}
                         onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
                       />
                     </div>
 
@@ -266,7 +266,7 @@ export default function OrganizationDetailPage() {
                         type="email"
                         value={formData.contactEmail}
                         onChange={e => setFormData(prev => ({ ...prev, contactEmail: e.target.value }))}
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
                       />
                     </div>
 
@@ -278,7 +278,7 @@ export default function OrganizationDetailPage() {
                         id="org-status"
                         value={formData.status}
                         onChange={e => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
                       >
                         <option value="active">Active</option>
                         <option value="suspended">Suspended</option>
@@ -304,7 +304,7 @@ export default function OrganizationDetailPage() {
                               type="text"
                               value={formData.adminName}
                               onChange={e => setFormData(prev => ({ ...prev, adminName: e.target.value }))}
-                              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
                               placeholder="John Doe"
                             />
                           </div>
@@ -318,7 +318,7 @@ export default function OrganizationDetailPage() {
                               type="email"
                               value={formData.adminEmail}
                               onChange={e => setFormData(prev => ({ ...prev, adminEmail: e.target.value }))}
-                              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
                               placeholder="admin@example.com"
                             />
                             <p className="mt-1 text-xs text-gray-500">
@@ -367,56 +367,56 @@ export default function OrganizationDetailPage() {
                       <dd className="mt-1 space-y-2">
                         {organization.admins && organization.admins.length > 0
                           ? (
-                              organization.admins.map((admin) => (
-                                  <div key={admin.id} className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 p-2">
-                                    <div className="flex-1">
-                                      <div className="flex items-center text-sm font-medium text-gray-900">
-                                        <Mail className="mr-2 h-4 w-4 text-gray-400" />
-                                        {admin.email}
-                                      </div>
-                                      <div className="ml-6 text-xs text-gray-600">
-                                        {admin.name}
-                                      </div>
+                              organization.admins.map(admin => (
+                                <div key={admin.id} className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 p-2">
+                                  <div className="flex-1">
+                                    <div className="flex items-center text-sm font-medium text-gray-900">
+                                      <Mail className="mr-2 h-4 w-4 text-gray-400" />
+                                      {admin.email}
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                      <span
-                                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                                          admin.status === 'active'
-                                            ? 'bg-green-100 text-green-700'
-                                            : admin.status === 'pending_approval'
-                                              ? 'bg-yellow-100 text-yellow-700'
-                                              : admin.status === 'invited'
-                                                ? 'bg-blue-100 text-blue-700'
-                                                : admin.status === 'suspended'
-                                                  ? 'bg-red-100 text-red-700'
-                                                  : 'bg-gray-100 text-gray-700'
-                                        }`}
-                                        title={
-                                          admin.status === 'active'
-                                            ? 'User has completed account setup and can access the platform'
-                                            : admin.status === 'invited'
-                                              ? 'User has been sent an invitation email but hasn\'t set up their account yet'
-                                              : admin.status === 'pending_approval'
-                                                ? 'User has submitted for approval and is awaiting admin review'
-                                                : admin.status === 'suspended'
-                                                  ? 'User account has been temporarily disabled'
-                                                  : 'Unknown status'
-                                        }
-                                      >
-                                        {admin.status === 'pending_approval' ? 'Pending' : admin.status}
-                                      </span>
-                                      {admin.status === 'invited' && (
-                                        <button
-                                          type="button"
-                                          onClick={() => openResendModal(admin)}
-                                          className="rounded-md p-1.5 text-indigo-600 transition-colors hover:bg-indigo-50"
-                                          title="Resend invitation email"
-                                        >
-                                          <Send className="h-4 w-4" />
-                                        </button>
-                                      )}
+                                    <div className="ml-6 text-xs text-gray-600">
+                                      {admin.name}
                                     </div>
                                   </div>
+                                  <div className="flex items-center gap-2">
+                                    <span
+                                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                        admin.status === 'active'
+                                          ? 'bg-green-100 text-green-700'
+                                          : admin.status === 'pending_approval'
+                                            ? 'bg-yellow-100 text-yellow-700'
+                                            : admin.status === 'invited'
+                                              ? 'bg-blue-100 text-blue-700'
+                                              : admin.status === 'suspended'
+                                                ? 'bg-red-100 text-red-700'
+                                                : 'bg-gray-100 text-gray-700'
+                                      }`}
+                                      title={
+                                        admin.status === 'active'
+                                          ? 'User has completed account setup and can access the platform'
+                                          : admin.status === 'invited'
+                                            ? 'User has been sent an invitation email but hasn\'t set up their account yet'
+                                            : admin.status === 'pending_approval'
+                                              ? 'User has submitted for approval and is awaiting admin review'
+                                              : admin.status === 'suspended'
+                                                ? 'User account has been temporarily disabled'
+                                                : 'Unknown status'
+                                      }
+                                    >
+                                      {admin.status === 'pending_approval' ? 'Pending' : admin.status}
+                                    </span>
+                                    {admin.status === 'invited' && (
+                                      <button
+                                        type="button"
+                                        onClick={() => openResendModal(admin)}
+                                        className="rounded-md p-1.5 text-purple-600 transition-colors hover:bg-purple-50"
+                                        title="Resend invitation email"
+                                      >
+                                        <Send className="h-4 w-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
                               ))
                             )
                           : (
@@ -531,7 +531,7 @@ export default function OrganizationDetailPage() {
 
       {/* Resend Invitation Confirmation Modal */}
       {showResendModal && selectedAdmin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black p-4">
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
             <h3 className="mb-4 text-lg font-semibold text-gray-900">
               Resend Invitation?

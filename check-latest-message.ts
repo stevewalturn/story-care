@@ -1,6 +1,6 @@
+import { desc, eq } from 'drizzle-orm';
 import { db } from './src/libs/DB';
 import { messages } from './src/models/Schema';
-import { desc, eq } from 'drizzle-orm';
 
 async function getLatestMessage() {
   try {

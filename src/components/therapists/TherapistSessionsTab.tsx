@@ -31,7 +31,7 @@ export function TherapistSessionsTab({ sessions }: TherapistSessionsTabProps) {
   const filteredSessions = sessions.filter((session) => {
     const matchesSearch
       = session.title.toLowerCase().includes(searchQuery.toLowerCase())
-      || session.patientName.toLowerCase().includes(searchQuery.toLowerCase());
+        || session.patientName.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesType = filterType === 'all' || session.sessionType === filterType;
 
@@ -68,7 +68,7 @@ export function TherapistSessionsTab({ sessions }: TherapistSessionsTabProps) {
             placeholder="Search sessions..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="block w-full max-w-md rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="block w-full max-w-md rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
           />
         </div>
 
@@ -78,7 +78,7 @@ export function TherapistSessionsTab({ sessions }: TherapistSessionsTabProps) {
             onClick={() => setFilterType('all')}
             className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
               filterType === 'all'
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-purple-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -89,7 +89,7 @@ export function TherapistSessionsTab({ sessions }: TherapistSessionsTabProps) {
             onClick={() => setFilterType('individual')}
             className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
               filterType === 'individual'
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-purple-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -100,7 +100,7 @@ export function TherapistSessionsTab({ sessions }: TherapistSessionsTabProps) {
             onClick={() => setFilterType('group')}
             className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
               filterType === 'group'
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-purple-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -116,37 +116,37 @@ export function TherapistSessionsTab({ sessions }: TherapistSessionsTabProps) {
             <tr>
               <th
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
               >
                 Session
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
               >
                 Type
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
               >
                 Patient
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
               >
                 Date
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
               >
                 Duration
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
               >
                 Status
               </th>
@@ -167,13 +167,13 @@ export function TherapistSessionsTab({ sessions }: TherapistSessionsTabProps) {
               : (
                   filteredSessions.map(session => (
                     <tr key={session.id} className="hover:bg-gray-50">
-                      <td className="whitespace-nowrap px-6 py-4">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <FileText className="mr-3 h-5 w-5 text-gray-400" />
                           <div className="text-sm font-medium text-gray-900">{session.title}</div>
                         </div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                             session.sessionType === 'individual'
@@ -196,10 +196,10 @@ export function TherapistSessionsTab({ sessions }: TherapistSessionsTabProps) {
                               )}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                      <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-900">
                         {session.patientName}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                      <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
                         <div className="flex items-center">
                           <Calendar className="mr-1 h-4 w-4 text-gray-400" />
                           {new Date(session.sessionDate).toLocaleDateString('en-US', {
@@ -209,13 +209,13 @@ export function TherapistSessionsTab({ sessions }: TherapistSessionsTabProps) {
                           })}
                         </div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                      <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
                         <div className="flex items-center">
                           <Clock className="mr-1 h-4 w-4 text-gray-400" />
                           {formatDuration(session.audioDurationSeconds)}
                         </div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                             session.transcriptionStatus === 'completed'
@@ -230,10 +230,10 @@ export function TherapistSessionsTab({ sessions }: TherapistSessionsTabProps) {
                           {session.transcriptionStatus}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                      <td className="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
                         <Link
                           href={`/org-admin/sessions/${session.id}`}
-                          className="text-indigo-600 hover:text-indigo-900"
+                          className="text-purple-600 hover:text-purple-900"
                         >
                           View
                         </Link>
@@ -248,7 +248,15 @@ export function TherapistSessionsTab({ sessions }: TherapistSessionsTabProps) {
       {/* Summary */}
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
         <p className="text-sm text-gray-600">
-          Showing {filteredSessions.length} of {sessions.length} sessions
+          Showing
+          {' '}
+          {filteredSessions.length}
+          {' '}
+          of
+          {' '}
+          {sessions.length}
+          {' '}
+          sessions
         </p>
       </div>
     </div>

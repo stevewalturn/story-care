@@ -176,7 +176,7 @@ export function TranscriptViewer({
                 key={utterance.id}
                 className={`transition-all ${
                   isCurrent ? '-mx-2 rounded bg-yellow-50 px-2 py-1' : ''
-                } ${isSelected ? '-mx-2 rounded bg-indigo-50 px-2 py-1' : ''}`}
+                } ${isSelected ? '-mx-2 rounded bg-purple-50 px-2 py-1' : ''}`}
               >
                 <div className="flex items-start gap-3">
                   {/* Speaker Badge */}
@@ -233,9 +233,9 @@ export function TranscriptViewer({
       {showAIPanel && selectedText && (
         <div className="flex w-96 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white">
           {/* Header */}
-          <div className="border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50 p-4">
+          <div className="border-b border-gray-200 bg-gradient-to-r from-purple-50 to-purple-50 p-4">
             <div className="mb-2 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-indigo-600" />
+              <Sparkles className="h-5 w-5 text-purple-600" />
               <h3 className="font-semibold text-gray-900">AI Assistant</h3>
             </div>
             <p className="text-xs text-gray-600">

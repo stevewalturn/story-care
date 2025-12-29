@@ -198,7 +198,7 @@ export function StoryPageViewer({ pageId, isPublicShare: _isPublicShare = false 
 
             {/* Quote Block */}
             {block.blockType === 'quote' && (
-              <blockquote className="border-l-4 border-indigo-500 bg-indigo-50 px-6 py-4 text-gray-800 italic">
+              <blockquote className="border-l-4 border-purple-500 bg-purple-50 px-6 py-4 text-gray-800 italic">
                 {block.textContent}
               </blockquote>
             )}
@@ -285,7 +285,7 @@ export function StoryPageViewer({ pageId, isPublicShare: _isPublicShare = false 
           <button
             onClick={handleSubmitReflection}
             disabled={submitting}
-            className="rounded-lg bg-indigo-600 px-8 py-3 font-semibold text-white transition-colors hover:bg-indigo-700 disabled:bg-gray-400"
+            className="rounded-lg bg-purple-600 px-8 py-3 font-semibold text-white transition-colors hover:bg-purple-700 disabled:bg-gray-400"
           >
             {submitting ? 'Submitting...' : 'Submit Responses'}
           </button>

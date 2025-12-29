@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
 import { Storage } from '@google-cloud/storage';
+import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { requireTherapist } from '@/utils/AuthHelpers';
 import { checkRateLimit, getClientIP, uploadRateLimit } from '@/utils/RateLimiter';
@@ -107,7 +107,6 @@ export async function POST(request: NextRequest) {
       gcsPath,
       expiresIn: 900, // 15 minutes in seconds
     });
-
   } catch (error) {
     console.error('Error generating signed URL:', error);
     return NextResponse.json(

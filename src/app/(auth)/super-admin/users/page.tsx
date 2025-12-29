@@ -165,7 +165,7 @@ export default function UsersPage() {
               setSelectedRole(e.target.value);
               setPagination(prev => ({ ...prev, page: 1 }));
             }}
-            className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
           >
             <option value="all">All Roles</option>
             <option value="super_admin">Super Admin</option>
@@ -214,7 +214,7 @@ export default function UsersPage() {
                   <tr>
                     <td colSpan={5} className="px-6 py-12 text-center">
                       <div className="flex justify-center">
-                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
                       </div>
                     </td>
                   </tr>

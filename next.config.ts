@@ -21,6 +21,21 @@ const baseConfig: NextConfig = {
     // Increase body size limit for audio file uploads (500MB)
     proxyClientMaxBodySize: 500 * 1024 * 1024, // 500MB in bytes
   },
+  // Allow external images from Google Cloud Storage
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'storage.googleapis.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.googleapis.com',
+        pathname: '/**',
+      },
+    ],
+  },
 };
 
 // Start with base config (no more i18n plugin)

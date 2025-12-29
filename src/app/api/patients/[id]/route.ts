@@ -1,11 +1,18 @@
 import type { NextRequest } from 'next/server';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, count, eq, inArray, isNull, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { logPHIAccess } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { generatePresignedUrl } from '@/libs/GCS';
 import { requirePatientAccess } from '@/middleware/RBACMiddleware';
-import { users } from '@/models/Schema';
+import {
+  groupMembers,
+  reflectionResponses,
+  sessions,
+  storyPages,
+  surveyResponses,
+  users,
+} from '@/models/Schema';
 import { handleAuthError } from '@/utils/AuthHelpers';
 
 // GET /api/patients/[id] - Get a single patient
@@ -32,6 +39,64 @@ export async function GET(
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
 
+    // Fetch all group IDs where this patient is a member (for session count)
+    const patientGroups = await db
+      .select({ groupId: groupMembers.groupId })
+      .from(groupMembers)
+      .where(
+        and(
+          eq(groupMembers.patientId, id),
+          isNull(groupMembers.leftAt),
+        ),
+      );
+    // Filter out null group IDs
+    const patientGroupIds = patientGroups.map(g => g.groupId).filter((gid): gid is string => gid !== null);
+
+    // Fetch all stats counts in parallel
+    const [pageCountResult, surveyCountResult, reflectionCountResult, sessionCountResult] = await Promise.all([
+      // Count story pages
+      db.select({ count: count() })
+        .from(storyPages)
+        .where(eq(storyPages.patientId, id)),
+
+      // Count survey responses
+      db.select({ count: count() })
+        .from(surveyResponses)
+        .where(eq(surveyResponses.patientId, id)),
+
+      // Count reflection responses
+      db.select({ count: count() })
+        .from(reflectionResponses)
+        .where(eq(reflectionResponses.patientId, id)),
+
+      // Count sessions (individual + group sessions where patient is a member)
+      patientGroupIds.length > 0
+        ? db.select({ count: count() })
+            .from(sessions)
+            .where(
+              and(
+                isNull(sessions.deletedAt),
+                or(
+                  eq(sessions.patientId, id),
+                  inArray(sessions.groupId, patientGroupIds),
+                ),
+              ),
+            )
+        : db.select({ count: count() })
+            .from(sessions)
+            .where(
+              and(
+                isNull(sessions.deletedAt),
+                eq(sessions.patientId, id),
+              ),
+            ),
+    ]);
+
+    const pageCount = pageCountResult[0]?.count ?? 0;
+    const surveyCount = surveyCountResult[0]?.count ?? 0;
+    const reflectionCount = reflectionCountResult[0]?.count ?? 0;
+    const sessionCount = sessionCountResult[0]?.count ?? 0;
+
     // Generate presigned URLs for patient images (HIPAA compliant, 1-hour expiration)
     const patientWithSignedUrls = {
       ...patient,
@@ -46,7 +111,13 @@ export async function GET(
     // Log PHI access
     await logPHIAccess(user.dbUserId, 'user', id, request);
 
-    return NextResponse.json({ patient: patientWithSignedUrls });
+    return NextResponse.json({
+      patient: patientWithSignedUrls,
+      pageCount,
+      surveyCount,
+      reflectionCount,
+      sessionCount,
+    });
   } catch (error) {
     if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('Forbidden'))) {
       return handleAuthError(error);
@@ -71,10 +142,35 @@ export async function PUT(
     const user = await requirePatientAccess(request, id);
 
     const body = await request.json();
-    const { name, email, referenceImageUrl, avatarUrl, therapistId } = body;
+    const {
+      name,
+      email,
+      referenceImageUrl,
+      avatarUrl,
+      therapistId,
+      dateOfBirth,
+      // Patient demographics
+      gender,
+      pronouns,
+      language,
+      notes,
+      // Contact information
+      phoneNumber,
+      // Address information
+      addressLine1,
+      addressLine2,
+      city,
+      state,
+      country,
+      zipCode,
+      // Emergency contact
+      emergencyContactName,
+      emergencyContactRelationship,
+      emergencyContactPhone,
+      emergencyContactEmail,
+    } = body;
 
-    // Build update object with only provided fields that exist in schema
-    // Note: phone and notes fields don't exist in the users table
+    // Build update object with only provided fields
     const updateData: any = {};
     if (name !== undefined) {
       updateData.name = name;
@@ -88,6 +184,63 @@ export async function PUT(
     if (avatarUrl !== undefined) {
       updateData.avatarUrl = avatarUrl;
     }
+    if (dateOfBirth !== undefined) {
+      updateData.dateOfBirth = dateOfBirth;
+    }
+
+    // Patient demographics
+    if (gender !== undefined) {
+      updateData.gender = gender;
+    }
+    if (pronouns !== undefined) {
+      updateData.pronouns = pronouns;
+    }
+    if (language !== undefined) {
+      updateData.language = language;
+    }
+    if (notes !== undefined) {
+      updateData.notes = notes;
+    }
+
+    // Contact information
+    if (phoneNumber !== undefined) {
+      updateData.phoneNumber = phoneNumber;
+    }
+
+    // Address information
+    if (addressLine1 !== undefined) {
+      updateData.addressLine1 = addressLine1;
+    }
+    if (addressLine2 !== undefined) {
+      updateData.addressLine2 = addressLine2;
+    }
+    if (city !== undefined) {
+      updateData.city = city;
+    }
+    if (state !== undefined) {
+      updateData.state = state;
+    }
+    if (country !== undefined) {
+      updateData.country = country;
+    }
+    if (zipCode !== undefined) {
+      updateData.zipCode = zipCode;
+    }
+
+    // Emergency contact
+    if (emergencyContactName !== undefined) {
+      updateData.emergencyContactName = emergencyContactName;
+    }
+    if (emergencyContactRelationship !== undefined) {
+      updateData.emergencyContactRelationship = emergencyContactRelationship;
+    }
+    if (emergencyContactPhone !== undefined) {
+      updateData.emergencyContactPhone = emergencyContactPhone;
+    }
+    if (emergencyContactEmail !== undefined) {
+      updateData.emergencyContactEmail = emergencyContactEmail;
+    }
+
     if (therapistId !== undefined) {
       // Validate therapist exists and belongs to the same organization (for org_admin)
       if (therapistId !== null && therapistId !== '') {

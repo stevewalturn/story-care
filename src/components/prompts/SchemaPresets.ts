@@ -3,14 +3,14 @@
  * Pre-configured JSON schema templates for common prompt output patterns
  */
 
-export interface SchemaPreset {
+export type SchemaPreset = {
   id: string;
   name: string;
   description: string;
   category: 'simple' | 'medium' | 'complex';
   schemaType: string;
   schema: any;
-}
+};
 
 export const SCHEMA_PRESETS: SchemaPreset[] = [
   {
@@ -362,12 +362,12 @@ export const SCHEMA_PRESETS: SchemaPreset[] = [
  * Get preset by ID
  */
 export function getPresetById(id: string): SchemaPreset | undefined {
-  return SCHEMA_PRESETS.find((preset) => preset.id === id);
+  return SCHEMA_PRESETS.find(preset => preset.id === id);
 }
 
 /**
  * Get presets by category
  */
 export function getPresetsByCategory(category: 'simple' | 'medium' | 'complex'): SchemaPreset[] {
-  return SCHEMA_PRESETS.filter((preset) => preset.category === category);
+  return SCHEMA_PRESETS.filter(preset => preset.category === category);
 }

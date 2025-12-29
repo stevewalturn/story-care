@@ -225,7 +225,7 @@ export class VideoService {
 
     // Create a concat file for looping
     const concatFilePath = path.join(this.tempDir, 'audio-loop-concat.txt');
-    const concatContent = Array(loopCount)
+    const concatContent = new Array(loopCount)
       .fill(`file '${audioPath}'`)
       .join('\n');
     fs.writeFileSync(concatFilePath, concatContent);
@@ -423,7 +423,7 @@ export class VideoService {
       console.log('[ASSEMBLE] Video assembled, duration:', videoDuration);
 
       // Handle audio tracks (new multi-audio approach or legacy single track)
-      let finalOutputPath = outputPath;
+      const finalOutputPath = outputPath;
 
       if (audioTracks.length > 0) {
         // New approach: multiple audio tracks with loop/fit options

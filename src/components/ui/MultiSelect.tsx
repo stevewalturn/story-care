@@ -103,7 +103,7 @@ export function MultiSelect({
           className={`w-full rounded-lg border bg-white px-3 py-2 text-left transition-colors ${
             error
               ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
+              : 'border-gray-300 focus:border-purple-500 focus:ring-purple-500'
           } ${disabled ? 'cursor-not-allowed bg-gray-100' : 'hover:border-gray-400'} focus:ring-opacity-20 focus:ring-2 focus:outline-none`}
         >
           <div className="flex items-center justify-between gap-2">
@@ -115,7 +115,7 @@ export function MultiSelect({
                   {selectedOptions.map(option => (
                     <span
                       key={option.value}
-                      className="inline-flex items-center gap-1 rounded bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700"
+                      className="inline-flex items-center gap-1 rounded bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700"
                     >
                       {option.label}
                       {!disabled && (
@@ -130,7 +130,7 @@ export function MultiSelect({
                               handleRemoveOption(option.value, e as any);
                             }
                           }}
-                          className="rounded hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 cursor-pointer"
+                          className="cursor-pointer rounded hover:bg-purple-200 focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 focus:outline-none"
                         >
                           <X className="h-3 w-3" />
                         </span>
@@ -156,7 +156,7 @@ export function MultiSelect({
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search..."
-                className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
               />
             </div>
 
@@ -166,7 +166,7 @@ export function MultiSelect({
                 <button
                   type="button"
                   onClick={handleSelectAll}
-                  className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                  className="text-xs font-medium text-purple-600 hover:text-purple-700"
                 >
                   Select All
                 </button>
@@ -196,14 +196,14 @@ export function MultiSelect({
                       onClick={() => handleToggleOption(option.value)}
                       className={`flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm transition-colors ${
                         isSelected
-                          ? 'bg-indigo-50 text-indigo-900'
+                          ? 'bg-purple-50 text-purple-900'
                           : 'text-gray-700 hover:bg-gray-100'
                       }`}
                     >
                       <div
                         className={`flex h-4 w-4 items-center justify-center rounded border ${
                           isSelected
-                            ? 'border-indigo-600 bg-indigo-600'
+                            ? 'border-purple-600 bg-purple-600'
                             : 'border-gray-300 bg-white'
                         }`}
                       >

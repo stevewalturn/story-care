@@ -38,7 +38,6 @@ export function GenerateMusicModal({
   user,
   onComplete,
 }: GenerateMusicModalProps) {
-  const [selectedOption, setSelectedOption] = useState<'instrumental' | 'lyrical'>('instrumental');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generationResult, setGenerationResult] = useState<{
@@ -73,7 +72,10 @@ export function GenerateMusicModal({
   };
 
   const handleGenerateMusic = async () => {
-    const option = selectedOption === 'instrumental' ? instrumentalOption : lyricalOption;
+    // Simplified - determine option from props
+    const option = instrumentalOption || lyricalOption;
+    const isInstrumental = !!instrumentalOption;
+
     if (!option) return;
 
     // Validation: require either sessionId or patientId
@@ -97,7 +99,7 @@ export function GenerateMusicModal({
       const response = await authenticatedPost('/api/ai/generate-music', user, {
         sessionId,
         patientId,
-        instrumental: selectedOption === 'instrumental',
+        instrumental: isInstrumental,
         prompt: finalPrompt,
         title: option.title,
         model: 'V4_5',
@@ -120,7 +122,6 @@ export function GenerateMusicModal({
       if (onComplete) {
         onComplete();
       }
-
     } catch (err) {
       // Clear any polling interval on error
       if (pollIntervalRef.current) {
@@ -132,32 +133,14 @@ export function GenerateMusicModal({
     }
   };
 
-  const renderMusicOption = (type: 'instrumental' | 'lyrical', option: MusicOption | undefined) => {
+  const renderSelectedOption = () => {
+    const option = instrumentalOption || lyricalOption;
+    const type = instrumentalOption ? 'instrumental' : 'lyrical';
+
     if (!option) return null;
 
-    const isSelected = selectedOption === type;
-    
     return (
-      <button
-        onClick={() => setSelectedOption(type)}
-        className={`relative overflow-hidden rounded-lg border-2 p-4 text-left transition-all ${
-          isSelected
-            ? 'border-indigo-500 bg-gradient-to-br from-indigo-50 to-purple-50'
-            : 'border-gray-200 bg-white hover:border-gray-300'
-        }`}
-        disabled={isGenerating}
-      >
-        {/* Selection indicator */}
-        {isSelected && (
-          <div className="absolute top-2 right-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600">
-              <svg className="h-3.5 w-3.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-            </div>
-          </div>
-        )}
-
+      <div className="rounded-lg border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 p-4">
         {/* Type badge */}
         <div className="mb-3 inline-flex items-center gap-2">
           {type === 'instrumental' ? (
@@ -167,16 +150,16 @@ export function GenerateMusicModal({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                 </svg>
               </div>
-              <span className="text-xs font-medium uppercase tracking-wider text-purple-700">Instrumental</span>
+              <span className="text-xs font-medium tracking-wider text-purple-700 uppercase">Instrumental</span>
             </>
           ) : (
             <>
-              <div className="rounded-full bg-indigo-100 p-1.5">
-                <svg className="h-3.5 w-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="rounded-full bg-purple-100 p-1.5">
+                <svg className="h-3.5 w-3.5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                 </svg>
               </div>
-              <span className="text-xs font-medium uppercase tracking-wider text-indigo-700">Lyrical</span>
+              <span className="text-xs font-medium tracking-wider text-purple-700 uppercase">Lyrical</span>
             </>
           )}
         </div>
@@ -192,7 +175,7 @@ export function GenerateMusicModal({
         {/* Genre tags */}
         {option.genre_tags && option.genre_tags.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-1">
-            {option.genre_tags.map((genre, index) => (
+            {option.genre_tags.map((genre: string, index: number) => (
               <span key={index} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
                 {genre}
               </span>
@@ -205,7 +188,7 @@ export function GenerateMusicModal({
           <p className="mb-3 line-clamp-3 text-xs text-gray-600">{option.music_description}</p>
         )}
         {type === 'lyrical' && option.suggested_lyrics && (
-          <div className="mb-3 rounded bg-gray-50 p-2">
+          <div className="mb-3 rounded bg-white/60 p-2">
             <p className="line-clamp-4 text-xs text-gray-600 italic">{option.suggested_lyrics}</p>
           </div>
         )}
@@ -214,7 +197,7 @@ export function GenerateMusicModal({
         {option.rationale && (
           <p className="text-xs text-gray-500">{option.rationale}</p>
         )}
-      </button>
+      </div>
     );
   };
 
@@ -251,100 +234,109 @@ export function GenerateMusicModal({
                 Generating & Waiting for Completion...
               </>
             ) : (
-              <>Generate {selectedOption === 'instrumental' ? 'Instrumental' : 'Lyrical Song'}</>
+              <>
+                Generate
+                {instrumentalOption ? 'Instrumental' : 'Lyrical Song'}
+              </>
             )}
           </Button>
         </>
       )}
     >
+      {/* Selected Option Display */}
+      <div className="mb-6">
+        {renderSelectedOption()}
+      </div>
+
       {/* Custom Inputs Section */}
       <div className="mb-6 space-y-4">
-          {/* Custom Prompt */}
-          <div>
-            <label htmlFor="customPrompt" className="mb-1.5 block text-sm font-medium text-gray-700">
-              Custom Music Prompt <span className="text-gray-400 font-normal">(Optional)</span>
-            </label>
-            <textarea
-              id="customPrompt"
-              value={customPrompt}
-              onChange={(e) => setCustomPrompt(e.target.value)}
-              maxLength={500}
-              rows={3}
-              disabled={isGenerating}
-              placeholder="Add specific details to enhance the generated music. Example: 'with gentle piano and warm strings, building gradually'"
-              className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-20 disabled:bg-gray-50 disabled:text-gray-500"
-            />
-            <div className="mt-1.5 flex items-center justify-between text-xs text-gray-500">
-              <span>Add specific instruments, mood, tempo, or style details</span>
-              <span className={customPrompt.length > 450 ? 'text-amber-600 font-medium' : ''}>
-                {customPrompt.length}/500
-              </span>
-            </div>
-          </div>
-
-          {/* Duration Selector */}
-          <div>
-            <label htmlFor="duration" className="mb-1.5 block text-sm font-medium text-gray-700">
-              Duration
-            </label>
-            <select
-              id="duration"
-              value={customDuration}
-              onChange={(e) => setCustomDuration(Number(e.target.value))}
-              disabled={isGenerating}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-20 disabled:bg-gray-50 disabled:text-gray-500"
-            >
-              <option value={60}>1 minute (60 seconds)</option>
-              <option value={120}>2 minutes (120 seconds)</option>
-              <option value={180}>3 minutes (180 seconds)</option>
-              <option value={240}>4 minutes (240 seconds)</option>
-            </select>
+        {/* Custom Prompt */}
+        <div>
+          <label htmlFor="customPrompt" className="mb-1.5 block text-sm font-medium text-gray-700">
+            Custom Music Prompt
+            {' '}
+            <span className="font-normal text-gray-400">(Optional)</span>
+          </label>
+          <textarea
+            id="customPrompt"
+            value={customPrompt}
+            onChange={e => setCustomPrompt(e.target.value)}
+            maxLength={500}
+            rows={3}
+            disabled={isGenerating}
+            placeholder="Add specific details to enhance the generated music. Example: 'with gentle piano and warm strings, building gradually'"
+            className="focus:ring-opacity-20 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none disabled:bg-gray-50 disabled:text-gray-500"
+          />
+          <div className="mt-1.5 flex items-center justify-between text-xs text-gray-500">
+            <span>Add specific instruments, mood, tempo, or style details</span>
+            <span className={customPrompt.length > 450 ? 'font-medium text-amber-600' : ''}>
+              {customPrompt.length}
+              /500
+            </span>
           </div>
         </div>
 
-        {/* Options */}
-        <div className="grid gap-4 md:grid-cols-2">
-          {renderMusicOption('instrumental', instrumentalOption)}
-          {renderMusicOption('lyrical', lyricalOption)}
+        {/* Duration Selector */}
+        <div>
+          <label htmlFor="duration" className="mb-1.5 block text-sm font-medium text-gray-700">
+            Duration
+          </label>
+          <select
+            id="duration"
+            value={customDuration}
+            onChange={e => setCustomDuration(Number(e.target.value))}
+            disabled={isGenerating}
+            className="focus:ring-opacity-20 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none disabled:bg-gray-50 disabled:text-gray-500"
+          >
+            <option value={60}>1 minute (60 seconds)</option>
+            <option value={120}>2 minutes (120 seconds)</option>
+            <option value={180}>3 minutes (180 seconds)</option>
+            <option value={240}>4 minutes (240 seconds)</option>
+          </select>
         </div>
+      </div>
 
-        {/* Generation Result */}
-        {generationResult && (
-          <div className="mt-6 rounded-lg border border-green-200 bg-green-50 p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-green-900">
-                  {generationResult.type === 'instrumental' ? 'Instrumental' : 'Lyrical song'} "{generationResult.title}" queued for generation
-                </p>
-                <p className="mt-0.5 text-xs text-green-700">
-                  Check the Library tab in 2-3 minutes to see your generated music
-                </p>
-              </div>
+      {/* Generation Result */}
+      {generationResult && (
+        <div className="mt-6 rounded-lg border border-green-200 bg-green-50 p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-green-900">
+                {generationResult.type === 'instrumental' ? 'Instrumental' : 'Lyrical song'}
+                {' '}
+                "
+                {generationResult.title}
+                " queued for generation
+              </p>
+              <p className="mt-0.5 text-xs text-green-700">
+                Check the Library tab in 2-3 minutes to see your generated music
+              </p>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Error Message */}
-        {error && (
-          <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-red-900">Generation failed</p>
-                <p className="mt-0.5 text-xs text-red-700">{error}</p>
-              </div>
+      {/* Error Message */}
+      {error && (
+        <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-900">Generation failed</p>
+              <p className="mt-0.5 text-xs text-red-700">{error}</p>
             </div>
           </div>
-        )}
+        </div>
+      )}
     </Modal>
   );
 }

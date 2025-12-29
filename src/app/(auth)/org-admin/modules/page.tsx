@@ -99,7 +99,7 @@ export default function OrgAdminModulesPage() {
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-purple-600">
                 <Layers className="h-5 w-5 text-white" />
               </div>
               <div>
@@ -112,7 +112,7 @@ export default function OrgAdminModulesPage() {
                 setSelectedModule(null);
                 setIsEditorOpen(true);
               }}
-              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
               type="button"
             >
               <Plus className="h-4 w-4" />
@@ -127,7 +127,7 @@ export default function OrgAdminModulesPage() {
             onClick={() => setViewMode('my_modules')}
             className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
               viewMode === 'my_modules'
-                ? 'border-indigo-600 text-indigo-600'
+                ? 'border-purple-600 text-purple-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
             }`}
             type="button"
@@ -136,7 +136,7 @@ export default function OrgAdminModulesPage() {
             <span
               className={`rounded-full px-2 py-0.5 text-xs ${
                 viewMode === 'my_modules'
-                  ? 'bg-indigo-100 text-indigo-600'
+                  ? 'bg-purple-100 text-purple-600'
                   : 'bg-gray-100 text-gray-600'
               }`}
             >
@@ -147,7 +147,7 @@ export default function OrgAdminModulesPage() {
             onClick={() => setViewMode('templates')}
             className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
               viewMode === 'templates'
-                ? 'border-indigo-600 text-indigo-600'
+                ? 'border-purple-600 text-purple-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
             }`}
             type="button"
@@ -157,7 +157,7 @@ export default function OrgAdminModulesPage() {
             <span
               className={`rounded-full px-2 py-0.5 text-xs ${
                 viewMode === 'templates'
-                  ? 'bg-indigo-100 text-indigo-600'
+                  ? 'bg-purple-100 text-purple-600'
                   : 'bg-gray-100 text-gray-600'
               }`}
             >
@@ -202,7 +202,7 @@ export default function OrgAdminModulesPage() {
               placeholder={viewMode === 'my_modules' ? 'Search modules...' : 'Search templates...'}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-9 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-9 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
             />
           </div>
         </div>
@@ -210,7 +210,7 @@ export default function OrgAdminModulesPage() {
         {/* Content */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
           </div>
         ) : error ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4">

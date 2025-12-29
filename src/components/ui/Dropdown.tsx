@@ -53,7 +53,7 @@ export function Dropdown({
           className={`
             flex w-full items-center justify-between rounded-lg border bg-white px-3.5
             py-2.5 text-left text-sm
-            focus:border-transparent focus:ring-2 focus:ring-indigo-500 focus:outline-none
+            focus:border-transparent focus:ring-2 focus:ring-purple-500 focus:outline-none
             disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500
             ${error ? 'border-red-300' : 'border-gray-300'}
           `}
@@ -77,7 +77,7 @@ export function Dropdown({
                 className={`
                   flex w-full items-center justify-between px-3.5 py-2.5 text-left text-sm
                   transition-colors hover:bg-gray-50
-                  ${option.value === value ? 'bg-indigo-50 text-indigo-600' : 'text-gray-900'}
+                  ${option.value === value ? 'bg-purple-50 text-purple-600' : 'text-gray-900'}
                 `}
               >
                 {option.label}
@@ -148,7 +148,7 @@ export function MultiSelect({
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-left text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          className="flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-left text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
         >
           <span className={selectedLabels.length > 0 ? 'text-gray-900' : 'text-gray-400'}>
             {selectedLabels.length > 0 ? selectedLabels.join(', ') : placeholder}
@@ -168,16 +168,16 @@ export function MultiSelect({
                   className={`
                     flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm
                     transition-colors hover:bg-gray-50
-                    ${isSelected ? 'bg-indigo-50' : ''}
+                    ${isSelected ? 'bg-purple-50' : ''}
                   `}
                 >
                   <div className={`flex h-4 w-4 items-center justify-center rounded border-2 ${
-                    isSelected ? 'border-indigo-600 bg-indigo-600' : 'border-gray-300'
+                    isSelected ? 'border-purple-600 bg-purple-600' : 'border-gray-300'
                   }`}
                   >
                     {isSelected && <Check className="h-3 w-3 text-white" />}
                   </div>
-                  <span className={isSelected ? 'font-medium text-indigo-600' : 'text-gray-900'}>
+                  <span className={isSelected ? 'font-medium text-purple-600' : 'text-gray-900'}>
                     {option.label}
                   </span>
                 </button>

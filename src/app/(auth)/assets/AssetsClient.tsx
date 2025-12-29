@@ -1,7 +1,8 @@
 'use client';
 
-import { Music, Pencil, Plus, Sparkles, Trash2, Upload, Users } from 'lucide-react';
+import { Music, Pencil, Plus, RefreshCw, Trash2, Upload, Users, Video } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { MediaViewer } from '@/components/assets/MediaViewer';
@@ -34,6 +35,7 @@ type MediaItem = {
 
 export function AssetsClient() {
   const { user } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'media' | 'quotes' | 'notes' | 'profile'>('media');
   const [selectedPatient, setSelectedPatient] = useState<string>('');
   const [patients, setPatients] = useState<any[]>([]);
@@ -70,6 +72,8 @@ export function AssetsClient() {
   const [uploadDescription, setUploadDescription] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const referenceImageInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingReferenceImage, setIsUploadingReferenceImage] = useState(false);
 
   // Media viewer state
   const [selectedMediaItem, setSelectedMediaItem] = useState<MediaItem | null>(null);
@@ -542,16 +546,73 @@ export function AssetsClient() {
     return `${Math.floor(diffSeconds / 3600)}h ago`;
   };
 
+  const handleReferenceImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedPatient || !user) return;
+
+    setIsUploadingReferenceImage(true);
+    const toastId = toast.loading('Uploading reference image...');
+
+    try {
+      // Upload file to GCS
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const token = await user.getIdToken();
+
+      const uploadResponse = await fetch('/api/media/upload', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const uploadData = await uploadResponse.json();
+
+      // Update patient's reference image
+      const updateResponse = await authenticatedFetch(`/api/patients/${selectedPatient}`, user, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          referenceImageUrl: uploadData.path,
+        }),
+      });
+
+      if (!updateResponse.ok) {
+        throw new Error('Failed to update patient reference image');
+      }
+
+      // Refresh patients list to show updated image
+      await loadPatients();
+      toast.success('Reference image updated!', { id: toastId });
+    } catch (error: any) {
+      console.error('Reference image upload error:', error);
+      toast.error(`Upload failed: ${error.message}`, { id: toastId });
+    } finally {
+      setIsUploadingReferenceImage(false);
+      // Reset the input
+      if (referenceImageInputRef.current) {
+        referenceImageInputRef.current.value = '';
+      }
+    }
+  };
+
   const selectedPatientData = patients.find(p => p.id === selectedPatient);
 
   // Empty state when no patients
   if (patients.length === 0) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-4">
+      <div className="flex h-screen flex-col items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-50 px-4">
         <div className="max-w-md text-center">
           {/* Icon */}
-          <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 to-purple-100">
-            <Users className="h-12 w-12 text-indigo-600" />
+          <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-purple-100">
+            <Users className="h-12 w-12 text-purple-600" />
           </div>
 
           {/* Heading */}
@@ -566,7 +627,7 @@ export function AssetsClient() {
 
           {/* CTA Button */}
           <Link href="/patients">
-            <button className="inline-flex items-center rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3 text-base font-medium text-white shadow-lg transition-all hover:from-indigo-700 hover:to-purple-700 hover:shadow-xl">
+            <button className="inline-flex items-center rounded-lg bg-gradient-to-r from-purple-600 to-purple-600 px-6 py-3 text-base font-medium text-white shadow-lg transition-all hover:from-purple-700 hover:to-purple-700 hover:shadow-xl">
               <Plus className="mr-2 h-5 w-5" />
               Add Your First Patient
             </button>
@@ -579,19 +640,19 @@ export function AssetsClient() {
             </h3>
             <ul className="space-y-2 text-sm text-gray-600">
               <li className="flex items-start">
-                <span className="mt-0.5 mr-2 text-indigo-600">•</span>
+                <span className="mt-0.5 mr-2 text-purple-600">•</span>
                 <span>Store and organize patient media (images, videos, audio)</span>
               </li>
               <li className="flex items-start">
-                <span className="mt-0.5 mr-2 text-indigo-600">•</span>
+                <span className="mt-0.5 mr-2 text-purple-600">•</span>
                 <span>Save meaningful quotes from therapy sessions</span>
               </li>
               <li className="flex items-start">
-                <span className="mt-0.5 mr-2 text-indigo-600">•</span>
+                <span className="mt-0.5 mr-2 text-purple-600">•</span>
                 <span>Keep session notes and observations</span>
               </li>
               <li className="flex items-start">
-                <span className="mt-0.5 mr-2 text-indigo-600">•</span>
+                <span className="mt-0.5 mr-2 text-purple-600">•</span>
                 <span>Build personalized story pages for patients</span>
               </li>
             </ul>
@@ -618,7 +679,7 @@ export function AssetsClient() {
           <select
             value={selectedPatient}
             onChange={e => setSelectedPatient(e.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-900 focus:border-indigo-500 focus:outline-none"
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-900 focus:border-purple-500 focus:outline-none"
           >
             {patients.map(patient => (
               <option key={patient.id} value={patient.id}>
@@ -629,14 +690,14 @@ export function AssetsClient() {
         </div>
 
         {/* Tabs */}
-        <div className="-mb-px flex gap-1 border-b border-gray-200">
+        <div className="-mb-px flex gap-8 border-b border-gray-200">
           {['Media', 'Quotes', 'Notes', 'Profile'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab.toLowerCase() as any)}
-              className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              className={`relative border-b-2 px-1 py-4 text-sm font-medium transition-colors ${
                 activeTab === tab.toLowerCase()
-                  ? 'border-indigo-600 text-indigo-600'
+                  ? 'border-purple-600 text-purple-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -652,47 +713,40 @@ export function AssetsClient() {
           {/* Controls */}
           <div className="border-b border-gray-200 bg-white px-6 py-4">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">
-                {selectedPatientData?.name}
-                's Library
-              </h2>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setShowGenerateImageModal(true)}
-                >
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Generate Image
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setShowGenerateMusicModal(true)}
-                >
-                  <Music className="mr-2 h-4 w-4" />
-                  Generate Music
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleUploadClick}
-                >
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload Media
-                </Button>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Media (
+                  {filterType === 'all' ? media.length : media.filter(m => m.mediaType === filterType).length}
+                  )
+                </h2>
                 <button
                   onClick={() => {
                     loadMedia();
                     loadInProgressTasks();
                   }}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                   title="Refresh media and tasks"
                 >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
+                  <RefreshCw className="h-4 w-4" />
                 </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleUploadClick}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setShowGenerateImageModal(true)}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Media
+                </Button>
               </div>
             </div>
 
@@ -704,7 +758,7 @@ export function AssetsClient() {
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Search media..."
-                  className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 text-sm focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 text-sm focus:border-purple-500 focus:outline-none"
                 />
                 <svg className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -713,7 +767,7 @@ export function AssetsClient() {
               <select
                 value={filterSource}
                 onChange={e => setFilterSource(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none"
               >
                 <option value="all">All Sources</option>
                 <option value="generated">Generated</option>
@@ -722,7 +776,7 @@ export function AssetsClient() {
               <select
                 value={filterType}
                 onChange={e => setFilterType(e.target.value as any)}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none"
               >
                 <option value="all">All Types</option>
                 <option value="image">Images</option>
@@ -732,40 +786,64 @@ export function AssetsClient() {
             </div>
 
             {/* Type Filters */}
-            <div className="flex gap-4 text-sm">
+            <div className="flex gap-2">
               <button
                 onClick={() => setFilterType('all')}
-                className={filterType === 'all' ? 'font-medium text-indigo-600' : 'text-gray-500 hover:text-gray-700'}
+                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                  filterType === 'all'
+                    ? 'bg-gray-900 text-white'
+                    : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
               >
-                All
+                All (
+                {media.length}
+                )
               </button>
               <button
                 onClick={() => setFilterType('video')}
-                className={filterType === 'video' ? 'font-medium text-indigo-600' : 'text-gray-500 hover:text-gray-700'}
+                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                  filterType === 'video'
+                    ? 'bg-gray-900 text-white'
+                    : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
               >
-                Videos
+                Videos (
+                {media.filter(m => m.mediaType === 'video').length}
+                )
               </button>
               <button
                 onClick={() => setFilterType('image')}
-                className={filterType === 'image' ? 'font-medium text-indigo-600' : 'text-gray-500 hover:text-gray-700'}
+                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                  filterType === 'image'
+                    ? 'bg-gray-900 text-white'
+                    : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
               >
-                Images
+                Images (
+                {media.filter(m => m.mediaType === 'image').length}
+                )
               </button>
               <button
                 onClick={() => setFilterType('audio')}
-                className={filterType === 'audio' ? 'font-medium text-indigo-600' : 'text-gray-500 hover:text-gray-700'}
+                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                  filterType === 'audio'
+                    ? 'bg-gray-900 text-white'
+                    : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
               >
-                Music
+                Music (
+                {media.filter(m => m.mediaType === 'audio').length}
+                )
               </button>
             </div>
           </div>
 
           {/* In-Progress Tasks */}
           {inProgressTasks.length > 0 && (
-            <div className="border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50 px-6 py-4">
+            <div className="border-b border-gray-200 bg-gradient-to-r from-purple-50 to-purple-50 px-6 py-4">
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Music className="h-5 w-5 animate-pulse text-indigo-600" />
+                  <Music className="h-5 w-5 animate-pulse text-purple-600" />
                   <h3 className="text-sm font-semibold text-gray-900">
                     Generating Music (
                     {inProgressTasks.length}
@@ -775,7 +853,7 @@ export function AssetsClient() {
                 </div>
                 <button
                   onClick={() => loadInProgressTasks()}
-                  className="rounded-lg p-1.5 text-indigo-600 transition-colors hover:bg-indigo-100"
+                  className="rounded-lg p-1.5 text-purple-600 transition-colors hover:bg-purple-100"
                   title="Refresh task status from Suno"
                   disabled={isLoadingTasks}
                 >
@@ -794,7 +872,7 @@ export function AssetsClient() {
                 {inProgressTasks.map(task => (
                   <div
                     key={task.id}
-                    className="rounded-lg border border-indigo-200 bg-white p-4 shadow-sm"
+                    className="rounded-lg border border-purple-200 bg-white p-4 shadow-sm"
                   >
                     <div className="mb-2 flex items-start justify-between">
                       <div className="flex-1">
@@ -806,7 +884,7 @@ export function AssetsClient() {
                             className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                               task.status === 'pending'
                                 ? 'bg-yellow-100 text-yellow-700'
-                                : 'bg-indigo-100 text-indigo-700'
+                                : 'bg-purple-100 text-purple-700'
                             }`}
                           >
                             {task.status === 'pending' ? '⏳ Pending' : '🎵 Processing'}
@@ -828,7 +906,7 @@ export function AssetsClient() {
                     {/* Progress Bar */}
                     <div className="relative h-2 overflow-hidden rounded-full bg-gray-200">
                       <div
-                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500 ease-out"
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-purple-500 to-purple-500 transition-all duration-500 ease-out"
                         style={{ width: `${task.progress || 0}%` }}
                       />
                     </div>
@@ -846,7 +924,7 @@ export function AssetsClient() {
           <div className="flex-1 overflow-y-auto p-6">
             {isLoadingMedia ? (
               <div className="py-12 text-center">
-                <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
                 <p className="text-sm text-gray-500">Loading media...</p>
               </div>
             ) : media.length === 0 ? (
@@ -860,37 +938,30 @@ export function AssetsClient() {
                 <p className="mt-1 text-xs text-gray-400">Try adjusting your search or filters</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="grid grid-cols-1 gap-4">
                 {media.map(item => (
                   <div
                     key={item.id}
-                    className="group relative cursor-pointer overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:border-indigo-300 hover:shadow-lg"
+                    className="group flex cursor-pointer gap-4 rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
                     onClick={() => handleMediaClick(item)}
                   >
                     {/* Thumbnail */}
-                    <div className="relative aspect-video bg-gray-100">
+                    <div className="relative h-24 w-36 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
                       {item.mediaType === 'video'
                         ? (
                             <>
                               <div className="flex h-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-                                <svg className="h-20 w-20 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                 </svg>
                               </div>
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/60 transition-colors group-hover:bg-indigo-600">
-                                  <svg className="h-7 w-7 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                <div className="rounded-full bg-white/90 p-2">
+                                  <svg className="h-5 w-5 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
                                   </svg>
                                 </div>
                               </div>
-                              {item.durationSeconds && (
-                                <div className="absolute right-2 bottom-2 rounded bg-black/70 px-2 py-0.5 text-xs text-white">
-                                  {Math.floor(item.durationSeconds / 60)}
-                                  :
-                                  {(item.durationSeconds % 60).toString().padStart(2, '0')}
-                                </div>
-                              )}
                             </>
                           )
                         : item.mediaType === 'image'
@@ -902,57 +973,63 @@ export function AssetsClient() {
                               />
                             )
                           : (
-                              <div className="flex h-full items-center justify-center">
-                                <svg className="h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                                </svg>
+                              <div className="flex h-full w-full items-center justify-center bg-purple-50">
+                                <Music className="h-12 w-12 text-purple-400" />
                               </div>
                             )}
+                    </div>
 
-                      {/* Delete button - shows on hover */}
-                      <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
+                    {/* Content */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="truncate text-base font-semibold text-gray-900">
+                            {item.title}
+                          </h3>
+                          <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
+                            {item.mediaType === 'video' && <Video className="h-4 w-4" />}
+                            {item.mediaType === 'image' && <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
+                            {item.mediaType === 'audio' && <Music className="h-4 w-4" />}
+                            <span className="capitalize">{item.mediaType}</span>
+                            <span>•</span>
+                            <span>{formatDate(item.createdAt)}</span>
+                          </div>
+                          <p className="mt-2 line-clamp-2 text-sm text-gray-600">
+                            {item.description || 'No description'}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {item.tags && item.tags.length > 0 && item.tags.map((tag: string, idx: number) => (
+                              <span
+                                key={idx}
+                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                  tag.toLowerCase() === 'generated'
+                                    ? 'border border-green-200 bg-green-50 text-green-700'
+                                    : 'bg-gray-100 text-gray-700'
+                                }`}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                            {item.sourceType && (
+                              <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+                                {item.sourceType.replace('_', ' ')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Actions Menu */}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setDeletingMedia(item);
                           }}
-                          className="rounded-lg bg-white/90 p-2 text-gray-700 shadow-sm backdrop-blur-sm transition-all hover:bg-red-50 hover:text-red-600"
-                          title="Delete media"
+                          className="flex-shrink-0 rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                          </svg>
                         </button>
-                      </div>
-                    </div>
-
-                    {/* Info */}
-                    <div className="p-4">
-                      <h3 className="mb-1 line-clamp-1 text-sm font-semibold text-gray-900">
-                        {item.title}
-                      </h3>
-                      <div className="mb-2 flex items-center gap-1.5 text-xs text-gray-500">
-                        <span className="capitalize">{item.mediaType}</span>
-                        <span>•</span>
-                        <span>{formatDate(item.createdAt)}</span>
-                      </div>
-                      {item.description && (
-                        <p className="mb-3 line-clamp-2 text-xs text-gray-600">
-                          {item.description}
-                        </p>
-                      )}
-                      <div className="flex flex-wrap gap-1">
-                        {item.tags && item.tags.length > 0 && item.tags.map((tag: string, idx: number) => (
-                          <span
-                            key={idx}
-                            className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                        {item.sourceType && (
-                          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                            {item.sourceType.replace('_', ' ')}
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -974,7 +1051,7 @@ export function AssetsClient() {
               </h2>
               <button
                 onClick={() => setShowCreateQuoteModal(true)}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
               >
                 + New Quote
               </button>
@@ -987,7 +1064,7 @@ export function AssetsClient() {
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search quotes..."
-                className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 text-sm focus:border-indigo-500 focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 text-sm focus:border-purple-500 focus:outline-none"
               />
               <svg className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -997,7 +1074,7 @@ export function AssetsClient() {
             {isLoadingQuotes
               ? (
                   <div className="py-12 text-center">
-                    <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                    <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
                     <p className="text-sm text-gray-500">Loading quotes...</p>
                   </div>
                 )
@@ -1012,7 +1089,7 @@ export function AssetsClient() {
                       {quotes.map(quote => (
                         <div
                           key={quote.id}
-                          className="rounded-lg border border-gray-200 bg-white p-6 transition-all hover:border-indigo-300 hover:shadow-sm"
+                          className="rounded-lg border border-gray-200 bg-white p-6 transition-all hover:border-purple-300 hover:shadow-sm"
                         >
                           <div className="mb-3 flex items-start justify-between">
                             <div className="flex items-center gap-3">
@@ -1035,7 +1112,7 @@ export function AssetsClient() {
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => setEditingQuote(quote)}
-                                className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
+                                className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-purple-50 hover:text-purple-600"
                                 title="Edit quote"
                               >
                                 <Pencil className="h-4 w-4" />
@@ -1085,7 +1162,7 @@ export function AssetsClient() {
               </h2>
               <button
                 onClick={() => setShowCreateNoteModal(true)}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+                className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700"
               >
                 + New Note
               </button>
@@ -1098,7 +1175,7 @@ export function AssetsClient() {
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search notes by title or content..."
-                className="w-full rounded-lg border border-gray-300 bg-white py-2 pr-4 pl-10 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 bg-white py-2 pr-4 pl-10 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
               />
               <svg className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -1108,7 +1185,7 @@ export function AssetsClient() {
             {/* Loading State */}
             {isLoadingNotes && (
               <div className="py-12 text-center">
-                <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
                 <p className="text-sm text-gray-500">Loading notes...</p>
               </div>
             )}
@@ -1131,7 +1208,7 @@ export function AssetsClient() {
                 {notesData.map(note => (
                   <div
                     key={note.id}
-                    className="rounded-lg border border-gray-200 bg-white p-6 transition-all hover:border-indigo-300 hover:shadow-md"
+                    className="rounded-lg border border-gray-200 bg-white p-6 transition-all hover:border-purple-300 hover:shadow-md"
                   >
                     {/* Note Header */}
                     <div className="mb-3 flex items-start justify-between">
@@ -1166,7 +1243,7 @@ export function AssetsClient() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setEditingNote(note)}
-                          className="text-gray-400 transition-colors hover:text-indigo-600"
+                          className="text-gray-400 transition-colors hover:text-purple-600"
                           title="Edit note"
                         >
                           <Pencil className="h-4 w-4" />
@@ -1215,7 +1292,7 @@ export function AssetsClient() {
               <div className="space-y-6">
                 {/* Profile Header Card */}
                 <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-                  <div className="h-24 bg-gradient-to-r from-indigo-500 to-purple-600" />
+                  <div className="h-24 bg-gradient-to-r from-purple-500 to-purple-600" />
                   <div className="px-6 pb-6">
                     <div className="-mt-12 mb-4 flex items-start">
                       <div className="relative">
@@ -1228,8 +1305,8 @@ export function AssetsClient() {
                               />
                             )
                           : (
-                              <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-white bg-indigo-100">
-                                <span className="text-3xl font-semibold text-indigo-600">
+                              <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-white bg-purple-100">
+                                <span className="text-3xl font-semibold text-purple-600">
                                   {selectedPatientData.name.charAt(0).toUpperCase()}
                                 </span>
                               </div>
@@ -1320,19 +1397,42 @@ export function AssetsClient() {
                 <div className="rounded-lg border border-gray-200 bg-white p-6">
                   <h3 className="mb-4 text-lg font-semibold text-gray-900">Actions</h3>
                   <div className="flex flex-wrap gap-3">
-                    <button className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200">
+                    <button
+                      onClick={() => router.push(`/patients?edit=${selectedPatient}`)}
+                      className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
+                    >
+                      <Pencil className="mr-2 inline h-4 w-4" />
                       Edit Profile
                     </button>
-                    <button className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200">
-                      Update Reference Image
+                    <button
+                      onClick={() => referenceImageInputRef.current?.click()}
+                      disabled={isUploadingReferenceImage}
+                      className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 disabled:opacity-50"
+                    >
+                      <Upload className="mr-2 inline h-4 w-4" />
+                      {isUploadingReferenceImage ? 'Uploading...' : 'Update Reference Image'}
                     </button>
-                    <button className="rounded-lg bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-100">
+                    <button
+                      onClick={() => router.push(`/sessions?patientId=${selectedPatient}`)}
+                      className="rounded-lg bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-100"
+                    >
                       View Sessions
                     </button>
-                    <button className="rounded-lg bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-100">
+                    <button
+                      onClick={() => router.push(`/pages?patientId=${selectedPatient}`)}
+                      className="rounded-lg bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-100"
+                    >
                       View Story Pages
                     </button>
                   </div>
+                  {/* Hidden file input for reference image */}
+                  <input
+                    ref={referenceImageInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleReferenceImageUpload}
+                    className="hidden"
+                  />
                 </div>
               </div>
             ) : (
@@ -1399,7 +1499,7 @@ export function AssetsClient() {
         onClose={() => setDeletingNote(null)}
         onConfirm={handleDeleteNote}
         title="Delete Note"
-        message={`Are you sure you want to delete this note? This action cannot be undone.`}
+        message="Are you sure you want to delete this note? This action cannot be undone."
         isDeleting={isDeletingNote}
       />
 
@@ -1430,7 +1530,7 @@ export function AssetsClient() {
                   type="file"
                   accept="image/*,video/*,audio/*"
                   onChange={handleFileSelect}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none"
                 />
                 {uploadFile && (
                   <p className="mt-1 text-xs text-gray-500">
@@ -1456,7 +1556,7 @@ export function AssetsClient() {
                   value={uploadTitle}
                   onChange={e => setUploadTitle(e.target.value)}
                   placeholder="Enter media title"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none"
                 />
               </div>
 
@@ -1472,7 +1572,7 @@ export function AssetsClient() {
                   onChange={e => setUploadDescription(e.target.value)}
                   placeholder="Add a description..."
                   rows={3}
-                  className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                  className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none"
                 />
               </div>
             </div>
@@ -1533,7 +1633,7 @@ export function AssetsClient() {
             model,
             useReference,
             referenceImage,
-            metadata
+            metadata,
           ) => {
             // Call the API to generate the image
             const response = await authenticatedPost('/api/ai/generate-image', user, {

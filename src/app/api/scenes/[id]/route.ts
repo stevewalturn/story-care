@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { extractGcsPath, generatePresignedUrl, generatePresignedUrlsForMedia } from '@/libs/GCS';
-import { mediaLibrary, sceneAudioTracks, sceneClips, scenes, videoProcessingJobs } from '@/models/Schema';
+import { mediaLibrary, sceneAudioTracks, sceneClips, scenes, users, videoProcessingJobs } from '@/models/Schema';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -17,19 +17,29 @@ export async function GET(
   try {
     const { id: sceneId } = await context.params;
 
-    // Get scene
-    const [scene] = await db
-      .select()
+    // Get scene with patient details
+    const [sceneWithPatient] = await db
+      .select({
+        scene: scenes,
+        patient: {
+          id: users.id,
+          name: users.name,
+          avatarUrl: users.avatarUrl,
+        },
+      })
       .from(scenes)
+      .leftJoin(users, eq(scenes.patientId, users.id))
       .where(eq(scenes.id, sceneId))
       .limit(1);
 
-    if (!scene) {
+    if (!sceneWithPatient) {
       return NextResponse.json(
         { error: 'Scene not found' },
         { status: 404 },
       );
     }
+
+    const scene = sceneWithPatient.scene;
 
     // Generate presigned URLs for scene's video and thumbnail
     const assembledVideoUrl = scene.assembledVideoUrl
@@ -72,7 +82,13 @@ export async function GET(
       media: media ? mediaMap.get(media.id) : null,
     }));
 
-    return NextResponse.json({ scene: sceneWithSignedUrls, clips });
+    // Include patient in the scene object if available
+    const sceneResponse = {
+      ...sceneWithSignedUrls,
+      patient: sceneWithPatient.patient?.id ? sceneWithPatient.patient : null,
+    };
+
+    return NextResponse.json({ scene: sceneResponse, clips });
   } catch (error) {
     console.error('Error fetching scene:', error);
     return NextResponse.json(

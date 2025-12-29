@@ -69,7 +69,7 @@ export async function GET(
             {
               method: 'GET',
               headers: {
-                Authorization: `Bearer ${sunoApiKey}`,
+                'Authorization': `Bearer ${sunoApiKey}`,
                 'Content-Type': 'application/json',
               },
             },

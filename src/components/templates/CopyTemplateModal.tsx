@@ -113,7 +113,7 @@ export function CopyTemplateModal({ template, onClose, onCopied }: CopyTemplateM
                   <span
                     className={`inline-block rounded-full px-2 py-0.5 ${
                       template.type === 'reflection'
-                        ? 'bg-indigo-100 text-indigo-700'
+                        ? 'bg-purple-100 text-purple-700'
                         : 'bg-green-100 text-green-700'
                     }`}
                   >
@@ -140,7 +140,7 @@ export function CopyTemplateModal({ template, onClose, onCopied }: CopyTemplateM
                   type="text"
                   value={customName}
                   onChange={e => setCustomName(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
                   placeholder="Enter a name for your copy..."
                   disabled={isCopying}
                   maxLength={255}
@@ -157,7 +157,7 @@ export function CopyTemplateModal({ template, onClose, onCopied }: CopyTemplateM
                   value={customDescription}
                   onChange={e => setCustomDescription(e.target.value)}
                   rows={3}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
                   placeholder="Add a custom description..."
                   disabled={isCopying}
                   maxLength={500}
@@ -172,12 +172,12 @@ export function CopyTemplateModal({ template, onClose, onCopied }: CopyTemplateM
               )}
 
               {/* Info Box */}
-              <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+              <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
                 <div className="flex items-start gap-3">
-                  <Copy className="h-5 w-5 flex-shrink-0 text-indigo-600" />
+                  <Copy className="h-5 w-5 flex-shrink-0 text-purple-600" />
                   <div>
-                    <h4 className="text-sm font-semibold text-indigo-900">About Copying</h4>
-                    <p className="mt-1 text-xs text-indigo-700">
+                    <h4 className="text-sm font-semibold text-purple-900">About Copying</h4>
+                    <p className="mt-1 text-xs text-purple-700">
                       {dbUser?.role === 'org_admin'
                         ? 'This will create an organization copy that all therapists in your organization can use. All questions and settings will be copied. Changes to your copy won\'t affect the original template.'
                         : 'This will create a private copy that only you can use and edit. All questions and settings will be copied. Changes to your copy won\'t affect the original template.'}
@@ -201,7 +201,7 @@ export function CopyTemplateModal({ template, onClose, onCopied }: CopyTemplateM
             <button
               onClick={handleCopy}
               type="button"
-              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
               disabled={isCopying || !customName.trim()}
             >
               <Copy className="h-4 w-4" />

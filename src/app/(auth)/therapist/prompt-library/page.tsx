@@ -71,7 +71,7 @@ export default function PromptLibraryPage() {
     if (!user) return;
 
     const confirmDelete = window.confirm(
-      `Are you sure you want to delete "${prompt.name}"? This action cannot be undone.`
+      `Are you sure you want to delete "${prompt.name}"? This action cannot be undone.`,
     );
 
     if (!confirmDelete) return;
@@ -133,7 +133,7 @@ export default function PromptLibraryPage() {
           <button
             onClick={() => setShowCreateModal(true)}
             type="button"
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700"
+            className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-purple-700"
           >
             <Plus className="h-4 w-4" />
             Create Prompt
@@ -150,7 +150,7 @@ export default function PromptLibraryPage() {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search prompts..."
-              className="w-full rounded-lg border border-gray-300 py-2.5 pr-4 pl-10 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 py-2.5 pr-4 pl-10 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
             />
           </div>
 
@@ -158,7 +158,7 @@ export default function PromptLibraryPage() {
           <select
             value={categoryFilter}
             onChange={e => setCategoryFilter(e.target.value)}
-            className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+            className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
           >
             <option value="all">All Categories</option>
             <option value="analysis">Analysis</option>
@@ -171,7 +171,7 @@ export default function PromptLibraryPage() {
           <select
             value={scopeFilter}
             onChange={e => setScopeFilter(e.target.value)}
-            className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+            className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
           >
             <option value="all">All Scopes</option>
             <option value="system">System</option>
@@ -320,7 +320,12 @@ function PromptCard({
 
       <div className="flex items-center justify-between text-xs text-gray-500">
         <span className="capitalize">{prompt.category}</span>
-        <span>Used {prompt.useCount} times</span>
+        <span>
+          Used
+          {prompt.useCount}
+          {' '}
+          times
+        </span>
       </div>
 
       {/* View Details Button - Always visible */}
@@ -328,7 +333,7 @@ function PromptCard({
         <button
           type="button"
           onClick={() => onView(prompt)}
-          className="w-full flex items-center justify-center gap-2 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 transition-colors"
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-purple-300 bg-purple-50 px-3 py-2 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-100"
         >
           <Eye className="h-4 w-4" />
           View Details
@@ -341,14 +346,14 @@ function PromptCard({
           <button
             type="button"
             onClick={() => onEdit(prompt)}
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
           >
             Edit
           </button>
           <button
             type="button"
             onClick={() => onDelete(prompt)}
-            className="rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 transition-colors"
+            className="rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-50"
           >
             <Trash2 className="h-4 w-4" />
           </button>

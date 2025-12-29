@@ -56,7 +56,7 @@ export default function SuperAdminDashboard() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
       </div>
     );
   }
@@ -87,8 +87,8 @@ export default function SuperAdminDashboard() {
           label="Total Organizations"
           value={metrics?.totalOrganizations || 0}
           icon={<Building2 className="h-6 w-6" />}
-          iconBg="bg-indigo-50"
-          iconColor="text-indigo-600"
+          iconBg="bg-purple-50"
+          iconColor="text-purple-600"
         />
 
         <MetricCard
@@ -121,7 +121,7 @@ export default function SuperAdminDashboard() {
         <h2 className="text-lg font-semibold text-gray-900">
           AI Credits Usage This Month
         </h2>
-        <p className="mt-4 text-3xl font-bold text-indigo-600">
+        <p className="mt-4 text-3xl font-bold text-purple-600">
           {metrics?.aiCreditsUsedThisMonth?.toLocaleString() || 0}
         </p>
         <p className="mt-1 text-sm text-gray-500">
@@ -137,9 +137,9 @@ export default function SuperAdminDashboard() {
         <div className="grid gap-4 md:grid-cols-3">
           <a
             href="/super-admin/organizations"
-            className="flex items-center rounded-lg border border-gray-200 p-4 transition-colors hover:border-indigo-300 hover:bg-indigo-50"
+            className="flex items-center rounded-lg border border-gray-200 p-4 transition-colors hover:border-purple-300 hover:bg-purple-50"
           >
-            <Building2 className="mr-3 h-8 w-8 text-indigo-600" />
+            <Building2 className="mr-3 h-8 w-8 text-purple-600" />
             <div>
               <p className="font-medium text-gray-900">Manage Organizations</p>
               <p className="text-sm text-gray-500">Create and configure orgs</p>
@@ -148,9 +148,9 @@ export default function SuperAdminDashboard() {
 
           <a
             href="/super-admin/users"
-            className="flex items-center rounded-lg border border-gray-200 p-4 transition-colors hover:border-indigo-300 hover:bg-indigo-50"
+            className="flex items-center rounded-lg border border-gray-200 p-4 transition-colors hover:border-purple-300 hover:bg-purple-50"
           >
-            <Users className="mr-3 h-8 w-8 text-indigo-600" />
+            <Users className="mr-3 h-8 w-8 text-purple-600" />
             <div>
               <p className="font-medium text-gray-900">User Management</p>
               <p className="text-sm text-gray-500">View all platform users</p>
@@ -159,9 +159,9 @@ export default function SuperAdminDashboard() {
 
           <a
             href="/super-admin/audit"
-            className="flex items-center rounded-lg border border-gray-200 p-4 transition-colors hover:border-indigo-300 hover:bg-indigo-50"
+            className="flex items-center rounded-lg border border-gray-200 p-4 transition-colors hover:border-purple-300 hover:bg-purple-50"
           >
-            <Activity className="mr-3 h-8 w-8 text-indigo-600" />
+            <Activity className="mr-3 h-8 w-8 text-purple-600" />
             <div>
               <p className="font-medium text-gray-900">Audit Logs</p>
               <p className="text-sm text-gray-500">Security and access logs</p>

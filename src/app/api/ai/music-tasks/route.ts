@@ -4,7 +4,7 @@
  */
 
 import type { NextRequest } from 'next/server';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/libs/DB';
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     const result = await db
       .insert(musicGenerationTasksSchema)
       .values({
-        taskId: taskId, // Custom task ID (not id - that's auto-generated UUID)
+        taskId, // Custom task ID (not id - that's auto-generated UUID)
         patientId: validated.patientId,
         sessionId: validated.sessionId,
         title: validated.title,
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to create music task in database');
     }
 
-    const newTask = result[0]!
+    const newTask = result[0]!;
 
     console.log('[Music Tasks] Task saved to database:', newTask.id);
 
@@ -155,22 +155,37 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get('patientId');
+    const sessionId = searchParams.get('sessionId');
     const statusParam = searchParams.get('status'); // e.g., 'pending,processing'
 
-    if (!patientId) {
+    if (!patientId && !sessionId) {
       return NextResponse.json(
-        { error: 'patientId is required' },
+        { error: 'Either patientId or sessionId is required' },
         { status: 400 },
       );
     }
 
     // Build filters
-    const filters = [eq(musicGenerationTasksSchema.patientId, patientId)];
+    const filters = [];
+
+    if (patientId) {
+      filters.push(eq(musicGenerationTasksSchema.patientId, patientId));
+    }
+
+    if (sessionId) {
+      filters.push(eq(musicGenerationTasksSchema.sessionId, sessionId));
+    }
 
     // Filter by status if provided
     if (statusParam) {
       const statuses = statusParam.split(',');
       filters.push(inArray(musicGenerationTasksSchema.status, statuses as any));
+    }
+
+    // Filter out tasks older than 1 hour (only for pending/processing tasks)
+    if (statusParam && (statusParam.includes('pending') || statusParam.includes('processing'))) {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000); // 1 hour = 3600000ms
+      filters.push(gte(musicGenerationTasksSchema.createdAt, oneHourAgo));
     }
 
     // Fetch tasks
@@ -196,7 +211,7 @@ export async function GET(request: NextRequest) {
                 {
                   method: 'GET',
                   headers: {
-                    Authorization: `Bearer ${sunoApiKey}`,
+                    'Authorization': `Bearer ${sunoApiKey}`,
                     'Content-Type': 'application/json',
                   },
                 },

@@ -98,7 +98,7 @@ export function ModulePageGenerator({
           <div className="p-6">
             <div className="space-y-6">
               {/* Module Info */}
-              <div className="rounded-lg border border-indigo-200 bg-gradient-to-br from-indigo-50 to-purple-50 p-4">
+              <div className="rounded-lg border border-purple-200 bg-gradient-to-br from-purple-50 to-purple-50 p-4">
                 <div className="mb-3 flex items-center gap-2">
                   <Lightbulb className="h-5 w-5 text-amber-500" />
                   <span className="text-sm font-semibold text-gray-900">Treatment Protocol</span>
@@ -158,7 +158,7 @@ export function ModulePageGenerator({
                       type="text"
                       value={customTitle}
                       onChange={e => setCustomTitle(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
                       placeholder="e.g., Your Journey of Resilience"
                     />
                   </div>
@@ -170,7 +170,7 @@ export function ModulePageGenerator({
                       id="includeMedia"
                       checked={includeMedia}
                       onChange={e => setIncludeMedia(e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                     />
                     <label htmlFor="includeMedia" className="text-sm text-gray-700">
                       Include media assets from session
@@ -184,7 +184,7 @@ export function ModulePageGenerator({
                       id="sendNotification"
                       checked={sendNotification}
                       onChange={e => setSendNotification(e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                     />
                     <label htmlFor="sendNotification" className="text-sm text-gray-700">
                       Send email notification to patient
@@ -201,7 +201,7 @@ export function ModulePageGenerator({
                         value={customMessage}
                         onChange={e => setCustomMessage(e.target.value)}
                         rows={3}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
                         placeholder="Add a personal message for the patient..."
                       />
                     </div>
@@ -231,7 +231,7 @@ export function ModulePageGenerator({
             <button
               onClick={handleGenerate}
               type="button"
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
               disabled={generating || !customTitle}
             >
               {generating ? (

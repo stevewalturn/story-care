@@ -5,14 +5,14 @@
 
 'use client';
 
-import { useVideoJobPolling } from '@/hooks/useVideoJobPolling';
 import { CheckCircle, Loader2, XCircle } from 'lucide-react';
+import { useVideoJobPolling } from '@/hooks/useVideoJobPolling';
 
-interface VideoProcessingStatusProps {
+type VideoProcessingStatusProps = {
   sceneId: string;
   onComplete?: (videoUrl: string, thumbnailUrl?: string) => void;
   onError?: (error: string) => void;
-}
+};
 
 export function VideoProcessingStatus({
   sceneId,
@@ -69,7 +69,10 @@ export function VideoProcessingStatus({
         <div className="mb-4">
           <div className="mb-2 flex items-center justify-between text-sm">
             <span className="text-gray-600">{job.currentStep || 'Processing...'}</span>
-            <span className="font-medium text-gray-900">{job.progress}%</span>
+            <span className="font-medium text-gray-900">
+              {job.progress}
+              %
+            </span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
             <div
@@ -111,7 +114,10 @@ export function VideoProcessingStatus({
           {job.durationSeconds && (
             <div className="flex items-start gap-2">
               <span className="font-medium text-gray-700">Duration:</span>
-              <span className="text-gray-600">{job.durationSeconds}s</span>
+              <span className="text-gray-600">
+                {job.durationSeconds}
+                s
+              </span>
             </div>
           )}
         </div>
@@ -162,14 +168,14 @@ export function VideoProcessingStatus({
               href={job.assembledVideoUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+              className="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:outline-none"
             >
               View Video
             </a>
             <a
               href={job.assembledVideoUrl}
               download
-              className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+              className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:outline-none"
             >
               Download
             </a>

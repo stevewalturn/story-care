@@ -1,6 +1,6 @@
+import { desc, eq } from 'drizzle-orm';
 import { db } from './src/libs/DB';
 import { aiChatMessagesSchema } from './src/models/Schema';
-import { desc, eq } from 'drizzle-orm';
 
 async function diagnoseMessageFormat() {
   try {

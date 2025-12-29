@@ -56,7 +56,9 @@ export async function requireAuth(
     const user = await verifyIdToken(token);
 
     // SECURITY: Require email verification for all authenticated requests
-    if (!user.emailVerified) {
+    // Skip in development mode for easier testing
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    if (!isDevelopment && !user.emailVerified) {
       throw new Error('Email verification required. Please verify your email before accessing the platform.');
     }
 

@@ -5,8 +5,8 @@
  * Shows full template details including all questions
  */
 
-import { CheckCircle, FileText, X } from 'lucide-react';
-import { useEffect } from 'react';
+import { CheckCircle, FileText, Trash2, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 type QuestionType = 'open_text' | 'multiple_choice' | 'scale' | 'emotion';
@@ -33,6 +33,7 @@ type Template = {
   scope: string;
   questions: Question[];
   useCount: number;
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -40,10 +41,33 @@ type Template = {
 type ViewTemplateDetailsModalProps = {
   template: Template;
   scopeLabel: string;
+  currentUserId?: string;
   onClose: () => void;
+  onDelete?: (templateId: string) => Promise<void>;
 };
 
-export function ViewTemplateDetailsModal({ template, scopeLabel, onClose }: ViewTemplateDetailsModalProps) {
+export function ViewTemplateDetailsModal({ template, scopeLabel, currentUserId, onClose, onDelete }: ViewTemplateDetailsModalProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Check if current user can delete this template (owns it and it's private)
+  const canDelete = onDelete && currentUserId && template.createdBy === currentUserId && template.scope === 'private';
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    setIsDeleting(true);
+    try {
+      await onDelete(template.id);
+      onClose();
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      alert('Failed to delete template. Please try again.');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   const categoryColors: Record<string, string> = {
     'narrative': 'bg-purple-100 text-purple-700',
     'emotion': 'bg-pink-100 text-pink-700',
@@ -98,7 +122,7 @@ export function ViewTemplateDetailsModal({ template, scopeLabel, onClose }: View
                 <span
                   className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${
                     template.type === 'reflection'
-                      ? 'bg-indigo-100 text-indigo-700'
+                      ? 'bg-purple-100 text-purple-700'
                       : 'bg-green-100 text-green-700'
                   }`}
                 >
@@ -157,7 +181,7 @@ export function ViewTemplateDetailsModal({ template, scopeLabel, onClose }: View
                   {template.questions
                     .sort((a, b) => a.order - b.order)
                     .map((question, index) => (
-                      <div key={question.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                      <div key={question.id || `question-${index}`} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                         <div className="mb-2 flex items-start justify-between">
                           <div className="flex-1">
                             <div className="mb-1 flex items-center gap-2">
@@ -238,17 +262,67 @@ export function ViewTemplateDetailsModal({ template, scopeLabel, onClose }: View
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between border-t border-gray-200 px-6 py-4">
+            <div>
+              {canDelete && (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  type="button"
+                  disabled={isDeleting}
+                  className="flex items-center gap-2 rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Template
+                </button>
+              )}
+            </div>
             <button
               onClick={onClose}
               type="button"
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
             >
               Close
             </button>
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
+          <div className="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Delete Template?</h3>
+            </div>
+            <p className="mb-6 text-sm text-gray-600">
+              Are you sure you want to delete "
+              {template.title}
+              "? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                type="button"
+                disabled={isDeleting}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                type="button"
+                disabled={isDeleting}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 

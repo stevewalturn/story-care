@@ -110,7 +110,7 @@ export function SpeakerLabeling({
   };
 
   const [speakers, setSpeakers] = useState<Speaker[]>(() =>
-    getAutoAssignedSpeakers(initialSpeakers)
+    getAutoAssignedSpeakers(initialSpeakers),
   );
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [mergeMode, setMergeMode] = useState(false);
@@ -157,7 +157,7 @@ export function SpeakerLabeling({
 
   const handleTypeChange = (speakerId: string, type: string) => {
     setSpeakers(prev =>
-      prev.map(s => {
+      prev.map((s) => {
         if (s.id === speakerId) {
           const newType = type as Speaker['type'];
           // Auto-populate name and userId when type changes
@@ -185,7 +185,7 @@ export function SpeakerLabeling({
 
   const handleNameChange = (speakerId: string, value: string) => {
     setSpeakers(prev =>
-      prev.map(s => {
+      prev.map((s) => {
         if (s.id === speakerId) {
           // For group members, value is userId
           if (s.type === 'group_member') {
@@ -443,182 +443,252 @@ export function SpeakerLabeling({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Label Speakers</h2>
-          <p className="mt-1 text-sm text-gray-600">
-            Identify each speaker from the session transcript
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            onClick={handleRetrySpeakerLabeling}
-            disabled={isRetrying}
-          >
-            <RefreshCw className={`mr-2 h-4 w-4 ${isRetrying ? 'animate-spin' : ''}`} />
-            {isRetrying ? 'Retrying...' : 'Retry Speaker Labeling'}
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => setMergeMode(!mergeMode)}
-          >
-            {mergeMode ? 'Cancel Merge' : 'Merge Mode'}
-          </Button>
-          {mergeMode && selectedForMerge.length >= 2 && (
-            <Button variant="secondary" onClick={handleMerge}>
-              Merge
-              {' '}
-              {selectedForMerge.length}
-              {' '}
-              Speakers
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Speaker Cards */}
-      <div className="space-y-4">
-        {speakers.map((speaker) => {
-          const isSelected = selectedForMerge.includes(speaker.id);
-          return (
-            <div
-              key={speaker.id}
-              className={`rounded-lg border p-4 transition-all duration-200 ${
-                mergeMode
-                  ? isSelected
-                    ? 'border-indigo-500 bg-indigo-50 shadow-md'
-                    : 'cursor-pointer border-gray-200 hover:border-indigo-300 hover:shadow-sm'
-                  : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-              }`}
-              onClick={() => mergeMode && toggleMergeSelection(speaker.id)}
+    <div className="min-h-screen bg-gray-900 p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-50">Label Speakers</h2>
+            <p className="mt-1 text-sm text-gray-300">
+              Identify each speaker from the session transcript
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              onClick={handleRetrySpeakerLabeling}
+              disabled={isRetrying}
             >
-              <div className="flex items-start gap-4">
-                {/* Avatar */}
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 overflow-hidden">
-                  {getDisplayAvatar(speaker) && !imageErrors.has(speaker.id)
-                    ? (
-                        <img
-                          src={getDisplayAvatar(speaker)}
-                          alt={speaker.name || speaker.label}
-                          className="h-full w-full object-cover"
-                          onError={() => handleImageError(speaker.id)}
-                        />
-                      )
-                    : speaker.type === 'therapist'
-                      ? (
-                          <User className="h-6 w-6 text-gray-600" />
-                        )
-                      : speaker.type === 'group_member'
-                        ? (
-                            <Users className="h-6 w-6 text-gray-600" />
-                          )
-                        : (
-                            <span className="text-lg font-semibold text-gray-600">
-                              {speaker.label.replace('Speaker ', 'S')}
-                            </span>
-                          )}
-                </div>
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRetrying ? 'animate-spin' : ''}`} />
+              {isRetrying ? 'Retrying...' : 'Retry Speaker Labeling'}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setMergeMode(!mergeMode)}
+            >
+              {mergeMode ? 'Cancel Merge' : 'Merge Mode'}
+            </Button>
+            {mergeMode && selectedForMerge.length >= 2 && (
+              <Button variant="secondary" onClick={handleMerge}>
+                Merge
+                {' '}
+                {selectedForMerge.length}
+                {' '}
+                Speakers
+              </Button>
+            )}
+          </div>
+        </div>
 
-                {/* Speaker Info */}
-                <div className="min-w-0 flex-1">
-                  <div className="mb-3 flex items-center gap-3">
-                    <span className="text-sm font-medium text-gray-700">
-                      {speaker.label}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {speaker.utteranceCount}
-                      {' '}
-                      utterances •
-                      {formatDuration(speaker.totalDuration)}
-                    </span>
-                  </div>
+        {/* Info Banner */}
+        <div className="flex items-start gap-3 rounded-lg border border-purple-900/30 bg-purple-900/20 p-4">
+          <svg className="mt-0.5 h-5 w-5 flex-shrink-0 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+          <div className="flex-1">
+            <p className="text-sm text-purple-300">
+              <strong className="font-semibold">Tip:</strong>
+              {' '}
+              Listen to each speaker's audio sample, then assign their role and name. Use the Previous/Next buttons to navigate between segments.
+            </p>
+          </div>
+        </div>
 
-                  {/* Controls */}
-                  {!mergeMode && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <Dropdown
-                        value={speaker.type || ''}
-                        onChange={value => handleTypeChange(speaker.id, value)}
-                        options={speakerTypeOptions}
-                        placeholder="Select type..."
-                      />
-                      {speaker.type
-                        ? (
-                            <Dropdown
-                              value={speaker.name}
-                              onChange={value => handleNameChange(speaker.id, value)}
-                              options={getNameOptions(speaker.type)}
-                              placeholder="Select name..."
-                            />
-                          )
-                        : (
-                            <Input
-                              value={speaker.name}
-                              onChange={e => handleNameChange(speaker.id, e.target.value)}
-                              placeholder="Enter name..."
-                              disabled
-                            />
-                          )}
+        {/* Speaker Cards */}
+        <div className="space-y-6">
+          {speakers.map((speaker) => {
+            const isSelected = selectedForMerge.includes(speaker.id);
+            return (
+              <div
+                key={speaker.id}
+                className={`rounded-lg border transition-all duration-200 ${
+                  mergeMode
+                    ? isSelected
+                      ? 'border-purple-500 bg-purple-900/20 shadow-md'
+                      : 'cursor-pointer border-gray-700 bg-gray-800 hover:border-purple-500 hover:shadow-sm'
+                    : 'border-gray-700 bg-gray-800 hover:border-gray-600 hover:shadow-sm'
+                }`}
+                onClick={() => mergeMode && toggleMergeSelection(speaker.id)}
+              >
+                {/* Card Header with Avatar and Segment Navigation */}
+                <div className="border-b border-gray-700 p-4">
+                  <div className="flex items-center justify-between">
+                    {/* Left: Avatar + Info */}
+                    <div className="flex items-center gap-4">
+                      {/* Avatar */}
+                      <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-700">
+                        {getDisplayAvatar(speaker) && !imageErrors.has(speaker.id)
+                          ? (
+                              <img
+                                src={getDisplayAvatar(speaker)}
+                                alt={speaker.name || speaker.label}
+                                className="h-full w-full object-cover"
+                                onError={() => handleImageError(speaker.id)}
+                              />
+                            )
+                          : speaker.type === 'therapist'
+                            ? (
+                                <User className="h-7 w-7 text-gray-400" />
+                              )
+                            : speaker.type === 'group_member'
+                              ? (
+                                  <Users className="h-7 w-7 text-gray-400" />
+                                )
+                              : (
+                                  <span className="text-lg font-semibold text-gray-400">
+                                    {speaker.label.replace('Speaker ', 'S')}
+                                  </span>
+                                )}
+                      </div>
+
+                      {/* Speaker Label + Stats */}
+                      <div>
+                        <h3 className="text-base font-semibold text-gray-50">
+                          {speaker.label}
+                        </h3>
+                        <p className="mt-0.5 text-xs text-gray-400">
+                          {speaker.utteranceCount}
+                          {' '}
+                          utterances •
+                          {' '}
+                          {formatDuration(speaker.totalDuration)}
+                        </p>
+                      </div>
                     </div>
-                  )}
+
+                    {/* Right: Segment Navigation Controls */}
+                    {!mergeMode && (
+                      <div className="flex items-center gap-2">
+                        {/* Previous Button */}
+                        <button
+                          type="button"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-600 bg-gray-700 text-gray-300 transition-colors hover:bg-gray-600 hover:text-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          title="Previous segment"
+                          disabled
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+
+                        {/* Play/Pause Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePlayPause(speaker.id, speaker.sampleAudioUrl);
+                          }}
+                          disabled={loadingAudio === speaker.id}
+                          className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-600 text-white transition-all hover:scale-105 hover:bg-purple-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+                          title={playingId === speaker.id ? 'Pause' : 'Play audio sample'}
+                        >
+                          {loadingAudio === speaker.id
+                            ? (
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                              )
+                            : playingId === speaker.id
+                              ? (
+                                  <Pause className="h-5 w-5" />
+                                )
+                              : (
+                                  <Play className="ml-0.5 h-5 w-5" />
+                                )}
+                        </button>
+
+                        {/* Next Button */}
+                        <button
+                          type="button"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-600 bg-gray-700 text-gray-300 transition-colors hover:bg-gray-600 hover:text-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          title="Next segment"
+                          disabled
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Play Sample Button - Enhanced */}
+                {/* Card Body */}
                 {!mergeMode && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handlePlayPause(speaker.id, speaker.sampleAudioUrl);
-                    }}
-                    disabled={loadingAudio === speaker.id}
-                    className="group relative flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 transition-all hover:scale-110 hover:bg-indigo-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
-                    title="Play audio sample"
-                  >
-                    {loadingAudio === speaker.id
-                      ? (
-                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
-                        )
-                      : playingId === speaker.id
-                        ? (
-                            <Pause className="h-5 w-5" />
-                          )
-                        : (
-                            <Play className="h-5 w-5 ml-0.5" />
-                          )}
-                    {/* Ripple effect on hover */}
-                    <span className="absolute inset-0 rounded-full bg-indigo-600 opacity-0 transition-opacity group-hover:opacity-10" />
-                  </button>
+                  <div className="space-y-4 p-4">
+                    {/* Sample Text Preview */}
+                    <div className="rounded-lg border border-gray-700 bg-gray-900/50 p-3">
+                      <p className="mb-2 text-xs font-medium text-gray-400">Sample Text:</p>
+                      <p className="text-sm leading-relaxed text-gray-300">
+                        "This is a sample utterance from the speaker. In the actual implementation, this would show a real excerpt from the transcript..."
+                      </p>
+                    </div>
+
+                    {/* Two-Column Grid for Type and Name */}
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Type Dropdown */}
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-gray-400">
+                          Type
+                        </label>
+                        <Dropdown
+                          value={speaker.type || ''}
+                          onChange={value => handleTypeChange(speaker.id, value)}
+                          options={speakerTypeOptions}
+                          placeholder="Select type..."
+                        />
+                      </div>
+
+                      {/* Name Dropdown/Input */}
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-gray-400">
+                          Name
+                        </label>
+                        {speaker.type
+                          ? (
+                              <Dropdown
+                                value={speaker.name}
+                                onChange={value => handleNameChange(speaker.id, value)}
+                                options={getNameOptions(speaker.type)}
+                                placeholder="Select name..."
+                              />
+                            )
+                          : (
+                              <Input
+                                value={speaker.name}
+                                onChange={e => handleNameChange(speaker.id, e.target.value)}
+                                placeholder="Enter name..."
+                                disabled
+                              />
+                            )}
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
 
-      {/* Actions */}
-      <div className="flex items-center justify-between border-t pt-4">
-        <Button variant="ghost" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button
-          variant="primary"
-          onClick={() => onSave(speakers)}
-          disabled={!isComplete}
-        >
-          Save & Continue
-        </Button>
-      </div>
+        {/* Actions */}
+        <div className="flex items-center justify-between border-t border-gray-700 pt-6">
+          <Button variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => onSave(speakers)}
+            disabled={!isComplete}
+          >
+            Save & Continue
+          </Button>
+        </div>
 
-      {/* Progress */}
-      {!isComplete && (
-        <p className="text-center text-sm text-gray-500">
-          Please label all speakers before continuing
-        </p>
-      )}
+        {/* Progress */}
+        {!isComplete && (
+          <p className="text-center text-sm text-gray-400">
+            Please label all speakers before continuing
+          </p>
+        )}
+      </div>
     </div>
   );
 }

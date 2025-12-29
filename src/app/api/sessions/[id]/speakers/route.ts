@@ -1,30 +1,26 @@
 import type { NextRequest } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { generatePresignedUrl } from '@/libs/GCS';
-import { groupMembersSchema, sessionsSchema, speakers, transcripts, users } from '@/models/Schema';
+import { sessions, speakers, transcripts, utterances } from '@/models/Schema';
+import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 
-// GET /api/sessions/[id]/speakers - Get speakers for a session
+// GET /api/sessions/[id]/speakers - Get all speakers for a session with sample utterances
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = await params;
+    // 1. AUTHENTICATE
+    const user = await requireTherapist(request);
 
-    // Get session details including type and related users
-    const [session] = await db
-      .select({
-        id: sessionsSchema.id,
-        sessionType: sessionsSchema.sessionType,
-        therapistId: sessionsSchema.therapistId,
-        patientId: sessionsSchema.patientId,
-        groupId: sessionsSchema.groupId,
-      })
-      .from(sessionsSchema)
-      .where(eq(sessionsSchema.id, id))
-      .limit(1);
+    // 2. AWAIT PARAMS
+    const { id: sessionId } = await params;
+
+    // 3. VERIFY SESSION ACCESS
+    const session = await db.query.sessions.findFirst({
+      where: eq(sessions.id, sessionId),
+    });
 
     if (!session) {
       return NextResponse.json(
@@ -33,199 +29,86 @@ export async function GET(
       );
     }
 
-    // Get therapist name and avatar
-    const [therapist] = await db
-      .select({
-        name: users.name,
-        avatarUrl: users.avatarUrl,
-        referenceImageUrl: users.referenceImageUrl,
-      })
-      .from(users)
-      .where(eq(users.id, session.therapistId))
-      .limit(1);
-
-    // Generate presigned URL for therapist avatar
-    let therapistAvatarUrl = null;
-    if (therapist) {
-      const therapistImageUrl = therapist.referenceImageUrl || therapist.avatarUrl;
-      if (therapistImageUrl) {
-        try {
-          therapistAvatarUrl = await generatePresignedUrl(therapistImageUrl, 1);
-        } catch (error) {
-          console.error('Failed to generate presigned URL for therapist avatar:', error);
-        }
-      }
-    }
-
-    // Get patient name and avatar if individual session
-    let patient = null;
-    let patientAvatarUrl = null;
-    if (session.patientId) {
-      [patient] = await db
-        .select({
-          name: users.name,
-          avatarUrl: users.avatarUrl,
-          referenceImageUrl: users.referenceImageUrl,
-        })
-        .from(users)
-        .where(eq(users.id, session.patientId))
-        .limit(1);
-
-      // Generate presigned URL for patient avatar
-      if (patient) {
-        const patientImageUrl = patient.referenceImageUrl || patient.avatarUrl;
-        if (patientImageUrl) {
-          try {
-            patientAvatarUrl = await generatePresignedUrl(patientImageUrl, 1);
-          } catch (error) {
-            console.error('Failed to generate presigned URL for patient avatar:', error);
-          }
-        }
-      }
-    }
-
-    // Get group members if group session
-    let groupMembers: any[] = [];
-    if (session.groupId) {
-      const membersData = await db
-        .select({
-          userId: groupMembersSchema.patientId,
-          userName: users.name,
-          userAvatarUrl: users.avatarUrl,
-          userReferenceImageUrl: users.referenceImageUrl,
-        })
-        .from(groupMembersSchema)
-        .leftJoin(users, eq(groupMembersSchema.patientId, users.id))
-        .where(eq(groupMembersSchema.groupId, session.groupId));
-
-      // Generate presigned URLs for group member avatars
-      groupMembers = await Promise.all(
-        membersData.map(async (member) => {
-          const imageUrl = member.userReferenceImageUrl || member.userAvatarUrl;
-          let signedAvatarUrl = null;
-
-          if (imageUrl) {
-            try {
-              signedAvatarUrl = await generatePresignedUrl(imageUrl, 1);
-            } catch (error) {
-              console.error('Failed to generate presigned URL for group member avatar:', error);
-            }
-          }
-
-          return {
-            userId: member.userId,
-            name: member.userName,
-            avatarUrl: signedAvatarUrl || undefined,
-          };
-        }),
+    // Verify therapist owns this session
+    if (user.role === 'therapist' && session.therapistId !== user.dbUserId) {
+      return NextResponse.json(
+        { error: 'Forbidden: You do not have access to this session' },
+        { status: 403 },
       );
     }
 
-    // Get the transcript for this session
-    const [transcript] = await db
-      .select()
-      .from(transcripts)
-      .where(eq(transcripts.sessionId, id))
-      .limit(1);
+    // 4. GET TRANSCRIPT ID
+    const transcript = await db.query.transcripts.findFirst({
+      where: eq(transcripts.sessionId, sessionId),
+    });
 
     if (!transcript) {
-      return NextResponse.json({
-        speakers: [],
-        sessionContext: {
-          sessionType: session.sessionType,
-          therapistName: therapist?.name || 'Therapist',
-          patientName: patient?.name || 'Patient',
-          therapistId: session.therapistId,
-          patientId: session.patientId,
-          therapistAvatarUrl,
-          patientAvatarUrl,
-        },
-        groupMembers,
-      });
+      return NextResponse.json(
+        { error: 'Transcript not found for this session' },
+        { status: 404 },
+      );
     }
 
-    // Fetch speakers with user avatar data
+    // 4. FETCH ALL SPEAKERS
     const speakersList = await db
-      .select({
-        id: speakers.id,
-        transcriptId: speakers.transcriptId,
-        speakerLabel: speakers.speakerLabel,
-        speakerType: speakers.speakerType,
-        speakerName: speakers.speakerName,
-        userId: speakers.userId,
-        totalUtterances: speakers.totalUtterances,
-        totalDurationSeconds: speakers.totalDurationSeconds,
-        createdAt: speakers.createdAt,
-        userAvatarUrl: users.avatarUrl,
-      })
+      .select()
       .from(speakers)
-      .leftJoin(users, eq(speakers.userId, users.id))
-      .where(eq(speakers.transcriptId, transcript.id))
-      .orderBy(speakers.speakerLabel);
+      .where(eq(speakers.transcriptId, transcript.id));
 
-    // Generate presigned URLs for avatars
-    const speakersWithSignedUrls = await Promise.all(
+    // 5. FETCH SAMPLE UTTERANCE FOR EACH SPEAKER
+    const speakersWithSamples = await Promise.all(
       speakersList.map(async (speaker) => {
-        const signedAvatarUrl = speaker.userAvatarUrl
-          ? await generatePresignedUrl(speaker.userAvatarUrl, 1).catch(() => null)
-          : null;
+        const [sampleUtterance] = await db
+          .select({
+            text: utterances.text,
+            startTimeSeconds: utterances.startTimeSeconds,
+            endTimeSeconds: utterances.endTimeSeconds,
+          })
+          .from(utterances)
+          .where(eq(utterances.speakerId, speaker.id))
+          .orderBy(asc(utterances.sequenceNumber))
+          .limit(1);
 
         return {
-          ...speaker,
-          avatarUrl: signedAvatarUrl || speaker.userAvatarUrl,
+          id: speaker.id,
+          speakerLabel: speaker.speakerLabel,
+          speakerType: speaker.speakerType,
+          speakerName: speaker.speakerName,
+          userId: speaker.userId,
+          totalUtterances: speaker.totalUtterances,
+          totalDurationSeconds: speaker.totalDurationSeconds,
+          sampleText: sampleUtterance?.text || null,
+          sampleStartTime: sampleUtterance?.startTimeSeconds || null,
+          sampleEndTime: sampleUtterance?.endTimeSeconds || null,
         };
       }),
     );
 
     return NextResponse.json({
-      speakers: speakersWithSignedUrls,
-      sessionContext: {
-        sessionType: session.sessionType,
-        therapistName: therapist?.name || 'Therapist',
-        patientName: patient?.name || 'Patient',
-        therapistId: session.therapistId,
-        patientId: session.patientId,
-        therapistAvatarUrl,
-        patientAvatarUrl,
-      },
-      groupMembers,
+      speakers: speakersWithSamples,
     });
   } catch (error) {
     console.error('Error fetching speakers:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch speakers' },
-      { status: 500 },
-    );
+    return handleAuthError(error);
   }
 }
 
-// PUT /api/sessions/[id]/speakers - Update/save speaker assignments
+// PUT /api/sessions/[id]/speakers - Update speaker assignments
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = await params;
-    const body = await request.json();
-    const { speakers: speakersData } = body;
+    // 1. AUTHENTICATE
+    const user = await requireTherapist(request);
 
-    if (!Array.isArray(speakersData)) {
-      return NextResponse.json(
-        { error: 'speakers must be an array' },
-        { status: 400 },
-      );
-    }
+    // 2. AWAIT PARAMS
+    const { id: sessionId } = await params;
 
-    // Get session details for auto-linking
-    const [session] = await db
-      .select({
-        therapistId: sessionsSchema.therapistId,
-        patientId: sessionsSchema.patientId,
-        sessionType: sessionsSchema.sessionType,
-      })
-      .from(sessionsSchema)
-      .where(eq(sessionsSchema.id, id))
-      .limit(1);
+    // 3. VERIFY SESSION ACCESS
+    const session = await db.query.sessions.findFirst({
+      where: eq(sessions.id, sessionId),
+    });
 
     if (!session) {
       return NextResponse.json(
@@ -234,93 +117,62 @@ export async function PUT(
       );
     }
 
-    // First get the transcript for this session
-    const [transcript] = await db
-      .select()
-      .from(transcripts)
-      .where(eq(transcripts.sessionId, id))
-      .limit(1);
-
-    if (!transcript) {
+    // Verify therapist owns this session
+    if (user.role === 'therapist' && session.therapistId !== user.dbUserId) {
       return NextResponse.json(
-        { error: 'No transcript found for this session' },
-        { status: 404 },
+        { error: 'Forbidden: You do not have access to this session' },
+        { status: 403 },
       );
     }
 
-    // Update existing speakers instead of deleting and recreating
-    // This preserves the speaker IDs that utterances reference
-    if (speakersData.length > 0) {
-      await Promise.all(
-        speakersData.map(async (speaker) => {
-          // Each speaker should have an id from the client
-          if (speaker.id) {
-            // Auto-link userId for individual sessions based on speakerType
-            let userId = speaker.userId || null;
+    // 4. PARSE REQUEST BODY
+    const body = await request.json();
+    const { speakers: speakersData } = body;
 
-            if (session.sessionType === 'individual' && !userId) {
-              if (speaker.speakerType === 'therapist') {
-                userId = session.therapistId;
-              } else if (speaker.speakerType === 'patient' && session.patientId) {
-                userId = session.patientId;
-              }
-            }
+    // Debug: Log received data
+    console.log('=== RECEIVED SPEAKER UPDATE REQUEST ===');
+    console.log('Number of speakers:', speakersData?.length);
+    console.log('First speaker data:', speakersData?.[0]);
 
-            await db
-              .update(speakers)
-              .set({
-                speakerLabel: speaker.speakerLabel,
-                speakerType: speaker.speakerType,
-                speakerName: speaker.speakerName,
-                userId, // Save the userId (auto-linked or from client)
-                totalUtterances: speaker.totalUtterances || 0,
-                totalDurationSeconds: speaker.totalDurationSeconds || 0,
-              })
-              .where(eq(speakers.id, speaker.id));
-          }
-        }),
+    if (!Array.isArray(speakersData)) {
+      return NextResponse.json(
+        { error: 'Invalid speakers data' },
+        { status: 400 },
       );
     }
 
-    // Fetch updated speakers with avatar data
-    const updatedSpeakers = await db
-      .select({
-        id: speakers.id,
-        transcriptId: speakers.transcriptId,
-        speakerLabel: speakers.speakerLabel,
-        speakerType: speakers.speakerType,
-        speakerName: speakers.speakerName,
-        userId: speakers.userId,
-        totalUtterances: speakers.totalUtterances,
-        totalDurationSeconds: speakers.totalDurationSeconds,
-        createdAt: speakers.createdAt,
-        userAvatarUrl: users.avatarUrl,
-      })
-      .from(speakers)
-      .leftJoin(users, eq(speakers.userId, users.id))
-      .where(eq(speakers.transcriptId, transcript.id))
-      .orderBy(speakers.speakerLabel);
+    // 5. UPDATE EACH SPEAKER
+    for (const speakerData of speakersData) {
+      // Use userId from frontend if provided (fixes group sessions and multiple patients)
+      let userId = speakerData.userId || null;
 
-    // Generate presigned URLs for avatars
-    const speakersWithSignedUrls = await Promise.all(
-      updatedSpeakers.map(async (speaker) => {
-        const signedAvatarUrl = speaker.userAvatarUrl
-          ? await generatePresignedUrl(speaker.userAvatarUrl, 1).catch(() => null)
-          : null;
+      // Fall back to therapist resolution only if not provided by frontend
+      if (!userId && speakerData.type === 'therapist') {
+        userId = user.dbUserId;
+      }
 
-        return {
-          ...speaker,
-          avatarUrl: signedAvatarUrl || speaker.userAvatarUrl,
-        };
-      }),
-    );
+      // Update speaker record
+      const [updatedSpeaker] = await db
+        .update(speakers)
+        .set({
+          speakerType: speakerData.type,
+          speakerName: speakerData.name,
+          userId,
+        })
+        .where(eq(speakers.id, speakerData.id))
+        .returning();
 
-    return NextResponse.json({ speakers: speakersWithSignedUrls });
+      // Debug: Log what was saved
+      console.log('=== UPDATED SPEAKER ===');
+      console.log('ID:', updatedSpeaker?.id);
+      console.log('Name:', updatedSpeaker?.speakerName);
+      console.log('UserId:', updatedSpeaker?.userId);
+      console.log('Type:', updatedSpeaker?.speakerType);
+    }
+
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error saving speakers:', error);
-    return NextResponse.json(
-      { error: 'Failed to save speakers' },
-      { status: 500 },
-    );
+    console.error('Error updating speakers:', error);
+    return handleAuthError(error);
   }
 }

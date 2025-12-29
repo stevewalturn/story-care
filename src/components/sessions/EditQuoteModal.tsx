@@ -105,7 +105,7 @@ export function EditQuoteModal({
               value={quoteText}
               onChange={e => setQuoteText(e.target.value)}
               rows={6}
-              className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-purple-500 focus:outline-none"
             />
             <p className="mt-1 text-xs text-gray-500">
               {quoteText.length}
@@ -124,7 +124,7 @@ export function EditQuoteModal({
               value={tags}
               onChange={e => setTags(e.target.value)}
               placeholder="e.g., breakthrough, metaphor, resistance"
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-purple-500 focus:outline-none"
             />
             <p className="mt-1 text-xs text-gray-500">
               Separate multiple tags with commas
@@ -141,7 +141,7 @@ export function EditQuoteModal({
               onChange={e => setNotes(e.target.value)}
               placeholder="Add any notes about this quote..."
               rows={4}
-              className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-purple-500 focus:outline-none"
             />
           </div>
         </div>
@@ -159,7 +159,7 @@ export function EditQuoteModal({
             <button
               onClick={handleSave}
               disabled={isSaving || !quoteText.trim()}
-              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSaving
                 ? (

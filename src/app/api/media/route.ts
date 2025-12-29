@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
         tags: mediaLibrary.tags,
         generationPrompt: mediaLibrary.generationPrompt,
         sourceType: mediaLibrary.sourceType,
+        sceneId: mediaLibrary.sceneId,
         createdAt: mediaLibrary.createdAt,
         patientId: mediaLibrary.patientId,
         patientName: users.name,

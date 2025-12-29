@@ -89,7 +89,7 @@ export function FullscreenMediaViewer({
           {media.mediaType === 'audio' && (
             <div className="w-full max-w-2xl rounded-lg bg-white/10 p-8 backdrop-blur-sm">
               <div className="mb-6 flex items-center justify-center">
-                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-indigo-600">
+                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-purple-600">
                   <svg className="h-12 w-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                   </svg>
@@ -133,7 +133,7 @@ export function FullscreenMediaViewer({
                 </span>
               ))}
               {media.aiModel && (
-                <span className="inline-flex items-center rounded-full bg-indigo-500/20 px-2.5 py-0.5 text-xs font-medium text-indigo-300">
+                <span className="inline-flex items-center rounded-full bg-purple-500/20 px-2.5 py-0.5 text-xs font-medium text-purple-300">
                   {media.aiModel}
                 </span>
               )}

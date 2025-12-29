@@ -103,18 +103,25 @@ export function AssignModuleModal({
       <div className="relative min-h-screen px-4 py-8">
         <div className="relative mx-auto max-w-2xl rounded-xl bg-white shadow-2xl">
           {/* Header */}
-          <div className="flex items-start justify-between border-b border-gray-200 px-6 py-4">
+          <div className="flex items-start justify-between border-b border-gray-200 bg-gradient-to-r from-purple-50 to-white px-6 py-5">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">Assign Treatment Module</h2>
-              <p className="mt-1 text-sm text-gray-600">
-                Session:
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100">
+                  <svg className="h-4 w-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900">Assign Treatment Module</h2>
+              </div>
+              <p className="mt-2 text-sm text-gray-500">
+                Select a therapeutic protocol for
                 {' '}
-                <span className="font-medium">{sessionTitle}</span>
+                <span className="font-medium text-gray-700">{sessionTitle}</span>
               </p>
             </div>
             <button
               onClick={onClose}
-              className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
               type="button"
             >
               <X className="h-5 w-5" />
@@ -134,7 +141,7 @@ export function AssignModuleModal({
                   </label>
                   <div className="flex h-10 items-center rounded-lg border border-gray-300 bg-gray-50 px-3">
                     <div className="flex items-center gap-2">
-                      <svg className="h-4 w-4 animate-spin text-indigo-600" fill="none" viewBox="0 0 24 24">
+                      <svg className="h-4 w-4 animate-spin text-purple-600" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
@@ -171,29 +178,41 @@ export function AssignModuleModal({
 
                 {/* Module Details (when selected) */}
                 {selectedModule && (
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                    <div className="mb-3 flex items-center gap-2">
+                  <div className="rounded-xl border border-purple-200 bg-gradient-to-br from-purple-50 to-white p-5 shadow-sm">
+                    <div className="mb-4 flex items-center justify-between">
                       <ModuleBadge
                         moduleName={selectedModule.name}
                         domain={selectedModule.domain as any}
                         size="md"
                       />
+                      <div className="flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">
+                        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        Selected
+                      </div>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {/* Description */}
                       <div>
-                        <h4 className="mb-1 text-sm font-semibold text-gray-900">
+                        <h4 className="mb-1.5 text-sm font-semibold text-gray-900">
                           Therapeutic Aim
                         </h4>
-                        <p className="text-sm text-gray-700">{selectedModule.description}</p>
+                        <p className="text-sm leading-relaxed text-gray-600">{selectedModule.description}</p>
                       </div>
 
                       {/* Features */}
-                      <div className="flex flex-wrap gap-3 pt-2">
-                        <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                          <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+                      <div className="flex flex-wrap gap-2 border-t border-purple-100 pt-4">
+                        <div className="flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700">
+                          <Lightbulb className="h-3.5 w-3.5" />
                           <span>AI-Guided Analysis</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700">
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                          </svg>
+                          <span>Structured Protocol</span>
                         </div>
                       </div>
                     </div>
@@ -209,7 +228,7 @@ export function AssignModuleModal({
                     value={notes}
                     onChange={e => setNotes(e.target.value)}
                     rows={3}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
                     placeholder="Add any notes about why this module was chosen or session context..."
                   />
                 </div>
@@ -225,11 +244,11 @@ export function AssignModuleModal({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-end gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4">
             <button
               onClick={onClose}
               type="button"
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
               disabled={assigning}
             >
               Cancel
@@ -237,10 +256,33 @@ export function AssignModuleModal({
             <button
               onClick={handleAssign}
               type="button"
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={!selectedModule || assigning || isLoadingModule}
             >
-              {assigning ? 'Assigning...' : isLoadingModule ? 'Loading...' : currentModuleId ? 'Update Module' : 'Assign Module'}
+              {assigning ? (
+                <>
+                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Assigning...</span>
+                </>
+              ) : isLoadingModule ? (
+                <>
+                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Loading...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>{currentModuleId ? 'Update Module' : 'Assign Module'}</span>
+                </>
+              )}
             </button>
           </div>
         </div>

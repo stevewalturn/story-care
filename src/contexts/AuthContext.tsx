@@ -21,10 +21,12 @@ export type DbUser = {
   id: string; // Database UUID
   uid: string; // Firebase UID
   email: string | null;
+  name: string | null; // User's display name
   emailVerified: boolean;
   role: 'super_admin' | 'org_admin' | 'therapist' | 'patient';
   organizationId: string | null;
   status?: 'invited' | 'active' | 'inactive';
+  avatarUrl?: string | null;
 };
 
 type AuthContextType = {
@@ -57,9 +59,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const tokenRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // HIPAA COMPLIANCE: 15-minute idle timeout
-  const IDLE_TIMEOUT = 15 * 60 * 1000; // 15 minutes in milliseconds
+  // Extended idle timeout: 6 hours
+  const IDLE_TIMEOUT = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
+  // Token refresh interval: 50 minutes (before 1-hour Firebase token expiration)
+  const TOKEN_REFRESH_INTERVAL = 50 * 60 * 1000; // 50 minutes in milliseconds
 
   const handleSignOut = useCallback(async () => {
     try {
@@ -70,6 +75,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.error('Sign out error:', error);
     }
   }, [router]);
+
+  const refreshToken = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      // Force refresh the Firebase ID token
+      const freshToken = await user.getIdToken(true);
+
+      // Update session cookie with fresh token
+      await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: freshToken }),
+      });
+
+      console.log('✅ Token refreshed successfully');
+    } catch (error) {
+      console.error('Failed to refresh token:', error);
+      // If refresh fails, sign out the user
+      handleSignOut();
+    }
+  }, [user, handleSignOut]);
 
   const resetIdleTimer = useCallback(() => {
     // Clear existing timer
@@ -113,6 +140,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     };
   }, [user, resetIdleTimer]);
+
+  // Set up automatic token refresh
+  useEffect(() => {
+    if (!user) {
+      // Clear token refresh interval if user logs out
+      if (tokenRefreshIntervalRef.current) {
+        clearInterval(tokenRefreshIntervalRef.current);
+        tokenRefreshIntervalRef.current = null;
+      }
+      return;
+    }
+
+    // Refresh token immediately on mount (in case token is stale)
+    refreshToken();
+
+    // Set up interval to refresh token every 50 minutes
+    tokenRefreshIntervalRef.current = setInterval(() => {
+      refreshToken();
+    }, TOKEN_REFRESH_INTERVAL);
+
+    // Cleanup
+    return () => {
+      if (tokenRefreshIntervalRef.current) {
+        clearInterval(tokenRefreshIntervalRef.current);
+        tokenRefreshIntervalRef.current = null;
+      }
+    };
+  }, [user, refreshToken, TOKEN_REFRESH_INTERVAL]);
 
   useEffect(() => {
     const unsubscribe = onAuthChange(async (authUser) => {

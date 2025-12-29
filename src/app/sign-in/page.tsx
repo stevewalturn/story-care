@@ -137,12 +137,12 @@ function SignInForm() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-50 px-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="mb-8 text-center">
           <Link href="/" className="inline-block">
-            <h1 className="mb-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-4xl font-bold text-transparent">
+            <h1 className="mb-2 bg-gradient-to-r from-purple-600 to-purple-600 bg-clip-text text-4xl font-bold text-transparent">
               StoryCare
             </h1>
           </Link>
@@ -251,7 +251,7 @@ function SignInForm() {
               </label>
               <Link
                 href="/forgot-password"
-                className="font-medium text-indigo-600 hover:text-indigo-700"
+                className="font-medium text-purple-600 hover:text-purple-700"
               >
                 Forgot password?
               </Link>
@@ -276,7 +276,7 @@ function SignInForm() {
               <div className="w-full border-t border-gray-300" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-4 font-medium text-gray-600">
+              <span className="bg-gradient-to-br from-purple-50 via-white to-purple-50 px-4 font-medium text-gray-600">
                 Don't have an account yet?
               </span>
             </div>
@@ -286,12 +286,12 @@ function SignInForm() {
             {/* Set Up Account Card */}
             <Link
               href="/setup-account"
-              className="group rounded-xl border-2 border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-indigo-400 hover:shadow-md"
+              className="group rounded-xl border-2 border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-purple-400 hover:shadow-md"
             >
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600 transition-colors group-hover:bg-indigo-600 group-hover:text-white">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100 text-purple-600 transition-colors group-hover:bg-purple-600 group-hover:text-white">
                 <UserPlus className="h-6 w-6" />
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-gray-900 transition-colors group-hover:text-indigo-600">
+              <h3 className="mb-2 text-lg font-semibold text-gray-900 transition-colors group-hover:text-purple-600">
                 Set Up Your Account
               </h3>
               <p className="text-sm text-gray-600">

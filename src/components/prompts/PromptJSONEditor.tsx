@@ -5,19 +5,19 @@
  * Simple textarea-based JSON editor with validation and formatting
  */
 
-import { formatJSON, validatePromptJSON } from '@/utils/PromptJSONValidator';
 import type { SchemaType } from '@/config/PromptJSONTemplates';
-import { getTemplateJSON, PROMPT_JSON_TEMPLATES } from '@/config/PromptJSONTemplates';
 import { AlertCircle, Check, Sparkles, Wand2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { getTemplateJSON, PROMPT_JSON_TEMPLATES } from '@/config/PromptJSONTemplates';
+import { formatJSON, validatePromptJSON } from '@/utils/PromptJSONValidator';
 
-interface PromptJSONEditorProps {
+type PromptJSONEditorProps = {
   value: string;
   onChange: (value: string) => void;
   onValidationChange?: (isValid: boolean) => void;
   onGenerateWithAI?: () => void;
   placeholder?: string;
-}
+};
 
 export function PromptJSONEditor({
   value,
@@ -90,7 +90,7 @@ export function PromptJSONEditor({
                 />
 
                 {/* Dropdown */}
-                <div className="absolute left-0 top-full z-20 mt-2 w-80 rounded-lg border border-gray-200 bg-white shadow-lg">
+                <div className="absolute top-full left-0 z-20 mt-2 w-80 rounded-lg border border-gray-200 bg-white shadow-lg">
                   <div className="max-h-96 overflow-y-auto p-2">
                     {PROMPT_JSON_TEMPLATES.map(template => (
                       <button
@@ -114,7 +114,7 @@ export function PromptJSONEditor({
             <button
               type="button"
               onClick={onGenerateWithAI}
-              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              className="flex items-center gap-2 rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-700"
             >
               <Sparkles className="h-4 w-4" />
               Generate with AI
@@ -164,12 +164,12 @@ export function PromptJSONEditor({
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
           rows={20}
-          className={`w-full rounded-lg border px-4 py-3 font-mono text-sm focus:outline-none focus:ring-2 ${
+          className={`w-full rounded-lg border px-4 py-3 font-mono text-sm focus:ring-2 focus:outline-none ${
             validationResult?.isValid === false
               ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-500/20'
               : validationResult?.isValid === true
                 ? 'border-green-300 bg-green-50 focus:border-green-500 focus:ring-green-500/20'
-                : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20'
+                : 'border-gray-300 focus:border-purple-500 focus:ring-purple-500/20'
           }`}
           style={{
             lineHeight: '1.5',

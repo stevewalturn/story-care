@@ -7,17 +7,17 @@
  * Allows searching and filtering blocks
  */
 
-import { useState, useMemo } from 'react';
+import type { BlockCategory, BlockType } from '@/types/BuildingBlocks';
 import { Search, X } from 'lucide-react';
-import type { BlockType, BlockCategory } from '@/types/BuildingBlocks';
+import { useMemo, useState } from 'react';
 import { getAllBlockDefinitions } from '@/config/BlockDefinitions';
 
-interface BlockPaletteProps {
+type BlockPaletteProps = {
   onSelectBlock: (blockType: BlockType) => void;
   categoryFilter?: BlockCategory;
   searchQuery?: string;
   compact?: boolean;
-}
+};
 
 const CATEGORY_LABELS: Record<BlockCategory, string> = {
   media: '🎨 Media',
@@ -27,7 +27,6 @@ const CATEGORY_LABELS: Record<BlockCategory, string> = {
   action: '⚡ Actions',
   output: '📤 Output',
 };
-
 
 export default function BlockPalette({
   onSelectBlock,
@@ -56,9 +55,9 @@ export default function BlockPalette({
       const query = searchQuery.toLowerCase();
       blocks = blocks.filter(
         block =>
-          block.label.toLowerCase().includes(query) ||
-          block.description.toLowerCase().includes(query) ||
-          block.type.toLowerCase().includes(query),
+          block.label.toLowerCase().includes(query)
+          || block.description.toLowerCase().includes(query)
+          || block.type.toLowerCase().includes(query),
       );
     }
 
@@ -76,7 +75,7 @@ export default function BlockPalette({
       output: [],
     };
 
-    filteredBlocks.forEach(block => {
+    filteredBlocks.forEach((block) => {
       groups[block.category].push(block);
     });
 
@@ -96,20 +95,20 @@ export default function BlockPalette({
           >
             <div className="flex items-center gap-2">
               <span className="text-lg">
-                {block.icon === 'image' ? '🖼️' :
-                  block.icon === 'video' ? '🎬' :
-                  block.icon === 'music' ? '🎵' :
-                  block.icon === 'quote' ? '💬' :
-                  block.icon === 'file-text' ? '📝' :
-                  block.icon === 'help-circle' ? '💭' :
-                  block.icon === 'list-checks' ? '📋' :
-                  block.icon === 'film' ? '🎬' :
-                  block.icon === 'play-circle' ? '▶️' :
-                  block.icon === 'layers' ? '📚' :
-                  block.icon === 'square-stack' ? '📚' :
-                  '✨'}
+                {block.icon === 'image' ? '🖼️'
+                  : block.icon === 'video' ? '🎬'
+                    : block.icon === 'music' ? '🎵'
+                      : block.icon === 'quote' ? '💬'
+                        : block.icon === 'file-text' ? '📝'
+                          : block.icon === 'help-circle' ? '💭'
+                            : block.icon === 'list-checks' ? '📋'
+                              : block.icon === 'film' ? '🎬'
+                                : block.icon === 'play-circle' ? '▶️'
+                                  : block.icon === 'layers' ? '📚'
+                                    : block.icon === 'square-stack' ? '📚'
+                                      : '✨'}
               </span>
-              <div className="flex-1 min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-gray-900">{block.label}</p>
               </div>
             </div>
@@ -125,18 +124,18 @@ export default function BlockPalette({
       {externalSearchQuery === undefined && (
         <div className="border-b border-gray-200 bg-white p-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               value={internalSearchQuery}
-              onChange={(e) => setInternalSearchQuery(e.target.value)}
+              onChange={e => setInternalSearchQuery(e.target.value)}
               placeholder="Search blocks..."
-              className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-9 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 py-2 pr-9 pl-9 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
             />
             {internalSearchQuery && (
               <button
                 onClick={() => setInternalSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -162,7 +161,7 @@ export default function BlockPalette({
             <button
               key={category}
               onClick={() => setActiveCategory(category)}
-              className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
                 activeCategory === category
                   ? 'bg-blue-100 text-blue-700'
                   : 'text-gray-600 hover:bg-gray-100'
@@ -191,13 +190,13 @@ export default function BlockPalette({
         ) : activeCategory === 'all' ? (
           // Show grouped by category
           <div className="space-y-4">
-            {categories.map(category => {
+            {categories.map((category) => {
               const categoryBlocks = groupedBlocks[category];
               if (categoryBlocks.length === 0) return null;
 
               return (
                 <div key={category}>
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <h3 className="mb-2 text-xs font-semibold tracking-wider text-gray-500 uppercase">
                     {CATEGORY_LABELS[category]}
                   </h3>
                   <div className="space-y-2">
@@ -208,23 +207,23 @@ export default function BlockPalette({
                         className="w-full rounded-lg border border-gray-200 bg-white p-3 text-left transition-all hover:border-blue-400 hover:shadow-sm"
                       >
                         <div className="flex items-start gap-2">
-                          <span className="text-lg flex-shrink-0">
-                            {block.icon === 'image' ? '🖼️' :
-                              block.icon === 'video' ? '🎬' :
-                              block.icon === 'music' ? '🎵' :
-                              block.icon === 'quote' ? '💬' :
-                              block.icon === 'file-text' ? '📝' :
-                              block.icon === 'help-circle' ? '💭' :
-                              block.icon === 'list-checks' ? '📋' :
-                              block.icon === 'film' ? '🎬' :
-                              block.icon === 'play-circle' ? '▶️' :
-                              block.icon === 'layers' ? '📚' :
-                              block.icon === 'square-stack' ? '📚' :
-                              '✨'}
+                          <span className="flex-shrink-0 text-lg">
+                            {block.icon === 'image' ? '🖼️'
+                              : block.icon === 'video' ? '🎬'
+                                : block.icon === 'music' ? '🎵'
+                                  : block.icon === 'quote' ? '💬'
+                                    : block.icon === 'file-text' ? '📝'
+                                      : block.icon === 'help-circle' ? '💭'
+                                        : block.icon === 'list-checks' ? '📋'
+                                          : block.icon === 'film' ? '🎬'
+                                            : block.icon === 'play-circle' ? '▶️'
+                                              : block.icon === 'layers' ? '📚'
+                                                : block.icon === 'square-stack' ? '📚'
+                                                  : '✨'}
                           </span>
-                          <div className="flex-1 min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium text-gray-900">{block.label}</p>
-                            <p className="mt-0.5 text-xs text-gray-500 line-clamp-2">
+                            <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">
                               {block.description}
                             </p>
                           </div>
@@ -246,23 +245,23 @@ export default function BlockPalette({
                 className="w-full rounded-lg border border-gray-200 bg-white p-3 text-left transition-all hover:border-blue-400 hover:shadow-sm"
               >
                 <div className="flex items-start gap-2">
-                  <span className="text-lg flex-shrink-0">
-                    {block.icon === 'image' ? '🖼️' :
-                      block.icon === 'video' ? '🎬' :
-                      block.icon === 'music' ? '🎵' :
-                      block.icon === 'quote' ? '💬' :
-                      block.icon === 'file-text' ? '📝' :
-                      block.icon === 'help-circle' ? '💭' :
-                      block.icon === 'list-checks' ? '📋' :
-                      block.icon === 'film' ? '🎬' :
-                      block.icon === 'play-circle' ? '▶️' :
-                      block.icon === 'layers' ? '📚' :
-                      block.icon === 'square-stack' ? '📚' :
-                      '✨'}
+                  <span className="flex-shrink-0 text-lg">
+                    {block.icon === 'image' ? '🖼️'
+                      : block.icon === 'video' ? '🎬'
+                        : block.icon === 'music' ? '🎵'
+                          : block.icon === 'quote' ? '💬'
+                            : block.icon === 'file-text' ? '📝'
+                              : block.icon === 'help-circle' ? '💭'
+                                : block.icon === 'list-checks' ? '📋'
+                                  : block.icon === 'film' ? '🎬'
+                                    : block.icon === 'play-circle' ? '▶️'
+                                      : block.icon === 'layers' ? '📚'
+                                        : block.icon === 'square-stack' ? '📚'
+                                          : '✨'}
                   </span>
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-900">{block.label}</p>
-                    <p className="mt-0.5 text-xs text-gray-500 line-clamp-2">
+                    <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">
                       {block.description}
                     </p>
                   </div>

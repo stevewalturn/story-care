@@ -1,20 +1,21 @@
 'use client';
 
-import { Plus } from 'lucide-react';
 import type { SceneCardData } from './SceneCard';
+import { Plus } from 'lucide-react';
 import { SceneCard } from './SceneCard';
 
-interface SceneCardSequenceProps {
+type SceneCardSequenceProps = {
   scenes: SceneCardData[];
   onUpdateScene: (id: string, updates: Partial<SceneCardData>) => void;
   onDeleteScene: (id: string) => void;
   onOptimizePrompt: (id: string) => void;
   onAddScene?: () => void;
   onGenerateImage?: (id: string) => void;
+  onUploadImage?: (id: string, file: File) => void;
   onAnimateVideo?: (id: string) => void;
   maxScenes?: number;
   isGeneratingAnyImage?: boolean;
-}
+};
 
 export function SceneCardSequence({
   scenes,
@@ -23,6 +24,7 @@ export function SceneCardSequence({
   onOptimizePrompt,
   onAddScene,
   onGenerateImage,
+  onUploadImage,
   onAnimateVideo,
   maxScenes = 5,
   isGeneratingAnyImage,
@@ -32,7 +34,7 @@ export function SceneCardSequence({
   return (
     <div className="w-full">
       {/* Horizontal scrollable container */}
-      <div className="overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+      <div className="scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100 overflow-x-auto pb-4">
         <div className="flex gap-6" style={{ minWidth: 'min-content' }}>
           {/* Scene Cards */}
           {scenes.map(scene => (
@@ -47,6 +49,7 @@ export function SceneCardSequence({
                 onDelete={onDeleteScene}
                 onOptimize={onOptimizePrompt}
                 onGenerateImage={onGenerateImage}
+                onUploadImage={onUploadImage}
                 onAnimateVideo={onAnimateVideo}
                 isGeneratingAnyImage={isGeneratingAnyImage}
               />
@@ -61,7 +64,7 @@ export function SceneCardSequence({
             >
               <button
                 onClick={onAddScene}
-                className="flex h-full min-h-[400px] w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 transition-all hover:border-indigo-400 hover:bg-indigo-50"
+                className="flex h-full min-h-[400px] w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 transition-all hover:border-purple-400 hover:bg-purple-50"
               >
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-md">
                   <Plus className="h-8 w-8 text-gray-400" />
@@ -70,7 +73,12 @@ export function SceneCardSequence({
                   Add Another Scene
                 </p>
                 <p className="mt-1 text-xs text-gray-500">
-                  {scenes.length} / {maxScenes} scenes
+                  {scenes.length}
+                  {' '}
+                  /
+                  {maxScenes}
+                  {' '}
+                  scenes
                 </p>
               </button>
             </div>

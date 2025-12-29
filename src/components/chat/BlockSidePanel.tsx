@@ -7,18 +7,18 @@
  * Allows dragging blocks into chat for quick prompt creation
  */
 
-import { useState } from 'react';
-import { X, ChevronLeft, ChevronRight, Blocks } from 'lucide-react';
 import type { BlockType, PromptWithBlocks } from '@/types/BuildingBlocks';
+import { Blocks, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useState } from 'react';
 import { getAllBlockDefinitions } from '@/config/BlockDefinitions';
 
-interface BlockSidePanelProps {
+type BlockSidePanelProps = {
   isOpen: boolean;
   onClose: () => void;
   onSelectBlock: (blockType: BlockType) => void;
   onSelectPrompt?: (prompt: PromptWithBlocks) => void;
   savedPrompts?: PromptWithBlocks[];
-}
+};
 
 export default function BlockSidePanel({
   isOpen,
@@ -36,7 +36,7 @@ export default function BlockSidePanel({
 
   if (isMinimized) {
     return (
-      <div className="fixed right-0 top-1/2 z-40 -translate-y-1/2">
+      <div className="fixed top-1/2 right-0 z-40 -translate-y-1/2">
         <button
           onClick={() => setIsMinimized(false)}
           className="flex items-center gap-2 rounded-l-lg border border-r-0 border-gray-300 bg-white px-2 py-3 shadow-lg transition-colors hover:bg-gray-50"
@@ -58,7 +58,7 @@ export default function BlockSidePanel({
       />
 
       {/* Side Panel */}
-      <div className="fixed right-0 top-0 z-40 flex h-full w-80 flex-col border-l border-gray-300 bg-white shadow-2xl">
+      <div className="fixed top-0 right-0 z-40 flex h-full w-80 flex-col border-l border-gray-300 bg-white shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
           <div className="flex items-center gap-2">
@@ -116,10 +116,10 @@ export default function BlockSidePanel({
         <div className="flex-1 overflow-y-auto p-4">
           {activeTab === 'blocks' ? (
             <div className="space-y-2">
-              <p className="text-xs text-gray-500 mb-3">
+              <p className="mb-3 text-xs text-gray-500">
                 Click a block to insert it into your prompt
               </p>
-              {blocks.map((block) => (
+              {blocks.map(block => (
                 <button
                   key={block.id}
                   onClick={() => {
@@ -129,7 +129,7 @@ export default function BlockSidePanel({
                   className="w-full rounded-lg border border-gray-200 bg-white p-3 text-left transition-all hover:border-blue-400 hover:bg-blue-50 hover:shadow-sm"
                 >
                   <div className="flex items-start gap-2">
-                    <span className="text-lg flex-shrink-0">
+                    <span className="flex-shrink-0 text-lg">
                       {block.icon === 'image'
                         ? '🖼️'
                         : block.icon === 'video'
@@ -152,9 +152,9 @@ export default function BlockSidePanel({
                                           ? '📚'
                                           : '✨'}
                     </span>
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-gray-900">{block.label}</p>
-                      <p className="mt-0.5 text-xs text-gray-500 line-clamp-2">
+                      <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">
                         {block.description}
                       </p>
                       <div className="mt-1.5">
@@ -188,10 +188,10 @@ export default function BlockSidePanel({
                 </div>
               ) : (
                 <>
-                  <p className="text-xs text-gray-500 mb-3">
+                  <p className="mb-3 text-xs text-gray-500">
                     Click a prompt to use it in chat
                   </p>
-                  {savedPrompts.map((prompt) => (
+                  {savedPrompts.map(prompt => (
                     <button
                       key={prompt.id}
                       onClick={() => {
@@ -202,11 +202,11 @@ export default function BlockSidePanel({
                       className="w-full rounded-lg border border-gray-200 bg-white p-3 text-left transition-all hover:border-blue-400 hover:bg-blue-50 hover:shadow-sm"
                     >
                       <div className="flex items-start gap-2">
-                        <span className="text-lg flex-shrink-0">✨</span>
-                        <div className="flex-1 min-w-0">
+                        <span className="flex-shrink-0 text-lg">✨</span>
+                        <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-gray-900">{prompt.name}</p>
                           {prompt.description && (
-                            <p className="mt-0.5 text-xs text-gray-500 line-clamp-2">
+                            <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">
                               {prompt.description}
                             </p>
                           )}
@@ -226,7 +226,9 @@ export default function BlockSidePanel({
                             </span>
                             {prompt.blocks && prompt.blocks.length > 0 && (
                               <span className="text-xs text-gray-500">
-                                {prompt.blocks.length} block
+                                {prompt.blocks.length}
+                                {' '}
+                                block
                                 {prompt.blocks.length !== 1 ? 's' : ''}
                               </span>
                             )}
@@ -242,9 +244,11 @@ export default function BlockSidePanel({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 px-4 py-3 bg-gray-50">
+        <div className="border-t border-gray-200 bg-gray-50 px-4 py-3">
           <p className="text-xs text-gray-500">
-            <strong>Tip:</strong> Use building blocks to create structured AI outputs
+            <strong>Tip:</strong>
+            {' '}
+            Use building blocks to create structured AI outputs
             like scene cards, therapeutic notes, and media prompts.
           </p>
         </div>

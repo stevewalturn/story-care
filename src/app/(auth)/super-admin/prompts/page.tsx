@@ -101,7 +101,7 @@ export default function SuperAdminPromptsPage() {
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-purple-600">
                 <Sparkles className="h-5 w-5 text-white" />
               </div>
               <div>
@@ -111,7 +111,7 @@ export default function SuperAdminPromptsPage() {
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
               type="button"
             >
               <Plus className="h-4 w-4" />
@@ -128,7 +128,7 @@ export default function SuperAdminPromptsPage() {
               onClick={() => setActiveCategory(cat.id)}
               className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
                 activeCategory === cat.id
-                  ? 'border-indigo-600 text-indigo-600'
+                  ? 'border-purple-600 text-purple-600'
                   : 'border-transparent text-gray-600 hover:text-gray-900'
               }`}
               type="button"
@@ -137,7 +137,7 @@ export default function SuperAdminPromptsPage() {
               <span
                 className={`rounded-full px-2 py-0.5 text-xs ${
                   activeCategory === cat.id
-                    ? 'bg-indigo-100 text-indigo-600'
+                    ? 'bg-purple-100 text-purple-600'
                     : 'bg-gray-100 text-gray-600'
                 }`}
               >
@@ -156,7 +156,7 @@ export default function SuperAdminPromptsPage() {
               placeholder="Search prompts..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-9 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-9 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
             />
           </div>
         </div>
@@ -164,7 +164,7 @@ export default function SuperAdminPromptsPage() {
         {/* Content */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
           </div>
         ) : error ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4">
@@ -272,7 +272,7 @@ function SystemPromptCard({ prompt, onView, onDelete }: SystemPromptCardProps) {
           <h3 className="font-semibold text-gray-900">{prompt.name}</h3>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             {prompt.category && (
-              <span className="inline-block rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
+              <span className="inline-block rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
                 {prompt.category}
               </span>
             )}
@@ -291,7 +291,9 @@ function SystemPromptCard({ prompt, onView, onDelete }: SystemPromptCardProps) {
             )}
             {schemaType && (
               <span className="inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                📋 {formatSchemaType(schemaType)}
+                📋
+                {' '}
+                {formatSchemaType(schemaType)}
               </span>
             )}
             <span className="text-xs text-gray-500">System</span>
@@ -324,7 +326,7 @@ function SystemPromptCard({ prompt, onView, onDelete }: SystemPromptCardProps) {
       <div className="flex gap-2">
         <button
           onClick={onView}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-purple-300 bg-purple-50 px-3 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100"
           type="button"
         >
           <Eye className="h-3.5 w-3.5" />

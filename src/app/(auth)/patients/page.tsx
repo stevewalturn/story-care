@@ -147,11 +147,11 @@ export default function PatientsPage() {
   };
 
   return (
-    <div className="p-8">
+    <div className="min-h-screen bg-gray-50 p-8">
       {loading
         ? (
             <div className="py-16 text-center">
-              <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+              <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
               <p className="text-gray-500">Loading patients...</p>
             </div>
           )

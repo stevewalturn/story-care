@@ -246,19 +246,19 @@ export async function GET(
 
     <div class="label">Account Created:</div>
     <div class="value">${new Date(reportData.therapist.createdAt).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })}</div>
-
-    <div class="label">Last Login:</div>
-    <div class="value">${reportData.therapist.lastLoginAt
-    ? new Date(reportData.therapist.lastLoginAt).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-    })
-    : 'Never'}</div>
+    })}</div>
+
+    <div class="label">Last Login:</div>
+    <div class="value">${reportData.therapist.lastLoginAt
+      ? new Date(reportData.therapist.lastLoginAt).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
+      : 'Never'}</div>
   </div>
 
   <h2>Activity Metrics</h2>

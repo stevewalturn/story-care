@@ -137,7 +137,7 @@ export default function OrganizationsPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
       </div>
     );
   }
@@ -219,8 +219,8 @@ export default function OrganizationsPage() {
                     <tr key={org.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="flex items-center">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-100">
-                            <Building2 className="h-5 w-5 text-indigo-600" />
+                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
+                            <Building2 className="h-5 w-5 text-purple-600" />
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">
@@ -251,7 +251,7 @@ export default function OrganizationsPage() {
                         <div className="flex items-center justify-end gap-3">
                           <a
                             href={`/super-admin/organizations/${org.id}`}
-                            className="text-indigo-600 hover:text-indigo-900"
+                            className="text-purple-600 hover:text-purple-900"
                           >
                             Manage
                           </a>

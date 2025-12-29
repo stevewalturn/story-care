@@ -247,7 +247,7 @@ export function ScenePreviewPlayer({
             >
               {/* Progress */}
               <div
-                className="absolute top-0 left-0 h-full rounded-full bg-indigo-600"
+                className="absolute top-0 left-0 h-full rounded-full bg-purple-600"
                 style={{ width: `${(currentTime / totalDuration) * 100}%` }}
               />
 
@@ -273,7 +273,7 @@ export function ScenePreviewPlayer({
 
             <button
               onClick={togglePlayPause}
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 transition-colors hover:bg-indigo-700"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-600 transition-colors hover:bg-purple-700"
             >
               {isPlaying ? (
                 <Pause className="h-6 w-6 text-white" />

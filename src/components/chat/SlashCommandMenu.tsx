@@ -7,17 +7,17 @@
  * Allows quick insertion of command templates
  */
 
-import { useEffect, useState, useRef } from 'react';
 import type { SlashCommand } from '@/types/BuildingBlocks';
-import { SLASH_COMMANDS, filterSlashCommands } from '@/config/SlashCommands';
+import { useEffect, useRef, useState } from 'react';
+import { filterSlashCommands, SLASH_COMMANDS } from '@/config/SlashCommands';
 
-interface SlashCommandMenuProps {
+type SlashCommandMenuProps = {
   position: { x: number; y: number };
   onSelectCommand: (command: SlashCommand) => void;
   onClose: () => void;
   searchQuery: string;
   visible: boolean;
-}
+};
 
 export default function SlashCommandMenu({
   position,
@@ -122,12 +122,12 @@ export default function SlashCommandMenu({
                   : 'text-gray-700 hover:bg-gray-50'
               }`}
             >
-              <span className="text-xl flex-shrink-0">{command.icon}</span>
-              <div className="flex-1 min-w-0">
+              <span className="flex-shrink-0 text-xl">{command.icon}</span>
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm">{command.label}</span>
+                  <span className="text-sm font-medium">{command.label}</span>
                   <span
-                    className={`rounded px-1.5 py-0.5 text-xs font-mono ${
+                    className={`rounded px-1.5 py-0.5 font-mono text-xs ${
                       index === selectedIndex
                         ? 'bg-blue-100 text-blue-700'
                         : 'bg-gray-100 text-gray-600'
@@ -136,29 +136,29 @@ export default function SlashCommandMenu({
                     {command.trigger}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">{command.description}</p>
+                <p className="mt-0.5 text-xs text-gray-500">{command.description}</p>
               </div>
             </button>
           ))}
         </div>
 
         {/* Footer hint */}
-        <div className="border-t border-gray-200 px-3 py-2 bg-gray-50">
+        <div className="border-t border-gray-200 bg-gray-50 px-3 py-2">
           <div className="flex items-center justify-between text-xs text-gray-500">
             <span className="flex items-center gap-1">
-              <kbd className="rounded bg-white px-1.5 py-0.5 border border-gray-300 font-mono">
+              <kbd className="rounded border border-gray-300 bg-white px-1.5 py-0.5 font-mono">
                 ↑↓
               </kbd>
               Navigate
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="rounded bg-white px-1.5 py-0.5 border border-gray-300 font-mono">
+              <kbd className="rounded border border-gray-300 bg-white px-1.5 py-0.5 font-mono">
                 ↵
               </kbd>
               Select
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="rounded bg-white px-1.5 py-0.5 border border-gray-300 font-mono">
+              <kbd className="rounded border border-gray-300 bg-white px-1.5 py-0.5 font-mono">
                 Esc
               </kbd>
               Close

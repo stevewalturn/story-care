@@ -7,19 +7,19 @@
  * Provides both building blocks mode and advanced JSON mode
  */
 
-import { useState, useEffect } from 'react';
-import { Plus, Blocks, AlertTriangle } from 'lucide-react';
 import type { BlockInstance, BlockType } from '@/types/BuildingBlocks';
+import { AlertTriangle, Blocks, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/Button';
 import { useBuildingBlocks } from '@/hooks/useBuildingBlocks';
+import BlockForm from './BlockForm';
 import BlockPalette from './BlockPalette';
 import BlockPreview from './BlockPreview';
-import BlockForm from './BlockForm';
-import { Button } from '@/components/ui/Button';
 
-interface BuildingBlocksEditorProps {
+type BuildingBlocksEditorProps = {
   initialBlocks?: BlockInstance[];
   onChange: (blocks: BlockInstance[], schema: object) => void;
-}
+};
 
 export default function BuildingBlocksEditor({
   initialBlocks = [],
@@ -77,10 +77,18 @@ export default function BuildingBlocksEditor({
         <div>
           <h3 className="font-medium text-gray-900">Building Blocks</h3>
           <p className="text-xs text-gray-500">
-            {blocks.length} block{blocks.length !== 1 ? 's' : ''}
+            {blocks.length}
+            {' '}
+            block
+            {blocks.length !== 1 ? 's' : ''}
             {!isValid && (
               <span className="ml-2 text-red-600">
-                • {validationErrors.length} error{validationErrors.length !== 1 ? 's' : ''}
+                •
+                {' '}
+                {validationErrors.length}
+                {' '}
+                error
+                {validationErrors.length !== 1 ? 's' : ''}
               </span>
             )}
           </p>
@@ -92,23 +100,23 @@ export default function BuildingBlocksEditor({
         {/* Block Palette - Left sidebar */}
         <div className="w-64 flex-shrink-0">
           <div className="sticky top-4">
-            <div className="rounded-lg border border-gray-300 bg-white overflow-hidden" style={{ height: '500px' }}>
+            <div className="overflow-hidden rounded-lg border border-gray-300 bg-white" style={{ height: '500px' }}>
               <BlockPalette onSelectBlock={handleAddBlock} />
             </div>
           </div>
         </div>
 
         {/* Blocks List - Main area */}
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           {blocks.length === 0 ? (
             <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-12 text-center">
-              <div className="mx-auto w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mb-4">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-200">
                 <Blocks className="h-8 w-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="mb-2 text-lg font-medium text-gray-900">
                 No blocks yet
               </h3>
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="mb-4 text-sm text-gray-500">
                 Add building blocks from the palette on the left to create your prompt structure
               </p>
               <Button
@@ -156,9 +164,9 @@ export default function BuildingBlocksEditor({
               {/* Add block button */}
               <button
                 onClick={() => setShowPalette(!showPalette)}
-                className="w-full rounded-lg border-2 border-dashed border-gray-300 bg-white p-4 text-center text-sm font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                className="w-full rounded-lg border-2 border-dashed border-gray-300 bg-white p-4 text-center text-sm font-medium text-gray-600 transition-colors hover:border-blue-400 hover:text-blue-600"
               >
-                <Plus className="inline-block h-4 w-4 mr-2" />
+                <Plus className="mr-2 inline-block h-4 w-4" />
                 Add Block
               </button>
             </div>
@@ -166,20 +174,29 @@ export default function BuildingBlocksEditor({
 
           {/* Validation errors summary */}
           {!isValid && (
-            <div className="mt-4 rounded-lg bg-red-50 border border-red-200 p-4">
+            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
               <div className="flex items-start gap-2">
-                <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" />
                 <div className="flex-1">
                   <h4 className="font-medium text-red-900">
-                    Validation Errors ({validationErrors.length})
+                    Validation Errors (
+                    {validationErrors.length}
+                    )
                   </h4>
                   <ul className="mt-2 space-y-1 text-sm text-red-800">
                     {validationErrors.slice(0, 5).map((error, idx) => (
-                      <li key={idx}>• {error.message}</li>
+                      <li key={idx}>
+                        •
+                        {error.message}
+                      </li>
                     ))}
                     {validationErrors.length > 5 && (
                       <li className="text-red-600">
-                        ... and {validationErrors.length - 5} more errors
+                        ... and
+                        {' '}
+                        {validationErrors.length - 5}
+                        {' '}
+                        more errors
                       </li>
                     )}
                   </ul>
@@ -191,9 +208,11 @@ export default function BuildingBlocksEditor({
       </div>
 
       {/* Info box */}
-      <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
         <p className="text-sm text-blue-800">
-          <strong>Tip:</strong> Build your prompt output structure by adding and configuring blocks.
+          <strong>Tip:</strong>
+          {' '}
+          Build your prompt output structure by adding and configuring blocks.
           Each block represents a piece of structured data the AI will generate. Click a block to expand
           and configure it, or use the palette to add new blocks.
         </p>

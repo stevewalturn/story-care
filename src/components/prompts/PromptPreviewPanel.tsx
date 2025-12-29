@@ -6,13 +6,13 @@
  * Generates mock data from schema and displays with actual UI styling
  */
 
-import { validatePromptJSON } from '@/utils/PromptJSONValidator';
 import { AlertCircle, Eye } from 'lucide-react';
+import { validatePromptJSON } from '@/utils/PromptJSONValidator';
 import { SchemaPreviewRenderer } from './SchemaPreviewRenderer';
 
-interface PromptPreviewPanelProps {
+type PromptPreviewPanelProps = {
   jsonString: string;
-}
+};
 
 /**
  * Generate mock data from JSON Schema for preview

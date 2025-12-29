@@ -4,11 +4,11 @@
  * HIPAA Compliant: All events are logged for audit trail
  */
 
-import { NextResponse } from 'next/server';
+import type { PauboxWebhookEvent } from '@/types/Paubox';
 import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { emailNotificationsSchema } from '@/models/Schema';
-import type { PauboxWebhookEvent } from '@/types/Paubox';
 
 /**
  * POST /api/webhooks/paubox

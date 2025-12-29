@@ -69,6 +69,8 @@ export function GenerateVideoModal({
         body: JSON.stringify({
           prompt,
           duration: Number.parseInt(duration),
+          style,
+          motion,
           model: 'seedance-1-lite',
         }),
       });
@@ -167,7 +169,7 @@ export function GenerateVideoModal({
                 value={prompt}
                 onChange={e => setPrompt(e.target.value)}
                 placeholder="A person walking through a peaceful forest path, sunlight filtering through trees..."
-                className="h-32 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="h-32 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 maxLength={2000}
               />
               <div className="flex items-center justify-between text-xs text-gray-500">
@@ -193,7 +195,7 @@ export function GenerateVideoModal({
                     onClick={() => setDuration(dur.id)}
                     className={`rounded-lg border-2 p-3 text-center transition-all ${
                       duration === dur.id
-                        ? 'border-indigo-500 bg-indigo-50'
+                        ? 'border-purple-500 bg-purple-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
@@ -217,7 +219,7 @@ export function GenerateVideoModal({
                     onClick={() => setStyle(s.id)}
                     className={`w-full rounded-lg border-2 p-3 text-left transition-all ${
                       style === s.id
-                        ? 'border-indigo-500 bg-indigo-50'
+                        ? 'border-purple-500 bg-purple-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
@@ -241,7 +243,7 @@ export function GenerateVideoModal({
                     onClick={() => setMotion(m.id)}
                     className={`rounded-lg border-2 p-3 text-center transition-all ${
                       motion === m.id
-                        ? 'border-indigo-500 bg-indigo-50'
+                        ? 'border-purple-500 bg-purple-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
@@ -298,7 +300,7 @@ export function GenerateVideoModal({
               <div className="space-y-2">
                 <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
                   <div
-                    className="h-2 bg-indigo-600 transition-all duration-500"
+                    className="h-2 bg-purple-600 transition-all duration-500"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
@@ -318,11 +320,11 @@ export function GenerateVideoModal({
               {isGenerating
                 ? (
                     <div className="p-8 text-center">
-                      <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-indigo-600" />
+                      <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-purple-600" />
                       <p className="mb-2 text-sm text-gray-600">Generating your video...</p>
                       <div className="mx-auto h-2 w-48 overflow-hidden rounded-full bg-gray-200">
                         <div
-                          className="h-2 bg-indigo-600 transition-all duration-500"
+                          className="h-2 bg-purple-600 transition-all duration-500"
                           style={{ width: `${progress}%` }}
                         />
                       </div>

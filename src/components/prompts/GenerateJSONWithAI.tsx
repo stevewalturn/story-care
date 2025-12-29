@@ -6,17 +6,17 @@
  */
 
 import type { SchemaType } from '@/config/PromptJSONTemplates';
+import { AlertCircle, Loader2, Sparkles, X } from 'lucide-react';
+import { useState } from 'react';
 import { PROMPT_JSON_TEMPLATES } from '@/config/PromptJSONTemplates';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedPost } from '@/utils/AuthenticatedFetch';
-import { AlertCircle, Loader2, Sparkles, X } from 'lucide-react';
-import { useState } from 'react';
 
-interface GenerateJSONWithAIProps {
+type GenerateJSONWithAIProps = {
   isOpen: boolean;
   onClose: () => void;
   onGenerated: (jsonString: string) => void;
-}
+};
 
 export function GenerateJSONWithAI({ isOpen, onClose, onGenerated }: GenerateJSONWithAIProps) {
   const { user } = useAuth();
@@ -87,8 +87,8 @@ export function GenerateJSONWithAI({ isOpen, onClose, onGenerated }: GenerateJSO
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-indigo-100 p-2">
-                <Sparkles className="h-5 w-5 text-indigo-600" />
+              <div className="rounded-lg bg-purple-100 p-2">
+                <Sparkles className="h-5 w-5 text-purple-600" />
               </div>
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">Generate JSON with AI</h2>
@@ -116,7 +116,7 @@ export function GenerateJSONWithAI({ isOpen, onClose, onGenerated }: GenerateJSO
                 <select
                   value={schemaType}
                   onChange={e => setSchemaType(e.target.value as SchemaType | '')}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
                   disabled={isGenerating}
                 >
                   <option value="">Auto-detect (recommended)</option>
@@ -143,7 +143,7 @@ export function GenerateJSONWithAI({ isOpen, onClose, onGenerated }: GenerateJSO
                   onChange={e => setDescription(e.target.value)}
                   rows={8}
                   placeholder="Example: Generate 3 image suggestions that visualize the patient's journey from struggle to empowerment, with photorealistic style and therapeutic context"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
                   disabled={isGenerating}
                 />
                 <p className="mt-1 text-xs text-gray-500">
@@ -162,9 +162,9 @@ export function GenerateJSONWithAI({ isOpen, onClose, onGenerated }: GenerateJSO
               )}
 
               {/* Tips */}
-              <div className="rounded-lg bg-indigo-50 p-4">
-                <div className="text-sm font-medium text-indigo-900">💡 Tips for better results:</div>
-                <ul className="mt-2 space-y-1 text-sm text-indigo-700">
+              <div className="rounded-lg bg-purple-50 p-4">
+                <div className="text-sm font-medium text-purple-900">💡 Tips for better results:</div>
+                <ul className="mt-2 space-y-1 text-sm text-purple-700">
                   <li>• Be specific about the number of items (e.g., "3 images")</li>
                   <li>• Mention the therapeutic context or purpose</li>
                   <li>• Describe the style, mood, or format you want</li>
@@ -187,7 +187,7 @@ export function GenerateJSONWithAI({ isOpen, onClose, onGenerated }: GenerateJSO
             <button
               onClick={handleGenerate}
               type="button"
-              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={isGenerating || !description.trim()}
             >
               {isGenerating

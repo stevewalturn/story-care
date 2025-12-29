@@ -27,7 +27,7 @@ export async function GET(
 
     // 4. GENERATE PRESIGNED URLS (1-hour expiration for security)
     const imagesWithSignedUrls = await Promise.all(
-      images.map(async (img) => ({
+      images.map(async img => ({
         ...img,
         imageUrl: await generatePresignedUrl(img.imageUrl, 1),
       })),

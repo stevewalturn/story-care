@@ -8,24 +8,24 @@
 /**
  * Available block types in the system
  */
-export type BlockType =
+export type BlockType
   // Existing content blocks
-  | 'image_prompt'
-  | 'video_prompt'
-  | 'music_generation'
-  | 'video_introduction'
-  | 'quote'
-  | 'therapeutic_note'
-  | 'scene_suggestion'
-  | 'reflection_question'
-  | 'survey_question'
-  | 'scene_assembly'
-  | 'array_container'
+  = | 'image_prompt'
+    | 'video_prompt'
+    | 'music_generation'
+    | 'video_introduction'
+    | 'quote'
+    | 'therapeutic_note'
+    | 'scene_suggestion'
+    | 'reflection_question'
+    | 'survey_question'
+    | 'scene_assembly'
+    | 'array_container'
   // New output and action blocks
-  | 'text_output'
-  | 'save_quote_action'
-  | 'generate_image_action'
-  | 'generate_music_action';
+    | 'text_output'
+    | 'save_quote_action'
+    | 'generate_image_action'
+    | 'generate_music_action';
 
 /**
  * Block categories for organization in the palette
@@ -40,37 +40,37 @@ export type ExecutionMode = 'auto' | 'manual';
 /**
  * Field types supported in block forms
  */
-export type BlockFieldType =
-  | 'text'
-  | 'textarea'
-  | 'select'
-  | 'number'
-  | 'boolean'
-  | 'array';
+export type BlockFieldType
+  = | 'text'
+    | 'textarea'
+    | 'select'
+    | 'number'
+    | 'boolean'
+    | 'array';
 
 /**
  * Validation rules for block fields
  */
-export interface BlockFieldValidation {
+export type BlockFieldValidation = {
   min?: number;
   max?: number;
   pattern?: string;
   minLength?: number;
   maxLength?: number;
-}
+};
 
 /**
  * Option for select-type fields
  */
-export interface BlockFieldOption {
+export type BlockFieldOption = {
   label: string;
   value: string;
-}
+};
 
 /**
  * Definition of a form field within a block
  */
-export interface BlockField {
+export type BlockField = {
   id: string;
   label: string;
   type: BlockFieldType;
@@ -80,12 +80,12 @@ export interface BlockField {
   options?: BlockFieldOption[];
   validation?: BlockFieldValidation;
   helpText?: string;
-}
+};
 
 /**
  * Display configuration for block output rendering
  */
-export interface BlockOutputDisplay {
+export type BlockOutputDisplay = {
   renderAs: 'text' | 'image' | 'audio' | 'video' | 'quote' | 'card' | 'list' | 'custom';
   primaryField?: string; // Main content field to display (e.g., 'content', 'lyrics', 'quote_text')
   titleField?: string; // Field to use as title
@@ -96,23 +96,23 @@ export interface BlockOutputDisplay {
   collapsible?: boolean; // Whether the output can be collapsed
   defaultExpanded?: boolean; // Whether to show expanded by default
   customRenderer?: string; // Name of custom renderer component if needed
-}
+};
 
 /**
  * Action handler configuration for manual blocks
  */
-export interface BlockActionHandler {
+export type BlockActionHandler = {
   handlerName: string; // Name of the handler function
   apiEndpoint?: string; // API endpoint to call
   confirmationMessage?: string; // Confirmation dialog before execution
   successMessage?: string; // Message to show on success
   errorMessage?: string; // Message to show on error
-}
+};
 
 /**
  * Complete definition of a building block type
  */
-export interface BuildingBlock {
+export type BuildingBlock = {
   id: string;
   type: BlockType;
   label: string;
@@ -125,12 +125,12 @@ export interface BuildingBlock {
   supportsTemplates?: boolean; // Whether fields support {{variable}} templates
   outputDisplay?: BlockOutputDisplay; // How to render the output
   actionHandler?: BlockActionHandler; // Action handler for manual blocks
-}
+};
 
 /**
  * Instance of a block with user-configured values
  */
-export interface BlockInstance {
+export type BlockInstance = {
   blockId: BlockType;
   instanceId: string;
   values: Record<string, any>;
@@ -141,12 +141,12 @@ export interface BlockInstance {
   executionStatus?: 'pending' | 'processing' | 'completed' | 'failed'; // Runtime status
   executionResult?: any; // Runtime result from execution
   executionError?: string; // Runtime error message if failed
-}
+};
 
 /**
  * Prompt with building blocks support
  */
-export interface PromptWithBlocks {
+export type PromptWithBlocks = {
   // Existing prompt fields
   id?: string;
   name: string;
@@ -169,55 +169,55 @@ export interface PromptWithBlocks {
   isActive?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
-}
+};
 
 /**
  * Validation rule for block combinations
  */
-export interface ValidationRule {
+export type ValidationRule = {
   blockType: BlockType;
   min?: number;
   max?: number;
   requiredWith?: BlockType[];
   conflictsWith?: BlockType[];
   customValidator?: (blocks: BlockInstance[]) => { valid: boolean; message?: string };
-}
+};
 
 /**
  * Result of block validation
  */
-export interface ValidationResult {
+export type ValidationResult = {
   valid: boolean;
   errors: ValidationError[];
-}
+};
 
 /**
  * Validation error details
  */
-export interface ValidationError {
+export type ValidationError = {
   blockInstanceId?: string;
   blockType?: BlockType;
   field?: string;
   message: string;
   severity: 'error' | 'warning';
-}
+};
 
 /**
  * Quick action configuration for chat integration
  */
-export interface QuickAction {
+export type QuickAction = {
   id: string;
   label: string;
   icon: string;
   blockType?: BlockType;
   promptTemplate?: string;
   description?: string;
-}
+};
 
 /**
  * Slash command configuration for chat integration
  */
-export interface SlashCommand {
+export type SlashCommand = {
   id: string;
   trigger: string;
   label: string;
@@ -225,35 +225,35 @@ export interface SlashCommand {
   blockType?: BlockType;
   insertTemplate: string;
   description?: string;
-}
+};
 
 /**
  * Block template for common combinations
  */
-export interface BlockTemplate {
+export type BlockTemplate = {
   id: string;
   name: string;
   description: string;
   icon: string;
   blocks: Omit<BlockInstance, 'instanceId' | 'order'>[];
   category?: string;
-}
+};
 
 /**
  * Workflow execution context that accumulates as steps complete
  */
-export interface WorkflowContext {
+export type WorkflowContext = {
   [key: string]: any; // Dynamic keys for step outputs (e.g., step1: { lyrics: "..." })
   sessionId?: string;
   patientId?: string;
   therapistId?: string;
   organizationId?: string;
-}
+};
 
 /**
  * Workflow execution state
  */
-export interface WorkflowExecution {
+export type WorkflowExecution = {
   id: string;
   promptId: string;
   blocks: BlockInstance[];
@@ -263,24 +263,24 @@ export interface WorkflowExecution {
   startedAt?: Date;
   completedAt?: Date;
   error?: string;
-}
+};
 
 /**
  * Action execution request
  */
-export interface ActionExecutionRequest {
+export type ActionExecutionRequest = {
   blockInstanceId: string;
   blockType: BlockType;
   values: Record<string, any>;
   context: WorkflowContext;
-}
+};
 
 /**
  * Action execution result
  */
-export interface ActionExecutionResult {
+export type ActionExecutionResult = {
   success: boolean;
   data?: any;
   error?: string;
   updatedContext?: Partial<WorkflowContext>;
-}
+};

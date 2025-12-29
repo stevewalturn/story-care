@@ -7,21 +7,21 @@
  * Renders fields based on block definition and handles validation
  */
 
-import { useState, useEffect } from 'react';
+import type { BlockField, BlockInstance, ValidationError } from '@/types/BuildingBlocks';
 import {
-  Trash2,
-  Copy,
-  ChevronUp,
-  ChevronDown,
   AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Copy,
   Edit2,
+  Trash2,
 } from 'lucide-react';
-import type { BlockInstance, BlockField, ValidationError } from '@/types/BuildingBlocks';
-import { getBlockDefinition } from '@/config/BlockDefinitions';
-import { Input } from '@/components/ui/Input';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { getBlockDefinition } from '@/config/BlockDefinitions';
 
-interface BlockFormProps {
+type BlockFormProps = {
   blockId: string;
   instance: BlockInstance;
   onChange: (values: Record<string, any>, customLabels?: Record<string, string>) => void;
@@ -33,7 +33,7 @@ interface BlockFormProps {
   errors?: ValidationError[];
   isFirst?: boolean;
   isLast?: boolean;
-}
+};
 
 export default function BlockForm({
   blockId: _blockId,
@@ -63,7 +63,10 @@ export default function BlockForm({
   if (!definition) {
     return (
       <div className="rounded-lg border border-red-300 bg-red-50 p-4">
-        <p className="text-sm text-red-600">Unknown block type: {instance.blockId}</p>
+        <p className="text-sm text-red-600">
+          Unknown block type:
+          {instance.blockId}
+        </p>
       </div>
     );
   }
@@ -106,8 +109,8 @@ export default function BlockForm({
           <input
             type="text"
             value={tempLabel}
-            onChange={(e) => setTempLabel(e.target.value)}
-            className="flex-1 rounded border border-indigo-300 px-2 py-0.5 text-sm font-medium text-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+            onChange={e => setTempLabel(e.target.value)}
+            className="flex-1 rounded border border-purple-300 px-2 py-0.5 text-sm font-medium text-gray-700 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleLabelSave(field.id);
@@ -116,7 +119,7 @@ export default function BlockForm({
           />
           <button
             onClick={() => handleLabelSave(field.id)}
-            className="rounded px-2 py-0.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+            className="rounded px-2 py-0.5 text-xs font-medium text-purple-600 hover:bg-purple-50"
             type="button"
           >
             Save
@@ -133,11 +136,11 @@ export default function BlockForm({
         <>
           <label className="block text-sm font-medium text-gray-700">
             {getFieldLabel(field)}
-            {field.required && <span className="text-red-500 ml-1">*</span>}
+            {field.required && <span className="ml-1 text-red-500">*</span>}
           </label>
           <button
             onClick={() => handleLabelEdit(field.id, field.label)}
-            className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-indigo-600"
+            className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-purple-600"
             type="button"
             title="Edit field label"
           >
@@ -161,7 +164,7 @@ export default function BlockForm({
             <Input
               type="text"
               value={value}
-              onChange={(e) => handleFieldChange(field.id, e.target.value)}
+              onChange={e => handleFieldChange(field.id, e.target.value)}
               placeholder={field.placeholder}
               className={hasError ? 'border-red-500' : ''}
             />
@@ -170,7 +173,7 @@ export default function BlockForm({
             )}
             {hasError && fieldErrors[0] && (
               <div className="flex items-start gap-1 text-xs text-red-600">
-                <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                <AlertCircle className="mt-0.5 h-3 w-3 flex-shrink-0" />
                 <span>{fieldErrors[0].message}</span>
               </div>
             )}
@@ -183,16 +186,19 @@ export default function BlockForm({
             {renderEditableLabel(field)}
             <textarea
               value={value}
-              onChange={(e) => handleFieldChange(field.id, e.target.value)}
+              onChange={e => handleFieldChange(field.id, e.target.value)}
               placeholder={field.placeholder}
               rows={4}
               className={`w-full rounded-lg border ${
                 hasError ? 'border-red-500' : 'border-gray-300'
-              } px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+              } px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none`}
             />
             {field.validation?.maxLength && (
-              <p className="text-xs text-gray-500 text-right">
-                {value.length} / {field.validation.maxLength}
+              <p className="text-right text-xs text-gray-500">
+                {value.length}
+                {' '}
+                /
+                {field.validation.maxLength}
               </p>
             )}
             {field.helpText && !hasError && (
@@ -200,7 +206,7 @@ export default function BlockForm({
             )}
             {hasError && fieldErrors[0] && (
               <div className="flex items-start gap-1 text-xs text-red-600">
-                <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                <AlertCircle className="mt-0.5 h-3 w-3 flex-shrink-0" />
                 <span>{fieldErrors[0].message}</span>
               </div>
             )}
@@ -213,13 +219,13 @@ export default function BlockForm({
             {renderEditableLabel(field)}
             <select
               value={value}
-              onChange={(e) => handleFieldChange(field.id, e.target.value)}
+              onChange={e => handleFieldChange(field.id, e.target.value)}
               className={`w-full rounded-lg border ${
                 hasError ? 'border-red-500' : 'border-gray-300'
-              } px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+              } px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none`}
             >
               {!field.required && <option value="">-- Select --</option>}
-              {field.options?.map((option) => (
+              {field.options?.map(option => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -230,7 +236,7 @@ export default function BlockForm({
             )}
             {hasError && fieldErrors[0] && (
               <div className="flex items-start gap-1 text-xs text-red-600">
-                <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                <AlertCircle className="mt-0.5 h-3 w-3 flex-shrink-0" />
                 <span>{fieldErrors[0].message}</span>
               </div>
             )}
@@ -244,7 +250,7 @@ export default function BlockForm({
             <Input
               type="number"
               value={value}
-              onChange={(e) => handleFieldChange(field.id, Number(e.target.value))}
+              onChange={e => handleFieldChange(field.id, Number(e.target.value))}
               placeholder={field.placeholder}
               min={field.validation?.min}
               max={field.validation?.max}
@@ -255,7 +261,7 @@ export default function BlockForm({
             )}
             {hasError && fieldErrors[0] && (
               <div className="flex items-start gap-1 text-xs text-red-600">
-                <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                <AlertCircle className="mt-0.5 h-3 w-3 flex-shrink-0" />
                 <span>{fieldErrors[0].message}</span>
               </div>
             )}
@@ -266,12 +272,12 @@ export default function BlockForm({
         return (
           <div key={field.id} className="space-y-1">
             {editingLabel === field.id ? (
-              <div className="flex items-center gap-1 mb-2">
+              <div className="mb-2 flex items-center gap-1">
                 <input
                   type="text"
                   value={tempLabel}
-                  onChange={(e) => setTempLabel(e.target.value)}
-                  className="flex-1 rounded border border-indigo-300 px-2 py-0.5 text-sm font-medium text-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                  onChange={e => setTempLabel(e.target.value)}
+                  className="flex-1 rounded border border-purple-300 px-2 py-0.5 text-sm font-medium text-gray-700 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleLabelSave(field.id);
@@ -280,7 +286,7 @@ export default function BlockForm({
                 />
                 <button
                   onClick={() => handleLabelSave(field.id)}
-                  className="rounded px-2 py-0.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+                  className="rounded px-2 py-0.5 text-xs font-medium text-purple-600 hover:bg-purple-50"
                   type="button"
                 >
                   Save
@@ -299,7 +305,7 @@ export default function BlockForm({
                 <input
                   type="checkbox"
                   checked={value === true}
-                  onChange={(e) => handleFieldChange(field.id, e.target.checked)}
+                  onChange={e => handleFieldChange(field.id, e.target.checked)}
                   className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="text-sm font-medium text-gray-700">{getFieldLabel(field)}</span>
@@ -307,7 +313,7 @@ export default function BlockForm({
               {editingLabel !== field.id && (
                 <button
                   onClick={() => handleLabelEdit(field.id, field.label)}
-                  className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-indigo-600"
+                  className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-purple-600"
                   type="button"
                   title="Edit field label"
                 >
@@ -316,7 +322,7 @@ export default function BlockForm({
               )}
             </div>
             {field.helpText && (
-              <p className="text-xs text-gray-500 ml-6">{field.helpText}</p>
+              <p className="ml-6 text-xs text-gray-500">{field.helpText}</p>
             )}
           </div>
         );
@@ -331,18 +337,20 @@ export default function BlockForm({
       {/* Header */}
       <div className="mb-4 flex items-start justify-between">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100">
-            <span className="text-lg">{definition.icon === 'image' ? '🖼️' :
-              definition.icon === 'video' ? '🎬' :
-              definition.icon === 'music' ? '🎵' :
-              definition.icon === 'quote' ? '💬' :
-              definition.icon === 'file-text' ? '📝' :
-              definition.icon === 'help-circle' ? '💭' :
-              definition.icon === 'list-checks' ? '📋' :
-              definition.icon === 'film' ? '🎬' :
-              definition.icon === 'play-circle' ? '▶️' :
-              definition.icon === 'layers' ? '📚' :
-              '✨'}</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100">
+            <span className="text-lg">
+              {definition.icon === 'image' ? '🖼️'
+                : definition.icon === 'video' ? '🎬'
+                  : definition.icon === 'music' ? '🎵'
+                    : definition.icon === 'quote' ? '💬'
+                      : definition.icon === 'file-text' ? '📝'
+                        : definition.icon === 'help-circle' ? '💭'
+                          : definition.icon === 'list-checks' ? '📋'
+                            : definition.icon === 'film' ? '🎬'
+                              : definition.icon === 'play-circle' ? '▶️'
+                                : definition.icon === 'layers' ? '📚'
+                                  : '✨'}
+            </span>
           </div>
           <div>
             <h4 className="font-medium text-gray-900">{definition.label}</h4>

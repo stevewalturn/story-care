@@ -101,7 +101,7 @@ export function JSONSchemaEditor({
           className={`min-h-[300px] w-full rounded-lg border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none ${
             jsonError
               ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-              : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-200'
+              : 'border-gray-300 focus:border-purple-500 focus:ring-purple-200'
           }`}
         />
         {jsonError && (
@@ -128,7 +128,7 @@ export function JSONSchemaEditor({
               href="https://json-schema.org/learn/getting-started-step-by-step"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-indigo-600 underline hover:text-indigo-700"
+              className="text-purple-600 underline hover:text-purple-700"
             >
               JSON Schema Documentation
             </a>
@@ -151,7 +151,7 @@ export function JSONSchemaEditor({
           type="button"
           onClick={handleSave}
           disabled={isSaving || !!jsonError}
-          className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+          className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700 disabled:opacity-50"
         >
           {isSaving ? (
             <>

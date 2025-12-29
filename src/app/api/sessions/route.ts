@@ -1,10 +1,10 @@
 import type { NextRequest } from 'next/server';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { logPHIAccess } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { generatePresignedUrl } from '@/libs/GCS';
-import { groupMembers, groups, sessionModules, sessions, treatmentModules, users } from '@/models/Schema';
+import { groupMembers, groups, sessions, users } from '@/models/Schema';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 
 // GET /api/sessions - List all sessions for authenticated therapist
@@ -17,6 +17,9 @@ export async function GET(request: NextRequest) {
     // 2. PARSE QUERY PARAMETERS
     const { searchParams } = new URL(request.url);
     const patientIdFilter = searchParams.get('patientId');
+    const groupIdFilter = searchParams.get('groupId');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
 
     // 3. BUILD WHERE CONDITIONS
     const whereConditions = [];
@@ -29,66 +32,198 @@ export async function GET(request: NextRequest) {
       whereConditions.push(isNull(sessions.deletedAt)); // Filter out soft-deleted sessions
     }
 
-    // Optional patient filter
+    // Optional patient filter - include both individual sessions AND group sessions where patient is a member
+    let patientGroupIds: string[] = [];
     if (patientIdFilter) {
-      whereConditions.push(eq(sessions.patientId, patientIdFilter));
+      // First, find all groups where this patient is an active member
+      const patientGroups = await db
+        .select({ groupId: groupMembers.groupId })
+        .from(groupMembers)
+        .where(
+          and(
+            eq(groupMembers.patientId, patientIdFilter),
+            isNull(groupMembers.leftAt),
+          ),
+        );
+      // Filter out null group IDs
+      patientGroupIds = patientGroups.map(g => g.groupId).filter((id): id is string => id !== null);
+
+      // Include both individual sessions for this patient AND group sessions they're a member of
+      if (patientGroupIds.length > 0) {
+        whereConditions.push(
+          or(
+            eq(sessions.patientId, patientIdFilter),
+            inArray(sessions.groupId, patientGroupIds),
+          )!,
+        );
+      } else {
+        whereConditions.push(eq(sessions.patientId, patientIdFilter));
+      }
     }
 
-    // 4. FETCH: Get sessions with module data
-    const sessionsList = await db
-      .select({
-        id: sessions.id,
-        title: sessions.title,
-        sessionDate: sessions.sessionDate,
-        sessionType: sessions.sessionType,
-        audioUrl: sessions.audioUrl,
-        transcriptionStatus: sessions.transcriptionStatus,
-        patientId: sessions.patientId,
-        createdAt: sessions.createdAt,
-        patient: {
-          id: users.id,
-          name: users.name,
-          avatarUrl: users.avatarUrl,
-          referenceImageUrl: users.referenceImageUrl,
-        },
-        // Module data from session_modules join
-        moduleId: sessionModules.moduleId,
-        module: {
-          id: treatmentModules.id,
-          name: treatmentModules.name,
-          domain: treatmentModules.domain,
-          description: treatmentModules.description,
-        },
-      })
-      .from(sessions)
-      .leftJoin(users, eq(sessions.patientId, users.id))
-      .leftJoin(sessionModules, eq(sessions.id, sessionModules.sessionId))
-      .leftJoin(treatmentModules, eq(sessionModules.moduleId, treatmentModules.id))
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
-      .orderBy(desc(sessions.createdAt));
+    // Optional group filter
+    if (groupIdFilter) {
+      whereConditions.push(eq(sessions.groupId, groupIdFilter));
+    }
 
-    // 5. GENERATE PRESIGNED URLS: HIPAA compliant (1-hour expiration)
+    // Optional date range filters
+    if (startDate) {
+      whereConditions.push(gte(sessions.sessionDate, startDate));
+    }
+    if (endDate) {
+      whereConditions.push(lte(sessions.sessionDate, endDate));
+    }
+
+    // Only show sessions that have a summary generated
+    whereConditions.push(isNotNull(sessions.sessionSummary));
+
+    // 4. FETCH: Get sessions with module data, group data, transcripts, and speakers
+    let allSessions;
+    try {
+      console.log('=== FETCHING SESSIONS ===');
+      console.log('User dbUserId:', user.dbUserId);
+      console.log('Where conditions:', whereConditions.length);
+
+      allSessions = await db.query.sessions.findMany({
+        where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
+        with: {
+          patient: {
+            columns: {
+              id: true,
+              name: true,
+              avatarUrl: true,
+              referenceImageUrl: true,
+            },
+          },
+          group: {
+            columns: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: [desc(sessions.createdAt)],
+      });
+
+      console.log('=== SESSIONS FETCHED ===');
+      console.log('Total sessions found:', allSessions.length);
+    } catch (queryError) {
+      console.error('=== SESSION QUERY ERROR ===');
+      console.error('Error:', queryError);
+      console.error('Error name:', (queryError as Error).name);
+      console.error('Error message:', (queryError as Error).message);
+      console.error('Error stack:', (queryError as Error).stack);
+      throw queryError;
+    }
+
+    // 5. FETCH GROUP MEMBERS: For group sessions, get the first patient from group_members
+    const groupIds = allSessions
+      .filter(s => s.sessionType === 'group' && s.groupId && !s.patientId)
+      .map(s => s.groupId as string);
+
+    // Create a map of groupId -> first patient
+    const groupPatientMap = new Map<string, { id: string; name: string; avatarUrl: string | null; referenceImageUrl: string | null }>();
+
+    if (groupIds.length > 0) {
+      // Fetch first group member with patient data for each group session
+      for (const groupId of groupIds) {
+        if (!groupPatientMap.has(groupId)) {
+          const member = await db
+            .select({
+              patientId: users.id,
+              patientName: users.name,
+              patientAvatarUrl: users.avatarUrl,
+              patientReferenceImageUrl: users.referenceImageUrl,
+            })
+            .from(groupMembers)
+            .innerJoin(users, eq(groupMembers.patientId, users.id))
+            .where(
+              and(
+                eq(groupMembers.groupId, groupId),
+                isNull(groupMembers.leftAt),
+              ),
+            )
+            .limit(1);
+
+          if (member[0]) {
+            groupPatientMap.set(groupId, {
+              id: member[0].patientId,
+              name: member[0].patientName,
+              avatarUrl: member[0].patientAvatarUrl,
+              referenceImageUrl: member[0].patientReferenceImageUrl,
+            });
+          }
+        }
+      }
+    }
+
+    // 6. FILTER: Show all sessions (allow users to complete wizard for incomplete ones)
+    // Previously filtered to only show sessions with completed speaker assignments
+    // Now showing all sessions so users can see and complete any pending work
+    const completeSessions = allSessions;
+
+    // 7. TRANSFORM: Format sessions to match expected structure
+    const sessionsList = completeSessions.map((session) => {
+      // Handle Drizzle's relation type (can be single object or array)
+      let patientData = Array.isArray(session.patient) ? session.patient[0] : session.patient;
+      const group = Array.isArray(session.group) ? session.group[0] : session.group;
+
+      // For group sessions without direct patient, use the patient from groupPatientMap
+      if (!patientData && session.groupId) {
+        const groupPatient = groupPatientMap.get(session.groupId);
+        if (groupPatient) {
+          patientData = groupPatient;
+        }
+      }
+
+      // Normalize patient object to only include needed fields
+      const patient = patientData ? {
+        id: patientData.id,
+        name: patientData.name,
+        avatarUrl: patientData.avatarUrl || null,
+        referenceImageUrl: patientData.referenceImageUrl || null,
+      } : null;
+
+      return {
+        id: session.id,
+        title: session.title,
+        sessionDate: session.sessionDate,
+        sessionType: session.sessionType,
+        audioUrl: session.audioUrl,
+        audioDurationSeconds: session.audioDurationSeconds,
+        transcriptionStatus: session.transcriptionStatus,
+        patientId: patient?.id || session.patientId,
+        groupId: session.groupId,
+        createdAt: session.createdAt,
+        patient,
+        group: group ? { id: group.id, name: group.name } : null,
+      };
+    });
+
+    // 8. GENERATE PRESIGNED URLS: HIPAA compliant (1-hour expiration)
     const sessionsWithSignedUrls = await Promise.all(
       sessionsList.map(async (session) => {
+        const patient = session.patient as { id: string; name: string; avatarUrl: string | null; referenceImageUrl: string | null } | null;
+
         const [signedAudioUrl, signedAvatarUrl, signedReferenceImageUrl] = await Promise.all([
           session.audioUrl ? generatePresignedUrl(session.audioUrl, 1) : null,
-          session.patient?.avatarUrl ? generatePresignedUrl(session.patient.avatarUrl, 1) : null,
-          session.patient?.referenceImageUrl ? generatePresignedUrl(session.patient.referenceImageUrl, 1) : null,
+          patient?.avatarUrl ? generatePresignedUrl(patient.avatarUrl, 1) : null,
+          patient?.referenceImageUrl ? generatePresignedUrl(patient.referenceImageUrl, 1) : null,
         ]);
 
         return {
           ...session,
           audioUrl: signedAudioUrl || session.audioUrl,
-          patient: session.patient ? {
-            ...session.patient,
-            avatarUrl: signedAvatarUrl || session.patient.avatarUrl,
-            referenceImageUrl: signedReferenceImageUrl || session.patient.referenceImageUrl,
+          patient: patient ? {
+            ...patient,
+            avatarUrl: signedAvatarUrl || patient.avatarUrl,
+            referenceImageUrl: signedReferenceImageUrl || patient.referenceImageUrl,
           } : null,
         };
       }),
     );
 
-    // 6. AUDIT LOG: Record PHI access
+    // 9. AUDIT LOG: Record PHI access
     await logPHIAccess(user.dbUserId, 'session', 'list', request);
 
     return NextResponse.json({ sessions: sessionsWithSignedUrls });
@@ -110,7 +245,9 @@ export async function POST(request: NextRequest) {
     const {
       title,
       sessionDate,
+      sessionType: explicitSessionType,
       patientIds,
+      groupId: explicitGroupId,
       audioUrl,
     } = body;
 
@@ -122,16 +259,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate patient selection
-    if (!patientIds || !Array.isArray(patientIds) || patientIds.length === 0) {
-      return NextResponse.json(
-        { error: 'At least one patient must be selected' },
-        { status: 400 },
-      );
-    }
+    // Determine session type (explicit or auto-computed)
+    const sessionType = explicitSessionType || (
+      patientIds && Array.isArray(patientIds) && patientIds.length > 1
+        ? 'group'
+        : 'individual'
+    );
 
-    // Auto-compute session type based on number of patients
-    const sessionType = patientIds.length === 1 ? 'individual' : 'group';
+    // Validate session-specific requirements
+    if (sessionType === 'individual') {
+      if (!patientIds || !Array.isArray(patientIds) || patientIds.length === 0) {
+        return NextResponse.json(
+          { error: 'Individual session requires at least one patient' },
+          { status: 400 },
+        );
+      }
+    } else if (sessionType === 'group') {
+      if (!explicitGroupId && (!patientIds || !Array.isArray(patientIds) || patientIds.length === 0)) {
+        return NextResponse.json(
+          { error: 'Group session requires either a groupId or multiple patientIds' },
+          { status: 400 },
+        );
+      }
+    }
 
     // 3. AUTHORIZATION CHECK: Verify therapist can create for these patients
     if (user.role === 'therapist') {
@@ -157,11 +307,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 4. CREATE SESSION (with auto-group creation for multiple patients)
-    let groupId: string | null = null;
+    // 4. CREATE SESSION (with optional group creation for multiple patients)
+    let groupId: string | null = explicitGroupId || null;
 
-    if (sessionType === 'group') {
-      // Auto-create a temporary group for this session
+    if (sessionType === 'group' && !explicitGroupId && patientIds && patientIds.length > 0) {
+      // Auto-create a temporary group for this session (only if no explicit groupId)
       const groupName = `Session - ${title} (${new Date(sessionDate).toLocaleDateString()})`;
 
       const groupResult = await db

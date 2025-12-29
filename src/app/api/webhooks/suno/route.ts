@@ -1,7 +1,7 @@
-import crypto from 'crypto';
 import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
+import crypto from 'node:crypto';
 import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 
 import { db } from '@/libs/DB';
 import { musicGenerationTasks } from '@/models/Schema';

@@ -253,12 +253,13 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
             />
 
             <Input
-              label="Email"
+              label="Email *"
               type="email"
               value={formData.email}
               onChange={e => setFormData({ ...formData, email: e.target.value })}
               placeholder="john@example.com"
-              helperText="Optional - valid email format required if provided"
+              required
+              helperText="Valid email format required"
             />
 
             {/* Therapist Selection (Org Admin Only) */}
@@ -270,7 +271,7 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
                 <select
                   value={formData.therapistId}
                   onChange={e => setFormData({ ...formData, therapistId: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
                   required={isOrgAdmin}
                 >
                   <option value="">Select a therapist</option>
@@ -302,7 +303,7 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
             <div className="rounded-lg border-2 border-dashed border-gray-300 p-6">
               {uploadingAvatar ? (
                 <div className="space-y-4 text-center">
-                  <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                  <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
                   <p className="text-sm text-gray-600">Uploading display image...</p>
                 </div>
               ) : avatarPreview ? (
@@ -313,7 +314,7 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
                     className="mx-auto h-32 w-32 rounded-lg object-cover"
                   />
                   <div className="flex items-center justify-center gap-3">
-                    <label className="cursor-pointer text-sm font-medium text-indigo-600 hover:text-indigo-700">
+                    <label className="cursor-pointer text-sm font-medium text-purple-600 hover:text-purple-700">
                       Change Image
                       <input
                         type="file"
@@ -339,7 +340,7 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
                 <div className="text-center">
                   <Upload className="mx-auto mb-3 h-12 w-12 text-gray-400" />
                   <label className="cursor-pointer">
-                    <span className="font-medium text-indigo-600 hover:text-indigo-700">
+                    <span className="font-medium text-purple-600 hover:text-purple-700">
                       Upload display image
                     </span>
                     <input
@@ -384,13 +385,13 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
                     {uploadingImage
                       ? (
                           <div className="space-y-4 text-center">
-                            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
                             <p className="text-sm text-gray-600">Uploading image...</p>
                             {uploadProgress > 0 && (
                               <div className="mx-auto w-48">
                                 <div className="h-2 overflow-hidden rounded-full bg-gray-200">
                                   <div
-                                    className="h-full bg-indigo-600 transition-all duration-300"
+                                    className="h-full bg-purple-600 transition-all duration-300"
                                     style={{ width: `${uploadProgress}%` }}
                                   />
                                 </div>
@@ -407,7 +408,7 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
                                 className="mx-auto h-32 w-32 rounded-lg object-cover"
                               />
                               <div className="text-center">
-                                <label className="cursor-pointer text-sm font-medium text-indigo-600 hover:text-indigo-700">
+                                <label className="cursor-pointer text-sm font-medium text-purple-600 hover:text-purple-700">
                                   Change Image
                                   <input
                                     type="file"
@@ -418,7 +419,7 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
                                   />
                                 </label>
                               </div>
-                              <p className="text-xs text-center text-gray-500">
+                              <p className="text-center text-xs text-gray-500">
                                 You can add more reference images after creating the patient
                               </p>
                             </div>
@@ -427,7 +428,7 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
                             <div className="text-center">
                               <Upload className="mx-auto mb-3 h-12 w-12 text-gray-400" />
                               <label className="cursor-pointer">
-                                <span className="font-medium text-indigo-600 hover:text-indigo-700">
+                                <span className="font-medium text-purple-600 hover:text-purple-700">
                                   Upload a file
                                 </span>
                                 <span className="text-gray-600"> or drag and drop</span>

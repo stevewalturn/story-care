@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Image as ImageIcon, Lightbulb, MessageSquare
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 
-export interface TherapeuticSceneCard {
+export type TherapeuticSceneCard = {
   type: 'therapeutic_scene_card';
   title: string;
   subtitle?: string;
@@ -19,12 +19,12 @@ export interface TherapeuticSceneCard {
     };
   }>;
   status: 'pending' | 'completed';
-}
+};
 
-interface TherapeuticSceneCardRendererProps {
+type TherapeuticSceneCardRendererProps = {
   data: TherapeuticSceneCard;
   onGenerateScenes?: (data: TherapeuticSceneCard) => void;
-}
+};
 
 export function TherapeuticSceneCardRenderer({
   data,
@@ -43,10 +43,10 @@ export function TherapeuticSceneCardRenderer({
     setCurrentSceneIndex(prev => Math.min(totalScenes - 1, prev + 1));
   };
 
-  if (!currentScene) {
+  if (!currentScene || !currentScene.sections) {
     return (
       <div className="rounded-lg border border-gray-200 bg-white p-6 text-center">
-        <p className="text-gray-500">No scenes available</p>
+        <p className="text-gray-500">No scenes available or scene data is incomplete</p>
       </div>
     );
   }
@@ -54,7 +54,7 @@ export function TherapeuticSceneCardRenderer({
   return (
     <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
       {/* Header */}
-      <div className="border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50 p-4">
+      <div className="border-b border-gray-200 bg-gradient-to-r from-purple-50 to-purple-50 p-4">
         <h3 className="text-base font-semibold text-gray-900">
           {data.title}
         </h3>
@@ -66,9 +66,11 @@ export function TherapeuticSceneCardRenderer({
 
         {/* Patient Badge */}
         <div className="mt-3 flex items-center gap-2">
-          <div className="rounded-full bg-indigo-100 px-3 py-1">
-            <span className="text-xs font-medium text-indigo-700">
-              Patient: {data.patient}
+          <div className="rounded-full bg-purple-100 px-3 py-1">
+            <span className="text-xs font-medium text-purple-700">
+              Patient:
+              {' '}
+              {data.patient}
             </span>
           </div>
 
@@ -82,7 +84,9 @@ export function TherapeuticSceneCardRenderer({
               <ChevronLeft className="h-4 w-4" />
             </button>
             <span className="text-xs font-medium text-gray-700">
-              {currentScene.sceneNumber}/{totalScenes}
+              {currentScene.sceneNumber}
+              /
+              {totalScenes}
             </span>
             <button
               onClick={handleNext}
@@ -105,8 +109,10 @@ export function TherapeuticSceneCardRenderer({
               {currentScene.sections.patientQuote.label}
             </h4>
           </div>
-          <p className="rounded-lg bg-purple-50 p-3 text-sm italic leading-relaxed text-gray-700">
-            "{currentScene.sections.patientQuote.content}"
+          <p className="rounded-lg bg-purple-50 p-3 text-sm leading-relaxed text-gray-700 italic">
+            "
+            {currentScene.sections.patientQuote.content}
+            "
           </p>
         </div>
 
@@ -139,18 +145,18 @@ export function TherapeuticSceneCardRenderer({
         {/* Image to Scene */}
         <div className="mb-4">
           <div className="mb-2 flex items-center gap-2">
-            <Play className="h-4 w-4 text-indigo-600" />
+            <Play className="h-4 w-4 text-purple-600" />
             <h4 className="text-sm font-semibold text-gray-900">
               {currentScene.sections.imageToScene.label}
             </h4>
           </div>
-          <p className="rounded-lg bg-indigo-50 p-3 text-sm leading-relaxed text-gray-700">
+          <p className="rounded-lg bg-purple-50 p-3 text-sm leading-relaxed text-gray-700">
             {currentScene.sections.imageToScene.content}
           </p>
         </div>
 
         {/* Generate Button */}
-        {data.status === 'completed' && onGenerateScenes && (
+        {onGenerateScenes && (
           <div className="pt-2">
             <Button
               onClick={() => onGenerateScenes(data)}

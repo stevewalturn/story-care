@@ -6,7 +6,7 @@
  * Matches the JSONOutputRenderer appearance exactly
  */
 
-import { Film, FileText, HelpCircle, Image as ImageIcon, Mic, Music, PlusCircle, Quote, Save, ChevronDown } from 'lucide-react';
+import { ChevronDown, FileText, Film, HelpCircle, Image as ImageIcon, Mic, Music, PlusCircle, Quote, Save } from 'lucide-react';
 
 type SchemaPreviewRendererProps = {
   data: any;
@@ -18,14 +18,14 @@ export function SchemaPreviewRenderer({ data }: SchemaPreviewRendererProps) {
   // Get schema display name
   const getDisplayName = (type: string) => {
     const names: Record<string, string> = {
-      'therapeutic_note': 'Therapeutic Note',
-      'image_references': 'Image References',
-      'video_references': 'Video References',
-      'music_generation': 'Music Generation',
-      'scene_card': 'Scene Card',
-      'scene_suggestions': 'Scene Suggestions',
-      'reflection_questions': 'Reflection Questions',
-      'quote_extraction': 'Quote Extraction',
+      therapeutic_note: 'Therapeutic Note',
+      image_references: 'Image References',
+      video_references: 'Video References',
+      music_generation: 'Music Generation',
+      scene_card: 'Scene Card',
+      scene_suggestions: 'Scene Suggestions',
+      reflection_questions: 'Reflection Questions',
+      quote_extraction: 'Quote Extraction',
     };
     return names[type] || type;
   };
@@ -33,14 +33,14 @@ export function SchemaPreviewRenderer({ data }: SchemaPreviewRendererProps) {
   // Get schema description
   const getDescription = (type: string) => {
     const descriptions: Record<string, string> = {
-      'therapeutic_note': 'Structured clinical note',
-      'image_references': 'AI-generated image suggestions',
-      'video_references': 'AI-generated video suggestions',
-      'music_generation': 'AI-generated music options',
-      'scene_card': 'Complete narrative scene',
-      'scene_suggestions': 'Scene ideas by participant',
-      'reflection_questions': 'Therapeutic reflection prompts',
-      'quote_extraction': 'Meaningful quotes from transcript',
+      therapeutic_note: 'Structured clinical note',
+      image_references: 'AI-generated image suggestions',
+      video_references: 'AI-generated video suggestions',
+      music_generation: 'AI-generated music options',
+      scene_card: 'Complete narrative scene',
+      scene_suggestions: 'Scene ideas by participant',
+      reflection_questions: 'Therapeutic reflection prompts',
+      quote_extraction: 'Meaningful quotes from transcript',
     };
     return descriptions[type] || '';
   };
@@ -80,12 +80,12 @@ export function SchemaPreviewRenderer({ data }: SchemaPreviewRendererProps) {
   };
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-gradient-to-br from-indigo-50 to-purple-50 p-4">
+    <div className="rounded-lg border border-gray-200 bg-gradient-to-br from-purple-50 to-purple-50 p-4">
       {/* Header */}
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="rounded-full bg-indigo-100 p-1.5">
-            <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="rounded-full bg-purple-100 p-1.5">
+            <svg className="h-4 w-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -95,13 +95,13 @@ export function SchemaPreviewRenderer({ data }: SchemaPreviewRendererProps) {
             </svg>
           </div>
           <div>
-            <h4 className="text-sm font-semibold text-indigo-900">{getDisplayName(schemaType)}</h4>
-            <p className="text-xs text-indigo-700">{getDescription(schemaType)}</p>
+            <h4 className="text-sm font-semibold text-purple-900">{getDisplayName(schemaType)}</h4>
+            <p className="text-xs text-purple-700">{getDescription(schemaType)}</p>
           </div>
         </div>
 
         <button
-          className="cursor-not-allowed text-indigo-600 opacity-50"
+          className="cursor-not-allowed text-purple-600 opacity-50"
           disabled
           aria-label="Expand (disabled in preview)"
         >
@@ -120,7 +120,7 @@ export function SchemaPreviewRenderer({ data }: SchemaPreviewRendererProps) {
             <button
               key={`generate-image-${index}`}
               disabled
-              className="flex cursor-not-allowed items-center gap-2 rounded-lg border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-700 opacity-60"
+              className="flex cursor-not-allowed items-center gap-2 rounded-lg border border-purple-300 bg-white px-4 py-2 text-sm font-medium text-purple-700 opacity-60"
             >
               <ImageIcon className="h-4 w-4" />
               Generate "
@@ -150,7 +150,7 @@ export function SchemaPreviewRenderer({ data }: SchemaPreviewRendererProps) {
               disabled
               className={`
                 flex cursor-not-allowed items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium opacity-60
-                ${action.color === 'indigo' ? 'border border-indigo-300 bg-white text-indigo-700' : ''}
+                ${action.color === 'indigo' ? 'border border-purple-300 bg-white text-purple-700' : ''}
                 ${action.color === 'purple' ? 'border border-purple-300 bg-white text-purple-700' : ''}
               `}
             >
@@ -209,15 +209,15 @@ function renderPreview(schemaType: string, data: any) {
                 <h4 className="mb-1 text-sm font-medium text-gray-900">{img.title}</h4>
                 <p className="mb-2 line-clamp-2 text-xs text-gray-600">{img.therapeutic_purpose}</p>
                 {img.source_quote && (
-                  <p className="line-clamp-1 text-xs italic text-gray-500">
+                  <p className="line-clamp-1 text-xs text-gray-500 italic">
                     "
                     {img.source_quote}
                     "
                   </p>
                 )}
               </div>
-              <div className="flex-shrink-0 rounded-lg bg-indigo-100 px-3 py-1.5">
-                <p className="text-xs font-medium text-indigo-700">
+              <div className="flex-shrink-0 rounded-lg bg-purple-100 px-3 py-1.5">
+                <p className="text-xs font-medium text-purple-700">
                   Image #
                   {index + 1}
                 </p>
@@ -255,7 +255,7 @@ function renderPreview(schemaType: string, data: any) {
                   </p>
                 )}
                 {vid.source_quote && (
-                  <p className="line-clamp-1 text-xs italic text-gray-500">
+                  <p className="line-clamp-1 text-xs text-gray-500 italic">
                     "
                     {vid.source_quote}
                     "
@@ -291,10 +291,10 @@ function renderPreview(schemaType: string, data: any) {
               <p className="text-purple-700">{data.instrumental_option?.title}</p>
               <p className="mt-1 text-xs text-purple-600">{data.instrumental_option?.mood}</p>
             </div>
-            <div className="rounded-lg bg-indigo-50 p-2">
-              <p className="font-semibold text-indigo-900">Lyrical</p>
-              <p className="text-indigo-700">{data.lyrical_option?.title}</p>
-              <p className="mt-1 text-xs text-indigo-600">{data.lyrical_option?.mood}</p>
+            <div className="rounded-lg bg-purple-50 p-2">
+              <p className="font-semibold text-purple-900">Lyrical</p>
+              <p className="text-purple-700">{data.lyrical_option?.title}</p>
+              <p className="mt-1 text-xs text-purple-600">{data.lyrical_option?.mood}</p>
             </div>
           </div>
         </div>

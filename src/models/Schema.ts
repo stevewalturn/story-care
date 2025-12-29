@@ -1,8 +1,10 @@
+import { relations } from 'drizzle-orm';
 import {
   bigint,
   boolean,
   date,
   decimal,
+  index,
   integer,
   jsonb,
   pgEnum,
@@ -236,7 +238,7 @@ export const organizationsSchema = pgTable('organizations', {
 
 export const usersSchema: any = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
-  email: varchar('email', { length: 255 }).unique().notNull(),
+  email: varchar('email', { length: 255 }).unique(),
   name: varchar('name', { length: 255 }).notNull(),
   role: userRoleEnum('role').notNull(),
 
@@ -261,6 +263,29 @@ export const usersSchema: any = pgTable('users', {
   therapistId: uuid('therapist_id').references(() => usersSchema.id),
   dateOfBirth: date('date_of_birth'),
   referenceImageUrl: text('reference_image_url'), // For AI image generation
+
+  // Patient demographics
+  gender: varchar('gender', { length: 50 }),
+  pronouns: varchar('pronouns', { length: 100 }),
+  language: varchar('language', { length: 50 }),
+  notes: text('notes'),
+
+  // Patient contact information
+  phoneNumber: varchar('phone_number', { length: 50 }),
+
+  // Patient address information
+  addressLine1: varchar('address_line_1', { length: 255 }),
+  addressLine2: varchar('address_line_2', { length: 255 }),
+  city: varchar('city', { length: 100 }),
+  state: varchar('state', { length: 100 }),
+  country: varchar('country', { length: 100 }),
+  zipCode: varchar('zip_code', { length: 20 }),
+
+  // Patient emergency contact
+  emergencyContactName: varchar('emergency_contact_name', { length: 255 }),
+  emergencyContactRelationship: varchar('emergency_contact_relationship', { length: 100 }),
+  emergencyContactPhone: varchar('emergency_contact_phone', { length: 50 }),
+  emergencyContactEmail: varchar('emergency_contact_email', { length: 255 }),
 
   // Firebase Auth
   firebaseUid: varchar('firebase_uid', { length: 255 }).unique(),
@@ -333,7 +358,9 @@ export const groupMembersSchema = pgTable('group_members', {
   }),
   joinedAt: timestamp('joined_at').defaultNow().notNull(),
   leftAt: timestamp('left_at'),
-});
+}, table => ({
+  groupIdIdx: index('group_members_group_id_idx').on(table.groupId),
+}));
 
 // ============================================================================
 // SESSIONS & TRANSCRIPTS
@@ -520,6 +547,7 @@ export const mediaLibrarySchema: any = pgTable('media_library', {
   sourceType: sourceTypeEnum('source_type').notNull(),
   sourceSessionId: uuid('source_session_id').references(() => sessionsSchema.id),
   sourceMediaId: uuid('source_media_id').references(() => mediaLibrarySchema.id), // If derived
+  sceneId: uuid('scene_id'), // References scenes table - for scene compilation videos
 
   // AI generation metadata
   generationPrompt: text('generation_prompt'),
@@ -1009,6 +1037,7 @@ export const scenesSchema = pgTable('scenes', {
   // Audio settings (legacy - kept for backward compatibility)
   backgroundAudioUrl: text('background_audio_url'),
   loopAudio: boolean('loop_audio').default(false),
+  loopScenes: boolean('loop_scenes').default(false),
 
   // New audio settings
   fitAudioToDuration: boolean('fit_audio_to_duration').default(false),
@@ -1498,6 +1527,89 @@ export const videoTranscodingJobs = videoTranscodingJobsSchema;
 export const videoProcessingJobs = videoProcessingJobsSchema;
 export const auditLogs = auditLogsSchema;
 export const platformSettings = platformSettingsSchema;
+
+// ============================================================================
+// DRIZZLE RELATIONS (Required for .with() query syntax)
+// ============================================================================
+
+export const sessionsRelations = relations(sessions, ({ one, many }) => ({
+  patient: one(users, {
+    fields: [sessions.patientId],
+    references: [users.id],
+  }),
+  group: one(groups, {
+    fields: [sessions.groupId],
+    references: [groups.id],
+  }),
+  transcript: one(transcripts, {
+    fields: [sessions.id],
+    references: [transcripts.sessionId],
+  }),
+  sessionModules: many(sessionModules),
+}));
+
+export const transcriptsRelations = relations(transcripts, ({ one, many }) => ({
+  session: one(sessions, {
+    fields: [transcripts.sessionId],
+    references: [sessions.id],
+  }),
+  speakers: many(speakers),
+  utterances: many(utterances),
+}));
+
+export const speakersRelations = relations(speakers, ({ one, many }) => ({
+  transcript: one(transcripts, {
+    fields: [speakers.transcriptId],
+    references: [transcripts.id],
+  }),
+  utterances: many(utterances),
+}));
+
+export const sessionModulesRelations = relations(sessionModules, ({ one }) => ({
+  session: one(sessions, {
+    fields: [sessionModules.sessionId],
+    references: [sessions.id],
+  }),
+  module: one(treatmentModules, {
+    fields: [sessionModules.moduleId],
+    references: [treatmentModules.id],
+  }),
+}));
+
+export const treatmentModulesRelations = relations(treatmentModules, ({ many }) => ({
+  sessionModules: many(sessionModules),
+}));
+
+export const groupsRelations = relations(groups, ({ many }) => ({
+  sessions: many(sessions),
+  members: many(groupMembers),
+}));
+
+export const usersRelations = relations(users, ({ many }) => ({
+  sessionsAsPatient: many(sessions),
+}));
+
+export const utterancesRelations = relations(utterances, ({ one }) => ({
+  speaker: one(speakers, {
+    fields: [utterances.speakerId],
+    references: [speakers.id],
+  }),
+  transcript: one(transcripts, {
+    fields: [utterances.transcriptId],
+    references: [transcripts.id],
+  }),
+}));
+
+export const groupMembersRelations = relations(groupMembers, ({ one }) => ({
+  group: one(groups, {
+    fields: [groupMembers.groupId],
+    references: [groups.id],
+  }),
+  patient: one(users, {
+    fields: [groupMembers.patientId],
+    references: [users.id],
+  }),
+}));
 
 // ============================================================================
 // EXPORTS (for type inference)

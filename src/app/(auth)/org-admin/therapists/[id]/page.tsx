@@ -133,7 +133,7 @@ export default function TherapistDetailPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
       </div>
     );
   }
@@ -182,9 +182,9 @@ export default function TherapistDetailPage() {
           <button
             type="button"
             onClick={() => setActiveTab('overview')}
-            className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
+            className={`border-b-2 px-1 py-4 text-sm font-medium whitespace-nowrap ${
               activeTab === 'overview'
-                ? 'border-indigo-600 text-indigo-600'
+                ? 'border-purple-600 text-purple-600'
                 : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
             }`}
           >
@@ -193,9 +193,9 @@ export default function TherapistDetailPage() {
           <button
             type="button"
             onClick={() => setActiveTab('patients')}
-            className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
+            className={`border-b-2 px-1 py-4 text-sm font-medium whitespace-nowrap ${
               activeTab === 'patients'
-                ? 'border-indigo-600 text-indigo-600'
+                ? 'border-purple-600 text-purple-600'
                 : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
             }`}
           >
@@ -203,7 +203,7 @@ export default function TherapistDetailPage() {
             <span
               className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
                 activeTab === 'patients'
-                  ? 'bg-indigo-100 text-indigo-600'
+                  ? 'bg-purple-100 text-purple-600'
                   : 'bg-gray-100 text-gray-600'
               }`}
             >
@@ -213,9 +213,9 @@ export default function TherapistDetailPage() {
           <button
             type="button"
             onClick={() => setActiveTab('sessions')}
-            className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
+            className={`border-b-2 px-1 py-4 text-sm font-medium whitespace-nowrap ${
               activeTab === 'sessions'
-                ? 'border-indigo-600 text-indigo-600'
+                ? 'border-purple-600 text-purple-600'
                 : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
             }`}
           >
@@ -223,7 +223,7 @@ export default function TherapistDetailPage() {
             <span
               className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
                 activeTab === 'sessions'
-                  ? 'bg-indigo-100 text-indigo-600'
+                  ? 'bg-purple-100 text-purple-600'
                   : 'bg-gray-100 text-gray-600'
               }`}
             >
@@ -233,9 +233,9 @@ export default function TherapistDetailPage() {
           <button
             type="button"
             onClick={() => setActiveTab('activity')}
-            className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
+            className={`border-b-2 px-1 py-4 text-sm font-medium whitespace-nowrap ${
               activeTab === 'activity'
-                ? 'border-indigo-600 text-indigo-600'
+                ? 'border-purple-600 text-purple-600'
                 : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
             }`}
           >
@@ -243,7 +243,7 @@ export default function TherapistDetailPage() {
             <span
               className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
                 activeTab === 'activity'
-                  ? 'bg-indigo-100 text-indigo-600'
+                  ? 'bg-purple-100 text-purple-600'
                   : 'bg-gray-100 text-gray-600'
               }`}
             >

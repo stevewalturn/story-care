@@ -175,7 +175,7 @@ export function AssetPickerModal({
               onClick={() => setActiveTab('media')}
               className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
                 activeTab === 'media'
-                  ? 'border-indigo-600 text-indigo-600'
+                  ? 'border-purple-600 text-purple-600'
                   : 'border-transparent text-gray-600 hover:text-gray-900'
               }`}
             >
@@ -189,7 +189,7 @@ export function AssetPickerModal({
                 onClick={() => setActiveTab('quotes')}
                 className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
                   activeTab === 'quotes'
-                    ? 'border-indigo-600 text-indigo-600'
+                    ? 'border-purple-600 text-purple-600'
                     : 'border-transparent text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -200,7 +200,7 @@ export function AssetPickerModal({
                 onClick={() => setActiveTab('notes')}
                 className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
                   activeTab === 'notes'
-                    ? 'border-indigo-600 text-indigo-600'
+                    ? 'border-purple-600 text-purple-600'
                     : 'border-transparent text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -214,7 +214,7 @@ export function AssetPickerModal({
               onClick={() => setActiveTab('scenes')}
               className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
                 activeTab === 'scenes'
-                  ? 'border-indigo-600 text-indigo-600'
+                  ? 'border-purple-600 text-purple-600'
                   : 'border-transparent text-gray-600 hover:text-gray-900'
               }`}
             >
@@ -232,10 +232,10 @@ export function AssetPickerModal({
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder={
-                activeTab === 'media' ? 'Search media files...' :
-                activeTab === 'quotes' ? 'Search quotes...' :
-                activeTab === 'notes' ? 'Search notes...' :
-                'Search scenes...'
+                activeTab === 'media' ? 'Search media files...'
+                  : activeTab === 'quotes' ? 'Search quotes...'
+                    : activeTab === 'notes' ? 'Search notes...'
+                      : 'Search scenes...'
               }
               className="pl-10"
             />
@@ -246,150 +246,150 @@ export function AssetPickerModal({
         <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
             <div className="flex h-full items-center justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
             </div>
           ) : activeTab === 'media' ? (
             // Media Grid
-                <div className="grid grid-cols-3 gap-4">
-                  {filteredMediaAssets.map(asset => (
-                    <button
-                      key={asset.id}
-                      onClick={() => handleSelect(asset)}
-                      className="group relative aspect-square overflow-hidden rounded-lg border border-gray-200 transition-all hover:border-indigo-500 hover:shadow-lg"
-                    >
-                      {asset.mediaType === 'image' ? (
-                        <img src={asset.mediaUrl} alt={asset.title || 'Media'} className="h-full w-full object-cover" />
-                      ) : asset.mediaType === 'video' ? (
-                        <div className="flex h-full items-center justify-center bg-gray-100">
-                          <ImageIcon className="h-12 w-12 text-gray-400" />
-                        </div>
-                      ) : (
-                        <div className="flex h-full items-center justify-center bg-gray-100">
-                          <ImageIcon className="h-12 w-12 text-gray-400" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-all group-hover:bg-black/50">
-                        <span className="translate-y-4 text-sm font-medium text-white opacity-0 transition-all group-hover:translate-y-0 group-hover:opacity-100">
-                          Select
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                  {filteredMediaAssets.length === 0 && (
-                    <div className="col-span-3 py-12 text-center text-sm text-gray-500">
-                      No media assets found
+            <div className="grid grid-cols-3 gap-4">
+              {filteredMediaAssets.map(asset => (
+                <button
+                  key={asset.id}
+                  onClick={() => handleSelect(asset)}
+                  className="group relative aspect-square overflow-hidden rounded-lg border border-gray-200 transition-all hover:border-purple-500 hover:shadow-lg"
+                >
+                  {asset.mediaType === 'image' ? (
+                    <img src={asset.mediaUrl} alt={asset.title || 'Media'} className="h-full w-full object-cover" />
+                  ) : asset.mediaType === 'video' ? (
+                    <div className="flex h-full items-center justify-center bg-gray-100">
+                      <ImageIcon className="h-12 w-12 text-gray-400" />
+                    </div>
+                  ) : (
+                    <div className="flex h-full items-center justify-center bg-gray-100">
+                      <ImageIcon className="h-12 w-12 text-gray-400" />
                     </div>
                   )}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-all group-hover:bg-black/50">
+                    <span className="translate-y-4 text-sm font-medium text-white opacity-0 transition-all group-hover:translate-y-0 group-hover:opacity-100">
+                      Select
+                    </span>
+                  </div>
+                </button>
+              ))}
+              {filteredMediaAssets.length === 0 && (
+                <div className="col-span-3 py-12 text-center text-sm text-gray-500">
+                  No media assets found
                 </div>
+              )}
+            </div>
           ) : activeTab === 'quotes' ? (
             // Quotes List
-                <div className="space-y-3">
-                  {filteredQuoteAssets.map(asset => (
-                    <button
-                      key={asset.id}
-                      onClick={() => handleSelect(asset)}
-                      className="w-full rounded-lg border border-gray-200 p-4 text-left transition-all hover:border-indigo-500 hover:shadow-md"
-                    >
-                      <p className="text-sm text-gray-900">
-                        &quot;
-                        {asset.quoteText}
-                        &quot;
-                      </p>
-                      {asset.context && (
-                        <p className="mt-2 text-xs text-gray-600">{asset.context}</p>
-                      )}
-                      {asset.tags && asset.tags.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {asset.tags.map((tag, i) => (
-                            <span key={i} className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                  {filteredQuoteAssets.length === 0 && (
-                    <div className="py-12 text-center text-sm text-gray-500">
-                      No quotes found
+            <div className="space-y-3">
+              {filteredQuoteAssets.map(asset => (
+                <button
+                  key={asset.id}
+                  onClick={() => handleSelect(asset)}
+                  className="w-full rounded-lg border border-gray-200 p-4 text-left transition-all hover:border-purple-500 hover:shadow-md"
+                >
+                  <p className="text-sm text-gray-900">
+                    &quot;
+                    {asset.quoteText}
+                    &quot;
+                  </p>
+                  {asset.context && (
+                    <p className="mt-2 text-xs text-gray-600">{asset.context}</p>
+                  )}
+                  {asset.tags && asset.tags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {asset.tags.map((tag, i) => (
+                        <span key={i} className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                          {tag}
+                        </span>
+                      ))}
                     </div>
                   )}
+                </button>
+              ))}
+              {filteredQuoteAssets.length === 0 && (
+                <div className="py-12 text-center text-sm text-gray-500">
+                  No quotes found
                 </div>
+              )}
+            </div>
           ) : activeTab === 'notes' ? (
             // Notes List
-                <div className="space-y-3">
-                  {filteredNoteAssets.map(asset => (
-                    <button
-                      key={asset.id}
-                      onClick={() => handleSelect(asset)}
-                      className="w-full rounded-lg border border-gray-200 p-4 text-left transition-all hover:border-indigo-500 hover:shadow-md"
-                    >
-                      <div className="mb-2 flex items-center gap-2">
-                        <span className="rounded bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
-                          {asset.noteType}
+            <div className="space-y-3">
+              {filteredNoteAssets.map(asset => (
+                <button
+                  key={asset.id}
+                  onClick={() => handleSelect(asset)}
+                  className="w-full rounded-lg border border-gray-200 p-4 text-left transition-all hover:border-purple-500 hover:shadow-md"
+                >
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="rounded bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
+                      {asset.noteType}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-900">{asset.noteText}</p>
+                  {asset.tags && asset.tags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {asset.tags.map((tag, i) => (
+                        <span key={i} className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                          {tag}
                         </span>
-                      </div>
-                      <p className="text-sm text-gray-900">{asset.noteText}</p>
-                      {asset.tags && asset.tags.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {asset.tags.map((tag, i) => (
-                            <span key={i} className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                  {filteredNoteAssets.length === 0 && (
-                    <div className="py-12 text-center text-sm text-gray-500">
-                      No notes found
+                      ))}
                     </div>
                   )}
+                </button>
+              ))}
+              {filteredNoteAssets.length === 0 && (
+                <div className="py-12 text-center text-sm text-gray-500">
+                  No notes found
                 </div>
+              )}
+            </div>
           ) : activeTab === 'scenes' ? (
             // Scenes Grid
-                <div className="grid grid-cols-2 gap-4">
-                  {filteredSceneAssets.map(asset => (
-                    <button
-                      key={asset.id}
-                      onClick={() => handleSelect(asset)}
-                      className="group overflow-hidden rounded-lg border border-gray-200 transition-all hover:border-indigo-500 hover:shadow-lg"
-                    >
-                      <div className="relative aspect-video overflow-hidden bg-gray-100">
-                        {asset.thumbnailUrl ? (
-                          <img src={asset.thumbnailUrl} alt={asset.title} className="h-full w-full object-cover" />
-                        ) : asset.videoUrl ? (
-                          <div className="flex h-full items-center justify-center bg-gray-900">
-                            <Clapperboard className="h-12 w-12 text-white opacity-50" />
-                          </div>
-                        ) : (
-                          <div className="flex h-full items-center justify-center">
-                            <Clapperboard className="h-12 w-12 text-gray-400" />
-                          </div>
-                        )}
-                        {asset.duration && (
-                          <div className="absolute right-2 bottom-2 rounded bg-black/75 px-2 py-1 text-xs text-white">
-                            {Math.floor(asset.duration / 60)}
-                            :
-                            {(asset.duration % 60).toString().padStart(2, '0')}
-                          </div>
-                        )}
+            <div className="grid grid-cols-2 gap-4">
+              {filteredSceneAssets.map(asset => (
+                <button
+                  key={asset.id}
+                  onClick={() => handleSelect(asset)}
+                  className="group overflow-hidden rounded-lg border border-gray-200 transition-all hover:border-purple-500 hover:shadow-lg"
+                >
+                  <div className="relative aspect-video overflow-hidden bg-gray-100">
+                    {asset.thumbnailUrl ? (
+                      <img src={asset.thumbnailUrl} alt={asset.title} className="h-full w-full object-cover" />
+                    ) : asset.videoUrl ? (
+                      <div className="flex h-full items-center justify-center bg-gray-900">
+                        <Clapperboard className="h-12 w-12 text-white opacity-50" />
                       </div>
-                      <div className="p-3">
-                        <p className="truncate text-sm font-medium text-gray-900">{asset.title}</p>
-                        {asset.description && (
-                          <p className="mt-1 line-clamp-2 text-xs text-gray-600">{asset.description}</p>
-                        )}
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <Clapperboard className="h-12 w-12 text-gray-400" />
                       </div>
-                    </button>
-                  ))}
-                  {filteredSceneAssets.length === 0 && (
-                    <div className="col-span-2 py-12 text-center text-sm text-gray-500">
-                      No scenes found
-                    </div>
-                  )}
+                    )}
+                    {asset.duration && (
+                      <div className="absolute right-2 bottom-2 rounded bg-black/75 px-2 py-1 text-xs text-white">
+                        {Math.floor(asset.duration / 60)}
+                        :
+                        {(asset.duration % 60).toString().padStart(2, '0')}
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <p className="truncate text-sm font-medium text-gray-900">{asset.title}</p>
+                    {asset.description && (
+                      <p className="mt-1 line-clamp-2 text-xs text-gray-600">{asset.description}</p>
+                    )}
+                  </div>
+                </button>
+              ))}
+              {filteredSceneAssets.length === 0 && (
+                <div className="col-span-2 py-12 text-center text-sm text-gray-500">
+                  No scenes found
                 </div>
+              )}
+            </div>
           ) : null}
         </div>
 

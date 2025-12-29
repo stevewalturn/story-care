@@ -212,7 +212,7 @@ export function MediaViewer({ item, onClose }: MediaViewerProps) {
                   {item.tags.map((tag, index) => (
                     <span
                       key={index}
-                      className="rounded-full bg-indigo-100 px-3 py-1 text-sm text-indigo-700"
+                      className="rounded-full bg-purple-100 px-3 py-1 text-sm text-purple-700"
                     >
                       {tag}
                     </span>

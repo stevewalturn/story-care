@@ -16,9 +16,20 @@ export type Utterance = {
   endTime: number;
   confidence: number;
   avatarUrl?: string;
+  referenceImageUrl?: string;
 };
 
 export type { AIPromptOption };
+
+// Speaker info for displaying in header
+export type SpeakerInfo = {
+  id: string;
+  name: string;
+  type: 'therapist' | 'patient' | 'group_member';
+  avatarUrl?: string;
+  referenceImageUrl?: string;
+  initial?: string;
+};
 
 // Props for TranscriptPanel
 export type TranscriptPanelProps = {
@@ -28,6 +39,12 @@ export type TranscriptPanelProps = {
   audioUrl?: string;
   onTextSelection: () => void;
   user: User | null;
+  // Real session data (not hardcoded)
+  groupName?: string;
+  sessionDate?: string;
+  speakers?: SpeakerInfo[];
+  // Callback for speaker reassignment
+  onSpeakerReassign?: (utteranceId: string, newSpeakerId: string) => Promise<void>;
 };
 
 // Props for AIAssistantPanel
@@ -35,6 +52,7 @@ export type AIAssistantPanelProps = {
   sessionId: string;
   patientName: string;
   user: User | null;
+  speakers?: SpeakerInfo[];
   assignedModule: TreatmentModule | null;
   triggerPrompt: string | null;
   onPromptSent: () => void;
@@ -64,6 +82,15 @@ export type AIAssistantPanelProps = {
   onLibraryRefresh?: () => void;
   analyzeMode: boolean;
   onAnalyzeModeChange: (enabled: boolean) => void;
+  onClose?: () => void;
+};
+
+// Selected patient info for passing between components
+export type SelectedPatientInfo = {
+  id: string;
+  name: string;
+  avatarUrl?: string;
+  referenceImageUrl?: string;
 };
 
 // Props for LibraryPanel
@@ -73,6 +100,9 @@ export type LibraryPanelProps = {
   sessionData: any;
   onOpenUpload: () => void;
   refreshKey: number;
+  onTaskComplete?: () => void;
+  onClose?: () => void;
+  onSelectedPatientChange?: (patient: SelectedPatientInfo | null) => void;
 };
 
 // Props for MediaTab
@@ -81,6 +111,9 @@ export type MediaTabProps = {
   user: User | null;
   onOpenUpload: () => void;
   refreshKey: number;
+  mediaFilter?: 'all' | 'videos' | 'images' | 'musics';
+  selectedPatient?: string;
+  onTaskComplete?: () => void;
 };
 
 // Props for QuotesTab
@@ -88,6 +121,9 @@ export type QuotesTabProps = {
   sessionId: string;
   user: User | null;
   refreshKey?: number;
+  selectedPatient?: string;
+  onEditQuote?: (quote: any) => void;
+  onDeleteQuote?: (quoteId: string) => void;
 };
 
 // Props for NotesTab
@@ -96,9 +132,11 @@ export type NotesTabProps = {
   user: User | null;
   sessionData: any;
   refreshKey?: number;
+  selectedPatient?: string;
 };
 
 // Props for ProfileTab
 export type ProfileTabProps = {
   sessionData: any;
+  selectedPatient?: string;
 };

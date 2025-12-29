@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
       // PostgreSQL foreign key constraint error
       if (dbError.code === '23503') {
         return NextResponse.json({
-          error: 'Referenced record does not exist.'
+          error: 'Referenced record does not exist.',
         }, { status: 400 });
       }
     }

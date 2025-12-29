@@ -1,19 +1,20 @@
 'use client';
 
-import type { Utterance } from './types/transcript.types';
+import type { SelectedPatientInfo, SpeakerInfo, Utterance } from './types/transcript.types';
 import type { AIPromptOption } from '@/components/sessions/AnalyzeSelectionModal';
+import type { PatientOption } from '@/components/sessions/SaveNoteModal';
 import type { TreatmentModule } from '@/models/Schema';
-import { useEffect, useState } from 'react';
-import { MediaUploadModal } from '@/components/media/MediaUploadModal';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { GenerateImageModal } from '@/components/media/GenerateImageModal';
 import { GenerateMusicModal } from '@/components/media/GenerateMusicModal';
+import { MediaUploadModal } from '@/components/media/MediaUploadModal';
+import { SceneGenerationLayout } from '@/components/scenes-generation/SceneGenerationLayout';
 import { AnalyzeSelectionModal } from '@/components/sessions/AnalyzeSelectionModal';
 import { AssignModuleModal } from '@/components/sessions/AssignModuleModal';
 import { EditQuoteModal } from '@/components/sessions/EditQuoteModal';
 import { GenerateVideoModal } from '@/components/sessions/GenerateVideoModal';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
 import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog';
-import { SceneGenerationLayout } from '@/components/scenes-generation/SceneGenerationLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 import { transformSceneCardToScenes } from '@/utils/SceneHelpers';
@@ -32,11 +33,13 @@ export function TranscriptViewerClient({
   const [utterances, setUtterances] = useState<Utterance[]>([]);
   const [audioUrl, setAudioUrl] = useState<string | undefined>();
   const [sessionTitle, setSessionTitle] = useState<string>('');
+  const [groupName, setGroupName] = useState<string | undefined>();
   const [patientName, setPatientName] = useState<string>('');
   const [patientId, setPatientId] = useState<string | undefined>();
   const [patientReferenceImage, setPatientReferenceImage] = useState<string | undefined>();
   const [assignedModule, setAssignedModule] = useState<TreatmentModule | null>(null);
   const [sessionData, setSessionData] = useState<any>(null);
+  const [fetchedSpeakers, setFetchedSpeakers] = useState<SpeakerInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,8 +86,63 @@ export function TranscriptViewerClient({
   // Media/Library refresh trigger (for media, quotes, and notes)
   const [mediaRefreshKey, setMediaRefreshKey] = useState(0);
 
+  // Handler for when music generation completes
+  const handleTaskComplete = useCallback(() => {
+    console.log('[TranscriptViewerClient] Music task completed, refreshing media...');
+    setMediaRefreshKey(prev => prev + 1);
+  }, []);
+
+  // Handler for speaker reassignment
+  const handleSpeakerReassign = useCallback(async (utteranceId: string, newSpeakerId: string) => {
+    if (!user) return;
+
+    // Find the utterance to get current speaker
+    const utterance = utterances.find(u => u.id === utteranceId);
+    if (!utterance) return;
+
+    const response = await authenticatedFetch(
+      `/api/sessions/${sessionId}/speakers/${utterance.speakerId}/utterances/${utteranceId}`,
+      user,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newSpeakerId }),
+      },
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to reassign speaker');
+    }
+
+    const data = await response.json();
+
+    // Update local state with new speaker info
+    setUtterances(prev => prev.map((u) => {
+      if (u.id === utteranceId) {
+        return {
+          ...u,
+          speakerId: newSpeakerId,
+          speakerName: data.utterance.speakerName || u.speakerName,
+          speakerType: data.utterance.speakerType || u.speakerType,
+        };
+      }
+      return u;
+    }));
+  }, [user, sessionId, utterances]);
+
   // Analyze Mode state (for controlling automatic text selection analysis)
   const [analyzeMode, setAnalyzeMode] = useState(false);
+
+  // Panel visibility states
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(true);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(true);
+
+  // Selected patient from Library Panel (determines where assets are saved)
+  const [selectedPatientFromLibrary, setSelectedPatientFromLibrary] = useState<SelectedPatientInfo | null>(null);
+
+  // Patients list for quote modal
+  const [sessionPatients, setSessionPatients] = useState<PatientOption[]>([]);
 
   // Fetch session and transcript data
   useEffect(() => {
@@ -99,11 +157,37 @@ export function TranscriptViewerClient({
         }
         const sessionDataResponse = await sessionResponse.json();
         setSessionData(sessionDataResponse.session);
-        setAudioUrl(sessionDataResponse.session.audioUrl);
+        // Use presigned URL directly - it includes auth and doesn't need CORS
+        if (sessionDataResponse.session.audioUrl) {
+          setAudioUrl(sessionDataResponse.session.audioUrl);
+        }
         setSessionTitle(sessionDataResponse.session.title);
+        setGroupName(sessionDataResponse.session.group?.name);
         setPatientName(sessionDataResponse.session.patient?.name || sessionDataResponse.session.group?.name || 'Unknown');
         setPatientId(sessionDataResponse.session.patient?.id);
         setPatientReferenceImage(sessionDataResponse.session.patient?.referenceImageUrl);
+
+        // Extract patients list for quote modal
+        const patients: PatientOption[] = [];
+        if (sessionDataResponse.session.patient) {
+          patients.push({
+            id: sessionDataResponse.session.patient.id,
+            name: sessionDataResponse.session.patient.name,
+            avatarUrl: sessionDataResponse.session.patient.avatarUrl || null,
+          });
+        }
+        if (sessionDataResponse.session.group?.members) {
+          for (const member of sessionDataResponse.session.group.members) {
+            if (!patients.find(p => p.id === member.id)) {
+              patients.push({
+                id: member.id,
+                name: member.name,
+                avatarUrl: member.avatarUrl || null,
+              });
+            }
+          }
+        }
+        setSessionPatients(patients);
 
         // Fetch assigned module if exists
         if (sessionDataResponse.session.moduleId) {
@@ -131,10 +215,24 @@ export function TranscriptViewerClient({
           startTime: Number.parseFloat(u.startTimeSeconds || '0'),
           endTime: Number.parseFloat(u.endTimeSeconds || '0'),
           confidence: Number.parseFloat(u.confidenceScore || '1'),
+          // API returns presigned URL in avatarUrl (already combines userAvatarUrl + userReferenceImageUrl)
           avatarUrl: u.avatarUrl,
+          referenceImageUrl: u.referenceImageUrl,
         }));
 
         setUtterances(transformedUtterances);
+
+        // Fetch speakers from API (same pattern as SpeakerLabeling)
+        const speakersResponse = await authenticatedFetch(`/api/sessions/${sessionId}/speakers`, user);
+        if (speakersResponse.ok) {
+          const speakersData = await speakersResponse.json();
+          setFetchedSpeakers(speakersData.speakers.map((s: any) => ({
+            id: s.id,
+            name: s.speakerName || s.speakerLabel || 'Unknown',
+            type: s.speakerType || 'patient',
+            initial: (s.speakerName || s.speakerLabel || 'U').charAt(0).toUpperCase(),
+          })));
+        }
       } catch (err) {
         console.error('Error fetching transcript:', err);
         setError(err instanceof Error ? err.message : 'Failed to load transcript');
@@ -145,6 +243,29 @@ export function TranscriptViewerClient({
 
     fetchData();
   }, [sessionId]);
+
+  // Build speakers array from fetchedSpeakers (from speakers API)
+  // Enrich with session patient/group data for avatars
+  const speakers = useMemo(() => {
+    if (fetchedSpeakers.length === 0) return [];
+
+    // Enrich with avatars from sessionData
+    return fetchedSpeakers.map((speaker) => {
+      // Check if speaker matches a patient from sessionData
+      let patient = null;
+      if (sessionData?.patient?.name === speaker.name) {
+        patient = sessionData.patient;
+      } else if (sessionData?.group?.members) {
+        patient = sessionData.group.members.find((m: any) => m.name === speaker.name);
+      }
+
+      return {
+        ...speaker,
+        avatarUrl: patient?.avatarUrl || speaker.avatarUrl,
+        referenceImageUrl: patient?.referenceImageUrl || speaker.referenceImageUrl,
+      };
+    });
+  }, [fetchedSpeakers, sessionData]);
 
   // Fetch AI prompts when session data loads
   useEffect(() => {
@@ -178,16 +299,11 @@ export function TranscriptViewerClient({
           const libraryData = await libraryResponse.json();
           const allLibraryPrompts = libraryData.prompts || [];
 
-          console.log(`[Transcript] Fetched ${allLibraryPrompts.length} total library prompts`);
-          console.log(`[Transcript] Module prompts: ${modulePrompts.length}`);
-
           // Filter out prompts that are already in module prompts to avoid duplicates
           const modulePromptIds = new Set(modulePrompts.map(p => p.id));
           const filteredLibraryPrompts = allLibraryPrompts.filter(
             (p: AIPromptOption) => !modulePromptIds.has(p.id),
           );
-
-          console.log(`[Transcript] After filtering module duplicates: ${filteredLibraryPrompts.length} library prompts`);
 
           setLibraryPrompts(filteredLibraryPrompts);
         }
@@ -235,9 +351,7 @@ export function TranscriptViewerClient({
   };
 
   // Handler for analyze option
-  const handleAnalyze = async (promptId: string, promptText: string, text: string) => {
-    console.log('Analyzing with prompt:', promptId, text.substring(0, 50));
-
+  const handleAnalyze = async (_promptId: string, promptText: string, text: string) => {
     // Send ALL prompts to AI chat - JSON output will render with action buttons
     // Image/video generation modals will be triggered from JSON action buttons
     const fullPrompt = `${promptText}\n\nSelected text:\n"${text}"`;
@@ -277,8 +391,7 @@ export function TranscriptViewerClient({
         throw new Error('Failed to generate image');
       }
 
-      const data = await response.json();
-      console.log('Image generated:', data);
+      await response.json();
       // Trigger library refresh
       setMediaRefreshKey((prev: number) => prev + 1);
     } catch (error) {
@@ -299,8 +412,7 @@ export function TranscriptViewerClient({
         throw new Error('Failed to generate video');
       }
 
-      const data = await response.json();
-      console.log('Video generated:', data);
+      await response.json();
       // Trigger library refresh
     } catch (error) {
       console.error('Error generating video:', error);
@@ -357,69 +469,25 @@ export function TranscriptViewerClient({
     setShowSceneGenerationModal(true);
   };
 
-  // Handler for saving quote
+  // Handler for saving quote - patientId comes from modal's patient selector
   const handleSaveQuote = async (quoteData: {
+    patientId: string;
     quoteText: string;
-    tags: string[];
-    notes: string;
+    speaker: string;
   }) => {
     try {
-      // Get patient ID from session
-      const sessionResponse = await authenticatedFetch(`/api/sessions/${sessionId}`, user);
-      if (!sessionResponse.ok) {
-        throw new Error('Failed to fetch session');
+      const response = await authenticatedPost('/api/quotes', user, {
+        patientId: quoteData.patientId,
+        sessionId,
+        quoteText: quoteData.quoteText,
+        speaker: quoteData.speaker,
+        source: 'transcript_selection',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save quote');
       }
-      const sessionData = await sessionResponse.json();
-      const { sessionType, patientId, groupId } = sessionData.session;
 
-      // Handle both individual and group sessions
-      if (sessionType === 'individual') {
-        // Individual session - save to single patient
-        if (!patientId) {
-          throw new Error('No patient associated with this individual session');
-        }
-
-        const response = await authenticatedPost('/api/quotes', user, {
-          ...quoteData,
-          patientId,
-          sessionId,
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to save quote');
-        }
-
-        const data = await response.json();
-        console.log('Quote saved:', data);
-      } else {
-        // Group session - save to all patients in the group
-        if (!groupId) {
-          throw new Error('No group associated with this group session');
-        }
-
-        // Fetch all group members
-        const groupResponse = await authenticatedFetch(`/api/groups/${groupId}/members`, user);
-        if (!groupResponse.ok) {
-          throw new Error('Failed to fetch group members');
-        }
-
-        const { members } = await groupResponse.json();
-
-        // Create quote for each patient in the group
-        for (const member of members) {
-          const response = await authenticatedPost('/api/quotes', user, {
-            ...quoteData,
-            patientId: member.patientId,
-            sessionId,
-          });
-
-          if (!response.ok) {
-            console.error(`Failed to save quote for patient ${member.patientId}`);
-          }
-        }
-
-        console.log(`Quote saved for ${members.length} patient(s) in group`);
-      }
       // Trigger refresh of library panel
       setMediaRefreshKey(prev => prev + 1);
     } catch (error) {
@@ -484,7 +552,7 @@ export function TranscriptViewerClient({
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
-          <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+          <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
           <p className="text-gray-500">Loading transcript...</p>
         </div>
       </div>
@@ -499,7 +567,7 @@ export function TranscriptViewerClient({
           <p className="mb-4 text-gray-500">{error}</p>
           <button
             onClick={() => window.location.href = '/sessions'}
-            className="text-indigo-600 hover:text-indigo-700"
+            className="text-purple-600 hover:text-purple-700"
           >
             Back to Sessions
           </button>
@@ -518,7 +586,7 @@ export function TranscriptViewerClient({
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="text-indigo-600 hover:text-indigo-700"
+            className="text-purple-600 hover:text-purple-700"
           >
             Refresh Page
           </button>
@@ -529,46 +597,69 @@ export function TranscriptViewerClient({
 
   return (
     <>
-      <div className="flex h-screen bg-gray-50">
-        {/* Left Panel - Transcript (manages its own width: 320px expanded, 48px collapsed) */}
-        <TranscriptPanel
-          sessionId={sessionId}
-          sessionTitle={sessionTitle}
-          utterances={utterances}
-          audioUrl={audioUrl}
-          onTextSelection={handleTextSelection}
-          user={user}
-        />
-
-        {/* Center Panel - AI Assistant */}
-        <div className="flex min-w-0 flex-1 flex-col">
-          <AIAssistantPanel
+      {/* Three-panel workspace layout */}
+      <div className="flex h-full overflow-hidden">
+        {/* Left Panel - Transcript (flexible width based on panel visibility) */}
+        <div className={`h-full ${
+          !isAIAssistantOpen && !isLibraryOpen ? 'mx-auto max-w-4xl flex-1'
+            : !isAIAssistantOpen ? 'max-w-[980px] flex-1'
+                : 'w-[450px] flex-shrink-0'
+        }`}
+        >
+          <TranscriptPanel
             sessionId={sessionId}
-            patientName={patientName}
+            sessionTitle={sessionTitle}
+            utterances={utterances}
+            audioUrl={audioUrl}
+            onTextSelection={handleTextSelection}
             user={user}
-            assignedModule={assignedModule}
-            triggerPrompt={aiPrompt}
-            onPromptSent={() => setAiPrompt(null)}
-            onAssignModule={() => setIsAssignModuleModalOpen(true)}
-            onTextSelection={handleAITextSelection}
-            onOpenImageModal={handleOpenImageModal}
-            onOpenVideoModal={handleOpenVideoModal}
-            onOpenMusicModal={handleOpenMusicModal}
-            onOpenSceneGeneration={handleOpenSceneGeneration}
-            onLibraryRefresh={() => setMediaRefreshKey(prev => prev + 1)}
-            analyzeMode={analyzeMode}
-            onAnalyzeModeChange={setAnalyzeMode}
+            groupName={groupName}
+            sessionDate={sessionData?.sessionDate}
+            speakers={speakers}
+            onSpeakerReassign={handleSpeakerReassign}
           />
         </div>
 
+        {/* Center Panel - AI Assistant */}
+        {isAIAssistantOpen && (
+          <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden border-l border-gray-200">
+            <AIAssistantPanel
+              sessionId={sessionId}
+              patientName={patientName}
+              user={user}
+              speakers={speakers}
+              assignedModule={assignedModule}
+              triggerPrompt={aiPrompt}
+              onPromptSent={() => setAiPrompt(null)}
+              onAssignModule={() => setIsAssignModuleModalOpen(true)}
+              onTextSelection={handleAITextSelection}
+              onOpenImageModal={handleOpenImageModal}
+              onOpenVideoModal={handleOpenVideoModal}
+              onOpenMusicModal={handleOpenMusicModal}
+              onOpenSceneGeneration={handleOpenSceneGeneration}
+              onLibraryRefresh={() => setMediaRefreshKey(prev => prev + 1)}
+              analyzeMode={analyzeMode}
+              onAnalyzeModeChange={setAnalyzeMode}
+              onClose={() => setIsAIAssistantOpen(false)}
+            />
+          </div>
+        )}
+
         {/* Right Panel - Library (manages its own width: 384px expanded, 48px collapsed) */}
-        <LibraryPanel
-          sessionId={sessionId}
-          user={user}
-          sessionData={sessionData}
-          onOpenUpload={() => setShowMediaUploadModal(true)}
-          refreshKey={mediaRefreshKey}
-        />
+        {isLibraryOpen && (
+          <LibraryPanel
+            sessionId={sessionId}
+            user={user}
+            sessionData={sessionData}
+            onOpenUpload={() => setShowMediaUploadModal(true)}
+            refreshKey={mediaRefreshKey}
+            onTaskComplete={handleTaskComplete}
+            onClose={() => setIsLibraryOpen(false)}
+            onSelectedPatientChange={setSelectedPatientFromLibrary}
+            onEditQuote={quote => setEditingQuote(quote)}
+            onDeleteQuote={quote => setDeletingQuote(quote)}
+          />
+        )}
       </div>
 
       {/* Modals */}
@@ -593,6 +684,7 @@ export function TranscriptViewerClient({
         isOpen={showQuoteModal}
         onClose={() => setShowQuoteModal(false)}
         selectedText={selectedText}
+        patients={sessionPatients}
         onSave={handleSaveQuote}
       />
 
@@ -600,12 +692,13 @@ export function TranscriptViewerClient({
         isOpen={showImageModal}
         onClose={() => {
           setShowImageModal(false);
-          setImageModalInitialData({}); // Clear initial data on close
+          setImageModalInitialData({});
+          setMediaRefreshKey(prev => prev + 1); // Refresh media list
         }}
         onGenerate={handleGenerateImage}
-        patientName={patientName}
-        patientId={patientId}
-        patientReferenceImage={patientReferenceImage}
+        patientName={selectedPatientFromLibrary?.name || patientName}
+        patientId={selectedPatientFromLibrary?.id || patientId}
+        patientReferenceImage={selectedPatientFromLibrary?.referenceImageUrl || patientReferenceImage}
         sessionId={sessionId}
         initialPrompt={imageModalInitialData.prompt || selectedText}
         initialTitle={imageModalInitialData.title}
@@ -624,9 +717,11 @@ export function TranscriptViewerClient({
         isOpen={showMusicModal}
         onClose={() => {
           setShowMusicModal(false);
-          setMusicModalInitialData({}); // Clear initial data on close
+          setMusicModalInitialData({});
+          setMediaRefreshKey(prev => prev + 1); // Refresh media list
         }}
         sessionId={sessionId}
+        patientId={selectedPatientFromLibrary?.id || patientId}
         instrumentalOption={musicModalInitialData.instrumentalOption}
         lyricalOption={musicModalInitialData.lyricalOption}
         user={user}
@@ -668,11 +763,11 @@ export function TranscriptViewerClient({
       />
 
       {/* Media Upload Modal */}
-      {showMediaUploadModal && sessionData && (
+      {showMediaUploadModal && (selectedPatientFromLibrary || sessionData) && (
         <MediaUploadModal
           isOpen={showMediaUploadModal}
           onClose={() => setShowMediaUploadModal(false)}
-          patientId={sessionData.patientId || sessionData.patient?.id}
+          patientId={selectedPatientFromLibrary?.id || sessionData?.patientId || sessionData?.patient?.id}
           sessionId={sessionId}
           onSuccess={() => {
             // Trigger media refresh in LibraryPanel
@@ -694,11 +789,19 @@ export function TranscriptViewerClient({
           }}
           initialScenes={transformSceneCardToScenes(sceneCardData)}
           sessionId={sessionId}
-          patient={{
-            id: sessionData?.patientId || sessionData?.patient?.id || 'unknown',
-            name: patientName,
-            avatarUrl: patientReferenceImage,
-          }}
+          patient={
+            (selectedPatientFromLibrary?.id || sessionData?.patient?.id)
+              ? {
+                  id: selectedPatientFromLibrary?.id || sessionData?.patient?.id || '',
+                  name: selectedPatientFromLibrary?.name || sessionData?.patient?.name || patientName,
+                  avatarUrl: selectedPatientFromLibrary?.avatarUrl || sessionData?.patient?.avatarUrl,
+                }
+              : undefined
+          }
+          aiMusicOptions={sceneCardData.music_generation ? {
+            instrumental: sceneCardData.music_generation.instrumental_option,
+            lyrical: sceneCardData.music_generation.lyrical_option,
+          } : undefined}
         />
       )}
     </>

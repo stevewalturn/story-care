@@ -14,22 +14,22 @@
  * Phase 4 Implementation: Fallback for non-block prompts
  */
 
-import { useState } from 'react';
 import {
   ChevronDown,
   ChevronUp,
-  FileText,
-  List,
   Code,
+  FileText,
   Link as LinkIcon,
+  List,
 } from 'lucide-react';
+import { useState } from 'react';
 
-interface GenericJSONDisplayProps {
+type GenericJSONDisplayProps = {
   data: any;
   title?: string;
   level?: number;
   maxDepth?: number;
-}
+};
 
 /**
  * Detect if a string is a URL
@@ -85,7 +85,7 @@ function PrimitiveValue({ value, fieldName }: { value: any; fieldName?: string }
 
   // Handle number
   if (typeof value === 'number') {
-    return <span className="text-blue-600 font-mono">{value}</span>;
+    return <span className="font-mono text-blue-600">{value}</span>;
   }
 
   // Handle string
@@ -132,7 +132,7 @@ function PrimitiveValue({ value, fieldName }: { value: any; fieldName?: string }
         href={str}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-indigo-600 hover:underline inline-flex items-center gap-1"
+        className="inline-flex items-center gap-1 text-purple-600 hover:underline"
       >
         <LinkIcon className="h-3 w-3" />
         {str}
@@ -142,7 +142,7 @@ function PrimitiveValue({ value, fieldName }: { value: any; fieldName?: string }
 
   // Long text (multiline)
   if (str.length > 100 || str.includes('\n')) {
-    return <pre className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-2 rounded">{str}</pre>;
+    return <pre className="rounded bg-gray-50 p-2 text-sm whitespace-pre-wrap text-gray-700">{str}</pre>;
   }
 
   // Short text
@@ -167,7 +167,7 @@ function ArrayDisplay({ array, fieldName, level = 0 }: { array: any[]; fieldName
       <div className="space-y-1">
         {array.map((item, index) => (
           <div key={index} className="flex items-start gap-2">
-            <span className="text-gray-400 text-sm">•</span>
+            <span className="text-sm text-gray-400">•</span>
             <PrimitiveValue value={item} />
           </div>
         ))}
@@ -184,11 +184,16 @@ function ArrayDisplay({ array, fieldName, level = 0 }: { array: any[]; fieldName
       >
         {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         <List className="h-4 w-4" />
-        {fieldName || 'Array'} ({array.length} items)
+        {fieldName || 'Array'}
+        {' '}
+        (
+        {array.length}
+        {' '}
+        items)
       </button>
 
       {isExpanded && (
-        <div className="space-y-2 pl-4 border-l-2 border-gray-200">
+        <div className="space-y-2 border-l-2 border-gray-200 pl-4">
           {array.map((item, index) => (
             <div key={index}>
               <GenericJSONDisplay
@@ -216,24 +221,32 @@ function ObjectDisplay({ obj, title, level = 0 }: { obj: Record<string, any>; ti
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors"
+        className="flex w-full items-center justify-between p-3 transition-colors hover:bg-gray-50"
       >
         <div className="flex items-center gap-2">
           <FileText className="h-4 w-4 text-gray-500" />
           <span className="font-medium text-gray-900">{title || 'Object'}</span>
-          <span className="text-xs text-gray-500">({entries.length} fields)</span>
+          <span className="text-xs text-gray-500">
+            (
+            {entries.length}
+            {' '}
+            fields)
+          </span>
         </div>
         {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </button>
 
       {isExpanded && (
-        <div className="border-t border-gray-200 p-3 space-y-3 bg-gray-50">
+        <div className="space-y-3 border-t border-gray-200 bg-gray-50 p-3">
           {entries.map(([key, value]) => (
             <div key={key}>
-              <div className="text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">{key}:</div>
+              <div className="mb-1 text-xs font-semibold tracking-wide text-gray-600 uppercase">
+                {key}
+                :
+              </div>
               <div className="pl-3">
                 <GenericJSONDisplay data={value} level={level + 1} />
               </div>
@@ -252,7 +265,7 @@ export function GenericJSONDisplay({ data, title, level = 0, maxDepth = 10 }: Ge
   // Prevent infinite recursion
   if (level > maxDepth) {
     return (
-      <div className="rounded bg-yellow-50 border border-yellow-200 p-2 text-xs text-yellow-800">
+      <div className="rounded border border-yellow-200 bg-yellow-50 p-2 text-xs text-yellow-800">
         Max depth reached. Data too deeply nested.
       </div>
     );
@@ -283,7 +296,7 @@ export function GenericJSONDisplay({ data, title, level = 0, maxDepth = 10 }: Ge
 export function GenericJSONCard({ data, title = 'Output' }: { data: any; title?: string }) {
   return (
     <div className="rounded-lg border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-white p-4 shadow-sm">
-      <div className="flex items-center gap-2 mb-3">
+      <div className="mb-3 flex items-center gap-2">
         <Code className="h-5 w-5 text-gray-600" />
         <h3 className="font-semibold text-gray-900">{title}</h3>
       </div>

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 
@@ -25,6 +26,8 @@ type MusicGenerationOptionsModalProps = {
   }) => void;
   instrumentalOption?: MusicOption;
   lyricalOption?: MusicOption;
+  hasAiSuggestions?: boolean;
+  isLoadingSuggestions?: boolean;
 };
 
 export function MusicGenerationOptionsModal({
@@ -33,10 +36,22 @@ export function MusicGenerationOptionsModal({
   onGenerate,
   instrumentalOption,
   lyricalOption,
+  hasAiSuggestions = false,
+  isLoadingSuggestions = false,
 }: MusicGenerationOptionsModalProps) {
   const [selectedOption, setSelectedOption] = useState<'instrumental' | 'lyrical'>('instrumental');
   const [customPrompt, setCustomPrompt] = useState('');
   const [customDuration, setCustomDuration] = useState(120);
+
+  // Prefill customPrompt with AI-suggested style_prompt when modal opens or option changes
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const option = selectedOption === 'instrumental' ? instrumentalOption : lyricalOption;
+    if (option?.style_prompt) {
+      setCustomPrompt(option.style_prompt);
+    }
+  }, [isOpen, selectedOption, instrumentalOption, lyricalOption]);
 
   const handleClose = () => {
     setCustomPrompt('');
@@ -48,11 +63,8 @@ export function MusicGenerationOptionsModal({
     const option = selectedOption === 'instrumental' ? instrumentalOption : lyricalOption;
     if (!option) return;
 
-    // Build final prompt
-    const basePrompt = option.style_prompt || option.music_description || '';
-    const finalPrompt = customPrompt.trim()
-      ? `${basePrompt}\n\nAdditional details: ${customPrompt.trim()}`
-      : basePrompt;
+    // Use customPrompt directly (user can see and edit it, prefilled with AI suggestion)
+    const finalPrompt = customPrompt.trim() || option.style_prompt || option.music_description || '';
 
     onGenerate({
       prompt: finalPrompt,
@@ -74,14 +86,14 @@ export function MusicGenerationOptionsModal({
         onClick={() => setSelectedOption(type)}
         className={`relative overflow-hidden rounded-lg border-2 p-4 text-left transition-all ${
           isSelected
-            ? 'border-indigo-500 bg-gradient-to-br from-indigo-50 to-purple-50'
+            ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-purple-50'
             : 'border-gray-200 bg-white hover:border-gray-300'
         }`}
       >
         {/* Selection indicator */}
         {isSelected && (
           <div className="absolute top-2 right-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-600">
               <svg className="h-3.5 w-3.5 text-white" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
@@ -98,16 +110,16 @@ export function MusicGenerationOptionsModal({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                 </svg>
               </div>
-              <span className="text-xs font-medium uppercase tracking-wider text-purple-700">Instrumental</span>
+              <span className="text-xs font-medium tracking-wider text-purple-700 uppercase">Instrumental</span>
             </>
           ) : (
             <>
-              <div className="rounded-full bg-indigo-100 p-1.5">
-                <svg className="h-3.5 w-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="rounded-full bg-purple-100 p-1.5">
+                <svg className="h-3.5 w-3.5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                 </svg>
               </div>
-              <span className="text-xs font-medium uppercase tracking-wider text-indigo-700">Lyrical</span>
+              <span className="text-xs font-medium tracking-wider text-purple-700 uppercase">Lyrical</span>
             </>
           )}
         </div>
@@ -154,7 +166,27 @@ export function MusicGenerationOptionsModal({
       isOpen={isOpen}
       onClose={handleClose}
       size="lg"
-      title="Generate Therapeutic Music"
+      title={
+        isLoadingSuggestions ? (
+          <div className="flex items-center gap-2">
+            <span>Generate Therapeutic Music</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Loading Suggestions...
+            </span>
+          </div>
+        ) : hasAiSuggestions ? (
+          <div className="flex items-center gap-2">
+            <span>Generate Therapeutic Music</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
+              <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+              AI Suggested from Scenes
+            </span>
+          </div>
+        ) : 'Generate Therapeutic Music'
+      }
       footer={(
         <>
           <Button
@@ -168,7 +200,9 @@ export function MusicGenerationOptionsModal({
             onClick={handleGenerate}
             disabled={!instrumentalOption && !lyricalOption}
           >
-            Generate {selectedOption === 'instrumental' ? 'Instrumental' : 'Lyrical Song'}
+            Generate
+            {' '}
+            {selectedOption === 'instrumental' ? 'Instrumental' : 'Lyrical Song'}
           </Button>
         </>
       )}
@@ -178,21 +212,24 @@ export function MusicGenerationOptionsModal({
         {/* Custom Prompt */}
         <div>
           <label htmlFor="customPrompt" className="mb-1.5 block text-sm font-medium text-gray-700">
-            Custom Music Prompt <span className="text-gray-400 font-normal">(Optional)</span>
+            Custom Music Prompt
+            {' '}
+            <span className="font-normal text-gray-400">(Optional)</span>
           </label>
           <textarea
             id="customPrompt"
             value={customPrompt}
-            onChange={(e) => setCustomPrompt(e.target.value)}
+            onChange={e => setCustomPrompt(e.target.value)}
             maxLength={500}
             rows={3}
             placeholder="Add specific details to enhance the generated music. Example: 'with gentle piano and warm strings, building gradually'"
-            className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-20"
+            className="focus:ring-opacity-20 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
           />
           <div className="mt-1.5 flex items-center justify-between text-xs text-gray-500">
             <span>Add specific instruments, mood, tempo, or style details</span>
-            <span className={customPrompt.length > 450 ? 'text-amber-600 font-medium' : ''}>
-              {customPrompt.length}/500
+            <span className={customPrompt.length > 450 ? 'font-medium text-amber-600' : ''}>
+              {customPrompt.length}
+              /500
             </span>
           </div>
         </div>
@@ -205,8 +242,8 @@ export function MusicGenerationOptionsModal({
           <select
             id="duration"
             value={customDuration}
-            onChange={(e) => setCustomDuration(Number(e.target.value))}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-20"
+            onChange={e => setCustomDuration(Number(e.target.value))}
+            className="focus:ring-opacity-20 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
           >
             <option value={60}>1 minute (60 seconds)</option>
             <option value={120}>2 minutes (120 seconds)</option>

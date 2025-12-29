@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { count, desc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
+import { generatePresignedUrl } from '@/libs/GCS';
 import {
   patientPageInteractionsSchema,
   reflectionResponsesSchema,
@@ -81,10 +82,16 @@ export async function GET(_request: NextRequest) {
           }
         }
 
+        // Generate presigned URL for avatar
+        const rawAvatarUrl = patient.avatarUrl || patient.referenceImageUrl;
+        const presignedAvatarUrl = rawAvatarUrl
+          ? await generatePresignedUrl(rawAvatarUrl, 1)
+          : null;
+
         return {
           id: patient.id,
           name: patient.name,
-          avatarUrl: patient.avatarUrl || patient.referenceImageUrl,
+          avatarUrl: presignedAvatarUrl || rawAvatarUrl,
           pages: pagesCount,
           surveys: surveysCount,
           reflections: reflectionsCount,

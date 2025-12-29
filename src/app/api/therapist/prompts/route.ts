@@ -92,12 +92,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, promptText, description, category, icon, outputType, jsonSchema, blocks, useAdvancedMode } = body;
+    const { name, systemPrompt, description, category, icon, outputType, jsonSchema, blocks, useAdvancedMode } = body;
 
     // Validate required fields
-    if (!name || !promptText || !category) {
+    if (!name || !systemPrompt || !category) {
       return NextResponse.json(
-        { error: 'Missing required fields: name, promptText, category' },
+        { error: 'Missing required fields: name, systemPrompt, category' },
         { status: 400 },
       );
     }
@@ -141,7 +141,8 @@ export async function POST(request: NextRequest) {
       .insert(moduleAiPromptsSchema)
       .values({
         name,
-        promptText,
+        systemPrompt,
+        promptText: '', // Deprecated field, keep empty for backward compatibility
         description: description || null,
         category,
         icon: icon || 'sparkles',

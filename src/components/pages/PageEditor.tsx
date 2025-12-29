@@ -412,7 +412,7 @@ export function PageEditor({
               value={block.content.text || ''}
               onChange={e => updateBlockContent(block.id, { text: e.target.value })}
               placeholder="Enter your text here..."
-              className="h-32 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="h-32 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none"
             />
             <Button
               variant="ghost"
@@ -482,7 +482,7 @@ export function PageEditor({
               value={block.content.text || ''}
               onChange={e => updateBlockContent(block.id, { text: e.target.value })}
               placeholder="Enter quote text..."
-              className="h-24 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 italic focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="h-24 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 italic focus:ring-2 focus:ring-purple-500 focus:outline-none"
             />
             <Button
               variant="ghost"
@@ -501,7 +501,7 @@ export function PageEditor({
             {block.content.sceneId && block.content.sceneTitle && (
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                 <div className="flex items-center gap-2">
-                  <Clapperboard className="h-5 w-5 text-indigo-600" />
+                  <Clapperboard className="h-5 w-5 text-purple-600" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">{block.content.sceneTitle}</p>
                     <p className="text-xs text-gray-600">
@@ -761,32 +761,35 @@ export function PageEditor({
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-gray-50">
       {/* Header */}
-      <div className="border-b border-gray-200 bg-white p-6">
+      <div className="border-b border-gray-200 bg-white px-6 py-4">
+        {/* Breadcrumb and Actions Row */}
         <div className="mb-4 flex items-center justify-between">
-          <Input
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            className="max-w-2xl flex-1 text-2xl font-bold"
-            placeholder="Page title..."
-          />
+          <div className="flex items-center gap-3">
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-gray-700"
+              >
+                <X className="h-4 w-4" />
+                <span>Back to Pages</span>
+              </button>
+            )}
+            <span className="text-gray-300">/</span>
+            <span className="text-sm font-medium text-gray-900">
+              {title || 'New Page'}
+            </span>
+          </div>
           <div className="flex items-center gap-2">
             <Button
-              variant="ghost"
+              variant={showPreview ? 'secondary' : 'ghost'}
               onClick={() => setShowPreview(!showPreview)}
+              className={showPreview ? 'border-purple-500 bg-purple-50 text-purple-700' : ''}
             >
               <Eye className="mr-2 h-4 w-4" />
-              {showPreview ? 'Edit' : 'Preview'}
+              {showPreview ? 'Editing' : 'Preview'}
             </Button>
-            {onClose && (
-              <Button
-                variant="ghost"
-                onClick={onClose}
-              >
-                Cancel
-              </Button>
-            )}
             <Button
               variant="primary"
               onClick={() => onSave(title, blocks, selectedPatientId)}
@@ -797,28 +800,31 @@ export function PageEditor({
           </div>
         </div>
 
-        {/* Patient Selection */}
-        <div className="mb-4">
-          <label className="mb-2 block text-sm font-medium text-gray-700">
-            Assign to Patient
-          </label>
-          <select
-            value={selectedPatientId || ''}
-            onChange={e => setSelectedPatientId(e.target.value || null)}
-            className="block w-full max-w-md rounded-lg border border-gray-300 px-4 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          >
-            <option value="">Select a patient...</option>
-            {patients.map(patient => (
-              <option key={patient.id} value={patient.id}>
-                {patient.name}
-              </option>
-            ))}
-          </select>
+        {/* Title and Patient Row */}
+        <div className="flex items-start gap-6">
+          <div className="flex-1">
+            <Input
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              className="text-xl font-semibold"
+              placeholder="Page title..."
+            />
+          </div>
+          <div className="w-64">
+            <select
+              value={selectedPatientId || ''}
+              onChange={e => setSelectedPatientId(e.target.value || null)}
+              className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+            >
+              <option value="">Assign to patient...</option>
+              {patients.map(patient => (
+                <option key={patient.id} value={patient.id}>
+                  {patient.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-
-        <p className="text-sm text-gray-600">
-          Build interactive story pages with media, reflections, and surveys for your patient
-        </p>
       </div>
 
       {/* Content */}
@@ -830,126 +836,139 @@ export function PageEditor({
               <div
                 key={block.id}
                 onClick={() => setSelectedBlockId(block.id)}
-                className={`group cursor-pointer rounded-lg border-2 p-4 transition-all ${
+                className={`group cursor-pointer overflow-hidden rounded-xl border bg-white shadow-sm transition-all duration-200 ${
                   selectedBlockId === block.id
-                    ? 'border-indigo-500 bg-indigo-50'
-                    : 'border-gray-200 hover:border-gray-300'
+                    ? 'border-purple-500 ring-2 ring-purple-100'
+                    : 'border-gray-200 hover:-translate-y-0.5 hover:border-purple-300 hover:shadow-md'
                 }`}
               >
                 {/* Block Header */}
-                <div className="mb-3 flex items-center gap-2">
-                  <button className="cursor-move text-gray-400 hover:text-gray-600">
+                <div className={`flex items-center gap-2 border-b px-4 py-3 ${
+                  selectedBlockId === block.id
+                    ? 'border-purple-200 bg-purple-50'
+                    : 'border-gray-100 bg-gray-50'
+                }`}>
+                  <button className="cursor-move rounded p-1 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600">
                     <GripVertical className="h-4 w-4" />
                   </button>
                   <div className="flex flex-1 items-center gap-2">
-                    {getBlockIcon(block.type)}
+                    <span className={`flex h-6 w-6 items-center justify-center rounded ${
+                      selectedBlockId === block.id ? 'bg-purple-100 text-purple-600' : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {getBlockIcon(block.type)}
+                    </span>
                     <span className="text-sm font-medium text-gray-700 capitalize">
                       {block.type}
                     </span>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                    <Button
-                      variant="ghost"
-                      size="sm"
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         moveBlock(block.id, 'up');
                       }}
                       disabled={index === 0}
+                      className="rounded p-1.5 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 disabled:opacity-30"
                     >
                       ↑
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
+                    </button>
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         moveBlock(block.id, 'down');
                       }}
                       disabled={index === blocks.length - 1}
+                      className="rounded p-1.5 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 disabled:opacity-30"
                     >
                       ↓
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
+                    </button>
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         deleteBlock(block.id);
                       }}
+                      className="rounded p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
                     >
-                      <Trash2 className="h-4 w-4 text-red-600" />
-                    </Button>
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
 
                 {/* Block Content Editor */}
-                {selectedBlockId === block.id && renderBlockEditor(block)}
+                <div className="p-4">
+                  {selectedBlockId === block.id && renderBlockEditor(block)}
 
-                {/* Block Preview when not selected */}
-                {selectedBlockId !== block.id && (
-                  <div className="text-sm text-gray-600">
-                    {block.content.text && (
-                      <p className="line-clamp-2">{block.content.text}</p>
-                    )}
-                    {block.content.sceneId && block.content.sceneTitle && (
-                      <p className="line-clamp-1 text-xs text-gray-600">
-                        Scene:
-                        {' '}
-                        {block.content.sceneTitle}
-                      </p>
-                    )}
-                    {block.content.questions && block.content.questions.length > 0 && (
-                      <p className="line-clamp-1 text-xs text-gray-600">
-                        {block.content.questions.length}
-                        {' '}
-                        reflection question(s)
-                      </p>
-                    )}
-                    {block.content.surveyQuestions && block.content.surveyQuestions.length > 0 && (
-                      <p className="line-clamp-1 text-xs text-gray-600">
-                        {block.content.surveyQuestions.length}
-                        {' '}
-                        survey question(s)
-                      </p>
-                    )}
-                    {block.content.mediaUrl && !block.content.sceneId && (
-                      <p className="text-xs">
-                        Media:
-                        {block.content.mediaUrl}
-                      </p>
-                    )}
-                    {!block.content.text && !block.content.sceneId && !block.content.questions && !block.content.surveyQuestions && !block.content.mediaUrl && (
-                      <p className="text-gray-400 italic">Empty block - click to edit</p>
-                    )}
-                  </div>
-                )}
+                  {/* Block Preview when not selected */}
+                  {selectedBlockId !== block.id && (
+                    <div className="text-sm text-gray-600">
+                      {block.content.text && (
+                        <p className="line-clamp-2">{block.content.text}</p>
+                      )}
+                      {block.content.sceneId && block.content.sceneTitle && (
+                        <p className="line-clamp-1 text-xs text-gray-600">
+                          Scene:
+                          {' '}
+                          {block.content.sceneTitle}
+                        </p>
+                      )}
+                      {block.content.questions && block.content.questions.length > 0 && (
+                        <p className="line-clamp-1 text-xs text-gray-600">
+                          {block.content.questions.length}
+                          {' '}
+                          reflection question(s)
+                        </p>
+                      )}
+                      {block.content.surveyQuestions && block.content.surveyQuestions.length > 0 && (
+                        <p className="line-clamp-1 text-xs text-gray-600">
+                          {block.content.surveyQuestions.length}
+                          {' '}
+                          survey question(s)
+                        </p>
+                      )}
+                      {block.content.mediaUrl && !block.content.sceneId && (
+                        <p className="truncate text-xs">
+                          Media:
+                          {' '}
+                          {block.content.mediaUrl}
+                        </p>
+                      )}
+                      {!block.content.text && !block.content.sceneId && !block.content.questions && !block.content.surveyQuestions && !block.content.mediaUrl && (
+                        <p className="text-gray-400 italic">Click to edit this block</p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
 
             {/* Add Block Buttons */}
-            <div className="rounded-lg border-2 border-dashed border-gray-300 p-6">
-              <p className="mb-3 text-center text-sm font-medium text-gray-700">
-                Add Block
+            <div className="rounded-xl border-2 border-dashed border-gray-300 bg-white p-6 transition-colors hover:border-purple-300">
+              <p className="mb-4 text-center text-sm font-medium text-gray-700">
+                Add Content Block
               </p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                 {blockTypes.map(({ value, label, icon: Icon }) => (
                   <button
                     key={value}
                     onClick={() => addBlock(value)}
-                    className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm transition-all hover:border-indigo-500 hover:bg-indigo-50"
+                    className="flex items-center gap-2.5 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-purple-500 hover:bg-purple-50 hover:shadow-md"
                   >
-                    <Icon className="h-4 w-4 text-gray-600" />
-                    <span className="text-gray-700">{label}</span>
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shadow-sm">
+                      <Icon className="h-4 w-4 text-purple-600" />
+                    </span>
+                    <span className="font-medium text-gray-700">{label}</span>
                   </button>
                 ))}
               </div>
             </div>
 
             {blocks.length === 0 && (
-              <div className="py-12 text-center">
-                <p className="mb-4 text-gray-500">No content blocks yet</p>
-                <p className="text-sm text-gray-400">
+              <div className="rounded-xl border border-gray-200 bg-white py-16 text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100">
+                  <FileText className="h-8 w-8 text-purple-600" />
+                </div>
+                <h3 className="mb-2 text-lg font-semibold text-gray-900">No content blocks yet</h3>
+                <p className="text-sm text-gray-500">
                   Click one of the block types above to start building your page
                 </p>
               </div>
@@ -978,7 +997,7 @@ export function PageEditor({
                     </div>
                   )}
                   {block.type === 'quote' && block.content.text && (
-                    <blockquote className="border-l-4 border-indigo-500 py-2 pl-4 text-gray-700 italic">
+                    <blockquote className="border-l-4 border-purple-500 py-2 pl-4 text-gray-700 italic">
                       "
                       {block.content.text}
                       "
@@ -1004,8 +1023,8 @@ export function PageEditor({
                     </div>
                   )}
                   {block.type === 'reflection' && block.content.questions && block.content.questions.length > 0 && (
-                    <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
-                      <p className="mb-3 font-medium text-indigo-900">Reflection Questions</p>
+                    <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
+                      <p className="mb-3 font-medium text-purple-900">Reflection Questions</p>
                       <div className="space-y-4">
                         {block.content.questions.map((q, i) => (
                           <div key={q.id || i}>
@@ -1093,23 +1112,24 @@ export function PageEditor({
 
       {/* Template Picker Modal */}
       {showTemplateModal && (
-        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black p-4">
-          <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
+          <div className="w-full max-w-2xl rounded-xl bg-white shadow-xl">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Select
-                {' '}
-                {templateType === 'reflection' ? 'Reflection' : 'Survey'}
-                {' '}
-                Template
-              </h3>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Select {templateType === 'reflection' ? 'Reflection' : 'Survey'} Template
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Choose a template or start from scratch
+                </p>
+              </div>
               <button
                 onClick={() => {
                   setShowTemplateModal(false);
                   setTemplateType(null);
                 }}
-                className="text-gray-400 hover:text-gray-600"
+                className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1119,17 +1139,24 @@ export function PageEditor({
             <div className="max-h-96 overflow-y-auto p-6">
               {loadingTemplates ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
                 </div>
               ) : (
                 <div className="space-y-3">
                   {/* No Template Option */}
                   <button
                     onClick={() => addBlockWithTemplate(null)}
-                    className="w-full rounded-lg border-2 border-dashed border-gray-300 p-4 text-left transition-all hover:border-indigo-500 hover:bg-indigo-50"
+                    className="w-full rounded-xl border-2 border-dashed border-gray-300 p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-purple-500 hover:bg-purple-50 hover:shadow-md"
                   >
-                    <p className="font-medium text-gray-900">Create without template</p>
-                    <p className="text-sm text-gray-600">Start with a blank question</p>
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
+                        <Sparkles className="h-5 w-5 text-gray-500" />
+                      </span>
+                      <div>
+                        <p className="font-medium text-gray-900">Create without template</p>
+                        <p className="text-sm text-gray-600">Start with a blank question</p>
+                      </div>
+                    </div>
                   </button>
 
                   {/* Template List */}
@@ -1137,7 +1164,7 @@ export function PageEditor({
                     <button
                       key={template.id}
                       onClick={() => addBlockWithTemplate(template.id)}
-                      className="w-full rounded-lg border border-gray-200 p-4 text-left transition-all hover:border-indigo-500 hover:bg-indigo-50"
+                      className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-purple-500 hover:bg-purple-50 hover:shadow-md"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -1146,12 +1173,10 @@ export function PageEditor({
                             <p className="mt-1 text-sm text-gray-600">{template.description}</p>
                           )}
                           <p className="mt-2 text-xs text-gray-500">
-                            {template.questions?.length || 0}
-                            {' '}
-                            questions
+                            {template.questions?.length || 0} questions
                           </p>
                         </div>
-                        <span className="ml-4 rounded bg-indigo-100 px-2 py-1 text-xs font-medium text-indigo-700">
+                        <span className="ml-4 rounded-full bg-purple-100 px-3 py-1 text-xs font-medium text-purple-700">
                           {template.category}
                         </span>
                       </div>
@@ -1160,7 +1185,7 @@ export function PageEditor({
 
                   {/* Empty State */}
                   {(templateType === 'reflection' ? reflectionTemplates : surveyTemplates).length === 0 && (
-                    <div className="py-12 text-center">
+                    <div className="rounded-xl border border-gray-200 py-12 text-center">
                       <p className="text-gray-500">No templates available</p>
                       <p className="mt-1 text-sm text-gray-400">
                         Create templates in the Templates section

@@ -73,7 +73,7 @@ export default function TherapistsPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
       </div>
     );
   }
@@ -124,8 +124,8 @@ export default function TherapistsPage() {
                   className="rounded-lg border border-gray-200 bg-white p-6 transition-shadow hover:shadow-md"
                 >
                   <div className="flex items-center">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100">
-                      <User className="h-6 w-6 text-indigo-600" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
+                      <User className="h-6 w-6 text-purple-600" />
                     </div>
                     <div className="ml-4 flex-1">
                       <h3 className="font-semibold text-gray-900">

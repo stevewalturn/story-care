@@ -6,14 +6,14 @@
  */
 
 import type { TreatmentModule } from '@/models/Schema';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { PromptSelector } from '../prompts/PromptSelector';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 
 type ModuleEditorProps = {
   module: TreatmentModule | null;
@@ -130,10 +130,16 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
     return (
       <div className="mt-1 flex items-center justify-between">
         <p className={`text-xs ${isTooShort ? 'text-red-600' : 'text-gray-500'}`}>
-          {min}-{max.toLocaleString()} characters required
+          {min}
+          -
+          {max.toLocaleString()}
+          {' '}
+          characters required
         </p>
         <p className={`text-xs font-medium ${isValid ? 'text-green-600' : isTooShort ? 'text-red-600' : 'text-gray-400'}`}>
-          {current}/{max.toLocaleString()}
+          {current}
+          /
+          {max.toLocaleString()}
         </p>
       </div>
     );
@@ -177,7 +183,7 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                   className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:ring-2 focus:outline-none ${
                     errors.name
                       ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20'
-                      : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20'
+                      : 'border-gray-300 focus:border-purple-500 focus:ring-purple-500/20'
                   }`}
                   placeholder="e.g., Self-Resilience & Re-Authoring"
                 />
@@ -199,7 +205,7 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                   className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:ring-2 focus:outline-none ${
                     errors.domain
                       ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20'
-                      : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20'
+                      : 'border-gray-300 focus:border-purple-500 focus:ring-purple-500/20'
                   }`}
                 >
                   <option value="self_strength">Self & Strength</option>
@@ -225,7 +231,7 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                   className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:ring-2 focus:outline-none ${
                     errors.description
                       ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20'
-                      : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20'
+                      : 'border-gray-300 focus:border-purple-500 focus:ring-purple-500/20'
                   }`}
                   placeholder="Help people re-tell stories of survival and rediscover agency."
                 />
@@ -251,7 +257,7 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
                   className={`w-full rounded-lg border px-4 py-2.5 font-mono text-sm focus:ring-2 focus:outline-none ${
                     errors.aiPromptText
                       ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20'
-                      : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20'
+                      : 'border-gray-300 focus:border-purple-500 focus:ring-purple-500/20'
                   }`}
                   placeholder="You are a narrative therapy AI assistant analyzing session transcripts. Focus on identifying therapeutic themes, patterns, and insights..."
                 />
@@ -299,7 +305,7 @@ export function ModuleEditor({ module, onClose, onSaved, apiEndpoint = '/api/mod
               </button>
               <button
                 type="submit"
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={saving || !isValid}
               >
                 {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Module'}

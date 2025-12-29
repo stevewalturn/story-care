@@ -73,7 +73,7 @@ export function TherapistActivityTab({ activityLog }: TherapistActivityTabProps)
           onClick={() => setFilterAction('all')}
           className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
             filterAction === 'all'
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-purple-600 text-white'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
@@ -84,7 +84,7 @@ export function TherapistActivityTab({ activityLog }: TherapistActivityTabProps)
           onClick={() => setFilterAction('auth_success')}
           className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
             filterAction === 'auth_success'
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-purple-600 text-white'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
@@ -95,7 +95,7 @@ export function TherapistActivityTab({ activityLog }: TherapistActivityTabProps)
           onClick={() => setFilterAction('read')}
           className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
             filterAction === 'read'
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-purple-600 text-white'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
@@ -106,7 +106,7 @@ export function TherapistActivityTab({ activityLog }: TherapistActivityTabProps)
           onClick={() => setFilterAction('export')}
           className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
             filterAction === 'export'
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-purple-600 text-white'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
@@ -121,31 +121,31 @@ export function TherapistActivityTab({ activityLog }: TherapistActivityTabProps)
             <tr>
               <th
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
               >
                 Timestamp
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
               >
                 Action
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
               >
                 Resource
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
               >
                 IP Address
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
               >
                 Details
               </th>
@@ -163,7 +163,7 @@ export function TherapistActivityTab({ activityLog }: TherapistActivityTabProps)
               : (
                   filteredActivity.map(entry => (
                     <tr key={entry.id} className="hover:bg-gray-50">
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                      <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
                         <div className="flex flex-col">
                           <div className="flex items-center">
                             <Calendar className="mr-1 h-4 w-4 text-gray-400" />
@@ -183,7 +183,7 @@ export function TherapistActivityTab({ activityLog }: TherapistActivityTabProps)
                           </div>
                         </div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                             actionColors[entry.action] || 'bg-gray-100 text-gray-700'
@@ -192,18 +192,19 @@ export function TherapistActivityTab({ activityLog }: TherapistActivityTabProps)
                           {actionLabels[entry.action] || entry.action}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                      <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-900">
                         <div className="flex items-center">
                           <FileText className="mr-2 h-4 w-4 text-gray-400" />
                           <span className="capitalize">{entry.resourceType}</span>
                         </div>
                         {entry.resourceId && (
-                          <div className="mt-1 text-xs text-gray-500 font-mono">
-                            {entry.resourceId.substring(0, 8)}...
+                          <div className="mt-1 font-mono text-xs text-gray-500">
+                            {entry.resourceId.substring(0, 8)}
+                            ...
                           </div>
                         )}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 font-mono">
+                      <td className="px-6 py-4 font-mono text-sm whitespace-nowrap text-gray-500">
                         {entry.ipAddress || 'N/A'}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
@@ -222,7 +223,15 @@ export function TherapistActivityTab({ activityLog }: TherapistActivityTabProps)
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-600">
-            Showing {filteredActivity.length} of {activityLog.length} activity entries
+            Showing
+            {' '}
+            {filteredActivity.length}
+            {' '}
+            of
+            {' '}
+            {activityLog.length}
+            {' '}
+            activity entries
           </p>
           <p className="text-xs text-gray-500">
             HIPAA-compliant audit log • Retained for 7 years

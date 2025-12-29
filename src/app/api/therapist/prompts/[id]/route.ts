@@ -75,7 +75,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const body = await request.json();
-    const { name, promptText, description, category, icon, isActive, outputType, jsonSchema } = body;
+    const { name, systemPrompt, description, category, icon, isActive, outputType, jsonSchema } = body;
 
     // Validate category if provided
     if (category) {
@@ -118,7 +118,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       .update(moduleAiPromptsSchema)
       .set({
         ...(name && { name }),
-        ...(promptText && { promptText }),
+        ...(systemPrompt && { systemPrompt }),
         ...(description !== undefined && { description }),
         ...(category && { category }),
         ...(icon && { icon }),

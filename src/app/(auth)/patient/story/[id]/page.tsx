@@ -1,13 +1,25 @@
 /**
  * Patient Story Page Viewer
  * Authenticated patient access to their published story pages
+ * Beautiful, immersive design for therapeutic storytelling
  */
 
 'use client';
 
-import { Clapperboard, FileText, MessageCircle } from 'lucide-react';
-import { use, useEffect, useState } from 'react';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Clapperboard,
+  FileText,
+  Heart,
+  Loader2,
+  MessageCircle,
+  Quote,
+  Send,
+  Sparkles,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { use, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 type PageData = {
@@ -45,13 +57,12 @@ export default function PatientStoryPage({ params }: Props) {
 
   const fetchPageData = async () => {
     try {
-      // Get Firebase ID token for authentication
       const idToken = user ? await user.getIdToken() : null;
-      
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
-      
+
       if (idToken) {
         headers.Authorization = `Bearer ${idToken}`;
       }
@@ -89,18 +100,16 @@ export default function PatientStoryPage({ params }: Props) {
     setIsSubmitting(true);
 
     try {
-      // Get Firebase ID token for authentication
       const idToken = user ? await user.getIdToken() : null;
-      
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
-      
+
       if (idToken) {
         headers.Authorization = `Bearer ${idToken}`;
       }
 
-      // Prepare reflection responses
       const reflectionResponses = reflectionAnswers
         ? Object.entries(reflectionAnswers).map(([questionId, answer]) => ({
             questionId,
@@ -108,7 +117,6 @@ export default function PatientStoryPage({ params }: Props) {
           }))
         : [];
 
-      // Prepare survey responses
       const surveyResponses = surveyAnswers
         ? Object.entries(surveyAnswers).map(([questionId, answer]) => ({
             questionId,
@@ -132,8 +140,6 @@ export default function PatientStoryPage({ params }: Props) {
 
       setSubmitSuccess(true);
       setIsSubmitting(false);
-
-      // Scroll to top to show success message
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       console.error('Error submitting responses:', err);
@@ -144,30 +150,37 @@ export default function PatientStoryPage({ params }: Props) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-indigo-600" />
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 via-white to-pink-50">
+        <div className="text-center">
+          <div className="relative mx-auto h-16 w-16">
+            <div className="absolute inset-0 animate-ping rounded-full bg-purple-200 opacity-75" />
+            <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-lg">
+              <Heart className="h-8 w-8 animate-pulse text-purple-600" />
+            </div>
+          </div>
+          <p className="mt-4 text-gray-600">Loading your story...</p>
+        </div>
       </div>
     );
   }
 
   if (error === 'notfound') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 via-white to-pink-50 p-8">
         <div className="max-w-md text-center">
-          <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-gray-50">
-            <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+          <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-gray-100">
+            <FileText className="h-12 w-12 text-gray-400" />
           </div>
           <h1 className="mb-2 text-2xl font-bold text-gray-900">Story Not Found</h1>
-          <p className="text-gray-600">
+          <p className="mb-6 text-gray-600">
             This story page doesn't exist or has been removed.
           </p>
           <button
             onClick={() => router.push('/patient/story')}
-            className="mt-6 rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-6 py-3 font-medium text-white transition-all hover:bg-purple-700 hover:shadow-lg"
             type="button"
           >
+            <ArrowLeft className="h-4 w-4" />
             Back to Stories
           </button>
         </div>
@@ -177,22 +190,23 @@ export default function PatientStoryPage({ params }: Props) {
 
   if (error === 'forbidden') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 via-white to-pink-50 p-8">
         <div className="max-w-md text-center">
-          <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-red-50">
-            <svg className="h-12 w-12 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-red-100">
+            <svg className="h-12 w-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
           <h1 className="mb-2 text-2xl font-bold text-gray-900">Access Denied</h1>
-          <p className="text-gray-600">
+          <p className="mb-6 text-gray-600">
             You don't have permission to view this story page.
           </p>
           <button
             onClick={() => router.push('/patient/story')}
-            className="mt-6 rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-6 py-3 font-medium text-white transition-all hover:bg-purple-700 hover:shadow-lg"
             type="button"
           >
+            <ArrowLeft className="h-4 w-4" />
             Back to Stories
           </button>
         </div>
@@ -202,22 +216,23 @@ export default function PatientStoryPage({ params }: Props) {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 via-white to-pink-50 p-8">
         <div className="max-w-md text-center">
-          <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-gray-50">
+          <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-gray-100">
             <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
           <h1 className="mb-2 text-2xl font-bold text-gray-900">Error Loading Page</h1>
-          <p className="text-gray-600">
+          <p className="mb-6 text-gray-600">
             Something went wrong. Please try again later.
           </p>
           <button
             onClick={() => router.push('/patient/story')}
-            className="mt-6 rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-6 py-3 font-medium text-white transition-all hover:bg-purple-700 hover:shadow-lg"
             type="button"
           >
+            <ArrowLeft className="h-4 w-4" />
             Back to Stories
           </button>
         </div>
@@ -230,46 +245,63 @@ export default function PatientStoryPage({ params }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
       {/* Success Banner */}
       {submitSuccess && (
-        <div className="border-b border-green-200 bg-green-50 px-4 py-3">
+        <div className="sticky top-0 z-50 border-b border-green-200 bg-gradient-to-r from-green-500 to-emerald-500 px-4 py-4">
           <div className="mx-auto max-w-4xl">
-            <p className="flex items-center justify-center gap-2 text-sm text-green-800">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              Thank you! Your responses have been submitted successfully.
-            </p>
+            <div className="flex items-center justify-center gap-3 text-white">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
+                <CheckCircle2 className="h-5 w-5" />
+              </div>
+              <p className="font-medium">
+                Thank you! Your responses have been submitted successfully.
+              </p>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Page Content */}
-      <div className="mx-auto max-w-4xl px-4 py-8">
-        {/* Header with Back Button */}
-        <div className="mb-6">
+      {/* Hero Header */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 px-8 py-16">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute -left-4 -top-4 h-24 w-24 rounded-full bg-white" />
+          <div className="absolute right-20 top-10 h-16 w-16 rounded-full bg-white" />
+          <div className="absolute bottom-8 left-1/3 h-20 w-20 rounded-full bg-white" />
+          <div className="absolute -bottom-4 -right-4 h-32 w-32 rounded-full bg-white" />
+        </div>
+
+        <div className="relative mx-auto max-w-4xl">
+          {/* Back Button */}
           <button
             onClick={() => router.push('/patient/story')}
-            className="mb-4 flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+            className="mb-8 inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm transition-all hover:bg-white/30"
             type="button"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
+            <ArrowLeft className="h-4 w-4" />
             Back to Stories
           </button>
-        </div>
 
-        <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold text-gray-900">{pageData.page.title}</h1>
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm text-white backdrop-blur-sm">
+            <Sparkles className="h-4 w-4" />
+            Your personal story
+          </div>
+
+          <h1 className="mb-4 text-3xl font-bold text-white md:text-4xl">
+            {pageData.page.title}
+          </h1>
           {pageData.page.description && (
-            <p className="text-gray-600">{pageData.page.description}</p>
+            <p className="max-w-2xl text-lg text-purple-100">
+              {pageData.page.description}
+            </p>
           )}
         </div>
+      </div>
 
-        {/* Blocks */}
-        <div className="space-y-6">
+      {/* Content */}
+      <div className="mx-auto max-w-4xl px-4 py-12">
+        <div className="space-y-8">
           {pageData.blocks.map((block, index) => {
             const blockQuestions = pageData.reflectionQuestions.filter(
               (q: any) => q.blockId === block.id,
@@ -279,62 +311,73 @@ export default function PatientStoryPage({ params }: Props) {
             );
 
             return (
-              <div key={block.id || index} className="rounded-lg bg-white p-6 shadow-sm">
+              <div
+                key={block.id || index}
+                className="overflow-hidden rounded-2xl bg-white shadow-sm transition-shadow duration-300 hover:shadow-lg"
+              >
+                {/* Text Block */}
                 {block.blockType === 'text' && block.textContent && (
-                  <div className="prose max-w-none">
-                    <p className="leading-relaxed text-gray-700">{block.textContent}</p>
+                  <div className="p-8">
+                    <div className="prose prose-lg max-w-none">
+                      <p className="leading-relaxed text-gray-700">{block.textContent}</p>
+                    </div>
                   </div>
                 )}
 
+                {/* Image Block */}
                 {block.blockType === 'image' && block.settings?.mediaUrl && (
-                  <img
-                    src={block.settings.mediaUrl}
-                    alt="Content"
-                    className="w-full rounded-lg"
-                  />
+                  <div className="overflow-hidden">
+                    <img
+                      src={block.settings.mediaUrl}
+                      alt="Story content"
+                      className="w-full"
+                    />
+                  </div>
                 )}
 
+                {/* Video Block */}
                 {block.blockType === 'video' && block.settings?.mediaUrl && (
-                  <div className="aspect-video overflow-hidden rounded-lg bg-gray-900">
+                  <div className="aspect-video overflow-hidden bg-gray-900">
                     <video src={block.settings.mediaUrl} controls className="h-full w-full">
                       Your browser does not support the video tag.
                     </video>
                   </div>
                 )}
 
+                {/* Quote Block */}
                 {block.blockType === 'quote' && block.textContent && (
-                  <blockquote className="border-l-4 border-indigo-500 pl-4 text-gray-700 italic">
-                    "
-                    {block.textContent}
-                    "
-                  </blockquote>
+                  <div className="border-l-4 border-purple-500 bg-gradient-to-r from-purple-50 to-white p-8">
+                    <div className="flex items-start gap-4">
+                      <Quote className="h-8 w-8 flex-shrink-0 text-purple-400" />
+                      <blockquote className="text-xl italic text-gray-700">
+                        "{block.textContent}"
+                      </blockquote>
+                    </div>
+                  </div>
                 )}
 
+                {/* Scene Block */}
                 {block.blockType === 'scene' && block.sceneId && (
-                  <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
-                    <div className="mb-2 flex items-center gap-2">
-                      <Clapperboard className="h-5 w-5 text-purple-600" />
-                      <p className="font-medium text-purple-900">{block.settings?.sceneTitle || 'Scene'}</p>
-                    </div>
-                    {block.settings?.videoUrl && (
-                      <div className="aspect-video overflow-hidden rounded-lg bg-gray-900">
-                        <video 
-                          src={block.settings.videoUrl} 
-                          controls 
-                          className="h-full w-full"
-                          preload="metadata"
-                        >
-                          Your browser does not support the video tag.
-                        </video>
+                  <div className="overflow-hidden">
+                    <div className="flex items-center gap-3 border-b border-purple-100 bg-gradient-to-r from-purple-50 to-indigo-50 px-6 py-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100">
+                        <Clapperboard className="h-5 w-5 text-purple-600" />
                       </div>
-                    )}
-                    {!block.settings?.videoUrl && block.settings?.mediaUrl && (
-                      <div className="aspect-video overflow-hidden rounded-lg bg-gray-900">
-                        <video 
-                          src={block.settings.mediaUrl} 
-                          controls 
+                      <div>
+                        <p className="font-semibold text-purple-900">
+                          {block.settings?.sceneTitle || 'Your Scene'}
+                        </p>
+                        <p className="text-sm text-purple-600">Created just for you</p>
+                      </div>
+                    </div>
+                    {(block.settings?.videoUrl || block.settings?.mediaUrl) && (
+                      <div className="aspect-video overflow-hidden bg-gray-900">
+                        <video
+                          src={block.settings.videoUrl || block.settings.mediaUrl}
+                          controls
                           className="h-full w-full"
                           preload="metadata"
+                          poster={block.settings?.thumbnailUrl}
                         >
                           Your browser does not support the video tag.
                         </video>
@@ -343,27 +386,34 @@ export default function PatientStoryPage({ params }: Props) {
                   </div>
                 )}
 
+                {/* Reflection Block */}
                 {block.blockType === 'reflection' && blockQuestions.length > 0 && (
-                  <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
-                    <div className="mb-3 flex items-center gap-2">
-                      <MessageCircle className="h-5 w-5 text-indigo-600" />
-                      <p className="font-medium text-indigo-900">Reflection Questions</p>
+                  <div className="overflow-hidden">
+                    <div className="flex items-center gap-3 border-b border-purple-100 bg-gradient-to-r from-purple-50 to-indigo-50 px-6 py-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100">
+                        <MessageCircle className="h-5 w-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-purple-900">Reflection Time</p>
+                        <p className="text-sm text-purple-600">Take a moment to share your thoughts</p>
+                      </div>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-6 p-6">
                       {blockQuestions.map((q: any, i: number) => (
-                        <div key={q.id}>
-                          <p className="mb-2 text-sm font-medium text-gray-700">
-                            {i + 1}
-                            .
-                            {' '}
+                        <div key={q.id} className="rounded-xl border border-gray-100 bg-gray-50 p-5">
+                          <p className="mb-3 font-medium text-gray-900">
+                            <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 text-sm text-purple-600">
+                              {i + 1}
+                            </span>
                             {q.questionText}
                             {q.required && <span className="ml-1 text-red-500">*</span>}
                           </p>
                           <textarea
                             value={reflectionAnswers[q.id] || ''}
                             onChange={e => setReflectionAnswers({ ...reflectionAnswers, [q.id]: e.target.value })}
-                            placeholder="Your response..."
-                            className="h-20 w-full resize-none rounded border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            placeholder="Share your thoughts here..."
+                            className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-700 transition-all focus:border-purple-500 focus:ring-2 focus:ring-purple-100 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                            rows={4}
                             disabled={submitSuccess}
                           />
                         </div>
@@ -372,19 +422,25 @@ export default function PatientStoryPage({ params }: Props) {
                   </div>
                 )}
 
+                {/* Survey Block */}
                 {block.blockType === 'survey' && blockSurveyQuestions.length > 0 && (
-                  <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-                    <div className="mb-3 flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-green-600" />
-                      <p className="font-medium text-green-900">Survey Questions</p>
+                  <div className="overflow-hidden">
+                    <div className="flex items-center gap-3 border-b border-green-100 bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100">
+                        <FileText className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-green-900">Quick Survey</p>
+                        <p className="text-sm text-green-600">Help us understand how you're feeling</p>
+                      </div>
                     </div>
-                    <div className="space-y-6">
+                    <div className="space-y-6 p-6">
                       {blockSurveyQuestions.map((q: any, i: number) => (
-                        <div key={q.id} className="rounded-lg bg-white p-4">
-                          <p className="mb-3 text-sm font-medium text-gray-900">
-                            {i + 1}
-                            .
-                            {' '}
+                        <div key={q.id} className="rounded-xl border border-gray-100 bg-gray-50 p-5">
+                          <p className="mb-4 font-medium text-gray-900">
+                            <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-sm text-green-600">
+                              {i + 1}
+                            </span>
                             {q.questionText}
                             {q.required && <span className="ml-1 text-red-500">*</span>}
                           </p>
@@ -395,20 +451,20 @@ export default function PatientStoryPage({ params }: Props) {
                               value={surveyAnswers[q.id] as string || ''}
                               onChange={e => setSurveyAnswers({ ...surveyAnswers, [q.id]: e.target.value })}
                               placeholder="Type your answer here..."
-                              className="h-20 w-full resize-none rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-500 focus:outline-none"
+                              className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-700 transition-all focus:border-green-500 focus:ring-2 focus:ring-green-100 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                              rows={3}
                               disabled={submitSuccess}
                             />
                           )}
 
                           {/* Scale/Rating */}
                           {q.questionType === 'scale' && (
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between text-xs font-medium text-gray-600">
-                                <span>{q.scaleMinLabel || `${q.scaleMin || 1} (Low)`}</span>
-                                <span>{q.scaleMaxLabel || `${q.scaleMax || 5} (High)`}</span>
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between text-sm text-gray-600">
+                                <span className="rounded-full bg-gray-100 px-3 py-1">{q.scaleMinLabel || `${q.scaleMin || 1}`}</span>
+                                <span className="rounded-full bg-gray-100 px-3 py-1">{q.scaleMaxLabel || `${q.scaleMax || 5}`}</span>
                               </div>
 
-                              {/* Interactive scale buttons */}
                               <div className="flex gap-2">
                                 {Array.from({ length: (q.scaleMax || 5) - (q.scaleMin || 1) + 1 }, (_, index) => {
                                   const value = (q.scaleMin || 1) + index;
@@ -419,10 +475,10 @@ export default function PatientStoryPage({ params }: Props) {
                                       type="button"
                                       onClick={() => setSurveyAnswers({ ...surveyAnswers, [q.id]: value })}
                                       disabled={submitSuccess}
-                                      className={`flex-1 rounded-lg border-2 py-3 text-center text-lg font-semibold transition-all ${
+                                      className={`flex-1 rounded-xl border-2 py-4 text-center text-lg font-semibold transition-all ${
                                         isSelected
-                                          ? 'border-green-600 bg-green-600 text-white shadow-lg'
-                                          : 'border-gray-300 bg-white text-gray-700 hover:border-green-400 hover:bg-green-50'
+                                          ? 'border-green-500 bg-green-500 text-white shadow-lg'
+                                          : 'border-gray-200 bg-white text-gray-700 hover:border-green-300 hover:bg-green-50'
                                       } ${submitSuccess ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                                     >
                                       {value}
@@ -431,16 +487,11 @@ export default function PatientStoryPage({ params }: Props) {
                                 })}
                               </div>
 
-                              {/* Show selected value with label */}
-                              {surveyAnswers[q.id] && (
-                                <div className="mt-2 text-center">
-                                  <span className="inline-flex items-center rounded-full bg-green-100 px-4 py-1 text-sm font-medium text-green-800">
-                                    Selected:
-                                    {' '}
-                                    {surveyAnswers[q.id]}
-                                    {' '}
-                                    {surveyAnswers[q.id] === (q.scaleMin || 1) && q.scaleMinLabel ? `- ${q.scaleMinLabel}` : ''}
-                                    {surveyAnswers[q.id] === (q.scaleMax || 5) && q.scaleMaxLabel ? `- ${q.scaleMaxLabel}` : ''}
+                              {surveyAnswers[q.id] !== undefined && (
+                                <div className="text-center">
+                                  <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-2 text-sm font-medium text-green-800">
+                                    <CheckCircle2 className="h-4 w-4" />
+                                    Selected: {surveyAnswers[q.id]}
                                   </span>
                                 </div>
                               )}
@@ -449,16 +500,25 @@ export default function PatientStoryPage({ params }: Props) {
 
                           {/* Multiple Choice */}
                           {q.questionType === 'multiple_choice' && q.options && (
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                               {q.options.map((option: string, optIndex: number) => (
                                 <label
                                   key={optIndex}
-                                  className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 p-3 transition-all ${
+                                  className={`flex cursor-pointer items-center gap-4 rounded-xl border-2 p-4 transition-all ${
                                     surveyAnswers[q.id] === option
-                                      ? 'border-green-600 bg-green-50'
-                                      : 'border-gray-300 bg-white hover:border-green-400'
+                                      ? 'border-green-500 bg-green-50'
+                                      : 'border-gray-200 bg-white hover:border-green-300'
                                   } ${submitSuccess ? 'cursor-not-allowed opacity-50' : ''}`}
                                 >
+                                  <div className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${
+                                    surveyAnswers[q.id] === option
+                                      ? 'border-green-500 bg-green-500'
+                                      : 'border-gray-300'
+                                  }`}>
+                                    {surveyAnswers[q.id] === option && (
+                                      <CheckCircle2 className="h-4 w-4 text-white" />
+                                    )}
+                                  </div>
                                   <input
                                     type="radio"
                                     name={`question-${q.id}`}
@@ -466,9 +526,9 @@ export default function PatientStoryPage({ params }: Props) {
                                     checked={surveyAnswers[q.id] === option}
                                     onChange={e => setSurveyAnswers({ ...surveyAnswers, [q.id]: e.target.value })}
                                     disabled={submitSuccess}
-                                    className="h-4 w-4 text-green-600 focus:ring-green-500"
+                                    className="sr-only"
                                   />
-                                  <span className="text-sm text-gray-700">{option}</span>
+                                  <span className="font-medium text-gray-700">{option}</span>
                                 </label>
                               ))}
                             </div>
@@ -489,13 +549,13 @@ export default function PatientStoryPage({ params }: Props) {
                                   type="button"
                                   onClick={() => setSurveyAnswers({ ...surveyAnswers, [q.id]: emotion.value })}
                                   disabled={submitSuccess}
-                                  className={`flex flex-col items-center gap-2 rounded-lg border-2 p-3 transition-all ${
+                                  className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
                                     surveyAnswers[q.id] === emotion.value
-                                      ? 'border-green-600 bg-green-50'
-                                      : 'border-gray-300 bg-white hover:border-green-400 hover:bg-green-50'
+                                      ? 'border-green-500 bg-green-50 shadow-lg'
+                                      : 'border-gray-200 bg-white hover:border-green-300 hover:bg-green-50'
                                   } ${submitSuccess ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                                 >
-                                  <span className="text-3xl">{emotion.emoji}</span>
+                                  <span className="text-4xl">{emotion.emoji}</span>
                                   <span className="text-xs font-medium text-gray-600">{emotion.label}</span>
                                 </button>
                               ))}
@@ -513,37 +573,46 @@ export default function PatientStoryPage({ params }: Props) {
 
         {/* Submit Button */}
         {(pageData.reflectionQuestions.length > 0 || pageData.surveyQuestions.length > 0) && !submitSuccess && (
-          <div className="mt-8 flex justify-center">
+          <div className="mt-12 flex justify-center">
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="rounded-lg bg-indigo-600 px-8 py-3 font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 px-10 py-4 text-lg font-medium text-white shadow-lg transition-all hover:from-purple-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
               type="button"
             >
               {isSubmitting ? (
-                <span className="flex items-center gap-2">
-                  <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
                   Submitting...
-                </span>
+                </>
               ) : (
-                'Submit Responses'
+                <>
+                  <Send className="h-5 w-5" />
+                  Submit My Responses
+                </>
               )}
             </button>
           </div>
         )}
 
+        {/* Success Message */}
         {submitSuccess && (
-          <div className="mt-8 rounded-lg border border-green-200 bg-green-50 p-6 text-center">
-            <svg className="mx-auto mb-3 h-12 w-12 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <h3 className="mb-2 text-lg font-semibold text-green-900">Responses Submitted!</h3>
-            <p className="text-sm text-green-700">
+          <div className="mt-12 overflow-hidden rounded-2xl bg-gradient-to-r from-green-500 to-emerald-500 p-8 text-center text-white shadow-xl">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/20">
+              <CheckCircle2 className="h-8 w-8" />
+            </div>
+            <h3 className="mb-2 text-2xl font-bold">Responses Submitted!</h3>
+            <p className="text-green-100">
               Thank you for sharing your thoughts. Your therapist will review your responses.
             </p>
+            <button
+              onClick={() => router.push('/patient/story')}
+              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 font-medium text-green-600 transition-all hover:bg-green-50"
+              type="button"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Stories
+            </button>
           </div>
         )}
       </div>

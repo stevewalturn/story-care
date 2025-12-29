@@ -97,14 +97,16 @@ export function CreateQuoteModal({
           {/* Quote Text */}
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">
-              Quote Text <span className="text-red-500">*</span>
+              Quote Text
+              {' '}
+              <span className="text-red-500">*</span>
             </label>
             <textarea
               value={quoteText}
               onChange={e => setQuoteText(e.target.value)}
               placeholder="Enter the quote text..."
               rows={6}
-              className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-purple-500 focus:outline-none"
               autoFocus
             />
             <p className="mt-1 text-xs text-gray-500">
@@ -124,7 +126,7 @@ export function CreateQuoteModal({
               value={tags}
               onChange={e => setTags(e.target.value)}
               placeholder="e.g., breakthrough, metaphor, resistance"
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-purple-500 focus:outline-none"
             />
             <p className="mt-1 text-xs text-gray-500">
               Separate multiple tags with commas
@@ -141,7 +143,7 @@ export function CreateQuoteModal({
               onChange={e => setNotes(e.target.value)}
               placeholder="Add any context or notes about this quote..."
               rows={4}
-              className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-purple-500 focus:outline-none"
             />
           </div>
         </div>
@@ -159,7 +161,7 @@ export function CreateQuoteModal({
             <button
               onClick={handleSave}
               disabled={isSaving || !quoteText.trim()}
-              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSaving
                 ? (

@@ -42,18 +42,13 @@ export async function POST(request: NextRequest) {
     // Generate therapeutic scene cards using OpenAI
     const systemPrompt = `You are a narrative therapy assistant helping therapists create therapeutic scene cards from session transcripts.
 
-Your task is to analyze the provided transcript and generate ${validated.sceneCount} therapeutic scene cards that:
-1. Identify key moments where the patient expressed struggle, growth, or insight
-2. Extract meaningful quotes that anchor each scene
-3. Explain the therapeutic significance of each moment
-4. Create vivid, emotionally resonant image prompts for visualization
-5. Describe how to animate these images into therapeutic scenes
+You MUST return a valid JSON object with the following EXACT structure:
 
-Output a JSON object with this structure:
 {
+  "schemaType": "therapeutic_scene_card",
   "type": "therapeutic_scene_card",
   "title": "Therapeutic Scene Card",
-  "subtitle": "References images & animation",
+  "subtitle": "AI-generated therapeutic scene cards with patient quotes, meanings, and visual prompts",
   "patient": "${validated.patientName || 'Patient'}",
   "scenes": [
     {
@@ -61,25 +56,40 @@ Output a JSON object with this structure:
       "sections": {
         "patientQuote": {
           "label": "Patient Quote Anchor",
-          "content": "Direct quote from transcript"
+          "content": "Exact quote from patient that anchors this scene"
         },
         "meaning": {
-          "label": "Meaning",
-          "content": "Therapeutic significance explanation"
+          "label": "Therapist Reflection",
+          "content": "Clinical observation or therapeutic interpretation"
         },
         "imagePrompt": {
-          "label": "Image prompt",
-          "content": "Detailed visual description for AI generation"
+          "label": "Image Prompt",
+          "content": "Detailed DALL-E prompt for generating the scene image"
         },
         "imageToScene": {
-          "label": "Image to scene",
-          "content": "How to animate this into a therapeutic video scene"
+          "label": "Image to Scene Direction",
+          "content": "Animation notes describing how the image should transition to video"
         }
       }
     }
   ],
   "status": "completed"
-}`;
+}
+
+CRITICAL REQUIREMENTS:
+1. Include "schemaType": "therapeutic_scene_card" at the root level (FIRST field)
+2. Each scene MUST have a "sections" object with ALL four properties: patientQuote, meaning, imagePrompt, imageToScene
+3. Each section MUST have both "label" and "content" properties
+4. Use EXACT field names (camelCase): patientQuote, imagePrompt, imageToScene
+5. The imagePrompt.content should be a complete DALL-E prompt (3-4 sentences)
+6. Create ${validated.sceneCount || 3} scenes based on the transcript
+
+Your task is to analyze the provided transcript and generate therapeutic scene cards that:
+1. Identify key moments where the patient expressed struggle, growth, or insight
+2. Extract meaningful patient quotes that anchor each scene
+3. Provide therapeutic interpretation of each moment
+4. Generate visual prompts that externalize internal experiences
+5. Include animation direction for video production`;
 
     const userPrompt = `Analyze this therapy session transcript and generate ${validated.sceneCount} therapeutic scene cards:
 

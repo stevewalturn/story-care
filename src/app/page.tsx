@@ -109,8 +109,8 @@ export default function LandingPage() {
 
             {/* Highlight 3 */}
             <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-100">
-                <Users className="h-5 w-5 text-indigo-600" />
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
+                <Users className="h-5 w-5 text-purple-600" />
               </div>
               <h3 className="mb-2 text-lg font-semibold text-gray-900">
                 Patient Engagement
@@ -192,8 +192,8 @@ export default function LandingPage() {
 
           {/* Feature 4 */}
           <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-lg transition-shadow hover:shadow-xl">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50">
-              <Users className="h-6 w-6 text-indigo-600" />
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-purple-50">
+              <Users className="h-6 w-6 text-purple-600" />
             </div>
             <h3 className="mb-3 text-xl font-semibold text-gray-900">
               Progress Tracking

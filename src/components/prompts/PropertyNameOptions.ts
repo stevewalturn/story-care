@@ -4,19 +4,19 @@
  * Organized by category for easy discovery
  */
 
-export interface PropertyNameOption {
+export type PropertyNameOption = {
   value: string;
   label: string;
   category: string;
   description: string;
   usageCount: number; // How many schemas use this property
-}
+};
 
-export interface PropertyCategory {
+export type PropertyCategory = {
   id: string;
   label: string;
   icon: string;
-}
+};
 
 export const PROPERTY_CATEGORIES: PropertyCategory[] = [
   { id: 'identification', label: 'Identification', icon: '🆔' },
@@ -229,7 +229,7 @@ export const PROPERTY_NAME_OPTIONS: PropertyNameOption[] = [
  * Get property options filtered by category
  */
 export function getPropertiesByCategory(categoryId: string): PropertyNameOption[] {
-  return PROPERTY_NAME_OPTIONS.filter((opt) => opt.category === categoryId).sort(
+  return PROPERTY_NAME_OPTIONS.filter(opt => opt.category === categoryId).sort(
     (a, b) => b.usageCount - a.usageCount,
   );
 }
@@ -238,7 +238,7 @@ export function getPropertiesByCategory(categoryId: string): PropertyNameOption[
  * Get most popular properties (used in 3+ schemas)
  */
 export function getPopularProperties(): PropertyNameOption[] {
-  return PROPERTY_NAME_OPTIONS.filter((opt) => opt.usageCount >= 3).sort(
+  return PROPERTY_NAME_OPTIONS.filter(opt => opt.usageCount >= 3).sort(
     (a, b) => b.usageCount - a.usageCount,
   );
 }
@@ -249,9 +249,9 @@ export function getPopularProperties(): PropertyNameOption[] {
 export function searchProperties(query: string): PropertyNameOption[] {
   const lowerQuery = query.toLowerCase();
   return PROPERTY_NAME_OPTIONS.filter(
-    (opt) =>
-      opt.label.toLowerCase().includes(lowerQuery) ||
-      opt.description.toLowerCase().includes(lowerQuery),
+    opt =>
+      opt.label.toLowerCase().includes(lowerQuery)
+      || opt.description.toLowerCase().includes(lowerQuery),
   ).sort((a, b) => b.usageCount - a.usageCount);
 }
 
@@ -264,26 +264,26 @@ export function getSuggestedProperties(
 ): PropertyNameOption[] {
   // Type-based suggestions
   if (propertyType === 'array') {
-    return PROPERTY_NAME_OPTIONS.filter((opt) =>
+    return PROPERTY_NAME_OPTIONS.filter(opt =>
       ['tags', 'questions', 'scenes', 'items', 'steps', 'prompts', 'images'].includes(opt.value),
     );
   }
 
   if (propertyType === 'object') {
-    return PROPERTY_NAME_OPTIONS.filter((opt) =>
+    return PROPERTY_NAME_OPTIONS.filter(opt =>
       ['music', 'metadata', 'settings', 'config', 'options'].includes(opt.value),
     );
   }
 
   // Context-based suggestions
   if (siblingNames.includes('title')) {
-    return PROPERTY_NAME_OPTIONS.filter((opt) =>
+    return PROPERTY_NAME_OPTIONS.filter(opt =>
       ['description', 'content', 'tags', 'category'].includes(opt.value),
     );
   }
 
   if (siblingNames.includes('prompt')) {
-    return PROPERTY_NAME_OPTIONS.filter((opt) =>
+    return PROPERTY_NAME_OPTIONS.filter(opt =>
       ['style', 'mood', 'genre', 'description'].includes(opt.value),
     );
   }

@@ -155,7 +155,7 @@ export function ModulePicker({
       <div className="relative">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="focus:ring-opacity-20 flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-left text-sm hover:border-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          className="focus:ring-opacity-20 flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-left text-sm hover:border-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
           type="button"
         >
           {selectedModule ? (
@@ -215,7 +215,7 @@ export function ModulePicker({
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Search modules..."
-                  className="w-full rounded-md border border-gray-300 py-2 pr-3 pl-9 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full rounded-md border border-gray-300 py-2 pr-3 pl-9 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
             </div>
@@ -242,7 +242,7 @@ export function ModulePicker({
                             onClick={() => handleSelect(module)}
                             className={`group flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors ${
                               selectedModule?.id === module.id
-                                ? 'ring-opacity-50 bg-indigo-50 ring-2 ring-indigo-500'
+                                ? 'ring-opacity-50 bg-purple-50 ring-2 ring-purple-500'
                                 : 'hover:bg-gray-50'
                             }`}
                             type="button"
@@ -251,7 +251,7 @@ export function ModulePicker({
                               <div className="mb-1 flex items-center gap-2">
                                 <span className="font-medium text-gray-900">{module.name}</span>
                                 {selectedModule?.id === module.id && (
-                                  <Check className="h-4 w-4 text-indigo-600" />
+                                  <Check className="h-4 w-4 text-purple-600" />
                                 )}
                               </div>
                               <p className="line-clamp-2 text-sm text-gray-600">

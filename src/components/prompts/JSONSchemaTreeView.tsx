@@ -7,21 +7,21 @@
  * Shows structure, types, required fields in a clean visual format
  */
 
-import { ChevronDown, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
-interface JSONSchemaTreeViewProps {
+type JSONSchemaTreeViewProps = {
   schema: any;
   title?: string;
-}
+};
 
-interface SchemaNodeProps {
+type SchemaNodeProps = {
   name: string;
   schema: any;
   required?: boolean;
   level?: number;
   isLast?: boolean;
-}
+};
 
 /**
  * Get color class based on type
@@ -38,7 +38,7 @@ function getTypeColor(type: string): string {
     case 'array':
       return 'text-orange-600 bg-orange-50';
     case 'object':
-      return 'text-indigo-600 bg-indigo-50';
+      return 'text-purple-600 bg-purple-50';
     default:
       return 'text-gray-600 bg-gray-50';
   }
@@ -95,7 +95,7 @@ function SchemaNode({ name, schema, required = false, level = 0, isLast = false 
         {hasChildren ? (
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="flex-shrink-0 p-0.5 hover:bg-gray-100 rounded"
+            className="flex-shrink-0 rounded p-0.5 hover:bg-gray-100"
           >
             {isExpanded ? (
               <ChevronDown className="h-4 w-4 text-gray-500" />
@@ -110,12 +110,14 @@ function SchemaNode({ name, schema, required = false, level = 0, isLast = false 
         {/* Property name */}
         <span className="font-mono text-sm font-medium text-gray-900">
           {name}
-          {required && <span className="text-red-500 ml-1">*</span>}
+          {required && <span className="ml-1 text-red-500">*</span>}
         </span>
 
         {/* Type badge */}
-        <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(type)}`}>
-          {getTypeIcon(type)} {type}
+        <span className={`rounded px-2 py-0.5 text-xs font-medium ${getTypeColor(type)}`}>
+          {getTypeIcon(type)}
+          {' '}
+          {type}
           {arrayItemType && ` of ${arrayItemType}s`}
         </span>
 
@@ -130,7 +132,7 @@ function SchemaNode({ name, schema, required = false, level = 0, isLast = false 
 
       {/* Description */}
       {description && (
-        <div className="ml-7 text-xs text-gray-600 italic mb-1">
+        <div className="mb-1 ml-7 text-xs text-gray-600 italic">
           {description}
         </div>
       )}
@@ -157,7 +159,7 @@ function SchemaNode({ name, schema, required = false, level = 0, isLast = false 
           {/* Array items */}
           {type === 'array' && schema.items && (
             <div className="mt-1">
-              <div className="text-xs text-gray-500 mb-1 ml-4">Each item:</div>
+              <div className="mb-1 ml-4 text-xs text-gray-500">Each item:</div>
               {schema.items.type === 'object' && schema.items.properties ? (
                 <div className="space-y-0.5">
                   {Object.entries(schema.items.properties).map(
@@ -170,13 +172,15 @@ function SchemaNode({ name, schema, required = false, level = 0, isLast = false 
                         level={level + 1}
                         isLast={index === arr.length - 1}
                       />
-                    )
+                    ),
                   )}
                 </div>
               ) : (
                 <div className="ml-4 text-sm text-gray-600">
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(schema.items.type || 'string')}`}>
-                    {getTypeIcon(schema.items.type || 'string')} {schema.items.type || 'any'}
+                  <span className={`rounded px-2 py-0.5 text-xs font-medium ${getTypeColor(schema.items.type || 'string')}`}>
+                    {getTypeIcon(schema.items.type || 'string')}
+                    {' '}
+                    {schema.items.type || 'any'}
                   </span>
                 </div>
               )}
@@ -194,7 +198,7 @@ function SchemaNode({ name, schema, required = false, level = 0, isLast = false 
 export function JSONSchemaTreeView({ schema, title = 'Output Structure' }: JSONSchemaTreeViewProps) {
   if (!schema || typeof schema !== 'object') {
     return (
-      <div className="rounded-lg bg-gray-50 border border-gray-200 p-4 text-center text-sm text-gray-500">
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center text-sm text-gray-500">
         No schema defined
       </div>
     );
@@ -205,17 +209,17 @@ export function JSONSchemaTreeView({ schema, title = 'Output Structure' }: JSONS
   const rootRequired = schema.required || [];
 
   return (
-    <div className="rounded-lg border border-purple-200 bg-white shadow-sm overflow-hidden">
+    <div className="overflow-hidden rounded-lg border border-purple-200 bg-white shadow-sm">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-purple-200 px-4 py-3">
-        <h4 className="font-semibold text-purple-900 text-sm">{title}</h4>
+      <div className="border-b border-purple-200 bg-gradient-to-r from-purple-50 to-purple-50 px-4 py-3">
+        <h4 className="text-sm font-semibold text-purple-900">{title}</h4>
         {schema.description && (
-          <p className="text-xs text-purple-700 mt-1">{schema.description}</p>
+          <p className="mt-1 text-xs text-purple-700">{schema.description}</p>
         )}
       </div>
 
       {/* Tree content */}
-      <div className="p-4 max-h-96 overflow-y-auto">
+      <div className="max-h-96 overflow-y-auto p-4">
         {Object.keys(rootProperties).length > 0 ? (
           <div className="space-y-0.5">
             {Object.entries(rootProperties).map(([propName, propSchema]: [string, any], index, arr) => (
@@ -235,21 +239,21 @@ export function JSONSchemaTreeView({ schema, title = 'Output Structure' }: JSONS
       </div>
 
       {/* Legend */}
-      <div className="bg-gray-50 border-t border-gray-200 px-4 py-2 flex flex-wrap gap-2 text-xs">
+      <div className="flex flex-wrap gap-2 border-t border-gray-200 bg-gray-50 px-4 py-2 text-xs">
         <span className="flex items-center gap-1">
-          <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-medium">"abc"</span>
+          <span className="rounded bg-blue-50 px-1.5 py-0.5 font-medium text-blue-600">"abc"</span>
           <span className="text-gray-600">string</span>
         </span>
         <span className="flex items-center gap-1">
-          <span className="px-1.5 py-0.5 rounded bg-green-50 text-green-600 font-medium">123</span>
+          <span className="rounded bg-green-50 px-1.5 py-0.5 font-medium text-green-600">123</span>
           <span className="text-gray-600">number</span>
         </span>
         <span className="flex items-center gap-1">
-          <span className="px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 font-medium">[ ]</span>
+          <span className="rounded bg-orange-50 px-1.5 py-0.5 font-medium text-orange-600">[ ]</span>
           <span className="text-gray-600">array</span>
         </span>
         <span className="flex items-center gap-1">
-          <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 font-medium">{'{ }'}</span>
+          <span className="rounded bg-purple-50 px-1.5 py-0.5 font-medium text-purple-600">{'{ }'}</span>
           <span className="text-gray-600">object</span>
         </span>
         <span className="flex items-center gap-1">

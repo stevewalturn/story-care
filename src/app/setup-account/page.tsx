@@ -220,12 +220,12 @@ export default function SetupAccountPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-50 px-4 py-12">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="mb-8 text-center">
           <Link href="/" className="inline-block">
-            <h1 className="mb-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-4xl font-bold text-transparent">
+            <h1 className="mb-2 bg-gradient-to-r from-purple-600 to-purple-600 bg-clip-text text-4xl font-bold text-transparent">
               StoryCare
             </h1>
           </Link>
@@ -282,7 +282,7 @@ export default function SetupAccountPage() {
                 {' '}
                 <Link
                   href="/sign-in"
-                  className="font-medium text-indigo-600 hover:text-indigo-700"
+                  className="font-medium text-purple-600 hover:text-purple-700"
                 >
                   Sign in
                 </Link>
@@ -373,7 +373,7 @@ export default function SetupAccountPage() {
               <p className="mb-6 text-gray-600">
                 Your account has been set up successfully. Redirecting you to sign in...
               </p>
-              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
             </div>
           )}
         </div>
@@ -384,7 +384,7 @@ export default function SetupAccountPage() {
             <p>Don't have an invitation?</p>
             <Link
               href="/sign-up"
-              className="font-medium text-indigo-600 hover:text-indigo-700"
+              className="font-medium text-purple-600 hover:text-purple-700"
             >
               Create a new organization instead
             </Link>

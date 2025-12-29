@@ -4,7 +4,7 @@ import { ArrowRight, CheckCircle2, ExternalLink, Loader2, XCircle } from 'lucide
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 
-interface CompilationProgressModalProps {
+type CompilationProgressModalProps = {
   isOpen: boolean;
   onClose: () => void;
   status: 'processing' | 'completed' | 'failed';
@@ -12,7 +12,7 @@ interface CompilationProgressModalProps {
   progress: number;
   sceneId: string | null;
   errorMessage?: string;
-}
+};
 
 export function CompilationProgressModal({
   isOpen,
@@ -62,8 +62,8 @@ export function CompilationProgressModal({
             {status === 'processing' && (
               <>
                 {/* Icon */}
-                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100">
-                  <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
                 </div>
 
                 {/* Title */}
@@ -80,11 +80,14 @@ export function CompilationProgressModal({
                 <div className="mb-6">
                   <div className="mb-2 flex items-center justify-between text-xs text-gray-600">
                     <span>Progress</span>
-                    <span className="font-medium">{progress}%</span>
+                    <span className="font-medium">
+                      {progress}
+                      %
+                    </span>
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
                     <div
-                      className="h-full rounded-full bg-indigo-600 transition-all duration-500"
+                      className="h-full rounded-full bg-purple-600 transition-all duration-500"
                       style={{ width: `${progress}%` }}
                     />
                   </div>

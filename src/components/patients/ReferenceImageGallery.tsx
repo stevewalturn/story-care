@@ -1,11 +1,11 @@
 'use client';
 
+import type { PatientReferenceImage } from '@/models/Schema';
 import { Edit2, Image as ImageIcon, Star, StarOff, Trash2, Upload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
-import type { PatientReferenceImage } from '@/models/Schema';
 
 type ReferenceImageGalleryProps = {
   patientId: string;
@@ -129,7 +129,7 @@ export function ReferenceImageGallery({
         {
           method: 'PATCH',
           headers: {
-            Authorization: `Bearer ${idToken}`,
+            'Authorization': `Bearer ${idToken}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ action: 'set_primary' }),
@@ -158,7 +158,7 @@ export function ReferenceImageGallery({
         {
           method: 'PATCH',
           headers: {
-            Authorization: `Bearer ${idToken}`,
+            'Authorization': `Bearer ${idToken}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ action: 'update_label', label: labelValue }),
@@ -234,7 +234,9 @@ export function ReferenceImageGallery({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium text-gray-700">
-          Reference Images ({images.length})
+          Reference Images (
+          {images.length}
+          )
         </h3>
         {showActions && (
           <Button
@@ -296,7 +298,7 @@ export function ReferenceImageGallery({
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-          {displayImages.map((image) => (
+          {displayImages.map(image => (
             <div key={image.id} className="group relative">
               <div className="relative aspect-square overflow-hidden rounded-lg bg-gray-100">
                 <img
@@ -305,7 +307,7 @@ export function ReferenceImageGallery({
                   className="size-full object-cover"
                 />
                 {image.isPrimary && (
-                  <div className="absolute left-2 top-2 rounded-full bg-yellow-400 p-1.5">
+                  <div className="absolute top-2 left-2 rounded-full bg-yellow-400 p-1.5">
                     <Star className="size-3 fill-white text-white" />
                   </div>
                 )}
@@ -347,7 +349,7 @@ export function ReferenceImageGallery({
                 <div className="mt-2 flex gap-2">
                   <Input
                     value={labelValue}
-                    onChange={(e) => setLabelValue(e.target.value)}
+                    onChange={e => setLabelValue(e.target.value)}
                     placeholder="Label"
                     className="text-xs"
                   />
@@ -369,7 +371,12 @@ export function ReferenceImageGallery({
           ))}
           {remainingCount > 0 && (
             <div className="flex aspect-square items-center justify-center rounded-lg bg-gray-100">
-              <p className="text-sm font-medium text-gray-600">+{remainingCount} more</p>
+              <p className="text-sm font-medium text-gray-600">
+                +
+                {remainingCount}
+                {' '}
+                more
+              </p>
             </div>
           )}
         </div>

@@ -1,8 +1,10 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 // import { arcjet, uploadRateLimit } from '@/libs/Arcjet';
+import { db } from '@/libs/DB';
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
-import { uploadFile } from '@/libs/GCS';
+import { generatePresignedUrl, uploadFile } from '@/libs/GCS';
+import { mediaLibrary } from '@/models/Schema';
 
 // Configure runtime for consistent behavior
 export const runtime = 'nodejs';
@@ -174,7 +176,54 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
 
-    // Return upload result
+    // Check if patientId is provided - if so, save to media library
+    const patientId = formData.get('patientId') as string | null;
+    const title = formData.get('title') as string | null;
+    const sessionId = formData.get('sessionId') as string | null;
+
+    if (patientId) {
+      // Save to media library
+      const result = await db
+        .insert(mediaLibrary)
+        .values({
+          patientId,
+          createdByTherapistId: user.dbUserId,
+          title: title || file.name,
+          mediaType,
+          mediaUrl: uploadResult.path, // Save GCS path, not presigned URL
+          sourceType: 'uploaded',
+          sourceSessionId: sessionId || null,
+          status: 'completed',
+        })
+        .returning();
+
+      const media = (result as any[])[0];
+
+      // Generate presigned URL for frontend preview (1-hour expiration)
+      const presignedUrl = media?.mediaUrl
+        ? await generatePresignedUrl(media.mediaUrl, 1)
+        : null;
+
+      console.log('[API /api/media/upload] Saved to media library:', {
+        mediaId: media?.id,
+        patientId,
+        title: media?.title,
+      });
+
+      return NextResponse.json({
+        success: true,
+        media: {
+          ...media,
+          mediaUrl: presignedUrl || media.mediaUrl,
+        },
+        filename: file.name,
+        size: fileSize,
+        contentType,
+        mediaType,
+      });
+    }
+
+    // Return upload result without saving to media library
     // IMPORTANT: Clients should save 'path' to database, not 'url'
     // - 'url': Temporary presigned URL (expires in 1 hour) for immediate display
     // - 'path': Permanent GCS path to save in database

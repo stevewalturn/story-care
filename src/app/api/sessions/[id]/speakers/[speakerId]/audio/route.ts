@@ -1,17 +1,29 @@
 import type { NextRequest } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { sessions, speakers, transcripts, utterances } from '@/models/Schema';
+import { generatePresignedUrl } from '@/libs/GCS';
+import { sessions, speakers, utterances } from '@/models/Schema';
 
 type RouteContext = {
   params: Promise<{ id: string; speakerId: string }>;
 };
 
-// GET /api/sessions/[id]/speakers/[speakerId]/audio - Get audio sample for speaker
+// GET /api/sessions/[id]/speakers/[speakerId]/audio?index=N - Get audio for specific utterance
 export async function GET(_request: NextRequest, context: RouteContext) {
   try {
     const { id: sessionId, speakerId } = await context.params;
+
+    // Get utterance index from query params (defaults to 0)
+    const { searchParams } = new URL(_request.url);
+    const utteranceIndex = Number.parseInt(searchParams.get('index') || '0', 10);
+
+    if (utteranceIndex < 0) {
+      return NextResponse.json(
+        { error: 'Invalid utterance index' },
+        { status: 400 },
+      );
+    }
 
     // Get session to retrieve main audio URL
     const [session] = await db
@@ -38,61 +50,49 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Speaker not found' }, { status: 404 });
     }
 
-    // Get transcript
-    const [transcript] = await db
-      .select()
-      .from(transcripts)
-      .where(eq(transcripts.sessionId, sessionId))
-      .limit(1);
-
-    if (!transcript) {
-      return NextResponse.json(
-        { error: 'Transcript not found' },
-        { status: 404 },
-      );
-    }
-
-    // Get first 3 utterances for this speaker as sample
-    const sampleUtterances = await db
+    // Get the SPECIFIC utterance at the index
+    const [targetUtterance] = await db
       .select()
       .from(utterances)
       .where(eq(utterances.speakerId, speakerId))
-      .orderBy(utterances.sequenceNumber)
-      .limit(3);
+      .orderBy(asc(utterances.sequenceNumber))
+      .limit(1)
+      .offset(utteranceIndex);
 
-    if (sampleUtterances.length === 0) {
+    if (!targetUtterance) {
       return NextResponse.json(
-        { error: 'No utterances found for this speaker' },
+        { error: 'Utterance not found at this index' },
         { status: 404 },
       );
     }
 
-    // Calculate the time range for the sample
-    const startTime = Number.parseFloat(sampleUtterances[0]?.startTimeSeconds || '0');
-    const endTime = Number.parseFloat(
-      sampleUtterances[sampleUtterances.length - 1]?.endTimeSeconds || '0',
-    );
+    // Use the specific utterance's time range
+    const startTime = Number.parseFloat(targetUtterance.startTimeSeconds || '0');
+    const endTime = Number.parseFloat(targetUtterance.endTimeSeconds || '0');
 
-    // For now, return the full audio URL with timestamp parameters
-    // In a production environment, you would:
-    // 1. Use FFmpeg or similar to extract the audio segment
-    // 2. Upload the segment to GCS
-    // 3. Return a signed URL to the segment
-    //
-    // For simplicity, we'll return the full audio URL with fragment identifiers
-    // that HTML5 audio can use (though browser support varies)
-    const audioUrl = `${session.audioUrl}#t=${startTime},${endTime}`;
+    // Generate fresh presigned URL for the audio file
+    // This ensures browser can access it with proper CORS headers
+    const presignedAudioUrl = await generatePresignedUrl(session.audioUrl, 1);
+
+    if (!presignedAudioUrl) {
+      return NextResponse.json(
+        { error: 'Failed to generate audio URL' },
+        { status: 500 },
+      );
+    }
+
+    // Add fragment identifier for time range (HTML5 audio supports this)
+    const audioUrl = `${presignedAudioUrl}#t=${startTime},${endTime}`;
 
     return NextResponse.json({
       audioUrl,
       startTime,
       endTime,
       duration: endTime - startTime,
-      utterances: sampleUtterances.map(u => ({
-        text: u.text,
-        startTime: Number.parseFloat(u.startTimeSeconds || '0'),
-        endTime: Number.parseFloat(u.endTimeSeconds || '0'),
-      })),
+      utterance: {
+        text: targetUtterance.text,
+        sequenceNumber: targetUtterance.sequenceNumber,
+      },
     });
   } catch (error) {
     console.error('Error generating speaker audio sample:', error);
