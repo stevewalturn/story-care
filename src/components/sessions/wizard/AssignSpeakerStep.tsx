@@ -74,9 +74,20 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
   const [errorDetails, setErrorDetails] = useState<ErrorDetails | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const dropdownRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const hasCreatedSession = useRef(false); // Guard against duplicate session creation
 
   useEffect(() => {
+    // Guard: Prevent duplicate session creation from useEffect re-runs
+    // This can happen due to: StrictMode, dependency changes, or parent re-renders
+    if (hasCreatedSession.current) {
+      console.log('[AssignSpeakerStep] Skipping - session already created');
+      return;
+    }
+
     if (!user?.uid || !formData.audioPath) return;
+
+    // Mark as started BEFORE async operation to prevent race conditions
+    hasCreatedSession.current = true;
 
     const createSessionAndTranscribe = async () => {
       try {
@@ -107,6 +118,7 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
         }
 
         const { session } = await sessionResponse.json();
+        console.log('[AssignSpeakerStep] Created session:', session.id);
         setSessionId(session.id);
 
         // Start transcription
@@ -139,6 +151,7 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
           sampleText: speaker.sampleText || 'Really nice to see you.',
         })) || [];
 
+        console.log('[AssignSpeakerStep] Received speakers from transcription:', speakersData.map(s => ({ id: s.id, label: s.label })));
         setSpeakers(speakersData);
 
         // Initialize utterance index to 0 for all speakers
@@ -162,13 +175,16 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
         setIsGenerating(false);
       } catch (error) {
         console.error('Error:', error);
+        hasCreatedSession.current = false; // Reset on error to allow retry
         toast.error(error instanceof Error ? error.message : 'Failed to process session. Please try again.');
         onBack(); // Go back to upload step on error
       }
     };
 
     createSessionAndTranscribe();
-  }, [user, formData, onBack]);
+  // Use stable primitive values to prevent unnecessary re-runs
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, formData.audioPath, dbUser?.id]);
 
   // Cleanup audio on unmount
   useEffect(() => {
@@ -288,8 +304,9 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
 
       // Debug: Log speaker data being sent
       console.log('=== SAVING SPEAKERS ===');
-      console.log('Speakers being sent:', JSON.stringify(speakers, null, 2));
-      console.log('Sample speaker:', speakers[0]);
+      console.log('Session ID:', sessionId);
+      console.log('Speaker IDs being sent:', speakers.map(s => s.id));
+      console.log('Full speakers data:', JSON.stringify(speakers, null, 2));
 
       // Save speaker assignments
       const response = await fetch(`/api/sessions/${sessionId}/speakers`, {

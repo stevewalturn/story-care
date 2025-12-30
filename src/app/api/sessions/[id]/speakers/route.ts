@@ -50,10 +50,18 @@ export async function GET(
     }
 
     // 4. FETCH ALL SPEAKERS
+    console.log(`[Speakers GET API] Fetching speakers for transcript ${transcript.id} (session ${sessionId})`);
     const speakersList = await db
       .select()
       .from(speakers)
       .where(eq(speakers.transcriptId, transcript.id));
+
+    console.log(`[Speakers GET API] Found ${speakersList.length} speakers:`, speakersList.map(s => ({
+      id: s.id,
+      speakerLabel: s.speakerLabel,
+      speakerName: s.speakerName,
+      speakerType: s.speakerType,
+    })));
 
     // 5. FETCH SAMPLE UTTERANCE FOR EACH SPEAKER
     const speakersWithSamples = await Promise.all(
@@ -125,13 +133,35 @@ export async function PUT(
       );
     }
 
-    // 4. PARSE REQUEST BODY
+    // 4. GET TRANSCRIPT FOR THIS SESSION
+    const transcript = await db.query.transcripts.findFirst({
+      where: eq(transcripts.sessionId, sessionId),
+    });
+
+    if (!transcript) {
+      return NextResponse.json(
+        { error: 'Transcript not found for this session' },
+        { status: 404 },
+      );
+    }
+
+    // 5. FETCH VALID SPEAKERS FOR THIS TRANSCRIPT
+    const validSpeakers = await db
+      .select()
+      .from(speakers)
+      .where(eq(speakers.transcriptId, transcript.id));
+
+    const validSpeakerIds = new Set(validSpeakers.map(s => s.id));
+
+    // 6. PARSE REQUEST BODY
     const body = await request.json();
     const { speakers: speakersData } = body;
 
     // Debug: Log received data
     console.log('=== RECEIVED SPEAKER UPDATE REQUEST ===');
-    console.log('Number of speakers:', speakersData?.length);
+    console.log('Session ID:', sessionId);
+    console.log('Transcript ID:', transcript.id);
+    console.log('Number of speakers in request:', speakersData?.length);
     console.log('First speaker data:', speakersData?.[0]);
 
     if (!Array.isArray(speakersData)) {
@@ -141,8 +171,21 @@ export async function PUT(
       );
     }
 
-    // 5. UPDATE EACH SPEAKER
+    console.log(`[Speakers API] Valid speaker IDs for session ${sessionId}:`, Array.from(validSpeakerIds));
+    console.log(`[Speakers API] Received speaker IDs:`, speakersData.map((s: any) => s.id));
+
+    // 6. UPDATE EACH SPEAKER (only if ID belongs to this session)
+    let updatedCount = 0;
+    let skippedCount = 0;
+
     for (const speakerData of speakersData) {
+      // CRITICAL: Verify speaker belongs to this session's transcript
+      if (!validSpeakerIds.has(speakerData.id)) {
+        console.warn(`[Speakers API] SKIPPING speaker ${speakerData.id} - not found in session ${sessionId}'s transcript`);
+        skippedCount++;
+        continue;
+      }
+
       // Use userId from frontend if provided (fixes group sessions and multiple patients)
       let userId = speakerData.userId || null;
 
@@ -151,16 +194,50 @@ export async function PUT(
         userId = user.dbUserId;
       }
 
-      // Update speaker record
-      await db
+      console.log(`[Speakers API] Updating speaker ${speakerData.id}:`, {
+        label: speakerData.label,
+        type: speakerData.type,
+        name: speakerData.name,
+        userId,
+      });
+
+      // Update speaker record and return result to verify
+      const result = await db
         .update(speakers)
         .set({
           speakerType: speakerData.type,
           speakerName: speakerData.name,
           userId,
         })
-        .where(eq(speakers.id, speakerData.id));
+        .where(eq(speakers.id, speakerData.id))
+        .returning();
+
+      if (result.length > 0) {
+        updatedCount++;
+        console.log(`[Speakers API] Update result for ${speakerData.id}:`, {
+          rowsAffected: result.length,
+          returnedSpeakerName: result[0]?.speakerName,
+          returnedSpeakerType: result[0]?.speakerType,
+        });
+      }
     }
+
+    // If ALL speakers were skipped, return an error
+    if (skippedCount > 0 && updatedCount === 0) {
+      console.error(`[Speakers API] ALL speakers skipped - IDs don't match session ${sessionId}`);
+      return NextResponse.json(
+        {
+          error: 'Speaker IDs do not match this session. Please refresh the page and try again.',
+          details: {
+            receivedIds: speakersData.map((s: any) => s.id),
+            validIds: Array.from(validSpeakerIds),
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    console.log(`[Speakers API] Summary: ${updatedCount} updated, ${skippedCount} skipped`);
 
     return NextResponse.json({ success: true });
   } catch (error) {

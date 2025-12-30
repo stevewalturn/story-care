@@ -51,6 +51,15 @@ export async function GET(
       .where(eq(utterances.transcriptId, transcript.id))
       .orderBy(asc(utterances.startTimeSeconds));
 
+    // Debug: Log first few utterances to see speaker data
+    console.log('[Transcript API] First 3 utterances speaker data:', utterancesList.slice(0, 3).map(u => ({
+      speakerId: u.speakerId,
+      speakerLabel: u.speaker?.speakerLabel,
+      speakerName: u.speaker?.speakerName,
+      speakerType: u.speaker?.speakerType,
+      userName: u.userName,
+    })));
+
     // Generate presigned URLs for avatars (check both referenceImageUrl and avatarUrl)
     const utterancesWithSignedUrls = await Promise.all(
       utterancesList.map(async (utterance) => {
@@ -68,9 +77,10 @@ export async function GET(
         }
 
         // Compute speaker name with proper fallback (handle empty strings)
+        // Priority: 1) Explicitly assigned speakerName, 2) User's name from DB, 3) Speaker label
         const speakerName =
-          (utterance.userName && utterance.userName.trim()) ||
           (utterance.speaker?.speakerName && utterance.speaker.speakerName.trim()) ||
+          (utterance.userName && utterance.userName.trim()) ||
           utterance.speaker?.speakerLabel ||
           'Unknown Speaker';
 
