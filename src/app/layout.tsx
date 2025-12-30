@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import { PostHogProvider } from '@/components/analytics/PostHogProvider';
-import { DemoBadge } from '@/components/DemoBadge';
 import '@/styles/global.css';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -49,8 +48,6 @@ export default function RootLayout({
         <PostHogProvider>
           {children}
         </PostHogProvider>
-
-        <DemoBadge />
       </body>
     </html>
   );
