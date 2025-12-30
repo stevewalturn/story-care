@@ -312,7 +312,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
     // Create media library record when job completes (if not already created)
     if (job.status === 'completed' && job.outputUrl && scene) {
-      // Check if media record already exists for this scene
+      // Check if media record already exists for this scene (with sourceType: 'scene')
       const [existingMedia] = await db
         .select()
         .from(mediaLibrary)
@@ -320,26 +320,43 @@ export async function GET(_request: NextRequest, context: RouteContext) {
           and(
             eq(mediaLibrary.sceneId, sceneId),
             eq(mediaLibrary.mediaType, 'video'),
+            eq(mediaLibrary.sourceType, 'scene'),
           ),
         )
         .limit(1);
 
-      if (!existingMedia) {
-        // Create new media record for the scene video
-        await db.insert(mediaLibrary).values({
+      // Only create media record if scene has a patient
+      if (!existingMedia && scene.patientId) {
+        // Create new media record for the scene video in patient's library
+        const newMediaResult = await db.insert(mediaLibrary).values({
           patientId: scene.patientId,
           createdByTherapistId: scene.createdByTherapistId || '',
-          title: scene.title || 'Scene Video',
-          description: scene.description || undefined,
+          title: `${scene.title || 'Scene Video'}`,
+          description: scene.description || 'Compiled scene video',
           mediaType: 'video',
           mediaUrl: job.outputUrl,
-          thumbnailUrl: job.thumbnailUrl || undefined,
+          thumbnailUrl: job.thumbnailUrl || scene.thumbnailUrl || undefined,
           durationSeconds: job.durationSeconds || undefined,
-          sourceType: 'scene',
+          sourceType: 'scene', // Indicates this is created by Scenes feature
           sceneId,
           status: 'completed',
-        });
-        console.log(`[Scene Assembly] Created media library record for scene ${sceneId}`);
+        }).returning();
+        const newMedia = Array.isArray(newMediaResult) ? newMediaResult[0] : null;
+        console.log(`[Scene Assembly] Saved video to patient library: ${newMedia?.id} for scene ${sceneId}`);
+      } else if (!existingMedia && !scene.patientId) {
+        console.warn(`[Scene Assembly] Cannot save to media library: scene ${sceneId} has no patientId`);
+      }
+
+      // Update the scene record with the assembled video URL and mark as completed
+      if (scene.status !== 'completed' || !scene.assembledVideoUrl) {
+        await db.update(scenes).set({
+          assembledVideoUrl: job.outputUrl,
+          thumbnailUrl: job.thumbnailUrl || scene.thumbnailUrl,
+          durationSeconds: job.durationSeconds?.toString(),
+          status: 'completed',
+          updatedAt: new Date(),
+        }).where(eq(scenes.id, sceneId));
+        console.log(`[Scene Assembly] Updated scene ${sceneId} with video URL and status=completed`);
       }
     }
 

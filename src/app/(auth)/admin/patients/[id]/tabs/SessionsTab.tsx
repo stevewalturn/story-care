@@ -8,6 +8,7 @@ import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type SessionsTabProps = {
   patientId: string;
+  onNewSession?: () => void;
 };
 
 type SessionType = 'individual' | 'group';
@@ -29,7 +30,7 @@ type Session = {
   };
 };
 
-export function SessionsTab({ patientId }: SessionsTabProps) {
+export function SessionsTab({ patientId, onNewSession }: SessionsTabProps) {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [sessionType, setSessionType] = useState<SessionType>('individual');
@@ -137,7 +138,10 @@ export function SessionsTab({ patientId }: SessionsTabProps) {
               className="h-9 w-64 rounded-lg border border-gray-200 pr-4 pl-9 text-sm placeholder:text-gray-400 focus:border-purple-500 focus:outline-none"
             />
           </div>
-          <button className="flex h-9 items-center gap-2 rounded-lg bg-purple-600 px-4 text-sm font-medium text-white hover:bg-purple-700">
+          <button
+            onClick={onNewSession}
+            className="flex h-9 items-center gap-2 rounded-lg bg-purple-600 px-4 text-sm font-medium text-white hover:bg-purple-700"
+          >
             <Plus className="h-4 w-4" />
             New Session
           </button>

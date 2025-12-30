@@ -31,6 +31,13 @@ export type SpeakerInfo = {
   initial?: string;
 };
 
+// Patient info for session header display
+export type SessionPatient = {
+  id: string;
+  name: string;
+  avatarUrl?: string | null;
+};
+
 // Props for TranscriptPanel
 export type TranscriptPanelProps = {
   sessionId: string;
@@ -43,8 +50,13 @@ export type TranscriptPanelProps = {
   groupName?: string;
   sessionDate?: string;
   speakers?: SpeakerInfo[];
+  // Session patients for header display (from session.patient or session.group.members)
+  sessionPatients?: SessionPatient[];
   // Callback for speaker reassignment
   onSpeakerReassign?: (utteranceId: string, newSpeakerId: string) => Promise<void>;
+  // Collapse functionality
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 };
 
 // Props for AIAssistantPanel
@@ -54,7 +66,10 @@ export type AIAssistantPanelProps = {
   user: User | null;
   speakers?: SpeakerInfo[];
   assignedModule: TreatmentModule | null;
-  triggerPrompt: string | null;
+  triggerPrompt: string | null; // DEPRECATED: Use triggerSystemPrompt + triggerUserText
+  triggerSystemPrompt?: string | null; // System prompt from Analyze Selection modal
+  triggerUserText?: string | null; // User's selected text from Analyze Selection modal
+  currentSelectedText?: string; // Selected text from transcript for prompt context
   onPromptSent: () => void;
   onAssignModule: () => void;
   onTextSelection: () => void;

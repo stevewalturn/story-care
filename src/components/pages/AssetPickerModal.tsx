@@ -45,9 +45,9 @@ type QuoteAsset = {
 
 type NoteAsset = {
   id: string;
-  noteText: string;
-  noteType: string;
-  tags: string[];
+  title: string | null;
+  content: string;
+  tags: string[] | null;
   createdAt: string;
 };
 
@@ -105,6 +105,17 @@ export function AssetPickerModal({
       setSelectedPatientId(patientId);
     }
   }, [patientId]);
+
+  // Auto-set media type filter based on filterType prop
+  useEffect(() => {
+    if (filterType === 'image') {
+      setMediaTypeFilter('image');
+    } else if (filterType === 'video') {
+      setMediaTypeFilter('video');
+    } else {
+      setMediaTypeFilter('all');
+    }
+  }, [filterType, isOpen]);
 
   const fetchPatients = async () => {
     setLoadingPatients(true);
@@ -200,7 +211,8 @@ export function AssetPickerModal({
   const filteredNoteAssets = noteAssets.filter((asset) => {
     if (filterType !== 'all' && filterType !== 'text') return false;
     if (!search) return true;
-    return asset.noteText.toLowerCase().includes(search.toLowerCase());
+    return asset.content.toLowerCase().includes(search.toLowerCase())
+      || asset.title?.toLowerCase().includes(search.toLowerCase());
   });
 
   const filteredSceneAssets = sceneAssets.filter((asset) => {
@@ -381,8 +393,8 @@ export function AssetPickerModal({
           )}
         </div>
 
-        {/* Media Type Sub-tabs (only shown for Media tab) */}
-        {activeTab === 'media' && (
+        {/* Media Type Sub-tabs (only shown for Media tab when filterType is 'all') */}
+        {activeTab === 'media' && filterType === 'all' && (
           <div className="flex items-center gap-2 border-b border-gray-100 bg-gray-50 px-6 py-2">
             <span className="text-xs font-medium text-gray-500">Type:</span>
             <div className="flex gap-1">
@@ -538,12 +550,14 @@ export function AssetPickerModal({
                   onClick={() => handleSelect(asset)}
                   className="w-full rounded-lg border border-gray-200 p-4 text-left transition-all hover:border-purple-500 hover:shadow-md"
                 >
-                  <div className="mb-2 flex items-center gap-2">
-                    <span className="rounded bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
-                      {asset.noteType}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-900">{asset.noteText}</p>
+                  {asset.title && (
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className="rounded bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
+                        {asset.title}
+                      </span>
+                    </div>
+                  )}
+                  <p className="text-sm text-gray-900">{asset.content}</p>
                   {asset.tags && asset.tags.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
                       {asset.tags.map((tag, i) => (

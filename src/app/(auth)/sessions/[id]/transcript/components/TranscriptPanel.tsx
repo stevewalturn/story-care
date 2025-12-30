@@ -7,7 +7,7 @@
  */
 
 import type { SpeakerInfo, TranscriptPanelProps, Utterance } from '../types/transcript.types';
-import { ChevronDown, Download, Pause, Pencil, Play } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Download, Pause, Pencil, Play } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -43,7 +43,10 @@ export function TranscriptPanel({
   groupName,
   sessionDate,
   speakers = [],
+  sessionPatients = [],
   onSpeakerReassign,
+  isCollapsed = false,
+  onToggleCollapse,
 }: TranscriptPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -227,31 +230,54 @@ export function TranscriptPanel({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Full panel (no collapsed state for cleaner UX)
+  // Collapsed state - show thin strip with expand button
+  if (isCollapsed) {
+    return (
+      <div className="flex h-full w-12 flex-col items-center border-r border-gray-200 bg-white py-3 transition-all duration-300">
+        <button
+          onClick={onToggleCollapse}
+          className="flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+          title="Expand transcript"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      </div>
+    );
+  }
+
+  // Full panel
   return (
     <div className="flex h-full w-full flex-col border-r border-gray-200 bg-white transition-all duration-300">
       {/* Session Header - Compact */}
       <div className="border-b border-gray-200 bg-white px-4 py-3">
-        <h1 className="mb-2 text-sm font-semibold text-[#111827]">
-          {sessionTitle || 'Group Session - Aug 6, 2025 - 1st Session'}
-        </h1>
+        <div className="mb-2 flex items-center justify-between">
+          <h1 className="text-sm font-semibold text-[#111827]">
+            {sessionTitle || 'Group Session - Aug 6, 2025 - 1st Session'}
+          </h1>
+          {onToggleCollapse && (
+            <button
+              onClick={onToggleCollapse}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+              title="Collapse transcript"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          )}
+        </div>
         <div className="mb-3 flex items-center gap-2">
-          {/* Patient/Speaker Avatars - Dynamic from real data */}
-          {displaySpeakers.length > 0 && (
+          {/* Patient Avatars - Only session-assigned patients (from session.patient or session.group.members) */}
+          {sessionPatients.length > 0 && (
             <div className="flex -space-x-2">
-              {displaySpeakers.slice(0, 4).map((speaker, index) => {
-                const colors = getSpeakerColor(speaker.name, speaker.type) ?? speakerColors.default;
+              {sessionPatients.slice(0, 4).map((patient, index) => {
+                const colors = getSpeakerColor(patient.name, 'patient') ?? speakerColors.default;
                 const bgColorLight = colors?.bg?.replace('-500', '-200').replace('-400', '-200') ?? 'bg-gray-200';
                 const textColor = colors?.bg?.replace('bg-', 'text-').replace('-500', '-700').replace('-400', '-700') ?? 'text-gray-700';
 
-                // Check avatarUrl first, then referenceImageUrl, then fallback to initial
-                const imageUrl = speaker.avatarUrl || speaker.referenceImageUrl;
-
-                return imageUrl ? (
+                return patient.avatarUrl ? (
                   <Image
-                    key={speaker.id}
-                    src={imageUrl}
-                    alt={speaker.name}
+                    key={patient.id}
+                    src={patient.avatarUrl}
+                    alt={patient.name}
                     width={28}
                     height={28}
                     className="h-7 w-7 rounded-full border-2 border-white object-cover"
@@ -259,19 +285,19 @@ export function TranscriptPanel({
                   />
                 ) : (
                   <div
-                    key={speaker.id}
+                    key={patient.id}
                     className={`h-7 w-7 rounded-full ${bgColorLight} flex items-center justify-center border-2 border-white text-xs font-medium ${textColor}`}
                     style={{ zIndex: 10 - index }}
-                    title={speaker.name}
+                    title={patient.name}
                   >
-                    {speaker.initial || speaker.name.charAt(0).toUpperCase()}
+                    {patient.name.charAt(0).toUpperCase()}
                   </div>
                 );
               })}
-              {displaySpeakers.length > 4 && (
+              {sessionPatients.length > 4 && (
                 <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-gray-200 text-[10px] font-medium text-gray-600">
                   +
-                  {displaySpeakers.length - 4}
+                  {sessionPatients.length - 4}
                 </div>
               )}
             </div>

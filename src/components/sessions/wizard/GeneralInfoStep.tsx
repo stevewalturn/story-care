@@ -18,6 +18,7 @@ type GeneralInfoStepProps = {
   onNext: (data: Partial<SessionFormData>) => void;
   onCancel: () => void;
   onChange?: (data: Partial<SessionFormData>) => void;
+  initialPatientId?: string;
 };
 
 type Patient = {
@@ -34,7 +35,7 @@ type RecentSession = {
   createdAt: Date;
 };
 
-export function GeneralInfoStep({ formData, onNext, onCancel: _onCancel, onChange }: GeneralInfoStepProps) {
+export function GeneralInfoStep({ formData, onNext, onCancel: _onCancel, onChange, initialPatientId }: GeneralInfoStepProps) {
   const { user } = useAuth();
   const [title, setTitle] = useState(formData.title);
   const [sessionDate, setSessionDate] = useState(formData.sessionDate);
@@ -71,6 +72,17 @@ export function GeneralInfoStep({ formData, onNext, onCancel: _onCancel, onChang
 
     fetchPatients();
   }, [user?.uid]);
+
+  // Auto-select patient if initialPatientId is provided
+  useEffect(() => {
+    if (initialPatientId && patients.length > 0 && selectedPatientIds.length === 0) {
+      // Check if the patient exists in our patients list
+      const patientExists = patients.some(p => p.id === initialPatientId);
+      if (patientExists) {
+        setSelectedPatientIds([initialPatientId]);
+      }
+    }
+  }, [initialPatientId, patients, selectedPatientIds.length]);
 
   // Fetch recent sessions for quick selection
   useEffect(() => {

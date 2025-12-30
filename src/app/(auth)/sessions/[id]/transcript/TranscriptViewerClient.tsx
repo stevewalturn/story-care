@@ -61,7 +61,10 @@ export function TranscriptViewerClient({
   const [sceneCardData, setSceneCardData] = useState<any>(null);
   const [selectedText, setSelectedText] = useState('');
   const [selectedTextSource, setSelectedTextSource] = useState<'transcript' | 'ai'>('transcript');
-  const [aiPrompt, setAiPrompt] = useState<string | null>(null);
+  const [aiPrompt, setAiPrompt] = useState<string | null>(null); // DEPRECATED
+  // New: separate state for system prompt and user text (for Analyze Selection modal)
+  const [aiSystemPrompt, setAiSystemPrompt] = useState<string | null>(null);
+  const [aiUserText, setAiUserText] = useState<string | null>(null);
 
   // Image modal initial data (for pre-filling from JSON actions)
   const [imageModalInitialData, setImageModalInitialData] = useState<{
@@ -136,7 +139,10 @@ export function TranscriptViewerClient({
 
   // Panel visibility states
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(true);
-  const [isLibraryOpen, setIsLibraryOpen] = useState(true);
+
+  // Panel collapse states (panels always visible, but can be collapsed)
+  const [isTranscriptCollapsed, setIsTranscriptCollapsed] = useState(false);
+  const [isLibraryCollapsed, setIsLibraryCollapsed] = useState(false);
 
   // Selected patient from Library Panel (determines where assets are saved)
   const [selectedPatientFromLibrary, setSelectedPatientFromLibrary] = useState<SelectedPatientInfo | null>(null);
@@ -320,16 +326,18 @@ export function TranscriptViewerClient({
 
   // Handler for text selection from transcript
   const handleTextSelection = () => {
-    // Only open analyze modal if Analyze Mode is enabled
-    if (!analyzeMode) return;
-
     const selection = window.getSelection();
     const text = selection?.toString().trim();
 
     if (text && text.length > 10) {
+      // Always update selectedText for use in chatbox prompts
       setSelectedText(text);
       setSelectedTextSource('transcript');
-      setShowAnalyzeModal(true);
+
+      // Only open analyze modal if Analyze Mode is enabled
+      if (analyzeMode) {
+        setShowAnalyzeModal(true);
+      }
     }
   };
 
@@ -354,10 +362,10 @@ export function TranscriptViewerClient({
   const handleAnalyze = async (_promptId: string, promptText: string, text: string) => {
     // Send ALL prompts to AI chat - JSON output will render with action buttons
     // Image/video generation modals will be triggered from JSON action buttons
-    const fullPrompt = `${promptText}\n\nSelected text:\n"${text}"`;
-
+    // NEW: Pass system prompt and user text separately so chat shows only user text
     setSelectedText(text);
-    setAiPrompt(fullPrompt);
+    setAiSystemPrompt(promptText);
+    setAiUserText(text);
   };
 
   // Handler for image generation
@@ -601,8 +609,9 @@ export function TranscriptViewerClient({
       <div className="flex h-full overflow-hidden">
         {/* Left Panel - Transcript (flexible width based on panel visibility) */}
         <div className={`h-full ${
-          !isAIAssistantOpen && !isLibraryOpen ? 'mx-auto max-w-4xl flex-1'
-            : !isAIAssistantOpen ? 'max-w-[980px] flex-1'
+          isTranscriptCollapsed ? 'w-12 flex-shrink-0'
+            : !isAIAssistantOpen && isLibraryCollapsed ? 'mx-auto max-w-4xl flex-1'
+              : !isAIAssistantOpen ? 'max-w-[980px] flex-1'
                 : 'w-[450px] flex-shrink-0'
         }`}
         >
@@ -616,7 +625,10 @@ export function TranscriptViewerClient({
             groupName={groupName}
             sessionDate={sessionData?.sessionDate}
             speakers={speakers}
+            sessionPatients={sessionPatients}
             onSpeakerReassign={handleSpeakerReassign}
+            isCollapsed={isTranscriptCollapsed}
+            onToggleCollapse={() => setIsTranscriptCollapsed(!isTranscriptCollapsed)}
           />
         </div>
 
@@ -630,7 +642,15 @@ export function TranscriptViewerClient({
               speakers={speakers}
               assignedModule={assignedModule}
               triggerPrompt={aiPrompt}
-              onPromptSent={() => setAiPrompt(null)}
+              triggerSystemPrompt={aiSystemPrompt}
+              triggerUserText={aiUserText}
+              currentSelectedText={selectedText}
+              onPromptSent={() => {
+                setAiPrompt(null);
+                setAiSystemPrompt(null);
+                setAiUserText(null);
+                setSelectedText('');
+              }}
               onAssignModule={() => setIsAssignModuleModalOpen(true)}
               onTextSelection={handleAITextSelection}
               onOpenImageModal={handleOpenImageModal}
@@ -645,21 +665,20 @@ export function TranscriptViewerClient({
           </div>
         )}
 
-        {/* Right Panel - Library (manages its own width: 384px expanded, 48px collapsed) */}
-        {isLibraryOpen && (
-          <LibraryPanel
-            sessionId={sessionId}
-            user={user}
-            sessionData={sessionData}
-            onOpenUpload={() => setShowMediaUploadModal(true)}
-            refreshKey={mediaRefreshKey}
-            onTaskComplete={handleTaskComplete}
-            onClose={() => setIsLibraryOpen(false)}
-            onSelectedPatientChange={setSelectedPatientFromLibrary}
-            onEditQuote={quote => setEditingQuote(quote)}
-            onDeleteQuote={quote => setDeletingQuote(quote)}
-          />
-        )}
+        {/* Right Panel - Library (always visible, collapsible) */}
+        <LibraryPanel
+          sessionId={sessionId}
+          user={user}
+          sessionData={sessionData}
+          onOpenUpload={() => setShowMediaUploadModal(true)}
+          refreshKey={mediaRefreshKey}
+          onTaskComplete={handleTaskComplete}
+          onSelectedPatientChange={setSelectedPatientFromLibrary}
+          onEditQuote={quote => setEditingQuote(quote)}
+          onDeleteQuote={quote => setDeletingQuote(quote)}
+          isCollapsed={isLibraryCollapsed}
+          onToggleCollapse={() => setIsLibraryCollapsed(!isLibraryCollapsed)}
+        />
       </div>
 
       {/* Modals */}

@@ -1,6 +1,8 @@
 'use client';
 
 import type { SceneCardData } from './SceneCard';
+import { arrayMove } from '@dnd-kit/sortable';
+import { Loader2, PlayCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -93,6 +95,7 @@ export function SceneGenerationLayout({
   });
   const [useReference, setUseReference] = useState(true);
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
+  const [isLoadingReferenceImages, setIsLoadingReferenceImages] = useState(false);
   const [showReferenceModal, setShowReferenceModal] = useState(false);
   const [showCompilationModal, setShowCompilationModal] = useState(false);
   const [musicUrl, setMusicUrl] = useState<string>();
@@ -126,6 +129,14 @@ export function SceneGenerationLayout({
   const [loopScenes, setLoopScenes] = useState(false); // Default: don't loop scenes
   const [sceneDuration, setSceneDuration] = useState(10); // Default: 10 seconds per scene
 
+  // Processing state for existing scenes being compiled
+  const [isSceneProcessing, setIsSceneProcessing] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [processingStep, setProcessingStep] = useState('');
+
+  // Completed video URL for playback
+  const [completedVideoUrl, setCompletedVideoUrl] = useState<string | null>(null);
+
   // Use video job polling hook for compilation progress tracking
   const { job: videoJob, isProcessing: _isJobProcessing } = useVideoJobPolling({
     sceneId: compilationProgress.sceneId || undefined,
@@ -157,6 +168,54 @@ export function SceneGenerationLayout({
       setIsCompiling(false);
     },
   });
+
+  // Use video job polling hook for EXISTING scenes that are processing (edit mode)
+  const { job: existingSceneJob } = useVideoJobPolling({
+    sceneId: existingSceneId,
+    enabled: isSceneProcessing && !!existingSceneId,
+    pollInterval: 3000,
+    onComplete: async (completedJob) => {
+      setIsSceneProcessing(false);
+      setCompletedVideoUrl(completedJob?.assembledVideoUrl || null);
+      toast.success('Scene compilation completed!');
+      // Refetch scene data to get the video URL
+      if (existingSceneId && user) {
+        try {
+          const jobResponse = await authenticatedFetch(
+            `/api/scenes/${existingSceneId}/assemble-async`,
+            user,
+          );
+          if (jobResponse.ok) {
+            const jobData = await jobResponse.json();
+            if (jobData.assembledVideoUrl) {
+              setCompletedVideoUrl(jobData.assembledVideoUrl);
+            }
+          }
+        } catch (error) {
+          console.error('[SceneGeneration] Error fetching completed video URL:', error);
+        }
+      }
+    },
+    onError: (error) => {
+      setIsSceneProcessing(false);
+      toast.error(`Scene compilation failed: ${error}`);
+    },
+  });
+
+  // Update processing progress from existing scene polling
+  useEffect(() => {
+    if (existingSceneJob && isSceneProcessing) {
+      setProcessingProgress(existingSceneJob.progress || 0);
+      setProcessingStep(existingSceneJob.currentStep || 'Processing...');
+
+      if (existingSceneJob.status === 'completed') {
+        setIsSceneProcessing(false);
+        setCompletedVideoUrl(existingSceneJob.assembledVideoUrl || null);
+      } else if (existingSceneJob.status === 'failed') {
+        setIsSceneProcessing(false);
+      }
+    }
+  }, [existingSceneJob, isSceneProcessing]);
 
   // Update compilation progress from polling
   useEffect(() => {
@@ -246,6 +305,42 @@ export function SceneGenerationLayout({
           });
         }
 
+        // Check if scene is processing
+        if (sceneData.scene.status === 'processing') {
+          setIsSceneProcessing(true);
+          // Fetch latest job status
+          try {
+            const jobResponse = await authenticatedFetch(
+              `/api/scenes/${existingSceneId}/assemble-async`,
+              user,
+            );
+            if (jobResponse.ok) {
+              const jobData = await jobResponse.json();
+              setProcessingProgress(jobData.progress || 0);
+              setProcessingStep(jobData.currentStep || 'Processing...');
+            }
+          } catch (error) {
+            console.error('[SceneGeneration] Error fetching job status:', error);
+          }
+        } else if (sceneData.scene.status === 'completed') {
+          // Scene is completed, fetch the video URL
+          setIsSceneProcessing(false);
+          try {
+            const jobResponse = await authenticatedFetch(
+              `/api/scenes/${existingSceneId}/assemble-async`,
+              user,
+            );
+            if (jobResponse.ok) {
+              const jobData = await jobResponse.json();
+              if (jobData.assembledVideoUrl) {
+                setCompletedVideoUrl(jobData.assembledVideoUrl);
+              }
+            }
+          } catch (error) {
+            console.error('[SceneGeneration] Error fetching completed video URL:', error);
+          }
+        }
+
         // Fetch clips and convert to SceneCardData format
         const clipsResponse = await authenticatedFetch(`/api/scenes/${existingSceneId}/clips`, user);
         if (clipsResponse.ok) {
@@ -309,6 +404,7 @@ export function SceneGenerationLayout({
     async function fetchPatientImages() {
       if (!patient?.id || !user) return;
 
+      setIsLoadingReferenceImages(true);
       try {
         console.log('[SceneGeneration] Fetching patient reference images for:', patient.id);
         const response = await authenticatedFetch(`/api/patients/${patient.id}`, user);
@@ -349,6 +445,8 @@ export function SceneGenerationLayout({
       } catch (error) {
         console.error('[SceneGeneration] Error fetching patient images:', error);
         setReferenceImages([]); // Set empty state on error
+      } finally {
+        setIsLoadingReferenceImages(false);
       }
     }
 
@@ -458,6 +556,18 @@ export function SceneGenerationLayout({
     };
     setScenes(prev => [...prev, newScene]);
     toast.success(`Scene ${newSequence} added`);
+  };
+
+  // Handle drag-and-drop reordering of scenes
+  const handleReorderScenes = (oldIndex: number, newIndex: number) => {
+    setScenes((prev) => {
+      const reordered = arrayMove(prev, oldIndex, newIndex);
+      // Update sequence numbers after reordering
+      return reordered.map((scene, idx) => ({
+        ...scene,
+        sequence: idx + 1,
+      }));
+    });
   };
 
   const handleOptimizePrompt = async (id: string) => {
@@ -574,6 +684,18 @@ export function SceneGenerationLayout({
       return;
     }
 
+    // Check if reference images are still loading when useReference is enabled
+    if (useReference && isLoadingReferenceImages) {
+      toast.error('Reference images are still loading. Please wait a moment.');
+      return;
+    }
+
+    // Check if useReference is on but no images available (fetch completed but empty)
+    if (useReference && referenceImages.length === 0) {
+      toast.error('No reference images available for this patient. Please upload a reference image or disable "Use Reference".');
+      return;
+    }
+
     handleUpdateScene(id, { status: 'generating_image' });
     toast.loading(`Generating image for Scene ${sequenceToUse}...`, { id: `image-gen-${id}` });
 
@@ -669,16 +791,20 @@ export function SceneGenerationLayout({
           const statusResponse = await authenticatedFetch(`/api/ai/video-task/${taskId}`, user);
           if (!statusResponse.ok) {
             clearInterval(pollInterval);
-            throw new Error('Failed to check video status');
+            const errorData = await statusResponse.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to check video status');
           }
 
           const statusData = await statusResponse.json();
+          const taskData = statusData.data || statusData; // Handle both { data: {...} } and flat response
 
-          if (statusData.status === 'completed' && statusData.mediaId) {
+          if (taskData.status === 'completed' && (taskData.media?.id || taskData.mediaId)) {
             clearInterval(pollInterval);
 
+            const mediaId = taskData.media?.id || taskData.mediaId;
+
             // Fetch media from library
-            const mediaResponse = await authenticatedFetch(`/api/media/${statusData.mediaId}`, user);
+            const mediaResponse = await authenticatedFetch(`/api/media/${mediaId}`, user);
             if (!mediaResponse.ok) {
               throw new Error('Failed to fetch video media');
             }
@@ -688,18 +814,18 @@ export function SceneGenerationLayout({
             handleUpdateScene(id, {
               status: 'ready',
               videoUrl: mediaData.media.mediaUrl,
-              videoMediaId: statusData.mediaId, // Store media library ID
+              videoMediaId: mediaId, // Store media library ID
               progress: 100,
             });
 
             toast.success('Video ready and saved to assets!', { id: `vid-${id}` });
-          } else if (statusData.status === 'failed') {
+          } else if (taskData.status === 'failed') {
             clearInterval(pollInterval);
             handleUpdateScene(id, { status: 'draft', progress: 0 });
-            toast.error('Video generation failed', { id: `vid-${id}` });
+            toast.error(taskData.error || 'Video generation failed', { id: `vid-${id}` });
           } else {
             // Update progress
-            handleUpdateScene(id, { progress: statusData.progress || 50 });
+            handleUpdateScene(id, { progress: taskData.progress || 50 });
           }
         } catch (pollError) {
           clearInterval(pollInterval);
@@ -1134,6 +1260,36 @@ export function SceneGenerationLayout({
 
       {/* Full-Screen Modal */}
       <div className="fixed inset-0 z-50 flex flex-col bg-white">
+        {/* Processing Overlay - shown when scene is being compiled */}
+        {isSceneProcessing && (
+          <div className="absolute inset-0 z-[60] flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="mx-4 w-full max-w-md rounded-xl bg-white p-8 shadow-2xl">
+              <div className="mb-4 flex items-center gap-3">
+                <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
+                <h3 className="text-lg font-semibold">Scene Processing</h3>
+              </div>
+
+              {/* Progress bar */}
+              <div className="mb-2 h-2 w-full rounded-full bg-gray-200">
+                <div
+                  className="h-full rounded-full bg-purple-600 transition-all duration-300"
+                  style={{ width: `${processingProgress}%` }}
+                />
+              </div>
+
+              {/* Status text */}
+              <p className="mb-4 text-sm text-gray-600">
+                {processingStep || 'Processing...'} • {Math.round(processingProgress)}%
+              </p>
+
+              <p className="text-center text-xs text-gray-500">
+                Please wait while your scene is being compiled.
+                This page will update automatically when complete.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Top Bar */}
         <SceneGenerationTopBar
           patientName={patient?.name || 'Select Patient'}
@@ -1157,7 +1313,28 @@ export function SceneGenerationLayout({
         />
 
         {/* Main Content Area */}
-        <div className="flex flex-1 flex-col overflow-y-auto p-8">
+        <div className={`flex flex-1 flex-col overflow-y-auto p-8 ${isSceneProcessing ? 'pointer-events-none opacity-50' : ''}`}>
+          {/* Compiled Video Player - shown when scene is completed */}
+          {completedVideoUrl && (
+            <div className="mb-6 overflow-hidden rounded-xl border border-gray-200">
+              <div className="flex items-center gap-2 border-b border-gray-200 bg-gray-50 px-4 py-2">
+                <PlayCircle className="h-4 w-4 text-green-600" />
+                <h3 className="text-sm font-medium text-gray-700">Compiled Video</h3>
+                <span className="ml-auto rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                  Ready to view
+                </span>
+              </div>
+              <div className="aspect-video bg-black">
+                <video
+                  src={completedVideoUrl}
+                  controls
+                  className="h-full w-full"
+                  playsInline
+                />
+              </div>
+            </div>
+          )}
+
           {/* Scene Cards */}
           <div className="mb-8">
             <SceneCardSequence
@@ -1169,6 +1346,7 @@ export function SceneGenerationLayout({
               onUploadImage={handleUploadImage}
               onAnimateVideo={handleAnimateVideo}
               onAddScene={handleAddScene}
+              onReorderScenes={handleReorderScenes}
               maxScenes={10}
             />
           </div>
@@ -1180,6 +1358,7 @@ export function SceneGenerationLayout({
               waveformData={musicWaveform}
               duration={musicDuration}
               isGenerating={isGeneratingMusic}
+              isLoadingSuggestions={isLoadingMusicSuggestions}
               generationProgress={musicGenerationProgress}
               generationStatus={musicGenerationStatus}
               musicPrompt={musicPrompt}

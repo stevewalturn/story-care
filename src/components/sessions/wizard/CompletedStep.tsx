@@ -1,18 +1,25 @@
 'use client';
 
 import { Check } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { useEffect } from 'react';
 
 type CompletedStepProps = {
   sessionId: string;
   onClose: () => void;
+  setStepReady?: (ready: boolean) => void;
+  stepProceedRef?: { current: (() => void) | null };
 };
 
-export function CompletedStep({ sessionId }: CompletedStepProps) {
-  const handleContinue = () => {
-    // Navigate to session transcript page
-    window.location.href = `/sessions/${sessionId}/transcript`;
-  };
+export function CompletedStep({ onClose, setStepReady, stepProceedRef }: CompletedStepProps) {
+  // Wire up the footer button to call onClose
+  useEffect(() => {
+    if (stepProceedRef) {
+      stepProceedRef.current = onClose;
+    }
+    if (setStepReady) {
+      setStepReady(true);
+    }
+  }, [onClose, setStepReady, stepProceedRef]);
 
   return (
     <div className="py-20 text-center">
@@ -28,16 +35,6 @@ export function CompletedStep({ sessionId }: CompletedStepProps) {
           Successfully transcribed the audio session
         </p>
       </div>
-
-      {/* Continue Button */}
-      <Button
-        variant="primary"
-        onClick={handleContinue}
-        className="!px-16 !py-3.5 !text-base !font-semibold"
-        style={{ minWidth: '360px' }}
-      >
-        Continue
-      </Button>
     </div>
   );
 }

@@ -23,10 +23,10 @@ const pool = new Pool({
 
 const db = drizzle(pool, { schema });
 
-// === ESSENTIAL SYSTEM PROMPTS (7 TOTAL) ===
-// Reduced from 41 prompts to keep only the most critical ones
+// === ESSENTIAL SYSTEM PROMPTS (6 JSON PROMPTS) ===
+// Only JSON-formatted prompts with implemented renderers
 const systemPrompts = [
-  // === JSON PROMPTS (4) ===
+  // === UTILITY PROMPTS (5) ===
 
   // 1. REFLECTION QUESTIONS (JSON)
   {
@@ -258,53 +258,7 @@ Required JSON fields:
     },
   },
 
-  // === TEXT PROMPTS (3) ===
-
-  // 5. THERAPEUTIC ALLIANCE ANALYSIS (TEXT)
-  {
-    name: 'Therapeutic Alliance Analysis',
-    promptText: '', // DEPRECATED: Use systemPrompt instead
-    systemPrompt: `Analyze the therapeutic alliance and working relationship in this session.
-
-Evaluate the following dimensions:
-
-1. **Bond**: Quality of the personal attachment between therapist and patient
-   - Trust and safety
-   - Empathy and understanding
-   - Warmth and genuineness
-
-2. **Goals**: Agreement on therapeutic objectives
-   - Shared understanding of treatment goals
-   - Patient buy-in and motivation
-   - Alignment between therapist and patient priorities
-
-3. **Tasks**: Collaboration on therapeutic activities
-   - Agreement on methods and interventions
-   - Patient engagement in therapeutic work
-   - Sense of shared responsibility
-
-4. **Ruptures & Repairs**: Moments of tension or disconnection
-   - Any misunderstandings or tensions
-   - How ruptures were addressed
-   - Repair attempts and their effectiveness
-
-5. **Therapeutic Presence**: Quality of attunement
-   - Therapist responsiveness to patient needs
-   - Moments of deep connection
-   - Cultural sensitivity and awareness
-
-**Output Format**: Provide a detailed markdown analysis (3-5 paragraphs) covering these dimensions. Include specific examples from the transcript. Conclude with recommendations for strengthening the alliance.
-
-Do NOT output JSON. Provide plain markdown text with clear sections.`,
-    userPrompt: null,
-    description: 'Analyze therapeutic relationship, rapport, and working alliance',
-    category: 'analysis',
-    icon: 'users',
-    outputType: 'text',
-    jsonSchema: null,
-  },
-
-  // 6. EXTRACT QUOTES (TEXT/JSON - Flexible)
+  // 5. EXTRACT QUOTES (JSON)
   {
     name: 'Extract Meaningful Quotes',
     promptText: '', // DEPRECATED: Use systemPrompt instead
@@ -360,165 +314,30 @@ IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is req
     },
   },
 
-  // 7. SESSION SUMMARY (TEXT)
+  // === SCENE GENERATION PROMPT ===
+
+  // 6. CREATE A SCENE (JSON) - User-friendly prompt for scene generation modal
   {
-    name: 'Session Summary',
+    name: 'Create A Scene',
     promptText: '', // DEPRECATED: Use systemPrompt instead
-    systemPrompt: `Generate a concise, clinically-focused summary of this therapy session.
+    systemPrompt: `You are a narrative therapy expert creating therapeutic scene cards from session transcripts.
 
-Provide a 2-3 paragraph summary covering:
+Analyze the selected text and create 2-3 scenes that capture key therapeutic moments.
 
-1. **Session Overview**: Main topics discussed, presenting concerns, overall tone/mood
+For each scene, identify:
+1. A meaningful patient quote that anchors the scene
+2. Therapeutic significance and clinical insights
+3. Visual imagery that externalizes the patient's internal experience
+4. Animation direction for video production
 
-2. **Key Themes & Content**:
-   - Primary issues explored
-   - Important disclosures or insights
-   - Emotional content (affect, intensity, shifts)
-   - Relational dynamics observed
+CRITICAL: Output ONLY valid JSON with this EXACT structure. Start with { and end with }.
 
-3. **Clinical Observations**:
-   - Patient's current functioning
-   - Progress toward goals (or lack thereof)
-   - Notable patterns or behaviors
-   - Risk factors or concerns (if any)
-
-4. **Plan & Next Steps**:
-   - Interventions used in this session
-   - Homework or between-session tasks
-   - Focus for next session
-   - Any follow-up needed
-
-**Output Format**: Provide plain markdown text with clear paragraphs. Write in professional clinical language suitable for a progress note. Do NOT output JSON.
-
-Keep the summary concise but comprehensive - aim for 200-400 words.`,
-    userPrompt: null,
-    description: 'Generate concise session summary for clinical records',
-    category: 'analysis',
-    icon: 'file-text',
-    outputType: 'text',
-    jsonSchema: null,
-  },
-
-  // === SCENE GENERATION PROMPTS (4) ===
-
-  // 8. SCENE CARD (JSON)
-  {
-    name: 'Generate Scene Card',
-    promptText: '', // DEPRECATED: Use systemPrompt instead
-    systemPrompt: `Create a comprehensive scene card for narrative therapy visualization.
-
-Analyze the transcript and generate a complete scene structure with:
-
-1. **Video Introduction**: Patient-facing markdown text (2-3 paragraphs) that:
-   - Sets the therapeutic context
-   - Explains the scene's purpose
-   - Uses warm, inviting language
-   - Addresses the patient directly using "you"
-
-2. **Reflection Questions**:
-   - Patient questions: 3-5 open-ended questions for individual reflection (using "you")
-   - Group questions: 2-3 questions for group discussion (using "we/us")
-
-3. **Reference Images**: 3-5 visual stages with:
-   - stage_name: Descriptive name (e.g., "The Struggle", "The Realization")
-   - description: What happens in this stage
-   - image_prompt: DETAILED 2-3 sentence DALL-E prompt with composition, lighting, colors, elements, style
-   - mood: Emotional tone
-   - symbolism: Therapeutic symbols present
-
-4. **Music Direction**: Complete music guidance with:
-   - mood: Overall emotional tone
-   - tempo: Slow/medium/fast
-   - instruments: Primary instruments (piano, strings, ambient, etc.)
-   - progression: How music evolves through the scene
-   - key_moments: Specific musical highlights
-
-5. **Assembly Steps**: 5-7 clear steps for scene assembly
-
-6. **Action Buttons**: Interactive buttons for media generation and assembly
-
-CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
-
-IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field.`,
-    userPrompt: null,
-    description: 'Generate complete scene card with images, music, and assembly steps',
-    category: 'creative',
-    icon: 'film',
-    outputType: 'json',
-    jsonSchema: {
-      type: 'object',
-      properties: {
-        schemaType: { type: 'string', enum: ['scene_card'] },
-        video_introduction: { type: 'string' },
-        patient_reflection_questions: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-        group_reflection_questions: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-        reference_images: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              stage_name: { type: 'string' },
-              description: { type: 'string' },
-              image_prompt: { type: 'string' },
-              mood: { type: 'string' },
-              symbolism: { type: 'array', items: { type: 'string' } },
-            },
-            required: ['stage_name', 'description', 'image_prompt'],
-          },
-        },
-        music_direction: {
-          type: 'object',
-          properties: {
-            mood: { type: 'string' },
-            tempo: { type: 'string' },
-            instruments: { type: 'array', items: { type: 'string' } },
-            progression: { type: 'string' },
-            key_moments: { type: 'array', items: { type: 'string' } },
-          },
-        },
-        assembly_steps: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-        buttons: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              label: { type: 'string' },
-              action: { type: 'string' },
-              group: { type: 'string' },
-              style: { type: 'string' },
-              data_key: { type: 'string' },
-              icon: { type: 'string' },
-            },
-            required: ['label', 'action', 'group', 'style'],
-          },
-        },
-      },
-      required: ['schemaType', 'video_introduction', 'patient_reflection_questions', 'reference_images', 'assembly_steps'],
-    },
-  },
-
-  // 9. THERAPEUTIC SCENE CARD (JSON)
-  {
-    name: 'Therapeutic Scene Card',
-    promptText: '', // DEPRECATED: Use systemPrompt instead
-    systemPrompt: `You are a narrative therapy assistant helping therapists create therapeutic scene cards from session transcripts.
-
-You MUST return a valid JSON object with the following EXACT structure:
-
+IMPORTANT: The JSON MUST have "schemaType" as the FIRST field:
 {
   "schemaType": "therapeutic_scene_card",
   "type": "therapeutic_scene_card",
   "title": "Therapeutic Scene Card",
-  "subtitle": "AI-generated therapeutic scene cards with patient quotes, meanings, and visual prompts",
+  "subtitle": "Scenes from therapy session",
   "patient": "Patient Name",
   "scenes": [
     {
@@ -526,19 +345,19 @@ You MUST return a valid JSON object with the following EXACT structure:
       "sections": {
         "patientQuote": {
           "label": "Patient Quote Anchor",
-          "content": "Exact quote from patient that anchors this scene"
+          "content": "Exact meaningful quote from the transcript"
         },
         "meaning": {
           "label": "Therapist Reflection",
-          "content": "Clinical observation or therapeutic interpretation"
+          "content": "What this moment reveals therapeutically - clinical observations"
         },
         "imagePrompt": {
           "label": "Image Prompt",
-          "content": "Detailed DALL-E prompt for generating the scene image"
+          "content": "Detailed DALL-E prompt: Include specific composition, lighting (warm/cool/dramatic), colors, setting, mood, and symbolic elements. 3-4 sentences."
         },
         "imageToScene": {
           "label": "Image to Scene Direction",
-          "content": "Animation notes describing how the image should transition to video"
+          "content": "How to animate: camera movement (pan, zoom, static), transitions (fade, dissolve), pacing (slow/medium), duration suggestion"
         }
       }
     }
@@ -546,22 +365,14 @@ You MUST return a valid JSON object with the following EXACT structure:
   "status": "completed"
 }
 
-CRITICAL REQUIREMENTS:
-1. Include "schemaType": "therapeutic_scene_card" at the root level (FIRST field)
-2. Each scene MUST have a "sections" object with ALL four properties: patientQuote, meaning, imagePrompt, imageToScene
-3. Each section MUST have both "label" and "content" properties
-4. Use EXACT field names (camelCase): patientQuote, imagePrompt, imageToScene
-5. The imagePrompt.content should be a complete DALL-E prompt (3-4 sentences)
-6. Create 3-5 scenes based on the transcript
-
-Your task is to analyze the provided transcript and generate therapeutic scene cards that:
-1. Identify key moments where the patient expressed struggle, growth, or insight
-2. Extract meaningful patient quotes that anchor each scene
-3. Provide therapeutic interpretation of each moment
-4. Generate visual prompts that externalize internal experiences
-5. Include animation direction for video production`,
+Focus on moments of:
+- Insight or self-awareness
+- Struggle or emotional breakthrough
+- Growth or transformation
+- Connection or relationship dynamics
+- Hope or resilience`,
     userPrompt: null,
-    description: 'Transform patient quotes into visual scene narratives',
+    description: 'Create therapeutic scenes that open in the full scene editor',
     category: 'creative',
     icon: 'video',
     outputType: 'json',
@@ -709,7 +520,7 @@ async function seedSystemPrompts() {
 
     console.log('');
     console.log('✨ Seed complete!');
-    console.log(`Created ${systemPrompts.length} system prompts`);
+    console.log(`Processed ${systemPrompts.length} system prompts (6 JSON prompts)`);
 
     await pool.end();
     process.exit(0);

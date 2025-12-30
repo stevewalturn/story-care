@@ -1,7 +1,10 @@
 'use client';
 
+import type { DraggableAttributes } from '@dnd-kit/core';
+import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
+import type { CSSProperties } from 'react';
 import { GripVertical, Loader2, Maximize2, Pause, Play, RotateCw, SkipBack, SkipForward, Sparkles, Trash2, Upload, Video, Volume2, VolumeX } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/Input';
 
 export type SceneCardData = {
@@ -31,9 +34,18 @@ type SceneCardProps = {
   onUploadImage?: (id: string, file: File) => void;
   onAnimateVideo?: (id: string) => void;
   isGeneratingAnyImage?: boolean;
+  // Drag handle props from dnd-kit
+  dragHandleProps?: {
+    attributes: DraggableAttributes;
+    listeners: SyntheticListenerMap | undefined;
+  };
+  // Sortable style (transform/transition)
+  sortableStyle?: CSSProperties;
+  // Is currently being dragged
+  isSortableDragging?: boolean;
 };
 
-export function SceneCard({
+export const SceneCard = forwardRef<HTMLDivElement, SceneCardProps>(function SceneCard({
   scene,
   onUpdate,
   onDelete,
@@ -42,7 +54,10 @@ export function SceneCard({
   onUploadImage,
   onAnimateVideo,
   isGeneratingAnyImage,
-}: SceneCardProps) {
+  dragHandleProps,
+  sortableStyle,
+  isSortableDragging,
+}, ref) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -305,12 +320,22 @@ export function SceneCard({
   };
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:border-purple-300 hover:shadow-md">
+    <div
+      ref={ref}
+      style={sortableStyle}
+      className={`flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:border-purple-300 hover:shadow-md ${
+        isSortableDragging ? 'opacity-50 shadow-lg' : ''
+      }`}
+    >
       {/* Header Row - Drag handle + Number + Title + Trash */}
       <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3">
         {/* Drag handle + Number */}
-        <div className="flex items-center gap-1.5 text-gray-400">
-          <GripVertical className="h-4 w-4 cursor-grab" />
+        <div
+          className="flex items-center gap-1.5 text-gray-400"
+          {...(dragHandleProps?.attributes || {})}
+          {...(dragHandleProps?.listeners || {})}
+        >
+          <GripVertical className="h-4 w-4 cursor-grab active:cursor-grabbing" />
           <span className="text-sm font-medium text-gray-700">{scene.sequence}</span>
         </div>
 
@@ -410,4 +435,4 @@ export function SceneCard({
       </div>
     </div>
   );
-}
+});

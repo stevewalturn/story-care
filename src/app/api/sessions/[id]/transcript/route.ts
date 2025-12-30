@@ -67,6 +67,13 @@ export async function GET(
           }
         }
 
+        // Compute speaker name with proper fallback (handle empty strings)
+        const speakerName =
+          (utterance.userName && utterance.userName.trim()) ||
+          (utterance.speaker?.speakerName && utterance.speaker.speakerName.trim()) ||
+          utterance.speaker?.speakerLabel ||
+          'Unknown Speaker';
+
         return {
           id: utterance.id,
           speakerId: utterance.speakerId,
@@ -76,8 +83,7 @@ export async function GET(
           confidenceScore: utterance.confidenceScore,
           speaker: {
             ...utterance.speaker,
-            // Use actual user name instead of speaker label
-            speakerName: utterance.userName || utterance.speaker?.speakerName || utterance.speaker?.speakerLabel,
+            speakerName,
           },
           avatarUrl: signedAvatarUrl || undefined,
         };

@@ -13,6 +13,7 @@ import {
   Music,
   PlusCircle,
   Quote,
+  RefreshCw,
   Save,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -55,6 +56,7 @@ type JSONOutputRendererProps = {
     content: string;
     tags?: string[];
   }) => void;
+  onRetry?: () => void;
 };
 
 export function JSONOutputRenderer({
@@ -69,6 +71,7 @@ export function JSONOutputRenderer({
   onOpenSceneGeneration,
   onOpenModuleSelector,
   onOpenSaveNoteModal,
+  onRetry,
 }: JSONOutputRendererProps) {
   const router = useRouter();
   const [processingAction, setProcessingAction] = useState<string | null>(null);
@@ -160,7 +163,7 @@ export function JSONOutputRenderer({
       </div>
 
       {/* Preview / Summary */}
-      <div className="mb-3 rounded-lg bg-white/80 p-3">{renderPreview(schemaType, jsonData, onOpenSceneGeneration, onOpenImageModal, onOpenMusicModal)}</div>
+      <div className="mb-3 rounded-lg bg-white/80 p-3">{renderPreview(schemaType, jsonData, onOpenSceneGeneration, onOpenImageModal, onOpenMusicModal, onRetry)}</div>
 
       {/* Action Buttons - skip for image_references since each card has its own button */}
       {schemaType !== 'image_references' && (
@@ -306,6 +309,7 @@ function renderPreview(
     instrumentalOption?: any;
     lyricalOption?: any;
   }) => void,
+  onRetry?: () => void,
 ) {
   switch (schemaType) {
     case 'therapeutic_scene_card':
@@ -470,7 +474,11 @@ function renderPreview(
                   <p className="line-clamp-4 text-sm whitespace-pre-wrap text-purple-900 italic">
                     {typeof data.lyrical_option.suggested_lyrics === 'string'
                       ? data.lyrical_option.suggested_lyrics
-                      : `${data.lyrical_option.suggested_lyrics.slice(0, 200)}...`}
+                      : Array.isArray(data.lyrical_option.suggested_lyrics)
+                        ? data.lyrical_option.suggested_lyrics.slice(0, 200).join('\n')
+                        : typeof data.lyrical_option.suggested_lyrics === 'object'
+                          ? JSON.stringify(data.lyrical_option.suggested_lyrics, null, 2).slice(0, 200) + '...'
+                          : String(data.lyrical_option.suggested_lyrics)}
                   </p>
                 </div>
               )}
@@ -517,6 +525,86 @@ function renderPreview(
               </li>
             ))}
           </ul>
+        </div>
+      );
+
+    case 'scene_suggestions_by_quote':
+      return (
+        <div className="space-y-4">
+          {/* Quote Source */}
+          {data.quote && (
+            <div className="border-l-4 border-purple-500 bg-purple-50 py-3 pl-4">
+              <p className="mb-1 text-xs font-semibold tracking-wide text-purple-700 uppercase">
+                Source Quote
+              </p>
+              <p className="text-sm leading-relaxed text-purple-900 italic">
+                "
+                {data.quote}
+                "
+              </p>
+            </div>
+          )}
+
+          {/* Scene Cards */}
+          <p className="text-sm font-semibold text-gray-900">
+            {data.scenes?.length || 0}
+            {' '}
+            Scene Suggestion
+            {data.scenes?.length !== 1 ? 's' : ''}
+          </p>
+
+          <div className="space-y-4">
+            {data.scenes?.map((scene: any, index: number) => (
+              <div
+                key={index}
+                className="rounded-lg border border-purple-200 bg-white p-4 shadow-sm"
+              >
+                {/* Scene Title */}
+                <h3 className="mb-2 text-base font-semibold text-gray-900">
+                  {scene.sceneTitle}
+                </h3>
+
+                {/* Scene Description */}
+                {scene.sceneDescription && (
+                  <p className="mb-3 text-sm leading-relaxed text-gray-700">
+                    {scene.sceneDescription}
+                  </p>
+                )}
+
+                {/* Key Quote */}
+                {scene.keyQuote && (
+                  <div className="mb-3 border-l-4 border-amber-400 bg-amber-50 py-2 pl-3">
+                    <p className="text-xs font-semibold text-amber-700">Key Quote</p>
+                    <p className="text-sm text-amber-900 italic">
+                      "
+                      {scene.keyQuote}
+                      "
+                    </p>
+                  </div>
+                )}
+
+                {/* Therapeutic Rationale */}
+                {scene.therapeuticRationale && (
+                  <div className="mb-3 rounded-lg bg-green-50 p-3">
+                    <p className="mb-1 text-xs font-semibold text-green-700">Therapeutic Rationale</p>
+                    <p className="text-sm leading-relaxed text-green-800">
+                      {scene.therapeuticRationale}
+                    </p>
+                  </div>
+                )}
+
+                {/* Scene Focus Instruction */}
+                {scene.sceneFocusInstruction && (
+                  <div className="rounded-lg bg-blue-50 p-3">
+                    <p className="mb-1 text-xs font-semibold text-blue-700">Scene Focus</p>
+                    <p className="text-sm leading-relaxed text-blue-800">
+                      {scene.sceneFocusInstruction}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       );
 
@@ -1400,7 +1488,19 @@ function renderPreview(
     default:
       return (
         <div className="space-y-2 text-sm">
-          <p className="font-semibold text-amber-900">⚠️ Unknown Schema Type</p>
+          <div className="flex items-center justify-between">
+            <p className="font-semibold text-amber-900">⚠️ Unknown Schema Type</p>
+            {onRetry && (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="flex items-center gap-1 rounded bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700 hover:bg-purple-200"
+              >
+                <RefreshCw className="h-3 w-3" />
+                Retry
+              </button>
+            )}
+          </div>
           <p className="text-xs text-gray-600">
             Schema type "
             {schemaType}

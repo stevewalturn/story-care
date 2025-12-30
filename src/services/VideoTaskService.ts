@@ -81,13 +81,13 @@ export const VideoTaskService = {
   },
 
   /**
-   * Clean up old tasks (> 1 hour)
+   * Clean up old tasks (> 24 hours)
    */
   cleanup(): number {
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     let deletedCount = 0;
     for (const [taskId, task] of videoTasks.entries()) {
-      if (task.createdAt < oneHourAgo) {
+      if (task.createdAt < twentyFourHoursAgo) {
         videoTasks.delete(taskId);
         deletedCount++;
       }

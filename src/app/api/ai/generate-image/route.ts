@@ -5,8 +5,77 @@ import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { generatePresignedUrl, uploadFile } from '@/libs/GCS';
 import { generateImage } from '@/libs/ImageGeneration';
+import { parseAtlasError } from '@/libs/providers/AtlasCloud';
 import { mediaLibrary, sessions } from '@/models/Schema';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
+
+/**
+ * Parse image generation errors into user-friendly messages
+ */
+function parseImageGenError(error: unknown): { message: string; code: string } {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+
+  // Atlas Cloud errors
+  if (errorMessage.includes('Atlas Cloud') || errorMessage.includes('atlascloud')) {
+    return {
+      message: parseAtlasError(errorMessage),
+      code: 'ATLAS_ERROR',
+    };
+  }
+
+  // Model-specific validation errors (from AtlasCloud.ts)
+  if (errorMessage.includes('requires a reference image')) {
+    return {
+      message: errorMessage,
+      code: 'MISSING_REFERENCE_IMAGE',
+    };
+  }
+
+  if (errorMessage.includes('Unknown model')) {
+    return {
+      message: errorMessage,
+      code: 'INVALID_MODEL',
+    };
+  }
+
+  // API key errors
+  if (errorMessage.includes('API_KEY') || errorMessage.includes('not configured')) {
+    return {
+      message: 'Image generation service is not configured. Please contact support.',
+      code: 'SERVICE_NOT_CONFIGURED',
+    };
+  }
+
+  // OpenAI/Gemini errors
+  if (errorMessage.includes('content_policy') || errorMessage.includes('safety')) {
+    return {
+      message: 'The prompt was rejected due to content policy. Please modify your prompt and try again.',
+      code: 'CONTENT_POLICY',
+    };
+  }
+
+  // Rate limiting
+  if (errorMessage.includes('rate') || errorMessage.includes('429')) {
+    return {
+      message: 'Too many requests. Please wait a moment and try again.',
+      code: 'RATE_LIMITED',
+    };
+  }
+
+  // Timeout
+  if (errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
+    return {
+      message: 'Image generation timed out. Please try again with a simpler prompt.',
+      code: 'TIMEOUT',
+    };
+  }
+
+  // Generic fallback
+  return {
+    message: errorMessage || 'Failed to generate image. Please try again.',
+    code: 'GENERATION_FAILED',
+  };
+}
 
 // POST /api/ai/generate-image - Generate image with multiple AI providers
 export async function POST(request: NextRequest) {
@@ -207,12 +276,36 @@ export async function POST(request: NextRequest) {
       model: usedModel,
     });
   } catch (error) {
+    // Parse and log error details
+    const parsedError = parseImageGenError(error);
+
     console.error('[API /api/ai/generate-image] Error occurred:', {
       error,
       errorMessage: error instanceof Error ? error.message : 'Unknown error',
       errorStack: error instanceof Error ? error.stack : undefined,
       errorName: error instanceof Error ? error.name : typeof error,
+      parsedError,
     });
-    return handleAuthError(error);
+
+    // Check if it's an auth error first
+    if (error instanceof Error && (
+      error.message.includes('Unauthorized')
+      || error.message.includes('Authentication')
+      || error.message.includes('token')
+    )) {
+      return handleAuthError(error);
+    }
+
+    // Return user-friendly error message with error code
+    return NextResponse.json(
+      {
+        error: parsedError.message,
+        code: parsedError.code,
+        details: process.env.NODE_ENV === 'development'
+          ? (error instanceof Error ? error.message : String(error))
+          : undefined,
+      },
+      { status: 500 },
+    );
   }
 }

@@ -4,8 +4,19 @@ import type { SessionFormData } from './types';
 import { Check, ChevronDown, MessageCircle, Pause, Play, SkipBack, SkipForward } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
+
+type ErrorDetails = {
+  message: string;
+  timestamp: string;
+  sessionId: string;
+  speakerCount: number;
+  stack?: string;
+  rawError?: string;
+};
 
 type AssignSpeakerStepProps = {
   formData: SessionFormData;
@@ -59,6 +70,8 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
   const [utteranceCache, setUtteranceCache] = useState<UtteranceCache>(new Map());
   const [loadingUtterances, setLoadingUtterances] = useState<Set<string>>(new Set());
   const [audioCache, setAudioCache] = useState<Map<string, string>>(new Map()); // Cache audio URLs per utterance
+  const [errorModalOpen, setErrorModalOpen] = useState(false);
+  const [errorDetails, setErrorDetails] = useState<ErrorDetails | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const dropdownRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
@@ -149,7 +162,7 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
         setIsGenerating(false);
       } catch (error) {
         console.error('Error:', error);
-        alert(error instanceof Error ? error.message : 'Failed to process session. Please try again.');
+        toast.error(error instanceof Error ? error.message : 'Failed to process session. Please try again.');
         onBack(); // Go back to upload step on error
       }
     };
@@ -249,7 +262,7 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
     // Validate all speakers have types assigned
     const unassignedSpeakers = speakers.filter(s => !s.type);
     if (unassignedSpeakers.length > 0) {
-      alert(
+      toast.error(
         `Please assign a type to all speakers. ${unassignedSpeakers.length} speaker(s) are unassigned.`,
       );
       return;
@@ -258,7 +271,14 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
     // Validate therapist speakers have names
     const unnamedTherapists = speakers.filter(s => s.type === 'therapist' && !s.name.trim());
     if (unnamedTherapists.length > 0) {
-      alert('All therapist speakers must have a name assigned.');
+      toast.error('All therapist speakers must have a name assigned.');
+      return;
+    }
+
+    // Validate patient speakers have names (especially important for group sessions)
+    const unnamedPatients = speakers.filter(s => s.type === 'patient' && !s.name.trim());
+    if (unnamedPatients.length > 0) {
+      toast.error('All patient speakers must have a name assigned. Please select a patient for each speaker.');
       return;
     }
 
@@ -294,9 +314,22 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
       // Only proceed if successful
       onNext(sessionId);
     } catch (error) {
-      console.error('Error saving speakers:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to save speakers';
-      alert(`Failed to save speakers: ${errorMessage}. Please try again.`);
+      // Enhanced error logging for debugging intermittent issues
+      const errorInfo: ErrorDetails = {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        sessionId,
+        speakerCount: speakers.length,
+        stack: error instanceof Error ? error.stack : undefined,
+        rawError: String(error),
+      };
+      console.error('Speaker save error:', errorInfo);
+
+      // Show error modal with details
+      setErrorDetails(errorInfo);
+      setErrorModalOpen(true);
+
+      toast.error('Failed to save speakers. See details in the error popup.');
       // DO NOT call onNext() on error - user stays on current step
     } finally {
       _setIsSaving(false);
@@ -425,7 +458,7 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
 
   const handleMergeSpeakers = async () => {
     if (selectedForMerge.size < 2) {
-      alert('Please select at least 2 speakers to merge');
+      toast.error('Please select at least 2 speakers to merge');
       return;
     }
 
@@ -460,7 +493,7 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
       setMergeMode(false);
     } catch (error) {
       console.error('Error merging speakers:', error);
-      alert('Failed to merge speakers. Please try again.');
+      toast.error('Failed to merge speakers. Please try again.');
     } finally {
       setIsMerging(false);
     }
@@ -1031,6 +1064,69 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
           </div>
         ))}
       </div>
+
+      {/* Error Details Modal */}
+      <Modal
+        isOpen={errorModalOpen}
+        onClose={() => setErrorModalOpen(false)}
+        title="Error Details"
+        description="Something went wrong while saving speakers. Please share these details if reporting the issue."
+        size="lg"
+        footer={(
+          <Button variant="primary" onClick={() => setErrorModalOpen(false)}>
+            Close
+          </Button>
+        )}
+      >
+        {errorDetails && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Error Message</label>
+              <div className="mt-1 rounded-md bg-red-50 p-3 text-sm text-red-800">
+                {errorDetails.message}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Timestamp</label>
+                <div className="mt-1 rounded-md bg-gray-100 p-2 text-sm font-mono text-gray-800">
+                  {errorDetails.timestamp}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Session ID</label>
+                <div className="mt-1 truncate rounded-md bg-gray-100 p-2 text-sm font-mono text-gray-800">
+                  {errorDetails.sessionId}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Speaker Count</label>
+              <div className="mt-1 rounded-md bg-gray-100 p-2 text-sm text-gray-800">
+                {errorDetails.speakerCount}
+              </div>
+            </div>
+
+            {errorDetails.stack && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Stack Trace</label>
+                <pre className="mt-1 max-h-40 overflow-auto rounded-md bg-gray-900 p-3 text-xs text-green-400">
+                  {errorDetails.stack}
+                </pre>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Raw Error</label>
+              <div className="mt-1 rounded-md bg-gray-100 p-2 text-sm font-mono text-gray-800">
+                {errorDetails.rawError}
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

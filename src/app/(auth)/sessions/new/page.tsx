@@ -22,6 +22,7 @@ export default function NewSessionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const stepParam = searchParams.get('step');
+  const initialPatientId = searchParams.get('patientId');
 
   const [currentStep, setCurrentStep] = useState<WizardStep>('general-info');
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -170,6 +171,7 @@ export default function NewSessionPage() {
               onNext={handleGeneralInfoNext}
               onCancel={handleCancel}
               onChange={data => setFormData(prev => ({ ...prev, ...data }))}
+              initialPatientId={initialPatientId || undefined}
             />
           )}
 
@@ -196,6 +198,8 @@ export default function NewSessionPage() {
             <CompletedStep
               sessionId={sessionId || ''}
               onClose={handleWizardComplete}
+              setStepReady={setStepReady}
+              stepProceedRef={stepProceedRef}
             />
           )}
         </div>
@@ -204,9 +208,11 @@ export default function NewSessionPage() {
       {/* Fixed Footer with Buttons */}
       <div className="fixed right-0 bottom-0 left-0 border-t border-[#e4e4e4] bg-white px-[32px] py-[12px]">
         <div className="flex items-center justify-end gap-[10px]">
-          <Button variant="secondary" onClick={currentStepIndex > 0 ? handleBack : handleCancel}>
-            {currentStepIndex > 0 ? 'Back' : 'Cancel'}
-          </Button>
+          {currentStep !== 'completed' && (
+            <Button variant="secondary" onClick={currentStepIndex > 0 ? handleBack : handleCancel}>
+              {currentStepIndex > 0 ? 'Back' : 'Cancel'}
+            </Button>
+          )}
           <Button
             variant="primary"
             onClick={() => {
@@ -221,7 +227,7 @@ export default function NewSessionPage() {
             }}
             disabled={!canProceed}
           >
-            Next
+            {currentStep === 'completed' ? 'Continue' : 'Next'}
           </Button>
         </div>
       </div>

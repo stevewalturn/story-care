@@ -16,6 +16,7 @@ type Tab = 'sessions' | 'pages' | 'survey-responses' | 'reflections' | 'general-
 type PatientDetailViewProps = {
   patientId: string;
   onBack: () => void;
+  onNewSession?: () => void;
 };
 
 type Patient = {
@@ -35,7 +36,7 @@ function formatLastSeen(date?: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export function PatientDetailView({ patientId, onBack }: PatientDetailViewProps) {
+export function PatientDetailView({ patientId, onBack, onNewSession }: PatientDetailViewProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('sessions');
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -210,7 +211,7 @@ export function PatientDetailView({ patientId, onBack }: PatientDetailViewProps)
 
       {/* Tab Content */}
       <div className="bg-white px-8 py-6">
-        {activeTab === 'sessions' && <SessionsTab patientId={patientId} />}
+        {activeTab === 'sessions' && <SessionsTab patientId={patientId} onNewSession={onNewSession} />}
         {activeTab === 'pages' && <PagesTab patientId={patientId} />}
         {activeTab === 'survey-responses' && <SurveyResponsesTab patientId={patientId} />}
         {activeTab === 'reflections' && <ReflectionsTab patientId={patientId} />}

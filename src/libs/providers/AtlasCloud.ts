@@ -35,6 +35,198 @@ export type AtlasImageModel
 
 export type AtlasVideoModel = 'seedance-1-lite';
 
+/**
+ * Model configuration with specific requirements
+ */
+type ModelConfig = {
+  atlasName: string;
+  minSize: string;
+  defaultSteps: number;
+  requiresImage: boolean;
+  imageField: 'image' | 'images' | null;
+  category: 'text-to-image' | 'image-editing' | 'upscaling' | 'style-transfer';
+};
+
+/**
+ * Per-model configuration for Atlas Cloud
+ * Defines size requirements, image field names, and other model-specific settings
+ */
+const MODEL_CONFIGS: Record<AtlasImageModel, ModelConfig> = {
+  // Text-to-Image models (no reference image required)
+  'flux-schnell': {
+    atlasName: 'black-forest-labs/flux-schnell',
+    minSize: '1024*1024',
+    defaultSteps: 4,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+  },
+  'flux-dev': {
+    atlasName: 'black-forest-labs/flux-dev',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+  },
+
+  // Flux Redux (singular 'image' field)
+  'flux-redux-dev': {
+    atlasName: 'black-forest-labs/flux-redux-dev',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: true,
+    imageField: 'image',
+    category: 'image-editing',
+  },
+
+  // Seedream models - require larger images (1920x1920 = 3,686,400 pixels)
+  'seedream-4.5-edit': {
+    atlasName: 'bytedance/seedream-v4.5/edit',
+    minSize: '1920*1920',
+    defaultSteps: 28,
+    requiresImage: true,
+    imageField: 'images',
+    category: 'image-editing',
+  },
+  'seedream-4.5-edit-seq': {
+    atlasName: 'bytedance/seedream-v4.5/edit-sequential',
+    minSize: '1920*1920',
+    defaultSteps: 28,
+    requiresImage: true,
+    imageField: 'images',
+    category: 'image-editing',
+  },
+  'seedream-4-edit': {
+    atlasName: 'bytedance/seedream-v4/edit',
+    minSize: '1920*1920',
+    defaultSteps: 28,
+    requiresImage: true,
+    imageField: 'images',
+    category: 'image-editing',
+  },
+  'seedream-4-edit-seq': {
+    atlasName: 'bytedance/seedream-v4/edit-sequential',
+    minSize: '1920*1920',
+    defaultSteps: 28,
+    requiresImage: true,
+    imageField: 'images',
+    category: 'image-editing',
+  },
+
+  // Nano Banana models
+  'nano-banana-pro-edit-ultra': {
+    atlasName: 'google/nano-banana-pro/edit-ultra',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: true,
+    imageField: 'images',
+    category: 'image-editing',
+  },
+  'nano-banana-pro-edit': {
+    atlasName: 'google/nano-banana-pro/edit',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: true,
+    imageField: 'images',
+    category: 'image-editing',
+  },
+  'nano-banana-pro-edit-dev': {
+    atlasName: 'google/nano-banana-pro/edit-dev',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: true,
+    imageField: 'images',
+    category: 'image-editing',
+  },
+  'nano-banana-edit-dev': {
+    atlasName: 'google/nano-banana/edit-dev',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: true,
+    imageField: 'images',
+    category: 'image-editing',
+  },
+  'nano-banana-edit': {
+    atlasName: 'google/nano-banana/edit',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: true,
+    imageField: 'images',
+    category: 'image-editing',
+  },
+
+  // Qwen/Wan models
+  'qwen-image-edit': {
+    atlasName: 'alibaba/qwen/image-edit',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: true,
+    imageField: 'images',
+    category: 'image-editing',
+  },
+  'qwen-image-edit-plus': {
+    atlasName: 'alibaba/qwen/image-edit-plus',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: true,
+    imageField: 'images',
+    category: 'image-editing',
+  },
+  'wan-2.6-i2i': {
+    atlasName: 'alibaba/wan-2.6/image-edit',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: true,
+    imageField: 'images',
+    category: 'image-editing',
+  },
+  'wan-2.5-edit': {
+    atlasName: 'alibaba/wan-2.5/image-edit',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: true,
+    imageField: 'images',
+    category: 'image-editing',
+  },
+
+  // Upscaling
+  'recraft-crisp-upscale': {
+    atlasName: 'recraft/crisp-upscale',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: true,
+    imageField: 'image',
+    category: 'upscaling',
+  },
+
+  // Style Transfer
+  'plastic-bubble-figure': {
+    atlasName: 'style/plastic-bubble-figure',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: true,
+    imageField: 'images',
+    category: 'style-transfer',
+  },
+  'my-world': {
+    atlasName: 'style/my-world',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: true,
+    imageField: 'images',
+    category: 'style-transfer',
+  },
+  'micro-landscape-mini-world': {
+    atlasName: 'style/micro-landscape-mini-world',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: true,
+    imageField: 'images',
+    category: 'style-transfer',
+  },
+};
+
 export type AtlasImageGenerateOptions = {
   prompt: string;
   model?: AtlasImageModel;
@@ -68,6 +260,47 @@ type AtlasPredictionResponse = {
 };
 
 /**
+ * Parse Atlas Cloud error messages into user-friendly text
+ */
+export function parseAtlasError(error: string): string {
+  // Size requirement errors
+  if (error.includes('image size must be at least')) {
+    const match = error.match(/at least (\d+) pixels/);
+    const pixels = match?.[1] ? Number.parseInt(match[1], 10) : 0;
+    const side = Math.sqrt(pixels);
+    return `This model requires a minimum image size of ${side}x${side} pixels. Please use a larger reference image or choose a different model.`;
+  }
+
+  // Missing image field
+  if (error.includes('property "image" is missing') || error.includes('property "images" is missing')) {
+    return 'This model requires a reference image. Please provide a patient reference image or portrait.';
+  }
+
+  // Invalid model
+  if (error.includes('model not found') || error.includes('invalid model')) {
+    return 'The selected AI model is not available. Please choose a different model.';
+  }
+
+  // Rate limiting
+  if (error.includes('rate limit') || error.includes('too many requests')) {
+    return 'Too many image generation requests. Please wait a moment and try again.';
+  }
+
+  // Content policy
+  if (error.includes('content policy') || error.includes('safety')) {
+    return 'The prompt was rejected due to content policy. Please modify your prompt and try again.';
+  }
+
+  // Timeout
+  if (error.includes('timeout') || error.includes('timed out')) {
+    return 'Image generation timed out. Please try again with a simpler prompt.';
+  }
+
+  // Generic error - return original message cleaned up
+  return error.replace(/Request id: \S+/g, '').trim() || 'Image generation failed. Please try again.';
+}
+
+/**
  * Generate image with Atlas Cloud
  */
 export async function generateImageWithAtlas(
@@ -80,63 +313,42 @@ export async function generateImageWithAtlas(
   }
 
   const model = options.model || 'flux-schnell';
+  const modelConfig = MODEL_CONFIGS[model];
 
-  // Map model to Atlas format
-  const modelNames: Record<AtlasImageModel, string> = {
-    // Text-to-Image
-    'flux-schnell': 'black-forest-labs/flux-schnell',
-    'flux-dev': 'black-forest-labs/flux-dev',
-    // Image-to-Image (existing)
-    'flux-redux-dev': 'black-forest-labs/flux-redux-dev',
-    // Image-to-Image (Alibaba/Qwen)
-    'wan-2.6-i2i': 'alibaba/wan-2.6/image-edit',
-    'wan-2.5-edit': 'alibaba/wan-2.5/image-edit',
-    'qwen-image-edit': 'alibaba/qwen/image-edit',
-    'qwen-image-edit-plus': 'alibaba/qwen/image-edit-plus',
-    // Image-to-Image (ByteDance/Seedream)
-    'seedream-4.5-edit': 'bytedance/seedream-v4.5/edit',
-    'seedream-4.5-edit-seq': 'bytedance/seedream-v4.5/edit-sequential',
-    'seedream-4-edit': 'bytedance/seedream-v4/edit',
-    'seedream-4-edit-seq': 'bytedance/seedream-v4/edit-sequential',
-    // Image-to-Image (Google/Nano Banana)
-    'nano-banana-pro-edit-ultra': 'google/nano-banana-pro/edit-ultra',
-    'nano-banana-pro-edit': 'google/nano-banana-pro/edit',
-    'nano-banana-pro-edit-dev': 'google/nano-banana-pro/edit-dev',
-    'nano-banana-edit-dev': 'google/nano-banana/edit-dev',
-    'nano-banana-edit': 'google/nano-banana/edit',
-    // Upscaling
-    'recraft-crisp-upscale': 'recraft/crisp-upscale',
-    // Style Transfer
-    'plastic-bubble-figure': 'style/plastic-bubble-figure',
-    'my-world': 'style/my-world',
-    'micro-landscape-mini-world': 'style/micro-landscape-mini-world',
-  };
+  if (!modelConfig) {
+    throw new Error(`Unknown model: ${model}. Please select a valid Atlas Cloud model.`);
+  }
 
-  const atlasModel = modelNames[model];
+  // Validate: Image-editing models require reference images
+  if (modelConfig.requiresImage && (!options.referenceImages || options.referenceImages.length === 0)) {
+    throw new Error(`Model "${model}" requires a reference image. Please provide a patient reference image or portrait.`);
+  }
+
+  // Use model-specific size (unless explicitly overridden)
+  const size = options.size || modelConfig.minSize;
 
   // Build request body
-  const requestBody: any = {
-    model: atlasModel,
+  const requestBody: Record<string, unknown> = {
+    model: modelConfig.atlasName,
     prompt: options.prompt,
     seed: options.seed ?? 0,
-    size: options.size || '1024*1024',
+    size,
     num_images: options.numImages || 1,
     output_format: 'jpeg',
     guidance_scale: options.guidanceScale ?? 3.5,
-    num_inference_steps: options.numInferenceSteps ?? (model === 'flux-schnell' ? 4 : 28),
+    num_inference_steps: options.numInferenceSteps ?? modelConfig.defaultSteps,
     enable_sync_mode: false,
     enable_base64_output: false,
     enable_safety_checker: options.enableSafetyChecker ?? true,
   };
 
-  // Add reference images based on model type
-  if (options.referenceImages && options.referenceImages.length > 0) {
-    if (model === 'flux-redux-dev') {
-      // Flux Redux uses singular 'image' parameter (only first image)
+  // Add reference images using the correct field name for this model
+  if (options.referenceImages && options.referenceImages.length > 0 && modelConfig.imageField) {
+    if (modelConfig.imageField === 'image') {
+      // Models that use singular 'image' field (flux-redux-dev, recraft-crisp-upscale)
       requestBody.image = options.referenceImages[0];
-    } else {
-      // Other I2I models (Seedream, Nano Banana, Qwen, Wan, etc.) use 'images' array
-      // These models support multiple reference images
+    } else if (modelConfig.imageField === 'images') {
+      // Models that use 'images' array (Seedream, Nano Banana, Qwen, Wan, style)
       requestBody.images = options.referenceImages;
     }
   }
@@ -144,7 +356,7 @@ export async function generateImageWithAtlas(
   // Step 1: Start image generation
   console.log('[AtlasCloud] Starting image generation with request:', {
     url: 'https://api.atlascloud.ai/api/v1/model/generateImage',
-    model: atlasModel,
+    model: modelConfig.atlasName,
     prompt: options.prompt.substring(0, 100) + (options.prompt.length > 100 ? '...' : ''),
     size: requestBody.size,
     numImages: requestBody.num_images,
@@ -220,9 +432,9 @@ export async function generateVideoWithAtlas(
 
   const model = options.model || 'seedance-1-lite';
 
-  // Map model to Atlas format
+  // Map model to Atlas format (must include /image-to-video suffix)
   const modelNames: Record<AtlasVideoModel, string> = {
-    'seedance-1-lite': 'bytedance/seedance-1-lite',
+    'seedance-1-lite': 'bytedance/seedance-1-lite/image-to-video',
   };
 
   const atlasModel = modelNames[model];

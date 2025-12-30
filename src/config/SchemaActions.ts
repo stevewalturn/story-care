@@ -85,6 +85,24 @@ export const SCHEMA_ACTIONS: Record<JSONSchemaType, SchemaAction[]> = {
     },
   ],
 
+  // Scene Suggestions by Quote Actions
+  scene_suggestions_by_quote: [
+    {
+      id: 'create_scenes',
+      label: 'Create All Scenes',
+      icon: 'film',
+      handler: 'handleCreateScenesFromSuggestions',
+      batchable: true,
+      confirmation: 'This will create multiple scenes. Continue?',
+    },
+    {
+      id: 'save_as_notes',
+      label: 'Save as Notes',
+      icon: 'file-text',
+      handler: 'handleSaveScenesAsNotes',
+    },
+  ],
+
   // Image References Actions
   image_references: [
     {
@@ -429,6 +447,7 @@ export function getSchemaDisplayName(schemaType: JSONSchemaType): string {
     therapeutic_scene_card: 'Therapeutic Scene Card',
     music_generation: 'Music Generation',
     scene_suggestions: 'Scene Suggestions',
+    scene_suggestions_by_quote: 'Scene Suggestions by Quote',
     image_references: 'Image References',
     video_references: 'Video References',
     reflection_questions: 'Reflection Questions',
@@ -469,6 +488,7 @@ export function getSchemaDescription(schemaType: JSONSchemaType): string {
     therapeutic_scene_card: 'AI-generated therapeutic scene cards with patient quotes, meanings, and visual prompts',
     music_generation: 'Instrumental and lyrical music generation options',
     scene_suggestions: 'AI-suggested therapeutic scenes based on transcript analysis',
+    scene_suggestions_by_quote: 'Therapeutic scene suggestions based on a specific quote',
     image_references: 'Collection of images to generate for therapeutic use',
     video_references: 'Collection of animated videos to generate for therapeutic use',
     reflection_questions: 'Curated reflection questions for patients or groups',

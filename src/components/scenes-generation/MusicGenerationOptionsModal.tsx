@@ -149,7 +149,15 @@ export function MusicGenerationOptionsModal({
         )}
         {type === 'lyrical' && option.suggested_lyrics && (
           <div className="mb-3 rounded bg-gray-50 p-2">
-            <p className="line-clamp-4 text-xs text-gray-600 italic">{option.suggested_lyrics}</p>
+            <p className="line-clamp-4 text-xs text-gray-600 italic whitespace-pre-wrap">
+              {typeof option.suggested_lyrics === 'string'
+                ? option.suggested_lyrics
+                : typeof option.suggested_lyrics === 'object'
+                  ? Object.entries(option.suggested_lyrics)
+                      .map(([key, value]) => `[${key.replace(/_/g, ' ')}]\n${value}`)
+                      .join('\n\n')
+                  : String(option.suggested_lyrics)}
+            </p>
           </div>
         )}
 

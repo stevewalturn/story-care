@@ -74,6 +74,9 @@ export function AIAssistantPanel({
   speakers,
   assignedModule,
   triggerPrompt,
+  triggerSystemPrompt,
+  triggerUserText,
+  currentSelectedText,
   onPromptSent,
   onAssignModule: _onAssignModule,
   onTextSelection,
@@ -395,14 +398,21 @@ export function AIAssistantPanel({
     fetchModules();
   }, [user]);
 
-  // Watch for trigger prompt from analyze modal
+  // Watch for trigger prompt from analyze modal (NEW: separate system prompt and user text)
   useEffect(() => {
-    if (triggerPrompt) {
+    if (triggerSystemPrompt && triggerUserText) {
+      // Set state like the chatbox dropdown does, then trigger send
+      // This ensures chat shows only user text, not the system prompt
+      setSelectedSystemPrompt(triggerSystemPrompt);
+      handleSendMessage(triggerUserText);
+      onPromptSent();
+    } else if (triggerPrompt) {
+      // DEPRECATED: fallback for old combined prompt (backward compatibility)
       handleSendMessage(triggerPrompt);
       onPromptSent();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [triggerPrompt]);
+  }, [triggerPrompt, triggerSystemPrompt, triggerUserText]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -413,10 +423,16 @@ export function AIAssistantPanel({
     const userText = messageText || prompt;
 
     // If a system prompt is selected, combine it with user text
+    // Format like Analyze modal: promptText + '\n\nSelected text:\n"' + text + '"'
     let fullPrompt = userText;
     if (selectedSystemPrompt) {
-      // Prepend system prompt (hidden from user) to user's custom text
-      fullPrompt = `${selectedSystemPrompt}\n\n${userText}`;
+      if (userText.trim()) {
+        // Format with "Selected text:" wrapper to match Analyze modal format
+        fullPrompt = `${selectedSystemPrompt}\n\nSelected text:\n"${userText}"`;
+      } else {
+        // Just the system prompt if no text provided
+        fullPrompt = selectedSystemPrompt;
+      }
     }
 
     // Add participant filter context to the prompt
@@ -437,9 +453,10 @@ export function AIAssistantPanel({
     setPrompt('');
     setIsLoading(true);
 
-    // Clear system prompt after sending
+    // Clear system prompt and selected text after sending
     setSelectedSystemPrompt(null);
     setSelectedPromptId('');
+    onPromptSent(); // Clear parent's selected text state
 
     try {
       // Send full prompt (with system instructions) to AI
@@ -468,6 +485,26 @@ export function AIAssistantPanel({
 
   const handleExamplePrompt = (exampleText: string) => {
     handleSendMessage(exampleText);
+  };
+
+  // Retry handler for failed JSON responses
+  const handleRetry = (actualIndex: number) => {
+    // Find the previous user message
+    let userMessageIndex = actualIndex - 1;
+    while (userMessageIndex >= 0 && messages[userMessageIndex]?.role !== 'user') {
+      userMessageIndex--;
+    }
+
+    if (userMessageIndex >= 0) {
+      const userMessage = messages[userMessageIndex];
+      if (!userMessage) return;
+
+      // Remove the failed assistant message
+      setMessages(prev => prev.filter((_, i) => i !== actualIndex));
+
+      // Re-send the user message
+      handleSendMessage(userMessage.content);
+    }
   };
 
   // Textarea handlers for auto-resize and keyboard shortcuts
@@ -535,8 +572,10 @@ export function AIAssistantPanel({
 
   // Handle prompt selection with module context - sets up prompt as context for next message
   const handlePromptSelection = (promptData: AIPromptOption | { id: string; name: string; prompt: string }) => {
-    // Get the system prompt text
-    const systemPrompt = 'promptText' in promptData ? promptData.promptText : promptData.prompt;
+    // Get the system prompt text - prefer systemPrompt field, fallback to promptText for backward compatibility
+    const systemPrompt = 'systemPrompt' in promptData && promptData.systemPrompt
+      ? promptData.systemPrompt
+      : ('promptText' in promptData ? promptData.promptText : promptData.prompt);
     const promptId = promptData.id;
 
     setSelectedPromptId(promptId);
@@ -554,8 +593,13 @@ export function AIAssistantPanel({
     // Store system prompt separately
     setSelectedSystemPrompt(finalSystemPrompt);
 
-    // Keep textarea empty - prompt is handled as hidden system message
-    setPrompt('');
+    // Auto-populate textarea with selected text (matching Analyze modal behavior)
+    // This provides concrete context for the prompt to work with
+    if (currentSelectedText && currentSelectedText.trim()) {
+      setPrompt(currentSelectedText);
+    } else {
+      setPrompt('');
+    }
   };
 
   // Calculate visible messages (show last N messages)
@@ -814,6 +858,8 @@ export function AIAssistantPanel({
             {visibleMessages.map((message, index) => {
               // Detect JSON in assistant messages
               const jsonData = message.role === 'assistant' ? detectAndExtractJSON(message.content) : null;
+              // Calculate actual index in full messages array for retry functionality
+              const actualMessageIndex = messages.length - visibleMessages.length + index;
 
               return (
                 <div
@@ -879,6 +925,7 @@ export function AIAssistantPanel({
                             onProgress={() => {
                               // Progress updates can be handled here if needed
                             }}
+                            onRetry={() => handleRetry(actualMessageIndex)}
                             onOpenImageModal={onOpenImageModal}
                             onOpenVideoModal={onOpenVideoModal}
                             onOpenMusicModal={onOpenMusicModal}
@@ -959,9 +1006,32 @@ export function AIAssistantPanel({
 
       {/* Chat Input - Exact Figma Specifications */}
       <div ref={inputContainerRef} className="flex-shrink-0 border-t border-gray-200 bg-white p-4">
+        {/* Selected Text Context Banner */}
+        {selectedPromptId && prompt.trim() && (
+          <div className="mb-2 flex items-center gap-2 rounded-lg bg-purple-50 px-3 py-2">
+            <svg className="h-4 w-4 flex-shrink-0 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-xs font-medium text-purple-700">
+              Using selected text with &quot;{getSelectedPromptName()}&quot; prompt
+            </span>
+            <button
+              onClick={() => {
+                setSelectedPromptId('');
+                setSelectedSystemPrompt(null);
+              }}
+              className="ml-auto rounded p-0.5 text-purple-400 hover:bg-purple-100 hover:text-purple-600"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         {/* Chat Input Area - Exact Figma Styling */}
         <div
-          className="border border-gray-200 bg-white"
+          className={`border bg-white ${selectedPromptId && prompt.trim() ? 'border-purple-300 ring-1 ring-purple-100' : 'border-gray-200'}`}
           style={{
             borderRadius: '16px',
             padding: '16px',
@@ -1036,23 +1106,30 @@ export function AIAssistantPanel({
                       {' '}
                       (You)
                     </button>
-                    {/* Dynamic Speaker Options */}
+                    {/* Dynamic Speaker Options - deduplicated by name, excluding therapist */}
                     {speakers && speakers.length > 0 && (
                       <>
-                        {speakers.map(speaker => (
-                          <button
-                            key={speaker.id}
-                            onClick={() => {
-                              setSelectedParticipant(speaker.id);
-                              setShowParticipantDropdown(false);
-                            }}
-                            className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-purple-50 hover:text-purple-700 ${
-                              selectedParticipant === speaker.id ? 'bg-purple-50 text-purple-700' : 'text-gray-700'
-                            }`}
-                          >
-                            {speaker.name}
-                          </button>
-                        ))}
+                        {speakers
+                          .filter((speaker, index, self) =>
+                            // Deduplicate by name
+                            self.findIndex(s => s.name === speaker.name) === index &&
+                            // Exclude therapist (already shown with "(You)")
+                            speaker.name !== dbUser?.name
+                          )
+                          .map(speaker => (
+                            <button
+                              key={speaker.id}
+                              onClick={() => {
+                                setSelectedParticipant(speaker.id);
+                                setShowParticipantDropdown(false);
+                              }}
+                              className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-purple-50 hover:text-purple-700 ${
+                                selectedParticipant === speaker.id ? 'bg-purple-50 text-purple-700' : 'text-gray-700'
+                              }`}
+                            >
+                              {speaker.name}
+                            </button>
+                          ))}
                       </>
                     )}
                   </div>
@@ -1070,12 +1147,20 @@ export function AIAssistantPanel({
                   className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
                     selectedPromptId
                       ? 'bg-purple-600 text-white hover:bg-purple-700'
-                      : 'bg-white text-gray-700 hover:bg-gray-100'
+                      : currentSelectedText?.trim()
+                        ? 'bg-green-50 text-green-700 ring-1 ring-green-200 hover:bg-green-100'
+                        : 'bg-white text-gray-700 hover:bg-gray-100'
                   }`}
+                  title={currentSelectedText?.trim() ? 'Text selected - choose a prompt to analyze' : 'Select a prompt'}
                 >
-                  <svg className="h-4 w-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
+                  {currentSelectedText?.trim() && !selectedPromptId && (
+                    <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                  )}
+                  {selectedPromptId && (
+                    <svg className="h-4 w-4 text-yellow-300" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  )}
                   {getSelectedPromptName()}
                 </button>
                 {showPromptDropdown && (

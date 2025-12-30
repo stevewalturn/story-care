@@ -6,6 +6,7 @@ export type JSONSchemaType
     | 'therapeutic_scene_card'
     | 'music_generation'
     | 'scene_suggestions'
+    | 'scene_suggestions_by_quote'
     | 'image_references'
     | 'video_references'
     | 'reflection_questions'

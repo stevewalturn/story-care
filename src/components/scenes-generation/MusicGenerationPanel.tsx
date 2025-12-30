@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, Library, Music, Pause, Play, Settings, SkipBack, SkipForward, Sparkles } from 'lucide-react';
+import { Download, Library, Loader2, Music, Pause, Play, Settings, SkipBack, SkipForward, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 
@@ -9,6 +9,7 @@ type MusicGenerationPanelProps = {
   waveformData?: number[];
   duration?: number;
   isGenerating?: boolean;
+  isLoadingSuggestions?: boolean;
   generationProgress?: number; // 0-100
   generationStatus?: 'pending' | 'processing' | 'completed' | 'failed';
   musicPrompt?: string;
@@ -26,6 +27,7 @@ export function MusicGenerationPanel({
   waveformData,
   duration = 0,
   isGenerating = false,
+  isLoadingSuggestions = false,
   generationProgress = 0,
   generationStatus = 'pending',
   musicPrompt = '',
@@ -182,9 +184,19 @@ export function MusicGenerationPanel({
             <Button
               onClick={handleGenerateClick}
               variant="primary"
+              disabled={isLoadingSuggestions}
             >
-              <Sparkles className="mr-2 h-4 w-4" />
-              Generate Music
+              {isLoadingSuggestions ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Generate Music
+                </>
+              )}
             </Button>
             <Button
               onClick={onChooseFromLibrary}
@@ -214,7 +226,7 @@ export function MusicGenerationPanel({
         {/* Left Column - Waveform and Controls (60%) */}
         <div className="flex-[3]">
           {/* Waveform Visualization */}
-          <div className="relative mb-4 overflow-hidden rounded-lg bg-gray-50">
+          <div className={`relative mb-4 overflow-hidden rounded-lg bg-gray-50 ${isGenerating ? 'min-h-[180px]' : ''}`}>
             {/* Hidden audio element */}
             {audioUrl && <audio ref={audioRef} src={audioUrl} />}
 

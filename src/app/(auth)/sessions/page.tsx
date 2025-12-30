@@ -2,6 +2,7 @@
 
 import type { TherapeuticDomain } from '@/models/Schema';
 import { Check, ChevronDown, Filter, MessageCircle, Plus, Search, SlidersHorizontal, Users } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { GroupDetailView } from '@/components/sessions/GroupDetailView';
 import { PatientDetailView } from '@/components/sessions/PatientDetailView';
@@ -52,6 +53,7 @@ type SelectedGroup = {
 
 export default function SessionsPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -372,12 +374,22 @@ export default function SessionsPage() {
     setSelectedGroup(null);
   };
 
+  // Handle new session with patient pre-selection
+  const handleNewSession = (patientId?: string) => {
+    if (patientId) {
+      router.push(`/sessions/new?patientId=${patientId}`);
+    } else {
+      router.push('/sessions/new');
+    }
+  };
+
   // Render detail view if selected
   if (selectedPatient) {
     return (
       <PatientDetailView
         patientId={selectedPatient.id}
         onBack={handleBack}
+        onNewSession={() => handleNewSession(selectedPatient.id)}
       />
     );
   }
@@ -407,9 +419,7 @@ export default function SessionsPage() {
           </div>
           <Button
             variant="primary"
-            onClick={() => {
-              window.location.href = '/sessions/new';
-            }}
+            onClick={() => handleNewSession()}
           >
             <Plus className="mr-2 h-5 w-5" />
             New Session
@@ -619,9 +629,7 @@ export default function SessionsPage() {
                       {patientsWithSessions.length === 0 ? (
                         <Button
                           variant="primary"
-                          onClick={() => {
-                            window.location.href = '/sessions/new';
-                          }}
+                          onClick={() => handleNewSession()}
                         >
                           <Plus className="mr-2 h-5 w-5" />
                           New Session
@@ -703,9 +711,7 @@ export default function SessionsPage() {
                       {groupsWithSessions.length === 0 ? (
                         <Button
                           variant="primary"
-                          onClick={() => {
-                            window.location.href = '/sessions/new';
-                          }}
+                          onClick={() => handleNewSession()}
                         >
                           <Plus className="mr-2 h-5 w-5" />
                           New Group Session

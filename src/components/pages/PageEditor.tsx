@@ -309,7 +309,7 @@ export function PageEditor({
       updateBlockContent(assetPickerBlockId, { text: asset.data.quoteText });
     } else if (asset.type === 'notes') {
       // Note asset
-      updateBlockContent(assetPickerBlockId, { text: asset.data.noteText });
+      updateBlockContent(assetPickerBlockId, { text: asset.data.content });
     } else if (asset.type === 'scenes') {
       // Scene asset
       updateBlockContent(assetPickerBlockId, {
@@ -449,9 +449,9 @@ export function PageEditor({
               <ImageIcon className="mr-2 h-4 w-4" />
               Browse Library
             </Button>
-            {block.content.mediaUrl && (
+            {(block.content.displayUrl || block.content.mediaUrl) && (
               <img
-                src={block.content.mediaUrl}
+                src={block.content.displayUrl || block.content.mediaUrl}
                 alt="Preview"
                 className="max-h-64 w-full rounded object-cover"
               />

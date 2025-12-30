@@ -569,7 +569,9 @@ export const mediaLibrarySchema: any = pgTable('media_library', {
 
   // Soft delete for HIPAA compliance (PHI data)
   deletedAt: timestamp('deleted_at'),
-});
+}, table => ({
+  patientCreatedAtIdx: index('media_library_patient_created_at_idx').on(table.patientId, table.createdAt),
+}));
 
 // ============================================================================
 // MUSIC GENERATION TASKS

@@ -152,22 +152,14 @@ export async function PUT(
       }
 
       // Update speaker record
-      const [updatedSpeaker] = await db
+      await db
         .update(speakers)
         .set({
           speakerType: speakerData.type,
           speakerName: speakerData.name,
           userId,
         })
-        .where(eq(speakers.id, speakerData.id))
-        .returning();
-
-      // Debug: Log what was saved
-      console.log('=== UPDATED SPEAKER ===');
-      console.log('ID:', updatedSpeaker?.id);
-      console.log('Name:', updatedSpeaker?.speakerName);
-      console.log('UserId:', updatedSpeaker?.userId);
-      console.log('Type:', updatedSpeaker?.speakerType);
+        .where(eq(speakers.id, speakerData.id));
     }
 
     return NextResponse.json({ success: true });
