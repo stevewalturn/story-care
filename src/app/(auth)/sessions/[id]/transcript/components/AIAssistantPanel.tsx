@@ -404,7 +404,9 @@ export function AIAssistantPanel({
       // Set state like the chatbox dropdown does, then trigger send
       // This ensures chat shows only user text, not the system prompt
       setSelectedSystemPrompt(triggerSystemPrompt);
-      handleSendMessage(triggerUserText);
+      // Pass system prompt directly to bypass React state timing issue
+      // (state update is async, but handleSendMessage runs immediately)
+      handleSendMessage(triggerUserText, triggerSystemPrompt);
       onPromptSent();
     } else if (triggerPrompt) {
       // DEPRECATED: fallback for old combined prompt (backward compatibility)
@@ -419,19 +421,25 @@ export function AIAssistantPanel({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  const handleSendMessage = async (messageText?: string) => {
+  const handleSendMessage = async (messageText?: string, systemPromptOverride?: string | null) => {
     const userText = messageText || prompt;
+
+    // Use override if provided (for Analyze mode), otherwise use state
+    // This fixes the React state timing issue where state hasn't updated yet
+    const effectiveSystemPrompt = systemPromptOverride !== undefined
+      ? systemPromptOverride
+      : selectedSystemPrompt;
 
     // If a system prompt is selected, combine it with user text
     // Format like Analyze modal: promptText + '\n\nSelected text:\n"' + text + '"'
     let fullPrompt = userText;
-    if (selectedSystemPrompt) {
+    if (effectiveSystemPrompt) {
       if (userText.trim()) {
         // Format with "Selected text:" wrapper to match Analyze modal format
-        fullPrompt = `${selectedSystemPrompt}\n\nSelected text:\n"${userText}"`;
+        fullPrompt = `${effectiveSystemPrompt}\n\nSelected text:\n"${userText}"`;
       } else {
         // Just the system prompt if no text provided
-        fullPrompt = selectedSystemPrompt;
+        fullPrompt = effectiveSystemPrompt;
       }
     }
 
@@ -464,6 +472,7 @@ export function AIAssistantPanel({
         messages: [...messages, { role: 'user', content: fullPrompt }],
         sessionId,
         model: selectedModel,
+        hasPromptSelected: !!effectiveSystemPrompt, // Flag to skip FREE CHAT system prompt when a prompt is selected
       });
 
       if (!response.ok) {

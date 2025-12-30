@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
       selectedText,
       selectedUtteranceIds,
       model = 'gemini-2.5-flash', // Default model - cost-optimized with caching
+      hasPromptSelected = false, // Flag: when true, skip FREE CHAT system prompt (allow JSON output)
     } = body;
 
     if (!messages || !Array.isArray(messages)) {
@@ -127,9 +128,10 @@ ${module.aiPromptText}
     // PART 3: Enhanced System Prompt (CACHED - static)
     // NOTE: This system prompt is for FREE-FORM chat only.
     // When a user selects a specific prompt (like "Potential Images"), that prompt's
-    // systemPrompt is combined with the user message in AIAssistantPanel.tsx,
-    // overriding this behavior.
-    const systemPrompt = `You are an expert therapeutic assistant specialized in narrative therapy.
+    // systemPrompt is combined with the user message in AIAssistantPanel.tsx.
+    // In that case, hasPromptSelected=true and we SKIP this "no JSON" prompt.
+    if (!hasPromptSelected) {
+      const systemPrompt = `You are an expert therapeutic assistant specialized in narrative therapy.
 
 ## THIS IS FREE CHAT MODE
 
@@ -169,10 +171,11 @@ When analyzing sessions, consider providing:
 Be empathetic, insightful, and focused on narrative therapy principles.
 Remember: PLAIN TEXT ONLY. NO JSON.`;
 
-    contextParts.push({
-      role: 'system',
-      content: systemPrompt,
-    });
+      contextParts.push({
+        role: 'system',
+        content: systemPrompt,
+      });
+    }
 
     // PART 4: Chat Summary (CACHED - regenerated periodically)
     if (sessionId) {
