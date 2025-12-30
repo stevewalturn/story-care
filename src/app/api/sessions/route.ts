@@ -116,41 +116,52 @@ export async function GET(request: NextRequest) {
       throw queryError;
     }
 
-    // 5. FETCH GROUP MEMBERS: For group sessions, get the first patient from group_members
+    // 5. FETCH GROUP MEMBERS: For group sessions, get ALL members from group_members
     const groupIds = allSessions
-      .filter(s => s.sessionType === 'group' && s.groupId && !s.patientId)
+      .filter(s => s.sessionType === 'group' && s.groupId)
       .map(s => s.groupId as string);
 
-    // Create a map of groupId -> first patient
+    // Create a map of groupId -> first patient (for backwards compatibility)
     const groupPatientMap = new Map<string, { id: string; name: string; avatarUrl: string | null; referenceImageUrl: string | null }>();
+    // Create a map of groupId -> all members (for stacked avatars)
+    const groupMembersMap = new Map<string, { id: string; name: string; avatarUrl: string | null }[]>();
 
     if (groupIds.length > 0) {
-      // Fetch first group member with patient data for each group session
-      for (const groupId of groupIds) {
-        if (!groupPatientMap.has(groupId)) {
-          const member = await db
-            .select({
-              patientId: users.id,
-              patientName: users.name,
-              patientAvatarUrl: users.avatarUrl,
-              patientReferenceImageUrl: users.referenceImageUrl,
-            })
-            .from(groupMembers)
-            .innerJoin(users, eq(groupMembers.patientId, users.id))
-            .where(
-              and(
-                eq(groupMembers.groupId, groupId),
-                isNull(groupMembers.leftAt),
-              ),
-            )
-            .limit(1);
+      // Fetch ALL group members with patient data for each group session
+      const uniqueGroupIds = [...new Set(groupIds)];
+      for (const groupId of uniqueGroupIds) {
+        const members = await db
+          .select({
+            patientId: users.id,
+            patientName: users.name,
+            patientAvatarUrl: users.avatarUrl,
+            patientReferenceImageUrl: users.referenceImageUrl,
+          })
+          .from(groupMembers)
+          .innerJoin(users, eq(groupMembers.patientId, users.id))
+          .where(
+            and(
+              eq(groupMembers.groupId, groupId),
+              isNull(groupMembers.leftAt),
+            ),
+          );
 
-          if (member[0]) {
+        if (members.length > 0) {
+          const firstMember = members[0];
+          // Store all members for stacked avatars
+          groupMembersMap.set(groupId, members.map(m => ({
+            id: m.patientId,
+            name: m.patientName,
+            avatarUrl: m.patientAvatarUrl,
+          })));
+
+          // Store first patient for backwards compatibility
+          if (firstMember) {
             groupPatientMap.set(groupId, {
-              id: member[0].patientId,
-              name: member[0].patientName,
-              avatarUrl: member[0].patientAvatarUrl,
-              referenceImageUrl: member[0].patientReferenceImageUrl,
+              id: firstMember.patientId,
+              name: firstMember.patientName,
+              avatarUrl: firstMember.patientAvatarUrl,
+              referenceImageUrl: firstMember.patientReferenceImageUrl,
             });
           }
         }
@@ -196,7 +207,11 @@ export async function GET(request: NextRequest) {
         groupId: session.groupId,
         createdAt: session.createdAt,
         patient,
-        group: group ? { id: group.id, name: group.name } : null,
+        group: group ? {
+          id: group.id,
+          name: group.name,
+          members: session.groupId ? groupMembersMap.get(session.groupId) || [] : [],
+        } : null,
       };
     });
 
@@ -204,12 +219,25 @@ export async function GET(request: NextRequest) {
     const sessionsWithSignedUrls = await Promise.all(
       sessionsList.map(async (session) => {
         const patient = session.patient as { id: string; name: string; avatarUrl: string | null; referenceImageUrl: string | null } | null;
+        const group = session.group as { id: string; name: string; members: { id: string; name: string; avatarUrl: string | null }[] } | null;
 
         const [signedAudioUrl, signedAvatarUrl, signedReferenceImageUrl] = await Promise.all([
           session.audioUrl ? generatePresignedUrl(session.audioUrl, 1) : null,
           patient?.avatarUrl ? generatePresignedUrl(patient.avatarUrl, 1) : null,
           patient?.referenceImageUrl ? generatePresignedUrl(patient.referenceImageUrl, 1) : null,
         ]);
+
+        // Generate presigned URLs for group member avatars
+        let groupWithSignedUrls = group;
+        if (group && group.members && group.members.length > 0) {
+          const membersWithSignedUrls = await Promise.all(
+            group.members.map(async member => ({
+              ...member,
+              avatarUrl: member.avatarUrl ? await generatePresignedUrl(member.avatarUrl, 1) : null,
+            })),
+          );
+          groupWithSignedUrls = { ...group, members: membersWithSignedUrls };
+        }
 
         return {
           ...session,
@@ -219,6 +247,7 @@ export async function GET(request: NextRequest) {
             avatarUrl: signedAvatarUrl || patient.avatarUrl,
             referenceImageUrl: signedReferenceImageUrl || patient.referenceImageUrl,
           } : null,
+          group: groupWithSignedUrls,
         };
       }),
     );

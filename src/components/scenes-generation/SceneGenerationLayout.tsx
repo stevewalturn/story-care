@@ -69,7 +69,8 @@ export function SceneGenerationLayout({
   // Patient state - use prop if provided, otherwise allow selection
   const [patient, setPatient] = useState<Patient | undefined>(patientProp);
   const [availablePatients, setAvailablePatients] = useState<Patient[]>([]);
-  const [loadingPatients, setLoadingPatients] = useState(false);
+  // Start with loading=true when no patient prop (we'll need to fetch)
+  const [loadingPatients, setLoadingPatients] = useState(!patientProp);
 
   const [scenes, setScenes] = useState<SceneCardData[]>(initialScenes);
   // Ref to track current scenes for async operations (prevents stale closure issues)
@@ -1137,6 +1138,13 @@ export function SceneGenerationLayout({
         <SceneGenerationTopBar
           patientName={patient?.name || 'Select Patient'}
           patientAvatarUrl={patient?.avatarUrl}
+          patients={availablePatients}
+          selectedPatientId={patient?.id}
+          onPatientChange={(patientId) => {
+            const selectedPatient = availablePatients.find(p => p.id === patientId);
+            setPatient(selectedPatient);
+          }}
+          loadingPatients={loadingPatients}
           selectedImageModel={selectedImageModel}
           onImageModelChange={setSelectedImageModel}
           selectedVideoModel={selectedVideoModel}
@@ -1147,42 +1155,6 @@ export function SceneGenerationLayout({
           referenceImages={referenceImages}
           settingsLocked={isGeneratingAnyImage}
         />
-
-        {/* Patient Selector - Only show when no patient provided */}
-        {!patientProp && (
-          <div className="border-b border-gray-200 bg-purple-50 px-8 py-4">
-            <div className="mx-auto max-w-4xl">
-              <label className="mb-2 block text-sm font-semibold text-gray-900">
-                Select Patient
-                {' '}
-                <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={patient?.id || ''}
-                onChange={(e) => {
-                  const selectedPatient = availablePatients.find(p => p.id === e.target.value);
-                  setPatient(selectedPatient);
-                }}
-                disabled={loadingPatients || mode === 'edit'}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <option value="">
-                  {loadingPatients ? 'Loading patients...' : 'Choose a patient to create scenes for'}
-                </option>
-                {availablePatients.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-              {!patient && !loadingPatients && (
-                <p className="mt-2 text-xs text-gray-600">
-                  Please select a patient before generating scenes
-                </p>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Main Content Area */}
         <div className="flex flex-1 flex-col overflow-y-auto p-8">

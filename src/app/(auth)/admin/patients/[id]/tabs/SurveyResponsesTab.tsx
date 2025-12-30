@@ -92,7 +92,11 @@ export function SurveyResponsesTab({ patientId }: SurveyResponsesTabProps) {
           <p className="mb-2 text-sm text-gray-500">{response.question}</p>
 
           {/* Answer - Bold with quotes */}
-          <p className="mb-4 font-semibold text-gray-900">"{response.answer}"</p>
+          <p className="mb-4 font-semibold text-gray-900">
+            "
+            {response.answer}
+            "
+          </p>
 
           {/* Footer */}
           <div className="flex items-center justify-between text-sm text-gray-400">

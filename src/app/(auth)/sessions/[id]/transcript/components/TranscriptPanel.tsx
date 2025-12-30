@@ -493,7 +493,8 @@ export function TranscriptPanel({
                       {utterance.speakerName}
                       <ChevronDown className={`h-3 w-3 text-gray-400 transition-transform ${
                         activeDropdownId === utterance.id ? 'rotate-180' : ''
-                      }`} />
+                      }`}
+                      />
                     </button>
 
                     {/* Dropdown Menu */}

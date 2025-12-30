@@ -1,44 +1,47 @@
 'use client';
 
-import { Book, Calendar, MessageCircle, SlidersHorizontal } from 'lucide-react';
-import Link from 'next/link';
+import { ArrowLeft, Book, Calendar, Clock, MessageCircle, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { GeneralInformationTab } from '@/app/(auth)/admin/patients/[id]/tabs/GeneralInformationTab';
+import { PagesTab } from '@/app/(auth)/admin/patients/[id]/tabs/PagesTab';
+import { ReflectionsTab } from '@/app/(auth)/admin/patients/[id]/tabs/ReflectionsTab';
+import { SessionsTab } from '@/app/(auth)/admin/patients/[id]/tabs/SessionsTab';
+import { SurveyResponsesTab } from '@/app/(auth)/admin/patients/[id]/tabs/SurveyResponsesTab';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
-import { GeneralInformationTab } from './tabs/GeneralInformationTab';
-import { PagesTab } from './tabs/PagesTab';
-import { ReflectionsTab } from './tabs/ReflectionsTab';
-import { SessionsTab } from './tabs/SessionsTab';
-import { SurveyResponsesTab } from './tabs/SurveyResponsesTab';
 
 type Tab = 'sessions' | 'pages' | 'survey-responses' | 'reflections' | 'general-info';
 
-type PatientDetailClientProps = {
+type PatientDetailViewProps = {
   patientId: string;
+  onBack: () => void;
 };
 
 type Patient = {
   id: string;
   name: string;
-  firstName: string;
-  lastName: string;
   avatar?: string;
-  referenceImageUrl?: string;
   pageCount: number;
   surveyCount: number;
   reflectionCount: number;
   sessionCount: number;
+  lastSeen?: string;
 };
 
-export function PatientDetailClient({ patientId }: PatientDetailClientProps) {
+function formatLastSeen(date?: string): string {
+  if (!date) return '';
+  const d = new Date(date);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+export function PatientDetailView({ patientId, onBack }: PatientDetailViewProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('sessions');
   const [patient, setPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch patient data from API
   useEffect(() => {
     if (!user?.uid || !patientId) return;
 
@@ -51,19 +54,15 @@ export function PatientDetailClient({ patientId }: PatientDetailClientProps) {
         }
         const data = await response.json();
 
-        // Transform API response to component format
-        // Note: counts are returned at top level, not inside patient object
         setPatient({
           id: data.patient.id,
           name: data.patient.name,
-          firstName: data.patient.name.split(' ')[0] || '',
-          lastName: data.patient.name.split(' ').slice(1).join(' ') || '',
           avatar: data.patient.avatarUrl || data.patient.referenceImageUrl,
-          referenceImageUrl: data.patient.referenceImageUrl,
           pageCount: data.pageCount || 0,
           surveyCount: data.surveyCount || 0,
           reflectionCount: data.reflectionCount || 0,
           sessionCount: data.sessionCount || 0,
+          lastSeen: data.patient.lastSeen,
         });
       } catch (err) {
         console.error('Error fetching patient:', err);
@@ -92,11 +91,9 @@ export function PatientDetailClient({ patientId }: PatientDetailClientProps) {
       <div className="p-8">
         <div className="py-16 text-center">
           <p className="text-red-600">{error || 'Patient not found'}</p>
-          <Link href="/admin/patients">
-            <Button variant="secondary" className="mt-4">
-              Back to Patients
-            </Button>
-          </Link>
+          <Button variant="secondary" className="mt-4" onClick={onBack}>
+            Back to Sessions
+          </Button>
         </div>
       </div>
     );
@@ -112,6 +109,18 @@ export function PatientDetailClient({ patientId }: PatientDetailClientProps) {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Back Button */}
+      <div className="bg-white px-8 pt-6">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center gap-2 text-sm text-gray-500 transition-colors hover:text-gray-900"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to Sessions</span>
+        </button>
+      </div>
+
       {/* Patient Header */}
       <div className="bg-white px-8 py-6">
         <div className="flex items-start gap-4">
@@ -132,8 +141,8 @@ export function PatientDetailClient({ patientId }: PatientDetailClientProps) {
           <div className="flex-1">
             <h1 className="mb-2 text-xl font-semibold text-gray-900">{patient.name}</h1>
 
-            {/* Stats - Figma style with icons and separators */}
-            <div className="flex flex-wrap items-center gap-1 text-sm text-gray-500">
+            {/* Stats - Figma style with icons */}
+            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
               <div className="flex items-center gap-1">
                 <Book className="h-4 w-4" />
                 <span>
@@ -142,7 +151,6 @@ export function PatientDetailClient({ patientId }: PatientDetailClientProps) {
                   {patient.pageCount === 1 ? 'Page' : 'Pages'}
                 </span>
               </div>
-              <span className="mx-2 text-gray-300">•</span>
               <div className="flex items-center gap-1">
                 <SlidersHorizontal className="h-4 w-4" />
                 <span>
@@ -151,7 +159,6 @@ export function PatientDetailClient({ patientId }: PatientDetailClientProps) {
                   {patient.surveyCount === 1 ? 'Survey' : 'Surveys'}
                 </span>
               </div>
-              <span className="mx-2 text-gray-300">•</span>
               <div className="flex items-center gap-1">
                 <MessageCircle className="h-4 w-4" />
                 <span>
@@ -160,7 +167,6 @@ export function PatientDetailClient({ patientId }: PatientDetailClientProps) {
                   Reflections
                 </span>
               </div>
-              <span className="mx-2 text-gray-300">•</span>
               <div className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
                 <span>
@@ -169,12 +175,21 @@ export function PatientDetailClient({ patientId }: PatientDetailClientProps) {
                   Sessions
                 </span>
               </div>
+              {patient.lastSeen && (
+                <div className="flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  <span>
+                    Last seen
+                    {formatLastSeen(patient.lastSeen)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tabs Navigation - Text only, no icons */}
+      {/* Tabs Navigation */}
       <div className="border-b border-gray-200 bg-white px-8">
         <div className="flex gap-6">
           {tabs.map(tab => (

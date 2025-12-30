@@ -12,6 +12,7 @@ type SceneAsset = {
   title: string;
   description: string | null;
   videoUrl: string | null;
+  assembledVideoUrl: string | null; // Compiled video URL
   thumbnailUrl: string | null;
   duration: number | null;
   createdAt: string;
@@ -66,7 +67,10 @@ export function BrowseSceneModal({
     onClose();
   };
 
-  const filteredScenes = scenes.filter((scene) => {
+  // Only show scenes that have compiled videos (assembledVideoUrl)
+  const compiledScenes = scenes.filter(scene => scene.assembledVideoUrl);
+
+  const filteredScenes = compiledScenes.filter((scene) => {
     if (!search) return true;
     return scene.title.toLowerCase().includes(search.toLowerCase())
       || scene.description?.toLowerCase().includes(search.toLowerCase());
@@ -145,7 +149,7 @@ export function BrowseSceneModal({
               ))}
               {filteredScenes.length === 0 && (
                 <div className="col-span-2 py-12 text-center text-sm text-gray-500">
-                  {search ? 'No scenes match your search' : 'No scenes available'}
+                  {search ? 'No scenes match your search' : 'No compiled scenes available. Scenes need to be assembled first.'}
                 </div>
               )}
             </div>

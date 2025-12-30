@@ -1,10 +1,12 @@
 'use client';
 
-import { Music, Pencil, Plus, RefreshCw, Trash2, Upload, Users, Video } from 'lucide-react';
+import { ChevronDown, Music, Pencil, Plus, RefreshCw, Trash2, Upload, Users, Video } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { MediaViewer } from '@/components/assets/MediaViewer';
 import { GenerateImageModal } from '@/components/media/GenerateImageModal';
 import { GenerateMusicModal } from '@/components/media/GenerateMusicModal';
@@ -38,6 +40,7 @@ export function AssetsClient() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'media' | 'quotes' | 'notes' | 'profile'>('media');
   const [selectedPatient, setSelectedPatient] = useState<string>('');
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
   const [patients, setPatients] = useState<any[]>([]);
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [quotes, setQuotes] = useState<any[]>([]);
@@ -673,20 +676,72 @@ export function AssetsClient() {
           </div>
         </div>
 
-        {/* Patient Selector */}
+        {/* Patient Selector with Avatar */}
         <div className="mb-4 flex items-center gap-2">
           <span className="text-sm text-gray-600">Viewing library for:</span>
-          <select
-            value={selectedPatient}
-            onChange={e => setSelectedPatient(e.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-900 focus:border-purple-500 focus:outline-none"
-          >
-            {patients.map(patient => (
-              <option key={patient.id} value={patient.id}>
-                {patient.name}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <button
+              onClick={() => setShowPatientDropdown(!showPatientDropdown)}
+              className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-900 transition-colors hover:border-gray-400 focus:border-purple-500 focus:outline-none"
+            >
+              {(() => {
+                const selectedPatientData = patients.find(p => p.id === selectedPatient);
+                if (selectedPatientData?.referenceImageUrl) {
+                  return (
+                    <img
+                      src={selectedPatientData.referenceImageUrl}
+                      alt={selectedPatientData.name}
+                      className="h-6 w-6 rounded-full object-cover"
+                    />
+                  );
+                }
+                return (
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-500 text-xs font-medium text-white">
+                    {selectedPatientData?.name?.charAt(0) || '?'}
+                  </div>
+                );
+              })()}
+              <span>{patients.find(p => p.id === selectedPatient)?.name || 'Select patient'}</span>
+              <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${showPatientDropdown ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Dropdown */}
+            {showPatientDropdown && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowPatientDropdown(false)}
+                />
+                <div className="absolute top-full left-0 z-20 mt-1 max-h-64 w-56 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                  {patients.map(patient => (
+                    <button
+                      key={patient.id}
+                      onClick={() => {
+                        setSelectedPatient(patient.id);
+                        setShowPatientDropdown(false);
+                      }}
+                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50 ${
+                        patient.id === selectedPatient ? 'bg-purple-50 text-purple-700' : 'text-gray-700'
+                      }`}
+                    >
+                      {patient.referenceImageUrl ? (
+                        <img
+                          src={patient.referenceImageUrl}
+                          alt={patient.name}
+                          className="h-6 w-6 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-500 text-xs font-medium text-white">
+                          {patient.name?.charAt(0) || '?'}
+                        </div>
+                      )}
+                      <span>{patient.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Tabs */}
@@ -1127,9 +1182,12 @@ export function AssetsClient() {
                             </div>
                           </div>
 
-                          <p className="mb-4 text-base leading-relaxed whitespace-pre-wrap text-gray-700">
-                            {quote.quoteText}
-                          </p>
+                          {/* Quote Content - Markdown rendered */}
+                          <div className="prose prose-sm mb-4 max-w-none text-gray-700 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {quote.quoteText}
+                            </ReactMarkdown>
+                          </div>
 
                           {quote.tags && quote.tags.length > 0 && (
                             <div className="flex flex-wrap gap-2">
@@ -1258,10 +1316,12 @@ export function AssetsClient() {
                       </div>
                     </div>
 
-                    {/* Note Content */}
-                    <p className="mb-3 text-sm leading-relaxed whitespace-pre-wrap text-gray-700">
-                      {note.content}
-                    </p>
+                    {/* Note Content - Markdown rendered */}
+                    <div className="prose prose-sm mb-3 max-w-none text-gray-700 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {note.content}
+                      </ReactMarkdown>
+                    </div>
 
                     {/* Tags */}
                     {note.tags && note.tags.length > 0 && (

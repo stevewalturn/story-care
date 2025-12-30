@@ -1,6 +1,17 @@
 'use client';
 
-import { Clapperboard, FileText, Image as ImageIcon, Search, StickyNote, X } from 'lucide-react';
+import {
+  ChevronDown,
+  Clapperboard,
+  FileText,
+  Image as ImageIcon,
+  Music,
+  Search,
+  StickyNote,
+  User,
+  Video,
+  X,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -8,6 +19,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type AssetType = 'media' | 'quotes' | 'notes' | 'scenes';
+type MediaTypeFilter = 'all' | 'image' | 'video' | 'audio';
+
+type Patient = {
+  id: string;
+  name: string;
+  avatarUrl?: string;
+};
 
 type MediaAsset = {
   id: string;
@@ -60,6 +78,7 @@ export function AssetPickerModal({
 }: AssetPickerModalProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<AssetType>('media');
+  const [mediaTypeFilter, setMediaTypeFilter] = useState<MediaTypeFilter>('all');
   const [search, setSearch] = useState('');
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
   const [quoteAssets, setQuoteAssets] = useState<QuoteAsset[]>([]);
@@ -67,11 +86,46 @@ export function AssetPickerModal({
   const [sceneAssets, setSceneAssets] = useState<SceneAsset[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Patient filter state
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [selectedPatientId, setSelectedPatientId] = useState<string | 'all'>(patientId || 'all');
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+  const [loadingPatients, setLoadingPatients] = useState(false);
+
+  // Fetch patients list
+  useEffect(() => {
+    if (isOpen && user) {
+      fetchPatients();
+    }
+  }, [isOpen, user]);
+
+  // Update selected patient when prop changes
+  useEffect(() => {
+    if (patientId) {
+      setSelectedPatientId(patientId);
+    }
+  }, [patientId]);
+
+  const fetchPatients = async () => {
+    setLoadingPatients(true);
+    try {
+      const res = await authenticatedFetch('/api/patients', user);
+      if (res.ok) {
+        const data = await res.json();
+        setPatients(data.patients || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch patients:', error);
+    } finally {
+      setLoadingPatients(false);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       fetchAssets();
     }
-  }, [isOpen, activeTab, patientId]);
+  }, [isOpen, activeTab, selectedPatientId, mediaTypeFilter]);
 
   // Clear search when switching tabs
   useEffect(() => {
@@ -81,35 +135,38 @@ export function AssetPickerModal({
   const fetchAssets = async () => {
     setLoading(true);
     try {
+      const patientParam = selectedPatientId !== 'all' ? selectedPatientId : '';
+
       if (activeTab === 'media') {
-        const url = `/api/media${patientId ? `?patientId=${patientId}` : ''}`;
+        const params = new URLSearchParams();
+        if (patientParam) params.append('patientId', patientParam);
+        if (mediaTypeFilter !== 'all') params.append('type', mediaTypeFilter);
+        const url = `/api/media${params.toString() ? `?${params.toString()}` : ''}`;
         console.log('[AssetPickerModal] Fetching media from:', url);
-        console.log('[AssetPickerModal] Patient ID:', patientId);
         const res = await authenticatedFetch(url, user);
         if (res.ok) {
           const data = await res.json();
-          console.log('[AssetPickerModal] Media data received:', data);
           console.log('[AssetPickerModal] Media count:', data.media?.length || 0);
           setMediaAssets(data.media || []);
         } else {
           console.error('[AssetPickerModal] Media fetch failed:', res.status, res.statusText);
         }
       } else if (activeTab === 'quotes') {
-        const url = `/api/quotes${patientId ? `?patientId=${patientId}` : ''}`;
+        const url = `/api/quotes${patientParam ? `?patientId=${patientParam}` : ''}`;
         const res = await authenticatedFetch(url, user);
         if (res.ok) {
           const data = await res.json();
           setQuoteAssets(data.quotes || []);
         }
       } else if (activeTab === 'notes') {
-        const url = `/api/notes${patientId ? `?patientId=${patientId}` : ''}`;
+        const url = `/api/notes${patientParam ? `?patientId=${patientParam}` : ''}`;
         const res = await authenticatedFetch(url, user);
         if (res.ok) {
           const data = await res.json();
           setNoteAssets(data.notes || []);
         }
       } else if (activeTab === 'scenes') {
-        const url = `/api/scenes${patientId ? `?patientId=${patientId}` : ''}`;
+        const url = `/api/scenes${patientParam ? `?patientId=${patientParam}` : ''}`;
         const res = await authenticatedFetch(url, user);
         if (res.ok) {
           const data = await res.json();
@@ -152,26 +209,123 @@ export function AssetPickerModal({
       || asset.description?.toLowerCase().includes(search.toLowerCase());
   });
 
+  const getSelectedPatientName = () => {
+    if (selectedPatientId === 'all') return 'All Patients';
+    const patient = patients.find(p => p.id === selectedPatientId);
+    return patient?.name || 'Select Patient';
+  };
+
+  const getInitials = (name: string) => {
+    const parts = name.split(' ');
+    if (parts.length >= 2 && parts[0] && parts[1]) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="flex h-[80vh] w-full max-w-4xl flex-col rounded-lg bg-white shadow-xl">
+      <div className="flex h-[80vh] w-full max-w-4xl flex-col rounded-xl bg-white shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-200 p-4">
+        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <h2 className="text-lg font-semibold text-gray-900">Browse Assets Library</h2>
           <button
+            type="button"
             onClick={onClose}
-            className="text-gray-400 transition-colors hover:text-gray-600"
+            className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Tabs */}
+        {/* Patient Filter */}
+        <div className="border-b border-gray-200 px-6 py-3">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-gray-600">Filter by patient:</span>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowPatientDropdown(!showPatientDropdown)}
+                className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                {selectedPatientId !== 'all' ? (
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-xs font-medium text-white">
+                    {getInitials(getSelectedPatientName())}
+                  </div>
+                ) : (
+                  <User className="h-4 w-4 text-gray-400" />
+                )}
+                <span className="max-w-[150px] truncate">{getSelectedPatientName()}</span>
+                <ChevronDown className="h-4 w-4 text-gray-400" />
+              </button>
+
+              {showPatientDropdown && (
+                <div className="absolute top-full left-0 z-10 mt-1 max-h-60 w-64 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPatientId('all');
+                      setShowPatientDropdown(false);
+                    }}
+                    className={`flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-gray-50 ${
+                      selectedPatientId === 'all' ? 'bg-purple-50 text-purple-700' : 'text-gray-700'
+                    }`}
+                  >
+                    <User className="h-4 w-4 text-gray-400" />
+                    All Patients
+                  </button>
+                  <div className="my-1 border-t border-gray-100" />
+                  {loadingPatients
+                    ? (
+                        <div className="px-3 py-2 text-sm text-gray-500">Loading patients...</div>
+                      )
+                    : patients.length === 0
+                      ? (
+                          <div className="px-3 py-2 text-sm text-gray-500">No patients found</div>
+                        )
+                      : (
+                          patients.map(patient => (
+                            <button
+                              key={patient.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedPatientId(patient.id);
+                                setShowPatientDropdown(false);
+                              }}
+                              className={`flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-gray-50 ${
+                                selectedPatientId === patient.id ? 'bg-purple-50 text-purple-700' : 'text-gray-700'
+                              }`}
+                            >
+                              {patient.avatarUrl
+                                ? (
+                                    <img
+                                      src={patient.avatarUrl}
+                                      alt={patient.name}
+                                      className="h-6 w-6 rounded-full object-cover"
+                                    />
+                                  )
+                                : (
+                                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-xs font-medium text-white">
+                                      {getInitials(patient.name)}
+                                    </div>
+                                  )}
+                              <span className="truncate">{patient.name}</span>
+                            </button>
+                          ))
+                        )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Main Tabs */}
         <div className="flex border-b border-gray-200">
           {(filterType === 'all' || filterType === 'image' || filterType === 'video') && (
             <button
+              type="button"
               onClick={() => setActiveTab('media')}
               className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
                 activeTab === 'media'
@@ -186,6 +340,7 @@ export function AssetPickerModal({
           {(filterType === 'all' || filterType === 'text') && (
             <>
               <button
+                type="button"
                 onClick={() => setActiveTab('quotes')}
                 className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
                   activeTab === 'quotes'
@@ -197,6 +352,7 @@ export function AssetPickerModal({
                 Quotes
               </button>
               <button
+                type="button"
                 onClick={() => setActiveTab('notes')}
                 className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
                   activeTab === 'notes'
@@ -211,6 +367,7 @@ export function AssetPickerModal({
           )}
           {filterType === 'all' && (
             <button
+              type="button"
               onClick={() => setActiveTab('scenes')}
               className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
                 activeTab === 'scenes'
@@ -223,6 +380,35 @@ export function AssetPickerModal({
             </button>
           )}
         </div>
+
+        {/* Media Type Sub-tabs (only shown for Media tab) */}
+        {activeTab === 'media' && (
+          <div className="flex items-center gap-2 border-b border-gray-100 bg-gray-50 px-6 py-2">
+            <span className="text-xs font-medium text-gray-500">Type:</span>
+            <div className="flex gap-1">
+              {[
+                { value: 'all', label: 'All', icon: ImageIcon },
+                { value: 'image', label: 'Images', icon: ImageIcon },
+                { value: 'video', label: 'Videos', icon: Video },
+                { value: 'audio', label: 'Audio', icon: Music },
+              ].map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setMediaTypeFilter(value as MediaTypeFilter)}
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    mediaTypeFilter === value
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'bg-white text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Search */}
         <div className="border-b border-gray-200 p-4">
@@ -254,18 +440,21 @@ export function AssetPickerModal({
               {filteredMediaAssets.map(asset => (
                 <button
                   key={asset.id}
+                  type="button"
                   onClick={() => handleSelect(asset)}
                   className="group relative aspect-square overflow-hidden rounded-lg border border-gray-200 transition-all hover:border-purple-500 hover:shadow-lg"
                 >
                   {asset.mediaType === 'image' ? (
                     <img src={asset.mediaUrl} alt={asset.title || 'Media'} className="h-full w-full object-cover" />
                   ) : asset.mediaType === 'video' ? (
-                    <div className="flex h-full items-center justify-center bg-gray-100">
-                      <ImageIcon className="h-12 w-12 text-gray-400" />
+                    <div className="flex h-full flex-col items-center justify-center bg-gray-100">
+                      <Video className="h-12 w-12 text-gray-400" />
+                      <span className="mt-2 text-xs text-gray-500">Video</span>
                     </div>
                   ) : (
-                    <div className="flex h-full items-center justify-center bg-gray-100">
-                      <ImageIcon className="h-12 w-12 text-gray-400" />
+                    <div className="flex h-full flex-col items-center justify-center bg-gray-100">
+                      <Music className="h-12 w-12 text-gray-400" />
+                      <span className="mt-2 text-xs text-gray-500">Audio</span>
                     </div>
                   )}
                   <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-all group-hover:bg-black/50">
@@ -273,11 +462,28 @@ export function AssetPickerModal({
                       Select
                     </span>
                   </div>
+                  {/* Media type badge */}
+                  <div className="absolute top-2 left-2">
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                      asset.mediaType === 'image' ? 'bg-blue-100 text-blue-700'
+                        : asset.mediaType === 'video' ? 'bg-purple-100 text-purple-700'
+                          : 'bg-green-100 text-green-700'
+                    }`}
+                    >
+                      {asset.mediaType}
+                    </span>
+                  </div>
                 </button>
               ))}
               {filteredMediaAssets.length === 0 && (
-                <div className="col-span-3 py-12 text-center text-sm text-gray-500">
-                  No media assets found
+                <div className="col-span-3 py-12 text-center">
+                  <ImageIcon className="mx-auto mb-3 h-12 w-12 text-gray-300" />
+                  <p className="text-sm font-medium text-gray-900">No media assets found</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {selectedPatientId !== 'all'
+                      ? 'Try selecting a different patient or "All Patients"'
+                      : 'Upload some media to get started'}
+                  </p>
                 </div>
               )}
             </div>
@@ -287,6 +493,7 @@ export function AssetPickerModal({
               {filteredQuoteAssets.map(asset => (
                 <button
                   key={asset.id}
+                  type="button"
                   onClick={() => handleSelect(asset)}
                   className="w-full rounded-lg border border-gray-200 p-4 text-left transition-all hover:border-purple-500 hover:shadow-md"
                 >
@@ -310,8 +517,14 @@ export function AssetPickerModal({
                 </button>
               ))}
               {filteredQuoteAssets.length === 0 && (
-                <div className="py-12 text-center text-sm text-gray-500">
-                  No quotes found
+                <div className="py-12 text-center">
+                  <FileText className="mx-auto mb-3 h-12 w-12 text-gray-300" />
+                  <p className="text-sm font-medium text-gray-900">No quotes found</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {selectedPatientId !== 'all'
+                      ? 'Try selecting a different patient or "All Patients"'
+                      : 'Save some quotes to get started'}
+                  </p>
                 </div>
               )}
             </div>
@@ -321,6 +534,7 @@ export function AssetPickerModal({
               {filteredNoteAssets.map(asset => (
                 <button
                   key={asset.id}
+                  type="button"
                   onClick={() => handleSelect(asset)}
                   className="w-full rounded-lg border border-gray-200 p-4 text-left transition-all hover:border-purple-500 hover:shadow-md"
                 >
@@ -342,8 +556,14 @@ export function AssetPickerModal({
                 </button>
               ))}
               {filteredNoteAssets.length === 0 && (
-                <div className="py-12 text-center text-sm text-gray-500">
-                  No notes found
+                <div className="py-12 text-center">
+                  <StickyNote className="mx-auto mb-3 h-12 w-12 text-gray-300" />
+                  <p className="text-sm font-medium text-gray-900">No notes found</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {selectedPatientId !== 'all'
+                      ? 'Try selecting a different patient or "All Patients"'
+                      : 'Save some notes to get started'}
+                  </p>
                 </div>
               )}
             </div>
@@ -353,6 +573,7 @@ export function AssetPickerModal({
               {filteredSceneAssets.map(asset => (
                 <button
                   key={asset.id}
+                  type="button"
                   onClick={() => handleSelect(asset)}
                   className="group overflow-hidden rounded-lg border border-gray-200 transition-all hover:border-purple-500 hover:shadow-lg"
                 >
@@ -385,8 +606,14 @@ export function AssetPickerModal({
                 </button>
               ))}
               {filteredSceneAssets.length === 0 && (
-                <div className="col-span-2 py-12 text-center text-sm text-gray-500">
-                  No scenes found
+                <div className="col-span-2 py-12 text-center">
+                  <Clapperboard className="mx-auto mb-3 h-12 w-12 text-gray-300" />
+                  <p className="text-sm font-medium text-gray-900">No scenes found</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {selectedPatientId !== 'all'
+                      ? 'Try selecting a different patient or "All Patients"'
+                      : 'Create some scenes to get started'}
+                  </p>
                 </div>
               )}
             </div>
@@ -400,6 +627,14 @@ export function AssetPickerModal({
           </Button>
         </div>
       </div>
+
+      {/* Click outside to close patient dropdown */}
+      {showPatientDropdown && (
+        <div
+          className="fixed inset-0 z-0"
+          onClick={() => setShowPatientDropdown(false)}
+        />
+      )}
     </div>
   );
 }

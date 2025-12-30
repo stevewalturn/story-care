@@ -1,13 +1,24 @@
 'use client';
 
 import type { TherapeuticDomain } from '@/models/Schema';
-import { ArrowRight, Clock, Filter, Plus, Search, Trash2, Users } from 'lucide-react';
-import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import { AssignModuleModal } from '@/components/sessions/AssignModuleModal';
-import { SessionCard } from '@/components/sessions/SessionCard';
+import { Check, ChevronDown, Filter, MessageCircle, Plus, Search, SlidersHorizontal, Users } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { GroupDetailView } from '@/components/sessions/GroupDetailView';
+import { PatientDetailView } from '@/components/sessions/PatientDetailView';
 import { Button } from '@/components/ui/Button';
+import { StackedAvatars } from '@/components/ui/StackedAvatars';
 import { useAuth } from '@/contexts/AuthContext';
+
+// Filter and Sort types
+type SessionCountFilter = 'all' | '1-5' | '6-10' | '10+';
+type LastActivityFilter = 'all' | '7d' | '30d' | '3m';
+type SortOption = 'date-desc' | 'date-asc' | 'name-asc' | 'name-desc' | 'sessions-desc' | 'sessions-asc';
+
+type GroupMember = {
+  id: string;
+  name: string;
+  avatarUrl?: string | null;
+};
 
 type Session = {
   id: string;
@@ -20,25 +31,60 @@ type Session = {
   patientReferenceImageUrl?: string;
   groupId?: string | null;
   groupName?: string;
+  groupMembers?: GroupMember[];
   sessionCount?: number;
   moduleName?: string;
   moduleDomain?: TherapeuticDomain;
   moduleId?: string;
 };
 
+type SelectedPatient = {
+  id: string;
+  name: string;
+  avatarUrl?: string;
+};
+
+type SelectedGroup = {
+  id: string;
+  name: string;
+  members: GroupMember[];
+};
+
 export default function SessionsPage() {
   const { user } = useAuth();
-  const [_isAssignModuleModalOpen, setIsAssignModuleModalOpen] = useState(false);
-  const [selectedSessionForModule, setSelectedSessionForModule] = useState<Session | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'patients' | 'groups'>('patients');
 
-  // Selection mode states for bulk delete
-  const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(new Set());
-  const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  // Detail view state
+  const [selectedPatient, setSelectedPatient] = useState<SelectedPatient | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<SelectedGroup | null>(null);
+
+  // Filter and Sort state
+  const [sessionCountFilter, setSessionCountFilter] = useState<SessionCountFilter>('all');
+  const [lastActivityFilter, setLastActivityFilter] = useState<LastActivityFilter>('all');
+  const [sortOption, setSortOption] = useState<SortOption>('date-desc');
+  const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+
+  // Refs for click-outside handling
+  const filterRef = useRef<HTMLDivElement>(null);
+  const sortRef = useRef<HTMLDivElement>(null);
+
+  // Handle click outside for dropdowns
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setFilterDropdownOpen(false);
+      }
+      if (sortRef.current && !sortRef.current.contains(event.target as Node)) {
+        setSortDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Fetch sessions from API when user is available
   useEffect(() => {
@@ -74,7 +120,8 @@ export default function SessionsPage() {
           patientReferenceImageUrl: session.patient?.referenceImageUrl,
           groupId: session.groupId,
           groupName: session.group?.name,
-          sessionCount: 1, // TODO: Calculate from database
+          groupMembers: session.group?.members || [],
+          sessionCount: 1,
           moduleId: session.moduleId,
           moduleName: session.module?.name,
           moduleDomain: session.module?.domain,
@@ -89,16 +136,15 @@ export default function SessionsPage() {
     }
   };
 
-  // Get recent sessions for "Continue Your Work" section (top 3)
-  const recentSessions = useMemo(() => {
-    return [...sessions]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 3);
-  }, [sessions]);
-
   // Get patients with their session counts for card view
   const patientsWithSessions = useMemo(() => {
-    const patientMap = new Map<string, { id: string; name: string; avatarUrl?: string; sessionCount: number; lastOpened: string }>();
+    const patientMap = new Map<string, {
+      id: string;
+      name: string;
+      avatarUrl?: string;
+      sessionCount: number;
+      lastOpened: string;
+    }>();
 
     sessions
       .filter(s => s.type === 'individual' && s.patientId && s.patientName)
@@ -125,9 +171,15 @@ export default function SessionsPage() {
     );
   }, [sessions]);
 
-  // Get groups with their session counts for card view
+  // Get groups with their session counts and members for card view
   const groupsWithSessions = useMemo(() => {
-    const groupMap = new Map<string, { id: string; name: string; sessionCount: number; lastOpened: string }>();
+    const groupMap = new Map<string, {
+      id: string;
+      name: string;
+      members: GroupMember[];
+      sessionCount: number;
+      lastOpened: string;
+    }>();
 
     sessions
       .filter(s => s.type === 'group' && s.groupId && s.groupName)
@@ -138,10 +190,15 @@ export default function SessionsPage() {
           if (new Date(s.date) > new Date(existing.lastOpened)) {
             existing.lastOpened = s.date;
           }
+          // Update members if we have more in this session
+          if (s.groupMembers && s.groupMembers.length > existing.members.length) {
+            existing.members = s.groupMembers;
+          }
         } else {
           groupMap.set(s.groupId!, {
             id: s.groupId!,
             name: s.groupName!,
+            members: s.groupMembers || [],
             sessionCount: 1,
             lastOpened: s.date,
           });
@@ -153,13 +210,127 @@ export default function SessionsPage() {
     );
   }, [sessions]);
 
+  // Apply filters and sort to patients
+  const filteredAndSortedPatients = useMemo(() => {
+    let result = [...patientsWithSessions];
+
+    // Apply search filter
+    if (searchTerm) {
+      result = result.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    }
+
+    // Apply session count filter
+    if (sessionCountFilter !== 'all') {
+      result = result.filter((p) => {
+        switch (sessionCountFilter) {
+          case '1-5': return p.sessionCount >= 1 && p.sessionCount <= 5;
+          case '6-10': return p.sessionCount >= 6 && p.sessionCount <= 10;
+          case '10+': return p.sessionCount > 10;
+          default: return true;
+        }
+      });
+    }
+
+    // Apply last activity filter
+    if (lastActivityFilter !== 'all') {
+      const now = new Date();
+      result = result.filter((p) => {
+        const lastDate = new Date(p.lastOpened);
+        const diffInDays = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+        switch (lastActivityFilter) {
+          case '7d': return diffInDays <= 7;
+          case '30d': return diffInDays <= 30;
+          case '3m': return diffInDays <= 90;
+          default: return true;
+        }
+      });
+    }
+
+    // Apply sort
+    result.sort((a, b) => {
+      switch (sortOption) {
+        case 'name-asc': return a.name.localeCompare(b.name);
+        case 'name-desc': return b.name.localeCompare(a.name);
+        case 'date-desc': return new Date(b.lastOpened).getTime() - new Date(a.lastOpened).getTime();
+        case 'date-asc': return new Date(a.lastOpened).getTime() - new Date(b.lastOpened).getTime();
+        case 'sessions-desc': return b.sessionCount - a.sessionCount;
+        case 'sessions-asc': return a.sessionCount - b.sessionCount;
+        default: return 0;
+      }
+    });
+
+    return result;
+  }, [patientsWithSessions, searchTerm, sessionCountFilter, lastActivityFilter, sortOption]);
+
+  // Apply filters and sort to groups
+  const filteredAndSortedGroups = useMemo(() => {
+    let result = [...groupsWithSessions];
+
+    // Apply search filter
+    if (searchTerm) {
+      result = result.filter(g =>
+        g.name.toLowerCase().includes(searchTerm.toLowerCase())
+        || g.members.some(m => m.name.toLowerCase().includes(searchTerm.toLowerCase())),
+      );
+    }
+
+    // Apply session count filter
+    if (sessionCountFilter !== 'all') {
+      result = result.filter((g) => {
+        switch (sessionCountFilter) {
+          case '1-5': return g.sessionCount >= 1 && g.sessionCount <= 5;
+          case '6-10': return g.sessionCount >= 6 && g.sessionCount <= 10;
+          case '10+': return g.sessionCount > 10;
+          default: return true;
+        }
+      });
+    }
+
+    // Apply last activity filter
+    if (lastActivityFilter !== 'all') {
+      const now = new Date();
+      result = result.filter((g) => {
+        const lastDate = new Date(g.lastOpened);
+        const diffInDays = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+        switch (lastActivityFilter) {
+          case '7d': return diffInDays <= 7;
+          case '30d': return diffInDays <= 30;
+          case '3m': return diffInDays <= 90;
+          default: return true;
+        }
+      });
+    }
+
+    // Apply sort
+    result.sort((a, b) => {
+      switch (sortOption) {
+        case 'name-asc': return a.name.localeCompare(b.name);
+        case 'name-desc': return b.name.localeCompare(a.name);
+        case 'date-desc': return new Date(b.lastOpened).getTime() - new Date(a.lastOpened).getTime();
+        case 'date-asc': return new Date(a.lastOpened).getTime() - new Date(b.lastOpened).getTime();
+        case 'sessions-desc': return b.sessionCount - a.sessionCount;
+        case 'sessions-asc': return a.sessionCount - b.sessionCount;
+        default: return 0;
+      }
+    });
+
+    return result;
+  }, [groupsWithSessions, searchTerm, sessionCountFilter, lastActivityFilter, sortOption]);
+
+  // Check if any filters are active
+  const hasActiveFilters = sessionCountFilter !== 'all' || lastActivityFilter !== 'all';
+
   // Format relative time
   const formatRelativeTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     const diffInMs = now.getTime() - date.getTime();
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
     const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
 
+    if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`;
+    if (diffInHours < 24) return `${diffInHours} hours ago`;
     if (diffInDays === 0) return 'Today';
     if (diffInDays === 1) return 'Yesterday';
     if (diffInDays < 7) return `${diffInDays} days ago`;
@@ -177,125 +348,83 @@ export default function SessionsPage() {
       .slice(0, 2);
   };
 
-  const clearSelection = () => {
-    setSelectedSessionIds(new Set());
-    setIsSelectionMode(false);
+  // Handle patient card click
+  const handlePatientClick = (patient: typeof patientsWithSessions[0]) => {
+    setSelectedPatient({
+      id: patient.id,
+      name: patient.name,
+      avatarUrl: patient.avatarUrl,
+    });
   };
 
-  // Single session delete (without confirmation, used for bulk)
-  const handleDeleteSessionSingle = async (sessionId: string) => {
-    if (!user?.uid) return;
-    try {
-      const idToken = await user.getIdToken();
-      const response = await fetch(`/api/sessions/${sessionId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${idToken}` },
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete session');
-      }
-    } catch (error) {
-      console.error('Error deleting session:', error);
-      throw error;
-    }
+  // Handle group card click
+  const handleGroupClick = (group: typeof groupsWithSessions[0]) => {
+    setSelectedGroup({
+      id: group.id,
+      name: group.name,
+      members: group.members,
+    });
   };
 
-  // Bulk delete handler
-  const handleBulkDelete = async () => {
-    if (selectedSessionIds.size === 0) return;
-
-    const count = selectedSessionIds.size;
-    if (!confirm(`Delete ${count} session${count > 1 ? 's' : ''}? This action cannot be undone.`)) {
-      return;
-    }
-
-    setIsDeleting(true);
-    try {
-      // Delete all selected sessions
-      for (const sessionId of selectedSessionIds) {
-        await handleDeleteSessionSingle(sessionId);
-      }
-
-      // Clear selection and exit selection mode
-      setSelectedSessionIds(new Set());
-      setIsSelectionMode(false);
-      await fetchSessions();
-    } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to delete some sessions. Please try again.');
-    } finally {
-      setIsDeleting(false);
-    }
+  // Handle back from detail view
+  const handleBack = () => {
+    setSelectedPatient(null);
+    setSelectedGroup(null);
   };
 
-  // TODO: Assign module handler - reserved for future implementation
-  // const handleAssignModule = (session: Session) => {
-  //   setSelectedSessionForModule(session);
-  //   setIsAssignModuleModalOpen(true);
-  // };
+  // Render detail view if selected
+  if (selectedPatient) {
+    return (
+      <PatientDetailView
+        patientId={selectedPatient.id}
+        onBack={handleBack}
+      />
+    );
+  }
 
-  const handleModuleAssigned = async () => {
-    setIsAssignModuleModalOpen(false);
-    setSelectedSessionForModule(null);
-    await fetchSessions();
-  };
+  if (selectedGroup) {
+    return (
+      <GroupDetailView
+        groupId={selectedGroup.id}
+        groupName={selectedGroup.name}
+        members={selectedGroup.members}
+        onBack={handleBack}
+      />
+    );
+  }
 
+  // Main sessions list view
   return (
     <div className="relative p-8">
-      {/* Full-screen Loading Overlay for Bulk Delete */}
-      {isDeleting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="rounded-lg bg-white p-8 text-center shadow-xl">
-            <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
-            <p className="text-lg font-medium text-gray-900">Deleting sessions...</p>
-            <p className="mt-1 text-sm text-gray-500">Please wait</p>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Sessions</h1>
             <p className="mt-1 text-sm text-gray-500">
-              Manage your therapy sessions by patient or group
+              Review therapy sessions with transcripts, notes, and audio uploads.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                if (isSelectionMode) {
-                  clearSelection();
-                } else {
-                  setIsSelectionMode(true);
-                }
-              }}
-            >
-              {isSelectionMode ? 'Done' : 'Select'}
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => {
-                window.location.href = '/sessions/new';
-              }}
-            >
-              <Plus className="mr-2 h-5 w-5" />
-              New Session
-            </Button>
-          </div>
+          <Button
+            variant="primary"
+            onClick={() => {
+              window.location.href = '/sessions/new';
+            }}
+          >
+            <Plus className="mr-2 h-5 w-5" />
+            New Session
+          </Button>
         </div>
 
-        {/* Patients / Groups Tabs */}
-        <div className="mt-6 flex gap-1 rounded-lg bg-gray-100 p-1">
+        {/* Patients / Groups Tabs - Underlined style */}
+        <div className="mt-6 flex gap-6 border-b border-gray-200">
           <button
             type="button"
             onClick={() => setViewMode('patients')}
-            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            className={`border-b-2 pb-3 text-sm font-medium transition-colors ${
               viewMode === 'patients'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'border-purple-600 text-purple-600'
+                : 'border-transparent text-gray-500 hover:text-gray-900'
             }`}
           >
             Patients
@@ -303,10 +432,10 @@ export default function SessionsPage() {
           <button
             type="button"
             onClick={() => setViewMode('groups')}
-            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            className={`border-b-2 pb-3 text-sm font-medium transition-colors ${
               viewMode === 'groups'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'border-purple-600 text-purple-600'
+                : 'border-transparent text-gray-500 hover:text-gray-900'
             }`}
           >
             Groups
@@ -314,81 +443,155 @@ export default function SessionsPage() {
         </div>
       </div>
 
-      {/* Continue Your Work Section */}
-      {recentSessions.length > 0 && !isLoading && (
-        <div className="mb-6">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-700">
-            <Clock className="h-4 w-4" />
-            Continue Your Work
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {recentSessions.map(session => (
-              <SessionCard
-                key={session.id}
-                {...session}
-                compact
-                onClick={() => {
-                  window.location.href = `/sessions/${session.id}/transcript`;
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Search and Filter Bar */}
       <div className="mb-6 flex items-center gap-3">
-        <div className="relative flex-1">
+        <div className="relative max-w-md flex-1">
           <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Search"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             className="w-full rounded-lg border border-gray-300 py-2.5 pr-4 pl-10 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
           />
         </div>
-        <button
-          type="button"
-          className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition-colors hover:bg-gray-50"
-        >
-          <Filter className="h-4 w-4" />
-        </button>
-        <select className="h-10 rounded-lg border border-gray-300 px-3 text-sm text-gray-600 focus:border-purple-500 focus:ring-1 focus:ring-purple-500">
-          <option>Sort by</option>
-          <option>Name A-Z</option>
-          <option>Name Z-A</option>
-          <option>Most Sessions</option>
-          <option>Last Opened</option>
-        </select>
-      </div>
+        <div className="flex-1" />
 
-      {/* Bulk Delete Action Bar */}
-      {isSelectionMode && selectedSessionIds.size > 0 && (
-        <div className="mb-4 flex items-center justify-between rounded-lg bg-purple-50 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-purple-700">
-              {selectedSessionIds.size}
-              {' '}
-              selected
-            </span>
-            <button
-              onClick={clearSelection}
-              className="text-sm text-gray-600 hover:text-gray-800"
-            >
-              Cancel
-            </button>
-          </div>
-          <Button
-            variant="primary"
-            onClick={handleBulkDelete}
-            className="bg-red-600 hover:bg-red-700"
+        {/* Filter Dropdown */}
+        <div className="relative" ref={filterRef}>
+          <button
+            type="button"
+            onClick={() => {
+              setFilterDropdownOpen(!filterDropdownOpen);
+              setSortDropdownOpen(false);
+            }}
+            className={`flex h-10 items-center gap-2 rounded-lg border px-4 text-sm transition-colors hover:bg-gray-50 ${
+              hasActiveFilters
+                ? 'border-purple-500 bg-purple-50 text-purple-600'
+                : 'border-gray-300 text-gray-600'
+            }`}
           >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete Selected
-          </Button>
+            <Filter className="h-4 w-4" />
+            Filter
+            {hasActiveFilters && (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 text-xs text-white">
+                {(sessionCountFilter !== 'all' ? 1 : 0) + (lastActivityFilter !== 'all' ? 1 : 0)}
+              </span>
+            )}
+            <ChevronDown className={`h-4 w-4 transition-transform ${filterDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {filterDropdownOpen && (
+            <div className="absolute right-0 z-20 mt-2 w-64 rounded-lg border border-gray-200 bg-white shadow-lg">
+              {/* Session Count Filter */}
+              <div className="border-b border-gray-100 p-3">
+                <p className="mb-2 text-xs font-semibold tracking-wide text-gray-500 uppercase">Session Count</p>
+                {[
+                  { value: 'all' as const, label: 'All' },
+                  { value: '1-5' as const, label: '1-5 sessions' },
+                  { value: '6-10' as const, label: '6-10 sessions' },
+                  { value: '10+' as const, label: '10+ sessions' },
+                ].map(option => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setSessionCountFilter(option.value)}
+                    className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-sm transition-colors hover:bg-gray-50 ${
+                      sessionCountFilter === option.value ? 'text-purple-600' : 'text-gray-700'
+                    }`}
+                  >
+                    {option.label}
+                    {sessionCountFilter === option.value && <Check className="h-4 w-4" />}
+                  </button>
+                ))}
+              </div>
+
+              {/* Last Activity Filter */}
+              <div className="p-3">
+                <p className="mb-2 text-xs font-semibold tracking-wide text-gray-500 uppercase">Last Activity</p>
+                {[
+                  { value: 'all' as const, label: 'All time' },
+                  { value: '7d' as const, label: 'Last 7 days' },
+                  { value: '30d' as const, label: 'Last 30 days' },
+                  { value: '3m' as const, label: 'Last 3 months' },
+                ].map(option => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setLastActivityFilter(option.value)}
+                    className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-sm transition-colors hover:bg-gray-50 ${
+                      lastActivityFilter === option.value ? 'text-purple-600' : 'text-gray-700'
+                    }`}
+                  >
+                    {option.label}
+                    {lastActivityFilter === option.value && <Check className="h-4 w-4" />}
+                  </button>
+                ))}
+              </div>
+
+              {/* Clear Filters */}
+              {hasActiveFilters && (
+                <div className="border-t border-gray-100 p-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSessionCountFilter('all');
+                      setLastActivityFilter('all');
+                    }}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50"
+                  >
+                    Clear all filters
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Sort Dropdown */}
+        <div className="relative" ref={sortRef}>
+          <button
+            type="button"
+            onClick={() => {
+              setSortDropdownOpen(!sortDropdownOpen);
+              setFilterDropdownOpen(false);
+            }}
+            className="flex h-10 items-center gap-2 rounded-lg border border-gray-300 px-4 text-sm text-gray-600 transition-colors hover:bg-gray-50"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            Sort by
+            <ChevronDown className={`h-4 w-4 transition-transform ${sortDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {sortDropdownOpen && (
+            <div className="absolute right-0 z-20 mt-2 w-56 rounded-lg border border-gray-200 bg-white p-2 shadow-lg">
+              {[
+                { value: 'date-desc' as const, label: 'Last opened (newest)' },
+                { value: 'date-asc' as const, label: 'Last opened (oldest)' },
+                { value: 'name-asc' as const, label: 'Name (A-Z)' },
+                { value: 'name-desc' as const, label: 'Name (Z-A)' },
+                { value: 'sessions-desc' as const, label: 'Most sessions' },
+                { value: 'sessions-asc' as const, label: 'Least sessions' },
+              ].map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    setSortOption(option.value);
+                    setSortDropdownOpen(false);
+                  }}
+                  className={`flex w-full items-center justify-between rounded px-3 py-2 text-sm transition-colors hover:bg-gray-50 ${
+                    sortOption === option.value ? 'bg-purple-50 text-purple-600' : 'text-gray-700'
+                  }`}
+                >
+                  {option.label}
+                  {sortOption === option.value && <Check className="h-4 w-4" />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Card Grid View */}
       {isLoading
@@ -401,147 +604,164 @@ export default function SessionsPage() {
         : viewMode === 'patients'
           ? (
               // Patients View
-              patientsWithSessions.length === 0
+              filteredAndSortedPatients.length === 0
                 ? (
                     <div className="py-16 text-center">
                       <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
                         <Users className="h-8 w-8 text-gray-400" />
                       </div>
-                      <h3 className="mb-2 text-lg font-semibold text-gray-900">No patients yet</h3>
-                      <p className="mb-6 text-gray-500">Create a session to get started</p>
-                      <Button
-                        variant="primary"
-                        onClick={() => {
-                          window.location.href = '/sessions/new';
-                        }}
-                      >
-                        <Plus className="mr-2 h-5 w-5" />
-                        New Session
-                      </Button>
+                      <h3 className="mb-2 text-lg font-semibold text-gray-900">
+                        {patientsWithSessions.length === 0 ? 'No patients yet' : 'No matching patients'}
+                      </h3>
+                      <p className="mb-6 text-gray-500">
+                        {patientsWithSessions.length === 0 ? 'Create a session to get started' : 'Try adjusting your filters'}
+                      </p>
+                      {patientsWithSessions.length === 0 ? (
+                        <Button
+                          variant="primary"
+                          onClick={() => {
+                            window.location.href = '/sessions/new';
+                          }}
+                        >
+                          <Plus className="mr-2 h-5 w-5" />
+                          New Session
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            setSessionCountFilter('all');
+                            setLastActivityFilter('all');
+                            setSearchTerm('');
+                          }}
+                        >
+                          Clear filters
+                        </Button>
+                      )}
                     </div>
                   )
                 : (
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      {patientsWithSessions
-                        .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                        .map(patient => (
-                          <Link
-                            key={patient.id}
-                            href={`/admin/patients/${patient.id}`}
-                            className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 transition-all hover:border-purple-200 hover:shadow-md"
-                          >
-                            {/* Avatar */}
-                            {patient.avatarUrl
-                              ? (
-                                  <img
-                                    src={patient.avatarUrl}
-                                    alt={patient.name}
-                                    className="h-12 w-12 rounded-full object-cover"
-                                  />
-                                )
-                              : (
-                                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-purple-600 text-sm font-medium text-white">
-                                    {getInitials(patient.name)}
-                                  </div>
-                                )}
+                      {filteredAndSortedPatients.map(patient => (
+                        <button
+                          key={patient.id}
+                          type="button"
+                          onClick={() => handlePatientClick(patient)}
+                          className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left transition-all hover:border-purple-200 hover:shadow-md"
+                        >
+                          {/* Avatar - Large circular */}
+                          {patient.avatarUrl
+                            ? (
+                                <img
+                                  src={patient.avatarUrl}
+                                  alt={patient.name}
+                                  className="h-14 w-14 rounded-full object-cover"
+                                />
+                              )
+                            : (
+                                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-purple-600 text-lg font-medium text-white">
+                                  {getInitials(patient.name)}
+                                </div>
+                              )}
 
-                            {/* Info */}
-                            <div className="min-w-0 flex-1">
-                              <h3 className="font-medium text-gray-900">{patient.name}</h3>
-                              <p className="text-sm text-gray-500">
-                                Last opened
-                                {' '}
-                                {formatRelativeTime(patient.lastOpened)}
-                              </p>
-                            </div>
+                          {/* Info */}
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-medium text-gray-900">{patient.name}</h3>
+                            <p className="text-sm text-gray-500">
+                              Last opened
+                              {' '}
+                              {formatRelativeTime(patient.lastOpened)}
+                            </p>
+                          </div>
 
-                            {/* Session Badge */}
-                            <div className="flex items-center gap-2">
-                              <span className="rounded-full bg-purple-50 px-3 py-1 text-sm font-medium text-purple-700">
-                                {patient.sessionCount}
-                                {' '}
-                                {patient.sessionCount === 1 ? 'Session' : 'Sessions'}
-                              </span>
-                              <ArrowRight className="h-5 w-5 text-gray-400" />
-                            </div>
-                          </Link>
-                        ))}
+                          {/* Session Badge */}
+                          <div className="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-sm text-gray-600">
+                            <MessageCircle className="h-4 w-4" />
+                            {patient.sessionCount}
+                            {' '}
+                            {patient.sessionCount === 1 ? 'Session' : 'Sessions'}
+                          </div>
+                        </button>
+                      ))}
                     </div>
                   )
             )
           : (
               // Groups View
-              groupsWithSessions.length === 0
+              filteredAndSortedGroups.length === 0
                 ? (
                     <div className="py-16 text-center">
                       <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
                         <Users className="h-8 w-8 text-gray-400" />
                       </div>
-                      <h3 className="mb-2 text-lg font-semibold text-gray-900">No groups yet</h3>
-                      <p className="mb-6 text-gray-500">Create a group session to get started</p>
-                      <Button
-                        variant="primary"
-                        onClick={() => {
-                          window.location.href = '/sessions/new';
-                        }}
-                      >
-                        <Plus className="mr-2 h-5 w-5" />
-                        New Group Session
-                      </Button>
+                      <h3 className="mb-2 text-lg font-semibold text-gray-900">
+                        {groupsWithSessions.length === 0 ? 'No groups yet' : 'No matching groups'}
+                      </h3>
+                      <p className="mb-6 text-gray-500">
+                        {groupsWithSessions.length === 0 ? 'Create a group session to get started' : 'Try adjusting your filters'}
+                      </p>
+                      {groupsWithSessions.length === 0 ? (
+                        <Button
+                          variant="primary"
+                          onClick={() => {
+                            window.location.href = '/sessions/new';
+                          }}
+                        >
+                          <Plus className="mr-2 h-5 w-5" />
+                          New Group Session
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            setSessionCountFilter('all');
+                            setLastActivityFilter('all');
+                            setSearchTerm('');
+                          }}
+                        >
+                          Clear filters
+                        </Button>
+                      )}
                     </div>
                   )
                 : (
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      {groupsWithSessions
-                        .filter(g => g.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                        .map(group => (
-                          <div
-                            key={group.id}
-                            className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 transition-all hover:border-purple-200 hover:shadow-md"
-                          >
-                            {/* Group Icon */}
-                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white">
-                              <Users className="h-5 w-5" />
-                            </div>
-
-                            {/* Info */}
-                            <div className="min-w-0 flex-1">
-                              <h3 className="font-medium text-gray-900">{group.name}</h3>
-                              <p className="text-sm text-gray-500">
-                                Last opened
-                                {' '}
-                                {formatRelativeTime(group.lastOpened)}
-                              </p>
-                            </div>
-
-                            {/* Session Badge */}
-                            <div className="flex items-center gap-2">
-                              <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
-                                {group.sessionCount}
-                                {' '}
-                                {group.sessionCount === 1 ? 'Session' : 'Sessions'}
-                              </span>
-                              <ArrowRight className="h-5 w-5 text-gray-400" />
+                      {filteredAndSortedGroups.map(group => (
+                        <button
+                          key={group.id}
+                          type="button"
+                          onClick={() => handleGroupClick(group)}
+                          className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 text-left transition-all hover:border-purple-200 hover:shadow-md"
+                        >
+                          {/* Top row: Stacked avatars + session count */}
+                          <div className="flex items-center justify-between">
+                            <StackedAvatars members={group.members} size="md" maxVisible={3} />
+                            <div className="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-sm text-gray-600">
+                              <MessageCircle className="h-4 w-4" />
+                              {group.sessionCount}
+                              {' '}
+                              {group.sessionCount === 1 ? 'Session' : 'Sessions'}
                             </div>
                           </div>
-                        ))}
+
+                          {/* Group name and last opened */}
+                          <div>
+                            <h3 className="font-medium text-gray-900">
+                              {group.members.length > 0
+                                ? group.members.map(m => m.name.split(' ')[0]).join(', ')
+                                : group.name}
+                            </h3>
+                            <p className="text-sm text-gray-500">
+                              Last opened
+                              {' '}
+                              {formatRelativeTime(group.lastOpened)}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
                     </div>
                   )
             )}
-
-      {/* Assign Module Modal */}
-      {selectedSessionForModule && (
-        <AssignModuleModal
-          sessionId={selectedSessionForModule.id}
-          sessionTitle={selectedSessionForModule.title}
-          currentModuleId={selectedSessionForModule.moduleId}
-          onClose={() => {
-            setIsAssignModuleModalOpen(false);
-            setSelectedSessionForModule(null);
-          }}
-          onAssigned={handleModuleAssigned}
-        />
-      )}
     </div>
   );
 }

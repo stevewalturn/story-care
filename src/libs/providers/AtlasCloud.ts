@@ -4,34 +4,34 @@
  * Documentation: https://docs.atlascloud.ai/
  */
 
-export type AtlasImageModel =
+export type AtlasImageModel
   // Text-to-Image
-  | 'flux-schnell'
-  | 'flux-dev'
+  = | 'flux-schnell'
+    | 'flux-dev'
   // Image-to-Image (existing)
-  | 'flux-redux-dev'
+    | 'flux-redux-dev'
   // Image-to-Image (Alibaba/Qwen)
-  | 'wan-2.6-i2i'
-  | 'wan-2.5-edit'
-  | 'qwen-image-edit'
-  | 'qwen-image-edit-plus'
+    | 'wan-2.6-i2i'
+    | 'wan-2.5-edit'
+    | 'qwen-image-edit'
+    | 'qwen-image-edit-plus'
   // Image-to-Image (ByteDance/Seedream)
-  | 'seedream-4.5-edit'
-  | 'seedream-4.5-edit-seq'
-  | 'seedream-4-edit'
-  | 'seedream-4-edit-seq'
+    | 'seedream-4.5-edit'
+    | 'seedream-4.5-edit-seq'
+    | 'seedream-4-edit'
+    | 'seedream-4-edit-seq'
   // Image-to-Image (Google/Nano Banana)
-  | 'nano-banana-pro-edit-ultra'
-  | 'nano-banana-pro-edit'
-  | 'nano-banana-pro-edit-dev'
-  | 'nano-banana-edit-dev'
-  | 'nano-banana-edit'
+    | 'nano-banana-pro-edit-ultra'
+    | 'nano-banana-pro-edit'
+    | 'nano-banana-pro-edit-dev'
+    | 'nano-banana-edit-dev'
+    | 'nano-banana-edit'
   // Upscaling
-  | 'recraft-crisp-upscale'
+    | 'recraft-crisp-upscale'
   // Style Transfer
-  | 'plastic-bubble-figure'
-  | 'my-world'
-  | 'micro-landscape-mini-world';
+    | 'plastic-bubble-figure'
+    | 'my-world'
+    | 'micro-landscape-mini-world';
 
 export type AtlasVideoModel = 'seedance-1-lite';
 

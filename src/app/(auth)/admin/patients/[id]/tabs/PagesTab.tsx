@@ -90,7 +90,8 @@ export function PagesTab({ patientId }: PagesTabProps) {
                   page.status === 'published'
                     ? 'bg-green-100 text-green-700'
                     : 'bg-gray-100 text-gray-600'
-                }`}>
+                }`}
+                >
                   {page.status === 'published' ? 'Published' : 'Draft'}
                 </span>
               </div>
@@ -99,7 +100,7 @@ export function PagesTab({ patientId }: PagesTabProps) {
             {/* Content */}
             <div className="p-4">
               <h3 className="mb-1 font-semibold text-gray-900">{page.title}</h3>
-              <p className="mb-4 text-sm text-gray-500 line-clamp-2">
+              <p className="mb-4 line-clamp-2 text-sm text-gray-500">
                 {page.description || 'No description available'}
               </p>
 
@@ -112,7 +113,11 @@ export function PagesTab({ patientId }: PagesTabProps) {
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1 rounded-full border border-gray-200 px-2.5 py-1 text-gray-500">
                     <SlidersHorizontal className="h-3.5 w-3.5" />
-                    <span>{page.blockCount} blocks</span>
+                    <span>
+                      {page.blockCount}
+                      {' '}
+                      blocks
+                    </span>
                   </div>
                 </div>
               </div>

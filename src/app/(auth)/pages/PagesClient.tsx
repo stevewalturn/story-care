@@ -531,7 +531,11 @@ export function PagesClient() {
                     <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-500">
                       <span>{formatDate(page.updatedAt)}</span>
                       <span>•</span>
-                      <span>{page.blockCount} blocks</span>
+                      <span>
+                        {page.blockCount}
+                        {' '}
+                        blocks
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -722,7 +726,9 @@ export function PagesClient() {
                 <div>
                   <h3 className="font-medium text-gray-900">{group.patient.name}</h3>
                   <p className="text-sm text-gray-500">
-                    {group.pages.length} {group.pages.length === 1 ? 'page' : 'pages'}
+                    {group.pages.length}
+                    {' '}
+                    {group.pages.length === 1 ? 'page' : 'pages'}
                   </p>
                 </div>
               </div>
@@ -740,7 +746,7 @@ export function PagesClient() {
                   >
                     {/* Selection Checkbox */}
                     {isSelectionMode && (
-                      <div className="absolute left-3 top-3 z-10">
+                      <div className="absolute top-3 left-3 z-10">
                         <input
                           type="checkbox"
                           checked={selectedPageIds.has(page.id)}
@@ -778,7 +784,11 @@ export function PagesClient() {
                       <div className="mb-3 flex items-center gap-4 text-sm text-gray-600">
                         <div className="flex items-center gap-1">
                           <FileText className="h-4 w-4" />
-                          <span>{page.blockCount} blocks</span>
+                          <span>
+                            {page.blockCount}
+                            {' '}
+                            blocks
+                          </span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
@@ -938,7 +948,9 @@ export function PagesClient() {
                                 {isExpired ? 'Expired' : 'Active'}
                               </span>
                               <span className="text-xs text-gray-600">
-                                Expires: {new Date(link.expiresAt).toLocaleString()}
+                                Expires:
+                                {' '}
+                                {new Date(link.expiresAt).toLocaleString()}
                               </span>
                             </div>
                             <div className="flex items-center gap-1">
@@ -973,8 +985,18 @@ export function PagesClient() {
                             />
                           </div>
                           <div className="mt-2 flex items-center gap-4 text-xs text-gray-600">
-                            <span>Duration: {link.expiryDurationMinutes} minutes</span>
-                            <span>Accessed: {link.accessCount} times</span>
+                            <span>
+                              Duration:
+                              {link.expiryDurationMinutes}
+                              {' '}
+                              minutes
+                            </span>
+                            <span>
+                              Accessed:
+                              {link.accessCount}
+                              {' '}
+                              times
+                            </span>
                           </div>
                         </div>
                       );

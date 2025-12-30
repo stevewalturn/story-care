@@ -5,9 +5,17 @@
 
 'use client';
 
-import { CheckCircle, Clock, FileText, MessageSquare } from 'lucide-react';
+import {
+  CheckCircle,
+  ChevronRight,
+  Clock,
+  FileText,
+  MessageSquare,
+  Search,
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/Button';
+import { MetricCard } from '@/components/dashboard/MetricCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -16,6 +24,7 @@ type PageResponse = {
   pageTitle: string;
   patientId: string;
   patientName: string;
+  patientAvatarUrl?: string;
   reflectionResponseCount: number;
   surveyResponseCount: number;
   totalResponses: number;
@@ -26,8 +35,10 @@ type PageResponse = {
 
 export default function TherapistResponsesPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [pages, setPages] = useState<PageResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -56,10 +67,43 @@ export default function TherapistResponsesPage() {
   const pagesWithResponses = pages.filter(p => p.hasResponses);
   const pagesWithoutResponses = pages.filter(p => !p.hasResponses);
 
+  // Filter pages by search query
+  const filteredPagesWithResponses = pagesWithResponses.filter(
+    p =>
+      p.pageTitle.toLowerCase().includes(searchQuery.toLowerCase())
+      || p.patientName.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+  const filteredPagesWithoutResponses = pagesWithoutResponses.filter(
+    p =>
+      p.pageTitle.toLowerCase().includes(searchQuery.toLowerCase())
+      || p.patientName.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  const totalResponses = pages.reduce((sum, p) => sum + p.totalResponses, 0);
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const getInitials = (name: string) => {
+    const parts = name.split(' ');
+    if (parts.length >= 2 && parts[0] && parts[1]) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
+      <div className="p-8">
+        <div className="py-16 text-center">
+          <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
+          <p className="text-gray-500">Loading responses...</p>
+        </div>
       </div>
     );
   }
@@ -68,167 +112,202 @@ export default function TherapistResponsesPage() {
     <div className="p-8">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Story Page Responses</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          View patient responses to reflection questions and surveys from published story pages
+        <h1 className="text-2xl font-semibold text-gray-900">Patient Responses</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          View and analyze patient responses to reflection questions and surveys
         </p>
       </div>
 
-      {/* Stats Overview */}
-      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <div className="flex items-center">
-            <div className="rounded-full bg-purple-100 p-3">
-              <FileText className="h-6 w-6 text-purple-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Published Pages</p>
-              <p className="text-2xl font-bold text-gray-900">{pages.length}</p>
-            </div>
-          </div>
-        </div>
+      {/* Metrics Cards */}
+      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <MetricCard
+          icon={<FileText className="h-4 w-4" />}
+          label="Published Pages"
+          value={pages.length}
+          iconBg="bg-purple-50"
+          iconColor="text-purple-600"
+        />
+        <MetricCard
+          icon={<CheckCircle className="h-4 w-4" />}
+          label="With Responses"
+          value={pagesWithResponses.length}
+          iconBg="bg-green-50"
+          iconColor="text-green-600"
+        />
+        <MetricCard
+          icon={<MessageSquare className="h-4 w-4" />}
+          label="Total Responses"
+          value={totalResponses}
+          iconBg="bg-orange-50"
+          iconColor="text-orange-600"
+        />
+      </div>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <div className="flex items-center">
-            <div className="rounded-full bg-green-100 p-3">
-              <CheckCircle className="h-6 w-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">With Responses</p>
-              <p className="text-2xl font-bold text-gray-900">{pagesWithResponses.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <div className="flex items-center">
-            <div className="rounded-full bg-yellow-100 p-3">
-              <Clock className="h-6 w-6 text-yellow-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Responses</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {pages.reduce((sum, p) => sum + p.totalResponses, 0)}
-              </p>
-            </div>
-          </div>
+      {/* Search Bar */}
+      <div className="mb-6">
+        <div className="relative">
+          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by page title or patient name..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full rounded-lg border border-gray-200 py-2.5 pr-4 pl-10 text-sm transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
+          />
         </div>
       </div>
 
       {/* Pages with Responses */}
-      {pagesWithResponses.length > 0 && (
-        <div className="mb-8 rounded-lg border border-gray-200 bg-white">
-          <div className="border-b border-gray-200 px-6 py-4">
-            <h2 className="text-lg font-semibold text-gray-900">Pages with Responses</h2>
-            <p className="text-sm text-gray-600">Story pages that have received patient responses</p>
+      {filteredPagesWithResponses.length > 0 && (
+        <div className="mb-6 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+          <div className="border-b border-gray-100 px-6 py-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-50">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-gray-900">Pages with Responses</h2>
+                <p className="text-xs text-gray-500">
+                  {filteredPagesWithResponses.length}
+                  {' '}
+                  page
+                  {filteredPagesWithResponses.length !== 1 ? 's' : ''}
+                  {' '}
+                  have received patient feedback
+                </p>
+              </div>
+            </div>
           </div>
 
-          <div className="divide-y divide-gray-200">
-            {pagesWithResponses.map(page => (
-              <div
+          <div className="divide-y divide-gray-50">
+            {filteredPagesWithResponses.map(page => (
+              <button
                 key={page.pageId}
-                className="flex items-center justify-between p-6 transition-colors hover:bg-gray-50"
+                type="button"
+                onClick={() => router.push(`/therapist/responses/${page.pageId}`)}
+                className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-gray-50"
               >
-                <div className="flex-1">
-                  <div className="flex items-start">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
-                      <FileText className="h-5 w-5 text-purple-600" />
-                    </div>
-                    <div className="ml-4 flex-1">
-                      <h3 className="font-medium text-gray-900">{page.pageTitle}</h3>
-                      <p className="text-sm text-gray-600">
-                        Patient:
-                        {page.patientName}
-                      </p>
-                      <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
+                <div className="flex items-center gap-4">
+                  {/* Patient Avatar */}
+                  {page.patientAvatarUrl
+                    ? (
+                        <img
+                          src={page.patientAvatarUrl}
+                          alt={page.patientName}
+                          className="h-10 w-10 rounded-full object-cover"
+                        />
+                      )
+                    : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-sm font-medium text-white">
+                          {getInitials(page.patientName)}
+                        </div>
+                      )}
+
+                  <div>
+                    <h3 className="font-medium text-gray-900">{page.pageTitle}</h3>
+                    <p className="text-sm text-gray-500">{page.patientName}</p>
+                    <div className="mt-1.5 flex items-center gap-3 text-xs text-gray-400">
+                      <span className="flex items-center gap-1">
+                        <MessageSquare className="h-3 w-3" />
+                        {page.reflectionResponseCount}
+                        {' '}
+                        reflection
+                        {page.reflectionResponseCount !== 1 ? 's' : ''}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <FileText className="h-3 w-3" />
+                        {page.surveyResponseCount}
+                        {' '}
+                        survey
+                        {page.surveyResponseCount !== 1 ? 's' : ''}
+                      </span>
+                      {page.lastResponseAt && (
                         <span className="flex items-center gap-1">
-                          <MessageSquare className="h-3 w-3" />
-                          {page.reflectionResponseCount}
-                          {' '}
-                          reflection
-                          {page.reflectionResponseCount !== 1 ? 's' : ''}
+                          <Clock className="h-3 w-3" />
+                          {formatDate(page.lastResponseAt)}
                         </span>
-                        <span className="flex items-center gap-1">
-                          <FileText className="h-3 w-3" />
-                          {page.surveyResponseCount}
-                          {' '}
-                          survey
-                          {page.surveyResponseCount !== 1 ? 's' : ''}
-                        </span>
-                        {page.lastResponseAt && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            Last:
-                            {' '}
-                            {new Date(page.lastResponseAt).toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <div className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700">
+                    <CheckCircle className="h-3 w-3" />
                     {page.totalResponses}
                     {' '}
-                    responses
-                  </div>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => {
-                      window.location.href = `/therapist/responses/${page.pageId}`;
-                    }}
-                  >
-                    View Responses
-                  </Button>
+                    response
+                    {page.totalResponses !== 1 ? 's' : ''}
+                  </span>
+                  <ChevronRight className="h-5 w-5 text-gray-300" />
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
       )}
 
       {/* Pages without Responses */}
-      {pagesWithoutResponses.length > 0 && (
-        <div className="rounded-lg border border-gray-200 bg-white">
-          <div className="border-b border-gray-200 px-6 py-4">
-            <h2 className="text-lg font-semibold text-gray-900">Awaiting Responses</h2>
-            <p className="text-sm text-gray-600">Published pages with no responses yet</p>
+      {filteredPagesWithoutResponses.length > 0 && (
+        <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+          <div className="border-b border-gray-100 px-6 py-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50">
+                <Clock className="h-4 w-4 text-amber-600" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-gray-900">Awaiting Responses</h2>
+                <p className="text-xs text-gray-500">
+                  {filteredPagesWithoutResponses.length}
+                  {' '}
+                  published page
+                  {filteredPagesWithoutResponses.length !== 1 ? 's' : ''}
+                  {' '}
+                  with no responses yet
+                </p>
+              </div>
+            </div>
           </div>
 
-          <div className="divide-y divide-gray-200">
-            {pagesWithoutResponses.map(page => (
+          <div className="divide-y divide-gray-50">
+            {filteredPagesWithoutResponses.map(page => (
               <div
                 key={page.pageId}
-                className="flex items-center justify-between p-6 opacity-60"
+                className="flex items-center justify-between px-6 py-4"
               >
-                <div className="flex-1">
-                  <div className="flex items-start">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-                      <FileText className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="font-medium text-gray-700">{page.pageTitle}</h3>
-                      <p className="text-sm text-gray-500">
-                        Patient:
-                        {page.patientName}
-                      </p>
-                      {page.publishedAt && (
-                        <p className="mt-1 text-xs text-gray-400">
-                          Published:
-                          {' '}
-                          {new Date(page.publishedAt).toLocaleDateString()}
-                        </p>
+                <div className="flex items-center gap-4">
+                  {/* Patient Avatar */}
+                  {page.patientAvatarUrl
+                    ? (
+                        <img
+                          src={page.patientAvatarUrl}
+                          alt={page.patientName}
+                          className="h-10 w-10 rounded-full object-cover opacity-60"
+                        />
+                      )
+                    : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-sm font-medium text-gray-500">
+                          {getInitials(page.patientName)}
+                        </div>
                       )}
-                    </div>
+
+                  <div>
+                    <h3 className="font-medium text-gray-600">{page.pageTitle}</h3>
+                    <p className="text-sm text-gray-400">{page.patientName}</p>
+                    {page.publishedAt && (
+                      <p className="mt-1 text-xs text-gray-400">
+                        Published
+                        {' '}
+                        {formatDate(page.publishedAt)}
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                <div className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-                  No responses
-                </div>
+                <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500">
+                  <Clock className="h-3 w-3" />
+                  Awaiting
+                </span>
               </div>
             ))}
           </div>
@@ -237,11 +316,24 @@ export default function TherapistResponsesPage() {
 
       {/* Empty state */}
       {pages.length === 0 && (
-        <div className="rounded-lg border border-gray-200 bg-white py-16 text-center">
-          <FileText className="mx-auto h-12 w-12 text-gray-400" />
-          <p className="mt-2 text-sm text-gray-500">No published story pages yet</p>
-          <p className="mt-1 text-xs text-gray-400">
-            Create and publish story pages to start collecting patient responses
+        <div className="rounded-xl border border-gray-100 bg-white py-16 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+            <FileText className="h-8 w-8 text-gray-400" />
+          </div>
+          <h3 className="mb-1 text-lg font-medium text-gray-900">No published pages yet</h3>
+          <p className="mx-auto max-w-sm text-sm text-gray-500">
+            Create and publish story pages to start collecting patient responses to reflection questions and surveys.
+          </p>
+        </div>
+      )}
+
+      {/* No results from search */}
+      {pages.length > 0 && filteredPagesWithResponses.length === 0 && filteredPagesWithoutResponses.length === 0 && (
+        <div className="rounded-xl border border-gray-100 bg-white py-12 text-center shadow-sm">
+          <Search className="mx-auto mb-3 h-8 w-8 text-gray-400" />
+          <h3 className="mb-1 font-medium text-gray-900">No results found</h3>
+          <p className="text-sm text-gray-500">
+            Try adjusting your search query
           </p>
         </div>
       )}

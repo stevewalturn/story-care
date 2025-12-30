@@ -44,6 +44,7 @@ type ContentBlock = {
   content: {
     text?: string;
     mediaUrl?: string;
+    displayUrl?: string; // Presigned URL for display (not saved to DB)
     sceneId?: string;
     sceneTitle?: string;
     questions?: ReflectionQuestion[]; // For reflection blocks
@@ -105,7 +106,7 @@ export function PageEditor({
   initialPatientId,
   patients = [],
   onSave,
-  onClose,
+  onClose: _onClose,
 }: PageEditorProps) {
   const { user } = useAuth();
   const [title, setTitle] = useState(initialTitle);
@@ -296,8 +297,13 @@ export function PageEditor({
 
     // Handle different asset types
     if (asset.type === 'media') {
-      // Image or video asset
-      updateBlockContent(assetPickerBlockId, { mediaUrl: asset.data.mediaUrl });
+      // Image or video asset - store raw path for saving, presigned URL for display
+      const presignedUrl = asset.data.mediaUrl;
+      const gcsPath = presignedUrl ? extractGcsPath(presignedUrl) : null;
+      updateBlockContent(assetPickerBlockId, {
+        mediaUrl: gcsPath || presignedUrl, // Raw path for database
+        displayUrl: presignedUrl, // Presigned URL for display
+      });
     } else if (asset.type === 'quotes') {
       // Quote asset
       updateBlockContent(assetPickerBlockId, { text: asset.data.quoteText });
@@ -326,14 +332,15 @@ export function PageEditor({
   const handleSceneSelect = (scene: any) => {
     if (!scenePickerBlockId) return;
 
-    // Extract raw GCS path from presigned URL
-    const sceneMediaUrl = scene.videoUrl || scene.thumbnailUrl;
+    // Extract raw GCS path from presigned URL for saving
+    const sceneMediaUrl = scene.assembledVideoUrl || scene.videoUrl || scene.thumbnailUrl;
     const gcsPath = sceneMediaUrl ? extractGcsPath(sceneMediaUrl) : null;
 
     updateBlockContent(scenePickerBlockId, {
       sceneId: scene.id,
       sceneTitle: scene.title,
-      mediaUrl: gcsPath || sceneMediaUrl, // Store raw path, not presigned URL
+      mediaUrl: gcsPath || sceneMediaUrl, // Store raw path for database
+      displayUrl: sceneMediaUrl, // Keep presigned URL for display
     });
 
     // Close modal
@@ -510,14 +517,16 @@ export function PageEditor({
                     </p>
                   </div>
                 </div>
-                {block.content.mediaUrl && (
+                {(block.content.displayUrl || block.content.mediaUrl) && (
                   <div className="mt-2 aspect-video overflow-hidden rounded bg-gray-900">
-                    {block.content.mediaUrl.includes('.mp4') || block.content.mediaUrl.includes('video') ? (
-                      <div className="flex h-full items-center justify-center">
-                        <Video className="h-12 w-12 text-white opacity-50" />
-                      </div>
+                    {(block.content.displayUrl || block.content.mediaUrl || '').includes('.mp4') || (block.content.displayUrl || block.content.mediaUrl || '').includes('video') ? (
+                      <video
+                        src={block.content.displayUrl || block.content.mediaUrl}
+                        controls
+                        className="h-full w-full object-contain"
+                      />
                     ) : (
-                      <img src={block.content.mediaUrl} alt={block.content.sceneTitle} className="h-full w-full object-cover" />
+                      <img src={block.content.displayUrl || block.content.mediaUrl} alt={block.content.sceneTitle} className="h-full w-full object-cover" />
                     )}
                   </div>
                 )}
@@ -764,44 +773,8 @@ export function PageEditor({
     <div className="flex h-full flex-col bg-gray-50">
       {/* Header */}
       <div className="border-b border-gray-200 bg-white px-6 py-4">
-        {/* Breadcrumb and Actions Row */}
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {onClose && (
-              <button
-                onClick={onClose}
-                className="flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-gray-700"
-              >
-                <X className="h-4 w-4" />
-                <span>Back to Pages</span>
-              </button>
-            )}
-            <span className="text-gray-300">/</span>
-            <span className="text-sm font-medium text-gray-900">
-              {title || 'New Page'}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant={showPreview ? 'secondary' : 'ghost'}
-              onClick={() => setShowPreview(!showPreview)}
-              className={showPreview ? 'border-purple-500 bg-purple-50 text-purple-700' : ''}
-            >
-              <Eye className="mr-2 h-4 w-4" />
-              {showPreview ? 'Editing' : 'Preview'}
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => onSave(title, blocks, selectedPatientId)}
-              disabled={blocks.length === 0 || !selectedPatientId}
-            >
-              Save Page
-            </Button>
-          </div>
-        </div>
-
-        {/* Title and Patient Row */}
-        <div className="flex items-start gap-6">
+        {/* Title, Patient, and Actions Row */}
+        <div className="flex items-center gap-4">
           <div className="flex-1">
             <Input
               value={title}
@@ -810,7 +783,7 @@ export function PageEditor({
               placeholder="Page title..."
             />
           </div>
-          <div className="w-64">
+          <div className="w-56">
             <select
               value={selectedPatientId || ''}
               onChange={e => setSelectedPatientId(e.target.value || null)}
@@ -824,6 +797,21 @@ export function PageEditor({
               ))}
             </select>
           </div>
+          <Button
+            variant={showPreview ? 'secondary' : 'ghost'}
+            onClick={() => setShowPreview(!showPreview)}
+            className={showPreview ? 'border-purple-500 bg-purple-50 text-purple-700' : ''}
+          >
+            <Eye className="mr-2 h-4 w-4" />
+            {showPreview ? 'Editing' : 'Preview'}
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => onSave(title, blocks, selectedPatientId)}
+            disabled={blocks.length === 0 || !selectedPatientId}
+          >
+            Save Page
+          </Button>
         </div>
       </div>
 
@@ -847,14 +835,16 @@ export function PageEditor({
                   selectedBlockId === block.id
                     ? 'border-purple-200 bg-purple-50'
                     : 'border-gray-100 bg-gray-50'
-                }`}>
+                }`}
+                >
                   <button className="cursor-move rounded p-1 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600">
                     <GripVertical className="h-4 w-4" />
                   </button>
                   <div className="flex flex-1 items-center gap-2">
                     <span className={`flex h-6 w-6 items-center justify-center rounded ${
                       selectedBlockId === block.id ? 'bg-purple-100 text-purple-600' : 'bg-gray-200 text-gray-600'
-                    }`}>
+                    }`}
+                    >
                       {getBlockIcon(block.type)}
                     </span>
                     <span className="text-sm font-medium text-gray-700 capitalize">
@@ -905,11 +895,18 @@ export function PageEditor({
                         <p className="line-clamp-2">{block.content.text}</p>
                       )}
                       {block.content.sceneId && block.content.sceneTitle && (
-                        <p className="line-clamp-1 text-xs text-gray-600">
-                          Scene:
-                          {' '}
-                          {block.content.sceneTitle}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          {(block.content.displayUrl || block.content.mediaUrl) && (
+                            <img
+                              src={block.content.displayUrl || block.content.mediaUrl}
+                              alt={block.content.sceneTitle}
+                              className="h-10 w-10 rounded object-cover"
+                            />
+                          )}
+                          <p className="line-clamp-1 text-xs text-gray-600">
+                            {block.content.sceneTitle}
+                          </p>
+                        </div>
                       )}
                       {block.content.questions && block.content.questions.length > 0 && (
                         <p className="line-clamp-1 text-xs text-gray-600">
@@ -925,12 +922,20 @@ export function PageEditor({
                           survey question(s)
                         </p>
                       )}
-                      {block.content.mediaUrl && !block.content.sceneId && (
-                        <p className="truncate text-xs">
-                          Media:
-                          {' '}
-                          {block.content.mediaUrl}
-                        </p>
+                      {(block.content.displayUrl || block.content.mediaUrl) && !block.content.sceneId && (
+                        <div className="mt-1.5 flex items-center gap-2">
+                          {block.type === 'image' ? (
+                            <img
+                              src={block.content.displayUrl || block.content.mediaUrl}
+                              alt="Preview"
+                              className="h-10 w-10 rounded object-cover"
+                            />
+                          ) : block.type === 'video' ? (
+                            <div className="flex h-10 w-10 items-center justify-center rounded bg-gray-800">
+                              <Video className="h-4 w-4 text-white" />
+                            </div>
+                          ) : null}
+                        </div>
                       )}
                       {!block.content.text && !block.content.sceneId && !block.content.questions && !block.content.surveyQuestions && !block.content.mediaUrl && (
                         <p className="text-gray-400 italic">Click to edit this block</p>
@@ -984,9 +989,9 @@ export function PageEditor({
                   {block.type === 'text' && block.content.text && (
                     <p className="leading-relaxed text-gray-700">{block.content.text}</p>
                   )}
-                  {block.type === 'image' && block.content.mediaUrl && (
+                  {block.type === 'image' && (block.content.displayUrl || block.content.mediaUrl) && (
                     <img
-                      src={block.content.mediaUrl}
+                      src={block.content.displayUrl || block.content.mediaUrl}
                       alt="Content"
                       className="w-full rounded-lg"
                     />
@@ -1009,14 +1014,16 @@ export function PageEditor({
                         <Clapperboard className="h-5 w-5 text-purple-600" />
                         <p className="font-medium text-purple-900">{block.content.sceneTitle}</p>
                       </div>
-                      {block.content.mediaUrl && (
+                      {(block.content.displayUrl || block.content.mediaUrl) && (
                         <div className="aspect-video overflow-hidden rounded-lg bg-gray-900">
-                          {block.content.mediaUrl.includes('.mp4') || block.content.mediaUrl.includes('video') ? (
-                            <div className="flex h-full items-center justify-center">
-                              <Video className="h-16 w-16 text-white opacity-50" />
-                            </div>
+                          {(block.content.displayUrl || block.content.mediaUrl || '').includes('.mp4') || (block.content.displayUrl || block.content.mediaUrl || '').includes('video') ? (
+                            <video
+                              src={block.content.displayUrl || block.content.mediaUrl}
+                              controls
+                              className="h-full w-full object-contain"
+                            />
                           ) : (
-                            <img src={block.content.mediaUrl} alt={block.content.sceneTitle || 'Scene'} className="h-full w-full object-cover" />
+                            <img src={block.content.displayUrl || block.content.mediaUrl} alt={block.content.sceneTitle || 'Scene'} className="h-full w-full object-cover" />
                           )}
                         </div>
                       )}
@@ -1118,7 +1125,11 @@ export function PageEditor({
             <div className="flex items-center justify-between border-b border-gray-200 p-6">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Select {templateType === 'reflection' ? 'Reflection' : 'Survey'} Template
+                  Select
+                  {' '}
+                  {templateType === 'reflection' ? 'Reflection' : 'Survey'}
+                  {' '}
+                  Template
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
                   Choose a template or start from scratch
@@ -1173,7 +1184,9 @@ export function PageEditor({
                             <p className="mt-1 text-sm text-gray-600">{template.description}</p>
                           )}
                           <p className="mt-2 text-xs text-gray-500">
-                            {template.questions?.length || 0} questions
+                            {template.questions?.length || 0}
+                            {' '}
+                            questions
                           </p>
                         </div>
                         <span className="ml-4 rounded-full bg-purple-100 px-3 py-1 text-xs font-medium text-purple-700">

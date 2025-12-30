@@ -157,10 +157,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
       await db.insert(utterances).values(utteranceValues);
     }
 
-    // Update session status to transcribed
+    // Update session status to transcribed and save audio duration
     await db
       .update(sessions)
-      .set({ transcriptionStatus: 'completed' })
+      .set({
+        transcriptionStatus: 'completed',
+        audioDurationSeconds: Math.round(result.duration),
+      })
       .where(eq(sessions.id, id));
 
     // Log PHI creation (transcript generation)

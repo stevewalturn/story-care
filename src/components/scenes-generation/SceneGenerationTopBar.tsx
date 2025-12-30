@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, HelpCircle, Play, Redo, Undo } from 'lucide-react';
+import { ChevronDown, HelpCircle, Loader2, Play, Redo, Undo } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { getAvailableVideoModels, getFilteredImageModels } from '@/libs/ModelMetadata';
 
@@ -23,6 +23,7 @@ type SceneGenerationTopBarProps = {
   patients?: Patient[];
   selectedPatientId?: string;
   onPatientChange?: (patientId: string) => void;
+  loadingPatients?: boolean;
   selectedImageModel: string;
   onImageModelChange: (modelValue: string) => void;
   selectedVideoModel: string;
@@ -45,6 +46,7 @@ export function SceneGenerationTopBar({
   patients = [],
   selectedPatientId,
   onPatientChange,
+  loadingPatients = false,
   selectedImageModel,
   onImageModelChange,
   selectedVideoModel,
@@ -126,31 +128,45 @@ export function SceneGenerationTopBar({
         {/* Patient Selector */}
         <div className="relative">
           <button
-            onClick={() => patients.length > 1 && setShowPatientDropdown(!showPatientDropdown)}
+            onClick={() => !loadingPatients && patients.length > 0 && setShowPatientDropdown(!showPatientDropdown)}
+            disabled={loadingPatients}
             className={`flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-900 transition-colors ${
-              patients.length > 1 ? 'cursor-pointer hover:border-gray-300' : 'cursor-default'
+              loadingPatients
+                ? 'cursor-wait opacity-70'
+                : patients.length > 0
+                  ? 'cursor-pointer hover:border-gray-300'
+                  : 'cursor-default'
             }`}
           >
-            {/* Patient Avatar */}
-            {selectedPatient.avatarUrl || selectedPatient.referenceImageUrl ? (
-              <img
-                src={selectedPatient.avatarUrl || selectedPatient.referenceImageUrl}
-                alt={selectedPatient.name}
-                className="h-6 w-6 rounded-full object-cover"
-              />
+            {loadingPatients ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
+                <span className="text-gray-500">Loading patients...</span>
+              </>
             ) : (
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-500 text-xs font-medium text-white">
-                {getPatientInitial(selectedPatient.name)}
-              </div>
-            )}
-            <span>{selectedPatient.name}</span>
-            {patients.length > 1 && (
-              <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${showPatientDropdown ? 'rotate-180' : ''}`} />
+              <>
+                {/* Patient Avatar */}
+                {selectedPatient.avatarUrl || selectedPatient.referenceImageUrl ? (
+                  <img
+                    src={selectedPatient.avatarUrl || selectedPatient.referenceImageUrl}
+                    alt={selectedPatient.name}
+                    className="h-6 w-6 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-500 text-xs font-medium text-white">
+                    {getPatientInitial(selectedPatient.name)}
+                  </div>
+                )}
+                <span>{selectedPatient.name}</span>
+                {patients.length > 0 && (
+                  <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${showPatientDropdown ? 'rotate-180' : ''}`} />
+                )}
+              </>
             )}
           </button>
 
           {/* Patient Dropdown */}
-          {showPatientDropdown && patients.length > 1 && (
+          {showPatientDropdown && patients.length > 0 && (
             <>
               <div
                 className="fixed inset-0 z-10"

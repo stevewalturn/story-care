@@ -330,7 +330,12 @@ export function GeneralInformationTab({ patientId }: GeneralInformationTabProps)
                 Cancel
               </Button>
               <Button onClick={() => handleSave('personal')} disabled={saving}>
-                {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save'}
+                {saving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : 'Save'}
               </Button>
             </div>
           </div>
@@ -453,7 +458,12 @@ export function GeneralInformationTab({ patientId }: GeneralInformationTabProps)
                 Cancel
               </Button>
               <Button onClick={() => handleSave('address')} disabled={saving}>
-                {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save'}
+                {saving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : 'Save'}
               </Button>
             </div>
           </div>
@@ -529,7 +539,12 @@ export function GeneralInformationTab({ patientId }: GeneralInformationTabProps)
                 Cancel
               </Button>
               <Button onClick={() => handleSave('contact')} disabled={saving}>
-                {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save'}
+                {saving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : 'Save'}
               </Button>
             </div>
           </div>
@@ -612,7 +627,12 @@ export function GeneralInformationTab({ patientId }: GeneralInformationTabProps)
                 Cancel
               </Button>
               <Button onClick={() => handleSave('emergency')} disabled={saving}>
-                {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save'}
+                {saving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : 'Save'}
               </Button>
             </div>
           </div>

@@ -77,8 +77,8 @@ export function SessionsTab({ patientId }: SessionsTabProps) {
   const filteredSessions = allSessions
     .filter(s => s.sessionType === sessionType)
     .filter(s =>
-      searchQuery === '' ||
-      s.title.toLowerCase().includes(searchQuery.toLowerCase()),
+      searchQuery === ''
+      || s.title.toLowerCase().includes(searchQuery.toLowerCase()),
     );
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -134,7 +134,7 @@ export function SessionsTab({ patientId }: SessionsTabProps) {
               placeholder="Search"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="h-9 w-64 rounded-lg border border-gray-200 pl-9 pr-4 text-sm placeholder:text-gray-400 focus:border-purple-500 focus:outline-none"
+              className="h-9 w-64 rounded-lg border border-gray-200 pr-4 pl-9 text-sm placeholder:text-gray-400 focus:border-purple-500 focus:outline-none"
             />
           </div>
           <button className="flex h-9 items-center gap-2 rounded-lg bg-purple-600 px-4 text-sm font-medium text-white hover:bg-purple-700">
@@ -161,7 +161,11 @@ export function SessionsTab({ patientId }: SessionsTabProps) {
             {filteredSessions.length === 0 ? (
               <tr>
                 <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                  No {sessionType} sessions found for this patient.
+                  No
+                  {' '}
+                  {sessionType}
+                  {' '}
+                  sessions found for this patient.
                 </td>
               </tr>
             ) : (
@@ -222,7 +226,15 @@ export function SessionsTab({ patientId }: SessionsTabProps) {
 
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <span>
-              Result {filteredSessions.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} - {Math.min(currentPage * itemsPerPage, filteredSessions.length)} of
+              Result
+              {' '}
+              {filteredSessions.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}
+              {' '}
+              -
+              {' '}
+              {Math.min(currentPage * itemsPerPage, filteredSessions.length)}
+              {' '}
+              of
               {' '}
               {filteredSessions.length}
             </span>

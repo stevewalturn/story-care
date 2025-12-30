@@ -105,7 +105,11 @@ export function ReflectionsTab({ patientId }: ReflectionsTabProps) {
           <div className="mb-4 flex items-center gap-2">
             <h2 className="font-semibold text-gray-900">{source}</h2>
             <span className="text-sm text-gray-400">•</span>
-            <span className="text-sm text-gray-500">{sourceReflections.length} Questions</span>
+            <span className="text-sm text-gray-500">
+              {sourceReflections.length}
+              {' '}
+              Questions
+            </span>
           </div>
 
           {/* Questions */}
@@ -123,7 +127,11 @@ export function ReflectionsTab({ patientId }: ReflectionsTabProps) {
                 </div>
 
                 {/* Answer */}
-                <p className="font-semibold text-gray-900">"{reflection.answer}"</p>
+                <p className="font-semibold text-gray-900">
+                  "
+                  {reflection.answer}
+                  "
+                </p>
               </div>
             ))}
           </div>

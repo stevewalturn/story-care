@@ -266,10 +266,10 @@ export default function PatientStoryPage({ params }: Props) {
       <div className="relative overflow-hidden bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 px-8 py-16">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute -left-4 -top-4 h-24 w-24 rounded-full bg-white" />
-          <div className="absolute right-20 top-10 h-16 w-16 rounded-full bg-white" />
+          <div className="absolute -top-4 -left-4 h-24 w-24 rounded-full bg-white" />
+          <div className="absolute top-10 right-20 h-16 w-16 rounded-full bg-white" />
           <div className="absolute bottom-8 left-1/3 h-20 w-20 rounded-full bg-white" />
-          <div className="absolute -bottom-4 -right-4 h-32 w-32 rounded-full bg-white" />
+          <div className="absolute -right-4 -bottom-4 h-32 w-32 rounded-full bg-white" />
         </div>
 
         <div className="relative mx-auto max-w-4xl">
@@ -349,8 +349,10 @@ export default function PatientStoryPage({ params }: Props) {
                   <div className="border-l-4 border-purple-500 bg-gradient-to-r from-purple-50 to-white p-8">
                     <div className="flex items-start gap-4">
                       <Quote className="h-8 w-8 flex-shrink-0 text-purple-400" />
-                      <blockquote className="text-xl italic text-gray-700">
-                        "{block.textContent}"
+                      <blockquote className="text-xl text-gray-700 italic">
+                        "
+                        {block.textContent}
+                        "
                       </blockquote>
                     </div>
                   </div>
@@ -491,7 +493,9 @@ export default function PatientStoryPage({ params }: Props) {
                                 <div className="text-center">
                                   <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-2 text-sm font-medium text-green-800">
                                     <CheckCircle2 className="h-4 w-4" />
-                                    Selected: {surveyAnswers[q.id]}
+                                    Selected:
+                                    {' '}
+                                    {surveyAnswers[q.id]}
                                   </span>
                                 </div>
                               )}
@@ -514,7 +518,8 @@ export default function PatientStoryPage({ params }: Props) {
                                     surveyAnswers[q.id] === option
                                       ? 'border-green-500 bg-green-500'
                                       : 'border-gray-300'
-                                  }`}>
+                                  }`}
+                                  >
                                     {surveyAnswers[q.id] === option && (
                                       <CheckCircle2 className="h-4 w-4 text-white" />
                                     )}

@@ -106,10 +106,10 @@ export default function PatientStoryPage() {
       <div className="relative overflow-hidden bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 px-8 py-16">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute -left-4 -top-4 h-24 w-24 rounded-full bg-white" />
-          <div className="absolute right-20 top-10 h-16 w-16 rounded-full bg-white" />
+          <div className="absolute -top-4 -left-4 h-24 w-24 rounded-full bg-white" />
+          <div className="absolute top-10 right-20 h-16 w-16 rounded-full bg-white" />
           <div className="absolute bottom-8 left-1/3 h-20 w-20 rounded-full bg-white" />
-          <div className="absolute -bottom-4 -right-4 h-32 w-32 rounded-full bg-white" />
+          <div className="absolute -right-4 -bottom-4 h-32 w-32 rounded-full bg-white" />
         </div>
 
         <div className="relative mx-auto max-w-4xl text-center">
@@ -118,7 +118,9 @@ export default function PatientStoryPage() {
             Your personal journey
           </div>
           <h1 className="mb-4 text-4xl font-bold text-white md:text-5xl">
-            Welcome back, {userName}
+            Welcome back,
+            {' '}
+            {userName}
           </h1>
           <p className="mx-auto max-w-2xl text-lg text-purple-100">
             Your personalized stories are here to help you reflect, grow, and visualize your therapeutic journey.
@@ -153,9 +155,9 @@ export default function PatientStoryPage() {
                 <Star className="h-6 w-6 text-indigo-600" />
               </div>
               <div className="text-3xl font-bold text-gray-900">
-                {storyPages.filter(p => {
+                {storyPages.filter((p) => {
                   const daysSince = Math.floor(
-                    (Date.now() - new Date(p.publishedAt).getTime()) / (1000 * 60 * 60 * 24)
+                    (Date.now() - new Date(p.publishedAt).getTime()) / (1000 * 60 * 60 * 24),
                   );
                   return daysSince < 7;
                 }).length}
@@ -223,9 +225,9 @@ export default function PatientStoryPage() {
 
                     {/* New badge */}
                     {Math.floor(
-                      (Date.now() - new Date(page.publishedAt).getTime()) / (1000 * 60 * 60 * 24)
+                      (Date.now() - new Date(page.publishedAt).getTime()) / (1000 * 60 * 60 * 24),
                     ) < 7 && (
-                      <div className="absolute left-3 top-3 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 px-3 py-1 text-xs font-medium text-white shadow-lg">
+                      <div className="absolute top-3 left-3 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 px-3 py-1 text-xs font-medium text-white shadow-lg">
                         New
                       </div>
                     )}
@@ -249,7 +251,9 @@ export default function PatientStoryPage() {
                         {formatDate(page.publishedAt)}
                       </div>
                       <div className="flex items-center gap-2 rounded-full bg-gray-100 px-2.5 py-1">
-                        {page.blockCount} sections
+                        {page.blockCount}
+                        {' '}
+                        sections
                       </div>
                     </div>
 

@@ -120,7 +120,7 @@ export function PatientList({
 
         <CardBody className="p-0">
 
-        {/* Table */}
+          {/* Table */}
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -134,7 +134,7 @@ export function PatientList({
                   <th className="px-4 py-3"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
-            <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200">
                 {paginatedPatients.length === 0
                   ? (
                       <tr>
@@ -147,124 +147,124 @@ export function PatientList({
                       </tr>
                     )
                   : paginatedPatients.map((patient) => {
-                  const status = patient.status || 'invited';
-                  const isHovered = hoveredPatientId === patient.id;
-                  const canResend = status === 'invited' && patient.email;
+                      const status = patient.status || 'invited';
+                      const isHovered = hoveredPatientId === patient.id;
+                      const canResend = status === 'invited' && patient.email;
 
-                  // Status badge styling
-                  const getStatusBadge = () => {
-                    if (status === 'active') {
-                      return { bg: 'bg-green-50 text-green-700', label: 'Active' };
-                    }
-                    if (status === 'invited') {
-                      return { bg: 'bg-amber-50 text-amber-700', label: 'Pending' };
-                    }
-                    return { bg: 'bg-gray-100 text-gray-600', label: 'Inactive' };
-                  };
-                  const statusBadge = getStatusBadge();
+                      // Status badge styling
+                      const getStatusBadge = () => {
+                        if (status === 'active') {
+                          return { bg: 'bg-green-50 text-green-700', label: 'Active' };
+                        }
+                        if (status === 'invited') {
+                          return { bg: 'bg-amber-50 text-amber-700', label: 'Pending' };
+                        }
+                        return { bg: 'bg-gray-100 text-gray-600', label: 'Inactive' };
+                      };
+                      const statusBadge = getStatusBadge();
 
-                  return (
-                    <tr
-                      key={patient.id}
-                      className="hover:bg-gray-50"
-                    >
-                      {/* Name with Avatar */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                          {patient.avatarUrl || patient.referenceImageUrl
-                            ? (
-                                <img
-                                  src={patient.avatarUrl || patient.referenceImageUrl}
-                                  alt={patient.name}
-                                  className="h-10 w-10 rounded-full object-cover"
-                                />
-                              )
-                            : (
-                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-purple-600 text-sm font-medium text-white">
-                                  {patient.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
-                                </div>
-                              )}
-                          <span className="font-medium text-gray-900">{patient.name}</span>
-                        </div>
-                      </td>
-
-                      {/* Pages */}
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                          <BookOpen className="h-4 w-4 text-gray-400" />
-                          <span>{patient.pageCount || 0}</span>
-                        </div>
-                      </td>
-
-                      {/* Surveys */}
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                          <FileText className="h-4 w-4 text-gray-400" />
-                          <span>{patient.surveyCount || 0}</span>
-                        </div>
-                      </td>
-
-                      {/* Reflections */}
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                          <MessageSquare className="h-4 w-4 text-gray-400" />
-                          <span>{patient.reflectionCount || 0}</span>
-                        </div>
-                      </td>
-
-                      {/* Sessions */}
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                          <Video className="h-4 w-4 text-gray-400" />
-                          <span>{patient.sessionCount || 0}</span>
-                        </div>
-                      </td>
-
-                      {/* Status with Resend Invitation on hover */}
-                      <td
-                        className="px-4 py-4 whitespace-nowrap"
-                        onMouseEnter={() => setHoveredPatientId(patient.id)}
-                        onMouseLeave={() => setHoveredPatientId(null)}
-                      >
-                        {canResend && isHovered && !resendSuccess
-                          ? (
-                              <button
-                                type="button"
-                                onClick={() => handleResendInvitation(patient.id)}
-                                disabled={resendingId === patient.id}
-                                className="inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 transition-colors hover:bg-purple-100 disabled:opacity-50"
-                              >
-                                <Mail className="h-3 w-3" />
-                                {resendingId === patient.id ? 'Sending...' : 'Resend Invitation'}
-                              </button>
-                            )
-                          : resendSuccess === patient.id
-                            ? (
-                                <span className="inline-flex rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700">
-                                  Invitation Sent!
-                                </span>
-                              )
-                            : (
-                                <span
-                                  className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${statusBadge.bg}`}
-                                >
-                                  {statusBadge.label}
-                                </span>
-                              )}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <Link
-                          href={`/admin/patients/${patient.id}`}
-                          className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                      return (
+                        <tr
+                          key={patient.id}
+                          className="hover:bg-gray-50"
                         >
-                          <ArrowRight className="h-4 w-4" />
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                  })}
+                          {/* Name with Avatar */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-3">
+                              {patient.avatarUrl || patient.referenceImageUrl
+                                ? (
+                                    <img
+                                      src={patient.avatarUrl || patient.referenceImageUrl}
+                                      alt={patient.name}
+                                      className="h-10 w-10 rounded-full object-cover"
+                                    />
+                                  )
+                                : (
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-purple-600 text-sm font-medium text-white">
+                                      {patient.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                                    </div>
+                                  )}
+                              <span className="font-medium text-gray-900">{patient.name}</span>
+                            </div>
+                          </td>
+
+                          {/* Pages */}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                              <BookOpen className="h-4 w-4 text-gray-400" />
+                              <span>{patient.pageCount || 0}</span>
+                            </div>
+                          </td>
+
+                          {/* Surveys */}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                              <FileText className="h-4 w-4 text-gray-400" />
+                              <span>{patient.surveyCount || 0}</span>
+                            </div>
+                          </td>
+
+                          {/* Reflections */}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                              <MessageSquare className="h-4 w-4 text-gray-400" />
+                              <span>{patient.reflectionCount || 0}</span>
+                            </div>
+                          </td>
+
+                          {/* Sessions */}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                              <Video className="h-4 w-4 text-gray-400" />
+                              <span>{patient.sessionCount || 0}</span>
+                            </div>
+                          </td>
+
+                          {/* Status with Resend Invitation on hover */}
+                          <td
+                            className="px-4 py-4 whitespace-nowrap"
+                            onMouseEnter={() => setHoveredPatientId(patient.id)}
+                            onMouseLeave={() => setHoveredPatientId(null)}
+                          >
+                            {canResend && isHovered && !resendSuccess
+                              ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleResendInvitation(patient.id)}
+                                    disabled={resendingId === patient.id}
+                                    className="inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 transition-colors hover:bg-purple-100 disabled:opacity-50"
+                                  >
+                                    <Mail className="h-3 w-3" />
+                                    {resendingId === patient.id ? 'Sending...' : 'Resend Invitation'}
+                                  </button>
+                                )
+                              : resendSuccess === patient.id
+                                ? (
+                                    <span className="inline-flex rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700">
+                                      Invitation Sent!
+                                    </span>
+                                  )
+                                : (
+                                    <span
+                                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${statusBadge.bg}`}
+                                    >
+                                      {statusBadge.label}
+                                    </span>
+                                  )}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <Link
+                              href={`/admin/patients/${patient.id}`}
+                              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                            >
+                              <ArrowRight className="h-4 w-4" />
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
               </tbody>
             </table>
           </div>

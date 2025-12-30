@@ -194,7 +194,7 @@ export function GenerateImageModal({
 
       // Decode base64 to binary
       const byteCharacters = atob(base64Data);
-      const byteNumbers = new Array<number>(byteCharacters.length);
+      const byteNumbers: number[] = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
         byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
