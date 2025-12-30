@@ -204,7 +204,7 @@ export default function PublicSharePage({ params }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50">
       {/* Success Banner */}
       {submitSuccess && (
         <div className="border-b border-green-200 bg-green-50 px-4 py-3">
@@ -237,15 +237,16 @@ export default function PublicSharePage({ params }: Props) {
 
       {/* Page Content */}
       <div className="mx-auto max-w-4xl px-4 py-8">
-        <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold text-gray-900">{pageData.page.title}</h1>
+        <div className="mb-10">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-purple-100/80 px-4 py-2 backdrop-blur-sm">
+            <span className="text-sm font-medium text-purple-700">
+              Personalized for {pageData.page.patientName}
+            </span>
+          </div>
+          <h1 className="mb-3 text-4xl font-bold text-gray-900">{pageData.page.title}</h1>
           {pageData.page.description && (
-            <p className="text-gray-600">{pageData.page.description}</p>
+            <p className="text-lg text-gray-600">{pageData.page.description}</p>
           )}
-          <p className="mt-2 text-sm text-gray-500">
-            For:
-            {pageData.page.patientName}
-          </p>
         </div>
 
         {/* Blocks */}
@@ -259,7 +260,7 @@ export default function PublicSharePage({ params }: Props) {
             );
 
             return (
-              <div key={block.id || index} className="rounded-lg bg-white p-6 shadow-sm">
+              <div key={block.id || index} className="rounded-xl border border-gray-100 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
                 {block.blockType === 'text' && block.textContent && (
                   <div className="prose prose-lg max-w-none">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -277,10 +278,19 @@ export default function PublicSharePage({ params }: Props) {
                 )}
 
                 {block.blockType === 'video' && block.settings?.mediaUrl && (
-                  <div className="aspect-video overflow-hidden rounded-lg bg-gray-900">
-                    <video src={block.settings.mediaUrl} controls className="h-full w-full">
-                      Your browser does not support the video tag.
-                    </video>
+                  <div className="overflow-hidden rounded-xl">
+                    <div className="aspect-video bg-gradient-to-br from-gray-900 to-gray-800">
+                      <video
+                        src={block.settings.mediaUrl}
+                        controls
+                        controlsList="nodownload"
+                        preload="metadata"
+                        className="h-full w-full"
+                        playsInline
+                      >
+                        Your browser does not support the video tag.
+                      </video>
+                    </div>
                   </div>
                 )}
 
@@ -295,14 +305,27 @@ export default function PublicSharePage({ params }: Props) {
                 )}
 
                 {block.blockType === 'scene' && block.sceneId && (
-                  <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
-                    <div className="mb-2 flex items-center gap-2">
-                      <Clapperboard className="h-5 w-5 text-purple-600" />
-                      <p className="font-medium text-purple-900">{block.settings?.sceneTitle || 'Scene'}</p>
+                  <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                    {/* Header with icon */}
+                    <div className="flex items-center gap-3 border-b border-gray-100 bg-gray-50/50 px-4 py-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100">
+                        <Clapperboard className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <span className="font-medium text-gray-900">
+                        {block.settings?.sceneTitle || 'Your Scene'}
+                      </span>
                     </div>
+                    {/* Video container */}
                     {block.settings?.mediaUrl && (
-                      <div className="aspect-video overflow-hidden rounded-lg bg-gray-900">
-                        <video src={block.settings.mediaUrl} controls className="h-full w-full">
+                      <div className="aspect-video bg-gradient-to-br from-gray-900 to-gray-800">
+                        <video
+                          src={block.settings.mediaUrl}
+                          controls
+                          controlsList="nodownload"
+                          preload="metadata"
+                          className="h-full w-full"
+                          playsInline
+                        >
                           Your browser does not support the video tag.
                         </video>
                       </div>
@@ -311,7 +334,7 @@ export default function PublicSharePage({ params }: Props) {
                 )}
 
                 {block.blockType === 'reflection' && blockQuestions.length > 0 && (
-                  <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
+                  <div className="rounded-xl border border-purple-200/60 bg-purple-50/50 p-5">
                     <div className="mb-3 flex items-center gap-2">
                       <MessageCircle className="h-5 w-5 text-purple-600" />
                       <p className="font-medium text-purple-900">Reflection Questions</p>
@@ -340,7 +363,7 @@ export default function PublicSharePage({ params }: Props) {
                 )}
 
                 {block.blockType === 'survey' && blockSurveyQuestions.length > 0 && (
-                  <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                  <div className="rounded-xl border border-green-200/60 bg-green-50/50 p-5">
                     <div className="mb-3 flex items-center gap-2">
                       <FileText className="h-5 w-5 text-green-600" />
                       <p className="font-medium text-green-900">Survey Questions</p>
@@ -480,11 +503,11 @@ export default function PublicSharePage({ params }: Props) {
 
         {/* Submit Button */}
         {(pageData.reflectionQuestions.length > 0 || pageData.surveyQuestions.length > 0) && !submitSuccess && (
-          <div className="mt-8 flex justify-center">
+          <div className="mt-10 flex justify-center">
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="rounded-lg bg-purple-600 px-8 py-3 font-medium text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-10 py-4 font-medium text-white shadow-lg transition-all hover:shadow-xl hover:from-purple-700 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
               type="button"
             >
               {isSubmitting ? (

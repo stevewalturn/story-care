@@ -337,8 +337,15 @@ export default function PatientStoryPage({ params }: Props) {
 
                 {/* Video Block */}
                 {block.blockType === 'video' && block.settings?.mediaUrl && (
-                  <div className="aspect-video overflow-hidden bg-gray-900">
-                    <video src={block.settings.mediaUrl} controls className="h-full w-full">
+                  <div className="aspect-video overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800">
+                    <video
+                      src={block.settings.mediaUrl}
+                      controls
+                      controlsList="nodownload"
+                      preload="metadata"
+                      className="h-full w-full"
+                      playsInline
+                    >
                       Your browser does not support the video tag.
                     </video>
                   </div>
@@ -373,12 +380,14 @@ export default function PatientStoryPage({ params }: Props) {
                       </div>
                     </div>
                     {(block.settings?.videoUrl || block.settings?.mediaUrl) && (
-                      <div className="aspect-video overflow-hidden bg-gray-900">
+                      <div className="aspect-video overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800">
                         <video
                           src={block.settings.videoUrl || block.settings.mediaUrl}
                           controls
-                          className="h-full w-full"
+                          controlsList="nodownload"
                           preload="metadata"
+                          className="h-full w-full"
+                          playsInline
                           poster={block.settings?.thumbnailUrl}
                         >
                           Your browser does not support the video tag.
