@@ -13,6 +13,8 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
@@ -55,9 +57,10 @@ type SceneAsset = {
   id: string;
   title: string;
   description: string | null;
-  videoUrl: string | null;
+  assembledVideoUrl: string | null; // API returns assembledVideoUrl, not videoUrl
   thumbnailUrl: string | null;
-  duration: number | null;
+  durationSeconds: string | null; // API returns durationSeconds as string
+  status: string;
   createdAt: string;
 };
 
@@ -106,15 +109,30 @@ export function AssetPickerModal({
     }
   }, [patientId]);
 
-  // Auto-set media type filter based on filterType prop
+  // Auto-set media type filter AND active tab based on filterType prop
+  // Also trigger immediate fetch with correct values to avoid race condition
   useEffect(() => {
+    if (!isOpen) return; // Only run when modal is open
+
+    let newMediaType: MediaTypeFilter = 'all';
+    let newTab: AssetType = activeTab;
+
     if (filterType === 'image') {
-      setMediaTypeFilter('image');
+      newMediaType = 'image';
+      newTab = 'media';
     } else if (filterType === 'video') {
-      setMediaTypeFilter('video');
-    } else {
-      setMediaTypeFilter('all');
+      newMediaType = 'video';
+      newTab = 'media';
+    } else if (filterType === 'text') {
+      newMediaType = 'all';
+      newTab = 'quotes'; // Default to quotes tab for text/quote blocks
     }
+
+    setMediaTypeFilter(newMediaType);
+    setActiveTab(newTab);
+
+    // Fetch immediately with correct values to avoid race condition
+    fetchAssets({ overrideTab: newTab, overrideMediaType: newMediaType });
   }, [filterType, isOpen]);
 
   const fetchPatients = async () => {
@@ -143,17 +161,23 @@ export function AssetPickerModal({
     setSearch('');
   }, [activeTab]);
 
-  const fetchAssets = async () => {
+  const fetchAssets = async (options?: {
+    overrideTab?: AssetType;
+    overrideMediaType?: MediaTypeFilter;
+  }) => {
+    const tab = options?.overrideTab ?? activeTab;
+    const mediaType = options?.overrideMediaType ?? mediaTypeFilter;
+
     setLoading(true);
     try {
       const patientParam = selectedPatientId !== 'all' ? selectedPatientId : '';
 
-      if (activeTab === 'media') {
+      if (tab === 'media') {
         const params = new URLSearchParams();
         if (patientParam) params.append('patientId', patientParam);
-        if (mediaTypeFilter !== 'all') params.append('type', mediaTypeFilter);
+        if (mediaType !== 'all') params.append('type', mediaType);
         const url = `/api/media${params.toString() ? `?${params.toString()}` : ''}`;
-        console.log('[AssetPickerModal] Fetching media from:', url);
+        console.log('[AssetPickerModal] Fetching media from:', url, 'mediaType:', mediaType);
         const res = await authenticatedFetch(url, user);
         if (res.ok) {
           const data = await res.json();
@@ -162,21 +186,21 @@ export function AssetPickerModal({
         } else {
           console.error('[AssetPickerModal] Media fetch failed:', res.status, res.statusText);
         }
-      } else if (activeTab === 'quotes') {
+      } else if (tab === 'quotes') {
         const url = `/api/quotes${patientParam ? `?patientId=${patientParam}` : ''}`;
         const res = await authenticatedFetch(url, user);
         if (res.ok) {
           const data = await res.json();
           setQuoteAssets(data.quotes || []);
         }
-      } else if (activeTab === 'notes') {
+      } else if (tab === 'notes') {
         const url = `/api/notes${patientParam ? `?patientId=${patientParam}` : ''}`;
         const res = await authenticatedFetch(url, user);
         if (res.ok) {
           const data = await res.json();
           setNoteAssets(data.notes || []);
         }
-      } else if (activeTab === 'scenes') {
+      } else if (tab === 'scenes') {
         const url = `/api/scenes${patientParam ? `?patientId=${patientParam}` : ''}`;
         const res = await authenticatedFetch(url, user);
         if (res.ok) {
@@ -509,11 +533,11 @@ export function AssetPickerModal({
                   onClick={() => handleSelect(asset)}
                   className="w-full rounded-lg border border-gray-200 p-4 text-left transition-all hover:border-purple-500 hover:shadow-md"
                 >
-                  <p className="text-sm text-gray-900">
-                    &quot;
-                    {asset.quoteText}
-                    &quot;
-                  </p>
+                  <div className="prose prose-sm prose-gray max-w-none line-clamp-4 text-gray-900">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {`"${asset.quoteText}"`}
+                    </ReactMarkdown>
+                  </div>
                   {asset.context && (
                     <p className="mt-2 text-xs text-gray-600">{asset.context}</p>
                   )}
@@ -557,7 +581,11 @@ export function AssetPickerModal({
                       </span>
                     </div>
                   )}
-                  <p className="text-sm text-gray-900">{asset.content}</p>
+                  <div className="prose prose-sm prose-gray max-w-none line-clamp-6 text-gray-900">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {asset.content}
+                    </ReactMarkdown>
+                  </div>
                   {asset.tags && asset.tags.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
                       {asset.tags.map((tag, i) => (
@@ -594,7 +622,7 @@ export function AssetPickerModal({
                   <div className="relative aspect-video overflow-hidden bg-gray-100">
                     {asset.thumbnailUrl ? (
                       <img src={asset.thumbnailUrl} alt={asset.title} className="h-full w-full object-cover" />
-                    ) : asset.videoUrl ? (
+                    ) : asset.assembledVideoUrl ? (
                       <div className="flex h-full items-center justify-center bg-gray-900">
                         <Clapperboard className="h-12 w-12 text-white opacity-50" />
                       </div>
@@ -603,11 +631,11 @@ export function AssetPickerModal({
                         <Clapperboard className="h-12 w-12 text-gray-400" />
                       </div>
                     )}
-                    {asset.duration && (
+                    {asset.durationSeconds && Number(asset.durationSeconds) > 0 && (
                       <div className="absolute right-2 bottom-2 rounded bg-black/75 px-2 py-1 text-xs text-white">
-                        {Math.floor(asset.duration / 60)}
+                        {Math.floor(Number(asset.durationSeconds) / 60)}
                         :
-                        {(asset.duration % 60).toString().padStart(2, '0')}
+                        {(Number(asset.durationSeconds) % 60).toString().padStart(2, '0')}
                       </div>
                     )}
                   </div>

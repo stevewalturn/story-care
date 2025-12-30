@@ -904,18 +904,9 @@ export function PageEditor({
                         <p className="line-clamp-2">{block.content.text}</p>
                       )}
                       {block.content.sceneId && block.content.sceneTitle && (
-                        <div className="flex items-center gap-2">
-                          {(block.content.displayUrl || block.content.mediaUrl) && (
-                            <img
-                              src={block.content.displayUrl || block.content.mediaUrl}
-                              alt={block.content.sceneTitle}
-                              className="h-10 w-10 rounded object-cover"
-                            />
-                          )}
-                          <p className="line-clamp-1 text-xs text-gray-600">
-                            {block.content.sceneTitle}
-                          </p>
-                        </div>
+                        <p className="line-clamp-1 text-sm text-gray-700">
+                          {block.content.sceneTitle}
+                        </p>
                       )}
                       {block.content.questions && block.content.questions.length > 0 && (
                         <p className="line-clamp-1 text-xs text-gray-600">
