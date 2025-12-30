@@ -7,6 +7,8 @@
 
 import { Clapperboard, FileText, MessageCircle } from 'lucide-react';
 import { use, useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 type PageData = {
   page: {
@@ -259,8 +261,10 @@ export default function PublicSharePage({ params }: Props) {
             return (
               <div key={block.id || index} className="rounded-lg bg-white p-6 shadow-sm">
                 {block.blockType === 'text' && block.textContent && (
-                  <div className="prose max-w-none">
-                    <p className="leading-relaxed text-gray-700">{block.textContent}</p>
+                  <div className="prose prose-lg max-w-none">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {block.textContent}
+                    </ReactMarkdown>
                   </div>
                 )}
 
@@ -281,10 +285,12 @@ export default function PublicSharePage({ params }: Props) {
                 )}
 
                 {block.blockType === 'quote' && block.textContent && (
-                  <blockquote className="border-l-4 border-purple-500 pl-4 text-gray-700 italic">
-                    "
-                    {block.textContent}
-                    "
+                  <blockquote className="border-l-4 border-purple-500 pl-4">
+                    <div className="prose prose-lg max-w-none italic text-gray-700">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {block.textContent}
+                      </ReactMarkdown>
+                    </div>
                   </blockquote>
                 )}
 

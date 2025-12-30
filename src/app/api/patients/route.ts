@@ -5,12 +5,13 @@
  */
 
 import type { NextRequest } from 'next/server';
-import { and, count, desc, eq, ilike, isNull } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { Env } from '@/libs/Env';
 import { generatePresignedUrl, generatePresignedUrlsForPatients } from '@/libs/GCS';
 import {
+  groupMembers as groupMembersSchema,
   patientReferenceImagesSchema,
   reflectionResponses as reflectionResponsesSchema,
   sessions as sessionsSchema,
@@ -147,10 +148,41 @@ export async function GET(request: NextRequest) {
         );
 
         // Calculate counts for this patient
-        const [sessionCountResult] = await db
-          .select({ count: count() })
-          .from(sessionsSchema)
-          .where(eq(sessionsSchema.patientId, patient.id));
+        // First get patient's group IDs (for group session counting)
+        const patientGroups = await db
+          .select({ groupId: groupMembersSchema.groupId })
+          .from(groupMembersSchema)
+          .where(
+            and(
+              eq(groupMembersSchema.patientId, patient.id),
+              isNull(groupMembersSchema.leftAt),
+            ),
+          );
+        const patientGroupIds = patientGroups.map(g => g.groupId).filter((gid): gid is string => gid !== null);
+
+        // Count sessions (individual + group sessions where patient is a member)
+        const [sessionCountResult] = patientGroupIds.length > 0
+          ? await db
+              .select({ count: count() })
+              .from(sessionsSchema)
+              .where(
+                and(
+                  isNull(sessionsSchema.deletedAt),
+                  or(
+                    eq(sessionsSchema.patientId, patient.id),
+                    inArray(sessionsSchema.groupId, patientGroupIds),
+                  ),
+                ),
+              )
+          : await db
+              .select({ count: count() })
+              .from(sessionsSchema)
+              .where(
+                and(
+                  isNull(sessionsSchema.deletedAt),
+                  eq(sessionsSchema.patientId, patient.id),
+                ),
+              );
 
         const [pageCountResult] = await db
           .select({ count: count() })

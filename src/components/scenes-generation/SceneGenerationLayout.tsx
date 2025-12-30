@@ -137,6 +137,18 @@ export function SceneGenerationLayout({
   // Completed video URL for playback
   const [completedVideoUrl, setCompletedVideoUrl] = useState<string | null>(null);
 
+  // Video player loading/error states
+  const [videoLoading, setVideoLoading] = useState(true);
+  const [videoError, setVideoError] = useState(false);
+
+  // Reset video loading state when video URL changes
+  useEffect(() => {
+    if (completedVideoUrl) {
+      setVideoLoading(true);
+      setVideoError(false);
+    }
+  }, [completedVideoUrl]);
+
   // Use video job polling hook for compilation progress tracking
   const { job: videoJob, isProcessing: _isJobProcessing } = useVideoJobPolling({
     sceneId: compilationProgress.sceneId || undefined,
@@ -1324,13 +1336,43 @@ export function SceneGenerationLayout({
                   Ready to view
                 </span>
               </div>
-              <div className="aspect-video bg-black">
-                <video
-                  src={completedVideoUrl}
-                  controls
-                  className="h-full w-full"
-                  playsInline
-                />
+              <div className="relative aspect-video bg-black">
+                {videoLoading && !videoError && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-white" />
+                  </div>
+                )}
+                {videoError ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+                    <p className="mb-2 text-sm">Failed to load video</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVideoError(false);
+                        setVideoLoading(true);
+                      }}
+                      className="rounded bg-white/20 px-3 py-1 text-xs hover:bg-white/30"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                ) : (
+                  <video
+                    key={completedVideoUrl}
+                    src={completedVideoUrl}
+                    controls
+                    controlsList="nodownload"
+                    preload="metadata"
+                    className="h-full w-full"
+                    playsInline
+                    onLoadedData={() => setVideoLoading(false)}
+                    onError={(e) => {
+                      console.error('[Video Player] Error loading video:', e);
+                      setVideoError(true);
+                      setVideoLoading(false);
+                    }}
+                  />
+                )}
               </div>
             </div>
           )}
@@ -1388,13 +1430,17 @@ export function SceneGenerationLayout({
             {/* Compile Button - Purple filled style */}
             <button
               onClick={handleCompile}
-              disabled={!patient || !musicUrl || isCompiling}
+              disabled={!patient || !musicUrl || isCompiling || isGeneratingAnyImage || isGeneratingMusic}
               title={
                 !patient
                   ? 'Select a patient first'
                   : !musicUrl
                       ? 'Generate background music first'
-                      : 'Compile scenes into video'
+                      : isGeneratingAnyImage
+                        ? 'Wait for images/videos to finish generating'
+                        : isGeneratingMusic
+                          ? 'Wait for music to finish generating'
+                          : 'Compile scenes into video'
               }
               className="flex items-center gap-2 rounded-lg bg-purple-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
             >

@@ -686,10 +686,10 @@ export function AssetsClient() {
             >
               {(() => {
                 const selectedPatientData = patients.find(p => p.id === selectedPatient);
-                if (selectedPatientData?.referenceImageUrl) {
+                if (selectedPatientData?.avatarUrl || selectedPatientData?.referenceImageUrl) {
                   return (
                     <img
-                      src={selectedPatientData.referenceImageUrl}
+                      src={selectedPatientData.avatarUrl || selectedPatientData.referenceImageUrl}
                       alt={selectedPatientData.name}
                       className="h-6 w-6 rounded-full object-cover"
                     />
@@ -724,9 +724,9 @@ export function AssetsClient() {
                         patient.id === selectedPatient ? 'bg-purple-50 text-purple-700' : 'text-gray-700'
                       }`}
                     >
-                      {patient.referenceImageUrl ? (
+                      {patient.avatarUrl || patient.referenceImageUrl ? (
                         <img
-                          src={patient.referenceImageUrl}
+                          src={patient.avatarUrl || patient.referenceImageUrl}
                           alt={patient.name}
                           className="h-6 w-6 rounded-full object-cover"
                         />

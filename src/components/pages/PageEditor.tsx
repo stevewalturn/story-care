@@ -3,6 +3,8 @@
 import type { TreatmentModule } from '@/models/Schema';
 import { Clapperboard, Eye, FileText, GripVertical, Image as ImageIcon, ListChecks, MessageCircle, Sparkles, Trash2, Type, Video, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { AssetPickerModal } from '@/components/pages/AssetPickerModal';
 import { BrowseSceneModal } from '@/components/pages/BrowseSceneModal';
 import { ModulePageGenerator } from '@/components/pages/ModulePageGenerator';
@@ -418,9 +420,19 @@ export function PageEditor({
             <textarea
               value={block.content.text || ''}
               onChange={e => updateBlockContent(block.id, { text: e.target.value })}
-              placeholder="Enter your text here..."
-              className="h-32 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              placeholder="Enter your text here (supports Markdown)..."
+              className="h-32 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
             />
+            {block.content.text && (
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <p className="mb-2 text-xs font-medium text-gray-500">Preview:</p>
+                <div className="prose prose-sm max-w-none">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {block.content.text}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -488,9 +500,19 @@ export function PageEditor({
             <textarea
               value={block.content.text || ''}
               onChange={e => updateBlockContent(block.id, { text: e.target.value })}
-              placeholder="Enter quote text..."
-              className="h-24 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 italic focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              placeholder="Enter quote text (supports Markdown)..."
+              className="h-24 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
             />
+            {block.content.text && (
+              <div className="rounded-lg border-l-4 border-purple-500 bg-purple-50 p-3">
+                <p className="mb-2 text-xs font-medium text-purple-600">Preview:</p>
+                <div className="prose prose-sm max-w-none italic">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {block.content.text}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -517,19 +539,6 @@ export function PageEditor({
                     </p>
                   </div>
                 </div>
-                {(block.content.displayUrl || block.content.mediaUrl) && (
-                  <div className="mt-2 aspect-video overflow-hidden rounded bg-gray-900">
-                    {(block.content.displayUrl || block.content.mediaUrl || '').includes('.mp4') || (block.content.displayUrl || block.content.mediaUrl || '').includes('video') ? (
-                      <video
-                        src={block.content.displayUrl || block.content.mediaUrl}
-                        controls
-                        className="h-full w-full object-contain"
-                      />
-                    ) : (
-                      <img src={block.content.displayUrl || block.content.mediaUrl} alt={block.content.sceneTitle} className="h-full w-full object-cover" />
-                    )}
-                  </div>
-                )}
               </div>
             )}
             <Button
