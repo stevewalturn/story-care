@@ -1,0 +1,12 @@
+[
+  {
+    "origin": [
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "https://storycare-app-dev-hoqezzjsea-uc.a.run.app"
+    ],
+    "method": ["GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"],
+    "responseHeader": ["Content-Type", "x-goog-resumable", "Content-Length", "Content-Range"],
+    "maxAgeSeconds": 3600
+  }
+]
