@@ -73,11 +73,22 @@ export async function POST(request: NextRequest) {
       'audio/x-wav',
       'audio/mp4',
       'audio/m4a',
+      'audio/x-m4a',
+      'audio/aac',
+      'audio/mp4a-latm',
       'audio/webm',
       'audio/ogg',
+      'audio/flac',
+      'audio/x-flac',
     ];
 
-    if (!allowedTypes.includes(fileType)) {
+    // Also allow by extension if MIME type is not recognized
+    const allowedExtensions = ['.mp3', '.wav', '.m4a', '.mp4', '.webm', '.ogg', '.aac', '.flac'];
+    const fileExtension = fileName.toLowerCase().slice(fileName.lastIndexOf('.'));
+    const isAllowedByType = allowedTypes.includes(fileType);
+    const isAllowedByExtension = allowedExtensions.includes(fileExtension);
+
+    if (!isAllowedByType && !isAllowedByExtension) {
       return NextResponse.json(
         { error: 'Invalid file type. Only audio files are allowed.' },
         { status: 400 },
