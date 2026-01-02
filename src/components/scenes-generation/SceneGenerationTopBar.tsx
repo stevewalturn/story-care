@@ -1,8 +1,9 @@
 'use client';
 
-import { ChevronDown, HelpCircle, Loader2, Play, Redo, Undo } from 'lucide-react';
+import { Check, ChevronDown, HelpCircle, Info, Loader2, Play, Redo, Undo } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { getAvailableVideoModels, getFilteredImageModels } from '@/libs/ModelMetadata';
+import toast from 'react-hot-toast';
+import { getAllImageModelsFlat, getAvailableVideoModels, getFilteredImageModels } from '@/libs/ModelMetadata';
 
 type Patient = {
   id: string;
@@ -32,6 +33,8 @@ type SceneGenerationTopBarProps = {
   onUseReferenceChange: (useReference: boolean) => void;
   onShowReferenceModal: () => void;
   referenceImages?: ReferenceImage[];
+  selectedReferenceImageIds?: string[]; // IDs of selected reference images
+  onReferenceImageSelectionChange?: (selectedIds: string[]) => void; // Callback when selection changes
   settingsLocked?: boolean; // Lock settings after any image is generated
   onPreview?: () => void;
   canUndo?: boolean;
@@ -55,6 +58,8 @@ export function SceneGenerationTopBar({
   onUseReferenceChange,
   onShowReferenceModal,
   referenceImages = [],
+  selectedReferenceImageIds,
+  onReferenceImageSelectionChange,
   settingsLocked = false,
   onPreview,
   canUndo = false,
@@ -90,6 +95,10 @@ export function SceneGenerationTopBar({
   // Get filtered image models based on useReference toggle
   const imageModels = getFilteredImageModels(useReference);
   const videoModels = getAvailableVideoModels();
+
+  // Check if selected image model supports prompts
+  const selectedModelMeta = getAllImageModelsFlat().find(m => m.value === selectedImageModel);
+  const modelSupportsPrompt = selectedModelMeta?.supportsPrompt ?? true;
 
   // Get display label for selected image model
   const getImageModelLabel = (value: string) => {
@@ -245,11 +254,20 @@ export function SceneGenerationTopBar({
                           onImageModelChange(model.value);
                           setShowImageModelDropdown(false);
                         }}
-                        className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50 ${
+                        className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50 ${
                           model.value === selectedImageModel ? 'bg-purple-50 font-medium text-purple-600' : 'text-gray-700'
                         }`}
                       >
-                        {model.label}
+                        <span>{model.label}</span>
+                        {model.supportsReference && model.maxReferenceImages > 0 && (
+                          <span className={`ml-2 rounded px-1.5 py-0.5 text-xs ${
+                            model.maxReferenceImages === 1
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-green-100 text-green-700'
+                          }`}>
+                            {model.maxReferenceImages === 1 ? '1 ref' : `${model.maxReferenceImages}+ refs`}
+                          </span>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -258,6 +276,14 @@ export function SceneGenerationTopBar({
             </>
           )}
         </div>
+
+        {/* No Prompt Support Notice */}
+        {!modelSupportsPrompt && (
+          <div className="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5">
+            <Info className="h-3.5 w-3.5 text-amber-600" />
+            <span className="text-xs text-amber-700">No prompt input - transforms reference only</span>
+          </div>
+        )}
 
         {/* Video Model Selector */}
         <div className="relative">
@@ -334,33 +360,77 @@ export function SceneGenerationTopBar({
             {/* Reference Image Preview Popover */}
             {showReferencePreview && (
               <div
-                className="absolute top-full right-0 z-50 mt-2 w-64 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl"
+                className="absolute top-full right-0 z-50 mt-2 w-72 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl"
                 onMouseEnter={handleReferenceMouseEnter}
                 onMouseLeave={handleReferenceMouseLeave}
               >
                 {referenceImages.length > 0 ? (
                   <>
                     <div className="p-3">
-                      <p className="mb-2 text-xs font-semibold text-gray-500">Reference Images</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {referenceImages.slice(0, 4).map(img => (
-                          <div key={img.id} className="aspect-square overflow-hidden rounded-lg border border-gray-200">
-                            <img
-                              src={img.url}
-                              alt={img.name || 'Reference'}
-                              className="h-full w-full object-cover"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                      {referenceImages.length > 4 && (
-                        <p className="mt-2 text-center text-xs text-gray-500">
-                          +
-                          {referenceImages.length - 4}
+                      <div className="mb-2 flex items-center justify-between">
+                        <p className="text-xs font-semibold text-gray-500">Select Reference Images</p>
+                        <span className="text-xs text-gray-400">
+                          {selectedReferenceImageIds?.length || 0}
                           {' '}
-                          more
-                        </p>
-                      )}
+                          selected
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {referenceImages.map(img => {
+                          const isSelected = selectedReferenceImageIds?.includes(img.id) ?? true;
+                          return (
+                            <button
+                              key={img.id}
+                              onClick={() => {
+                                if (!onReferenceImageSelectionChange) return;
+                                const currentSelected = selectedReferenceImageIds || referenceImages.map(i => i.id);
+
+                                // Get current model's max reference images
+                                const modelMeta = getAllImageModelsFlat().find(m => m.value === selectedImageModel);
+                                const maxRefs = modelMeta?.maxReferenceImages || 4;
+
+                                if (isSelected) {
+                                  // Deselecting - ensure at least one remains
+                                  const newSelected = currentSelected.filter(id => id !== img.id);
+                                  if (newSelected.length > 0) {
+                                    onReferenceImageSelectionChange(newSelected);
+                                  }
+                                } else {
+                                  // Selecting - check if we're at the limit
+                                  if (currentSelected.length >= maxRefs) {
+                                    toast(`${modelMeta?.label || 'This model'} only supports ${maxRefs} reference image${maxRefs === 1 ? '' : 's'}`, {
+                                      icon: '⚠️',
+                                    });
+                                    return;
+                                  }
+                                  onReferenceImageSelectionChange([...currentSelected, img.id]);
+                                }
+                              }}
+                              className={`relative aspect-square overflow-hidden rounded-lg border-2 transition-all ${
+                                isSelected
+                                  ? 'border-purple-500 ring-2 ring-purple-200'
+                                  : 'border-gray-200 opacity-50 hover:opacity-75'
+                              }`}
+                            >
+                              <img
+                                src={img.url}
+                                alt={img.name || 'Reference'}
+                                className="h-full w-full object-cover"
+                              />
+                              {isSelected && (
+                                <div className="absolute top-1 right-1 rounded-full bg-purple-500 p-0.5">
+                                  <Check className="h-3 w-3 text-white" />
+                                </div>
+                              )}
+                              {img.name && (
+                                <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-1 py-0.5">
+                                  <p className="truncate text-xs text-white">{img.name}</p>
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                     <div className="border-t border-gray-100 bg-gray-50 px-3 py-2">
                       <button

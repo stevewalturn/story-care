@@ -42,6 +42,7 @@ export function AssetsClient() {
   const [selectedPatient, setSelectedPatient] = useState<string>('');
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
   const [patients, setPatients] = useState<any[]>([]);
+  const [isLoadingPatients, setIsLoadingPatients] = useState(true);
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [quotes, setQuotes] = useState<any[]>([]);
   const [notesData, setNotesData] = useState<any[]>([]);
@@ -138,10 +139,12 @@ export function AssetsClient() {
 
   const loadPatients = async () => {
     if (!user) {
+      setIsLoadingPatients(false);
       return;
     }
 
     try {
+      setIsLoadingPatients(true);
       // Pass the therapist's Firebase UID to filter patients
       const params = new URLSearchParams({
         therapistId: user.uid,
@@ -157,6 +160,8 @@ export function AssetsClient() {
       }
     } catch (error) {
       console.error('Error loading patients:', error);
+    } finally {
+      setIsLoadingPatients(false);
     }
   };
 
@@ -608,7 +613,19 @@ export function AssetsClient() {
 
   const selectedPatientData = patients.find(p => p.id === selectedPatient);
 
-  // Empty state when no patients
+  // Loading state while fetching patients
+  if (isLoadingPatients) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-50">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
+          <p className="text-sm text-gray-500">Loading assets...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state when no patients (only after loading completes)
   if (patients.length === 0) {
     return (
       <div className="flex h-screen flex-col items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-50 px-4">
@@ -770,9 +787,7 @@ export function AssetsClient() {
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold text-gray-900">
-                  Media (
-                  {filterType === 'all' ? media.length : media.filter(m => m.mediaType === filterType).length}
-                  )
+                  Media
                 </h2>
                 <button
                   onClick={() => {
@@ -850,9 +865,7 @@ export function AssetsClient() {
                     : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                All (
-                {media.length}
-                )
+                All
               </button>
               <button
                 onClick={() => setFilterType('video')}
@@ -862,9 +875,7 @@ export function AssetsClient() {
                     : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                Videos (
-                {media.filter(m => m.mediaType === 'video').length}
-                )
+                Videos
               </button>
               <button
                 onClick={() => setFilterType('image')}
@@ -874,9 +885,7 @@ export function AssetsClient() {
                     : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                Images (
-                {media.filter(m => m.mediaType === 'image').length}
-                )
+                Images
               </button>
               <button
                 onClick={() => setFilterType('audio')}
@@ -886,9 +895,7 @@ export function AssetsClient() {
                     : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                Music (
-                {media.filter(m => m.mediaType === 'audio').length}
-                )
+                Music
               </button>
             </div>
           </div>
@@ -1097,23 +1104,32 @@ export function AssetsClient() {
 
       {/* Quotes Tab */}
       {activeTab === 'quotes' && (
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="mx-auto max-w-4xl">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">
-                {selectedPatientData?.name}
-                's Quotes
-              </h2>
-              <button
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {/* Controls */}
+          <div className="border-b border-gray-200 bg-white px-6 py-4">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-gray-900">Quotes</h2>
+                <button
+                  onClick={() => loadQuotes()}
+                  className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                  title="Refresh quotes"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </button>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={() => setShowCreateQuoteModal(true)}
-                className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
               >
-                + New Quote
-              </button>
+                <Plus className="mr-2 h-4 w-4" />
+                New Quote
+              </Button>
             </div>
 
             {/* Search */}
-            <div className="relative mb-6">
+            <div className="relative">
               <input
                 type="text"
                 value={searchQuery}
@@ -1125,6 +1141,10 @@ export function AssetsClient() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6">
 
             {isLoadingQuotes
               ? (
@@ -1211,35 +1231,47 @@ export function AssetsClient() {
 
       {/* Notes Tab */}
       {activeTab === 'notes' && (
-        <div className="flex-1 overflow-y-auto bg-gray-50">
-          <div className="mx-auto max-w-5xl p-6">
-            {/* Header */}
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">
-                {selectedPatientData?.name ? `${selectedPatientData.name}'s Notes` : 'Notes'}
-              </h2>
-              <button
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {/* Controls */}
+          <div className="border-b border-gray-200 bg-white px-6 py-4">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-gray-900">Notes</h2>
+                <button
+                  onClick={() => loadNotes()}
+                  className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                  title="Refresh notes"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </button>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={() => setShowCreateNoteModal(true)}
-                className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700"
               >
-                + New Note
-              </button>
+                <Plus className="mr-2 h-4 w-4" />
+                New Note
+              </Button>
             </div>
 
             {/* Search */}
-            <div className="relative mb-6">
+            <div className="relative">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search notes by title or content..."
-                className="w-full rounded-lg border border-gray-300 bg-white py-2 pr-4 pl-10 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
+                placeholder="Search notes..."
+                className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 text-sm focus:border-purple-500 focus:outline-none"
               />
               <svg className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
+          </div>
 
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6">
             {/* Loading State */}
             {isLoadingNotes && (
               <div className="py-12 text-center">

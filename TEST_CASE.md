@@ -458,7 +458,7 @@ POST /api/ai/generate-video
   "prompt": "Gentle camera pan across the landscape, slight zoom in",
   "title": "Scene 1: The Weight of Winter (Video)",
   "referenceImage": "https://storage.googleapis.com/.../generated-123.png",
-  "model": "seedance-1-lite",
+  "model": "seedance-v1.5-pro-i2v",
   "duration": 5,
   "fps": 24,
   "patientId": "uuid",

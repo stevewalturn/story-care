@@ -71,7 +71,7 @@ export function GenerateVideoModal({
           duration: Number.parseInt(duration),
           style,
           motion,
-          model: 'seedance-1-lite',
+          model: 'seedance-v1.5-pro-i2v',
         }),
       });
 

@@ -134,12 +134,12 @@ export function MediaUploadModal({
       // Step 2: Create media_library record (save GCS path, not presigned URL)
       const mediaResponse = await authenticatedPost('/api/media', user, {
         patientId,
+        createdByTherapistId: user.uid,
         mediaType: uploadData.mediaType,
         title: titleFromFilename,
         mediaUrl: uploadData.path, // Save GCS path, not presigned URL
         sourceType: 'uploaded',
         sourceSessionId: sessionId,
-        fileSizeBytes: uploadData.size,
       });
 
       if (!mediaResponse.ok) {

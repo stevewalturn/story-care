@@ -57,6 +57,8 @@ export function TranscriptPanel({
 
   // Audio player state
   const audioRef = useRef<HTMLAudioElement>(null);
+  const transcriptContainerRef = useRef<HTMLDivElement>(null);
+  const utteranceRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -219,6 +221,28 @@ export function TranscriptPanel({
         || u.speakerName.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     : utterances;
+
+  // Find the current utterance based on audio playback time
+  const currentUtteranceId = useMemo(() => {
+    if (!isPlaying && currentTime === 0) return null;
+    const current = filteredUtterances.find(
+      u => currentTime >= u.startTime && currentTime < u.endTime,
+    );
+    return current?.id || null;
+  }, [currentTime, filteredUtterances, isPlaying]);
+
+  // Auto-scroll to current utterance when it changes during playback
+  useEffect(() => {
+    if (currentUtteranceId && isPlaying && !searchQuery) {
+      const utteranceEl = utteranceRefs.current.get(currentUtteranceId);
+      if (utteranceEl && transcriptContainerRef.current) {
+        utteranceEl.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }
+    }
+  }, [currentUtteranceId, isPlaying, searchQuery]);
 
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
@@ -473,15 +497,27 @@ export function TranscriptPanel({
 
       {/* Transcript Messages - Matching Figma */}
       <div
+        ref={transcriptContainerRef}
         className="flex-1 space-y-4 overflow-y-auto bg-white p-4"
         onMouseUp={onTextSelection}
       >
         {filteredUtterances.map((utterance: Utterance) => {
           const speakerColor = getSpeakerColor(utterance.speakerName, utterance.speakerType) ?? speakerColors.default;
           const initial = utterance.speakerName.charAt(0).toUpperCase();
+          const isCurrentUtterance = currentUtteranceId === utterance.id;
 
           return (
-            <div key={utterance.id} className="flex gap-3">
+            <div
+              key={utterance.id}
+              ref={(el) => {
+                if (el) utteranceRefs.current.set(utterance.id, el);
+              }}
+              className={`flex gap-3 rounded-lg p-2 -mx-2 transition-colors duration-200 ${
+                isCurrentUtterance
+                  ? 'bg-purple-50 border-l-2 border-purple-500'
+                  : ''
+              }`}
+            >
               {/* Speaker Avatar - Use actual photo if available, otherwise colored initial */}
               {utterance.avatarUrl ? (
                 <Image
@@ -571,10 +607,24 @@ export function TranscriptPanel({
                     )}
                   </div>
                   <span className="text-gray-300">•</span>
-                  {/* Timestamp - Subtle Gray */}
-                  <span className="text-xs font-medium text-gray-500">
+                  {/* Timestamp - Clickable to seek */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (audioRef.current) {
+                        audioRef.current.currentTime = utterance.startTime;
+                        setCurrentTime(utterance.startTime);
+                        if (!isPlaying) {
+                          audioRef.current.play();
+                          setIsPlaying(true);
+                        }
+                      }
+                    }}
+                    className="text-xs font-medium text-gray-500 transition-colors hover:text-purple-600"
+                    title="Jump to this point"
+                  >
                     {formatTime(utterance.startTime)}
-                  </span>
+                  </button>
                 </div>
                 <p className="text-sm leading-relaxed whitespace-pre-wrap text-gray-700">
                   {utterance.text}

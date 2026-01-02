@@ -79,32 +79,78 @@ export async function generateImage(
     });
   }
 
-  // Route to Atlas Cloud (Flux + Image-to-Image models)
+  // Route to Atlas Cloud (All 52 image models from AtlasCloud.ts)
   const atlasCloudModels = [
     // Text-to-Image
-    'flux-dev',
     'flux-schnell',
-    // Image-to-Image
+    'flux-dev',
+    'flux-2-flex-t2i',
+    // Flux Redux
     'flux-redux-dev',
+    'flux-redux-pro',
+    // Flux 2 Edit
+    'flux-2-dev-edit',
+    'flux-2-pro-edit',
+    'flux-2-flex-edit',
+    // Flux Kontext (Single Image)
+    'flux-kontext-max',
+    'flux-kontext-pro',
+    'flux-kontext-dev',
+    'flux-kontext-dev-ultra-fast',
+    'flux-kontext-dev-lora',
+    'flux-kontext-dev-lora-ultra-fast',
+    // Flux Kontext (Multi Image)
+    'flux-kontext-max-multi',
+    'flux-kontext-pro-multi',
+    'flux-kontext-dev-multi',
+    'flux-kontext-dev-multi-ultra-fast',
+    // Flux Special
+    'flux-krea-dev-lora',
+    'flux-fill-dev',
+    'flux-controlnet-pro',
+    // Alibaba/Qwen
     'wan-2.6-i2i',
     'wan-2.5-edit',
+    'wan-2.1-t2i-lora',
     'qwen-image-edit',
     'qwen-image-edit-plus',
+    // ByteDance/Seedream
     'seedream-4.5-edit',
     'seedream-4.5-edit-seq',
     'seedream-4-edit',
     'seedream-4-edit-seq',
+    'seededit-v3',
+    'portrait',
+    // Nano Banana (Google)
     'nano-banana-pro-edit-ultra',
     'nano-banana-pro-edit',
     'nano-banana-pro-edit-dev',
     'nano-banana-edit-dev',
     'nano-banana-edit',
+    // Luma Photon
+    'photon-modify',
+    'photon-flash-modify',
+    // AtlasCloud Special
+    'ghibli',
+    'instant-character',
+    'hidream-e1-full',
+    'step1x-edit',
     // Upscaling
     'recraft-crisp-upscale',
+    'recraft-creative-upscale',
+    'real-esrgan',
+    // Utilities
+    'image-zoom-out',
+    'image-watermark-remover',
     // Style Transfer
     'plastic-bubble-figure',
     'my-world',
     'micro-landscape-mini-world',
+    'glass-ball',
+    'felt-keychain',
+    'felt-3d-polaroid',
+    'advanced-photography',
+    'american-comic-style',
   ];
 
   if (atlasCloudModels.includes(model)) {

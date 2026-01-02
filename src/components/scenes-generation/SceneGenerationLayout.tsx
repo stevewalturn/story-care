@@ -2,14 +2,15 @@
 
 import type { SceneCardData } from './SceneCard';
 import { arrayMove } from '@dnd-kit/sortable';
-import { Loader2, PlayCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2, PlayCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVideoJobPolling } from '@/hooks/useVideoJobPolling';
-import { getFilteredImageModels } from '@/libs/ModelMetadata';
+import { getAllImageModelsFlat, getFilteredImageModels, isValidVideoModel } from '@/libs/ModelMetadata';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 import { generateSceneDescription, generateSceneTitle } from '@/utils/SceneHelpers';
+import { AssetPickerModal } from '@/components/pages/AssetPickerModal';
 import { CompilationProgressModal } from './CompilationProgressModal';
 import { MusicGenerationOptionsModal } from './MusicGenerationOptionsModal';
 import { MusicGenerationPanel } from './MusicGenerationPanel';
@@ -86,15 +87,25 @@ export function SceneGenerationLayout({
     return 'flux-dev';
   });
   const [selectedVideoModel, setSelectedVideoModel] = useState(() => {
+    const defaultModel = 'seedance-v1.5-pro-i2v';
     // Load persisted video model from localStorage
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('sceneGeneration_videoModel');
-      return saved || 'seedance-1-lite';
+      // Validate saved model - if invalid (e.g., old 'seedance-1-lite'), use default
+      if (saved && isValidVideoModel(saved)) {
+        return saved;
+      }
+      // Clear invalid model from localStorage
+      if (saved) {
+        console.warn(`[SceneGeneration] Invalid saved video model: "${saved}", resetting to default`);
+        localStorage.removeItem('sceneGeneration_videoModel');
+      }
     }
-    return 'seedance-1-lite';
+    return defaultModel;
   });
   const [useReference, setUseReference] = useState(true);
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
+  const [selectedReferenceImageIds, setSelectedReferenceImageIds] = useState<string[]>([]); // Which reference images to use
   const [isLoadingReferenceImages, setIsLoadingReferenceImages] = useState(false);
   const [showReferenceModal, setShowReferenceModal] = useState(false);
   const [showCompilationModal, setShowCompilationModal] = useState(false);
@@ -140,6 +151,11 @@ export function SceneGenerationLayout({
   // Video player loading/error states
   const [videoLoading, setVideoLoading] = useState(true);
   const [videoError, setVideoError] = useState(false);
+  const [showCompiledVideo, setShowCompiledVideo] = useState(true);
+
+  // Asset picker modal state
+  const [showAssetPickerModal, setShowAssetPickerModal] = useState(false);
+  const [assetPickerSceneId, setAssetPickerSceneId] = useState<string | null>(null);
 
   // Reset video loading state when video URL changes
   useEffect(() => {
@@ -454,9 +470,13 @@ export function SceneGenerationLayout({
 
         console.log('[SceneGeneration] Setting reference images:', images.length);
         setReferenceImages(images);
+        // By default, select only the first reference image
+        const firstImage = images[0];
+        setSelectedReferenceImageIds(firstImage ? [firstImage.id] : []);
       } catch (error) {
         console.error('[SceneGeneration] Error fetching patient images:', error);
         setReferenceImages([]); // Set empty state on error
+        setSelectedReferenceImageIds([]);
       } finally {
         setIsLoadingReferenceImages(false);
       }
@@ -466,6 +486,24 @@ export function SceneGenerationLayout({
       fetchPatientImages();
     }
   }, [isOpen, patient?.id, user]);
+
+  // Auto-limit selected reference images when switching to a model with fewer maxReferenceImages
+  useEffect(() => {
+    const modelMeta = getAllImageModelsFlat().find(m => m.value === selectedImageModel);
+    if (modelMeta && modelMeta.maxReferenceImages > 0) {
+      // Trim selection if it exceeds model's max
+      if (selectedReferenceImageIds.length > modelMeta.maxReferenceImages) {
+        setSelectedReferenceImageIds(prev => prev.slice(0, modelMeta.maxReferenceImages));
+        toast(`${modelMeta.label} supports ${modelMeta.maxReferenceImages} reference image${modelMeta.maxReferenceImages === 1 ? '' : 's'}. Selection trimmed.`, {
+          icon: 'ℹ️',
+        });
+      }
+    }
+  }, [selectedImageModel]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Check if selected image model supports prompts
+  const selectedModelMeta = getAllImageModelsFlat().find(m => m.value === selectedImageModel);
+  const selectedModelSupportsPrompt = selectedModelMeta?.supportsPrompt ?? true;
 
   // Poll for music generation task status (every 5 seconds)
   useEffect(() => {
@@ -713,9 +751,11 @@ export function SceneGenerationLayout({
 
     try {
       // Prepare reference images array if useReference is enabled
-      // Use ALL reference images for models that support multiple references
-      const selectedReferenceImages = useReference && referenceImages.length > 0
-        ? referenceImages.map(img => img.url)
+      // Only use SELECTED reference images (filtered by selectedReferenceImageIds)
+      const imagesToUse = useReference && referenceImages.length > 0
+        ? referenceImages
+            .filter(img => selectedReferenceImageIds.includes(img.id))
+            .map(img => img.url)
         : undefined;
 
       console.log('[Image Generation] Request payload:', {
@@ -724,7 +764,8 @@ export function SceneGenerationLayout({
         model: selectedImageModel,
         patientId: patient.id,
         sessionId,
-        referenceImageCount: selectedReferenceImages?.length || 0,
+        referenceImageCount: imagesToUse?.length || 0,
+        selectedReferenceImageIds,
       });
 
       const response = await authenticatedPost('/api/ai/generate-image', user, {
@@ -733,7 +774,7 @@ export function SceneGenerationLayout({
         model: selectedImageModel,
         patientId: patient.id,
         sessionId,
-        referenceImages: selectedReferenceImages,
+        referenceImages: imagesToUse,
       });
 
       if (!response.ok) {
@@ -1258,6 +1299,37 @@ export function SceneGenerationLayout({
     }
   };
 
+  // Handle browsing assets for a scene
+  const handleBrowseAssets = (sceneId: string) => {
+    setAssetPickerSceneId(sceneId);
+    setShowAssetPickerModal(true);
+  };
+
+  // Handle selecting an asset from the picker
+  const handleAssetSelected = (asset: { type: string; data: any }) => {
+    if (!assetPickerSceneId || asset.type !== 'media') return;
+
+    const mediaAsset = asset.data;
+    if (mediaAsset.mediaType === 'image') {
+      handleUpdateScene(assetPickerSceneId, {
+        status: 'draft',
+        imageUrl: mediaAsset.mediaUrl,
+        imageMediaId: mediaAsset.id,
+      });
+      toast.success('Image selected from assets');
+    } else if (mediaAsset.mediaType === 'video') {
+      handleUpdateScene(assetPickerSceneId, {
+        status: 'ready',
+        videoUrl: mediaAsset.mediaUrl,
+        videoMediaId: mediaAsset.id,
+      });
+      toast.success('Video selected from assets');
+    }
+
+    setShowAssetPickerModal(false);
+    setAssetPickerSceneId(null);
+  };
+
   // Check if any scene is actively generating (locks settings only during generation)
   const isGeneratingAnyImage = scenes.some(s =>
     s.status === 'generating_image' || s.status === 'animating',
@@ -1321,62 +1393,13 @@ export function SceneGenerationLayout({
           onUseReferenceChange={setUseReference}
           onShowReferenceModal={() => setShowReferenceModal(true)}
           referenceImages={referenceImages}
+          selectedReferenceImageIds={selectedReferenceImageIds}
+          onReferenceImageSelectionChange={setSelectedReferenceImageIds}
           settingsLocked={isGeneratingAnyImage}
         />
 
         {/* Main Content Area */}
         <div className={`flex flex-1 flex-col overflow-y-auto p-8 ${isSceneProcessing ? 'pointer-events-none opacity-50' : ''}`}>
-          {/* Compiled Video Player - shown when scene is completed */}
-          {completedVideoUrl && (
-            <div className="mb-6 overflow-hidden rounded-xl border border-gray-200">
-              <div className="flex items-center gap-2 border-b border-gray-200 bg-gray-50 px-4 py-2">
-                <PlayCircle className="h-4 w-4 text-green-600" />
-                <h3 className="text-sm font-medium text-gray-700">Compiled Video</h3>
-                <span className="ml-auto rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                  Ready to view
-                </span>
-              </div>
-              <div className="relative aspect-video bg-black">
-                {videoLoading && !videoError && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-white" />
-                  </div>
-                )}
-                {videoError ? (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-                    <p className="mb-2 text-sm">Failed to load video</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setVideoError(false);
-                        setVideoLoading(true);
-                      }}
-                      className="rounded bg-white/20 px-3 py-1 text-xs hover:bg-white/30"
-                    >
-                      Retry
-                    </button>
-                  </div>
-                ) : (
-                  <video
-                    key={completedVideoUrl}
-                    src={completedVideoUrl}
-                    controls
-                    controlsList="nodownload"
-                    preload="metadata"
-                    className="h-full w-full"
-                    playsInline
-                    onLoadedData={() => setVideoLoading(false)}
-                    onError={(e) => {
-                      console.error('[Video Player] Error loading video:', e);
-                      setVideoError(true);
-                      setVideoLoading(false);
-                    }}
-                  />
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Scene Cards */}
           <div className="mb-8">
             <SceneCardSequence
@@ -1386,10 +1409,12 @@ export function SceneGenerationLayout({
               onOptimizePrompt={handleOptimizePrompt}
               onGenerateImage={handleGenerateImage}
               onUploadImage={handleUploadImage}
+              onBrowseAssets={handleBrowseAssets}
               onAnimateVideo={handleAnimateVideo}
               onAddScene={handleAddScene}
               onReorderScenes={handleReorderScenes}
               maxScenes={10}
+              supportsPrompt={selectedModelSupportsPrompt}
             />
           </div>
 
@@ -1417,6 +1442,70 @@ export function SceneGenerationLayout({
 
         {/* Bottom Action Bar */}
         <div className="border-t border-gray-200 bg-white px-8 py-4">
+          {/* Compiled Video Player - shown when scene is completed */}
+          {completedVideoUrl && (
+            <div className="mx-auto mb-4 max-w-4xl overflow-hidden rounded-xl border border-gray-200">
+              <button
+                type="button"
+                onClick={() => setShowCompiledVideo(!showCompiledVideo)}
+                className="flex w-full items-center gap-2 border-b border-gray-200 bg-gray-50 px-4 py-2 transition-colors hover:bg-gray-100"
+              >
+                <PlayCircle className="h-4 w-4 text-green-600" />
+                <h3 className="text-sm font-medium text-gray-700">Compiled Video</h3>
+                <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                  Ready to view
+                </span>
+                <span className="ml-auto">
+                  {showCompiledVideo ? (
+                    <ChevronUp className="h-4 w-4 text-gray-500" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-gray-500" />
+                  )}
+                </span>
+              </button>
+              {showCompiledVideo && (
+                <div className="relative h-80 bg-black">
+                  {videoLoading && !videoError && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-white" />
+                    </div>
+                  )}
+                  {videoError ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+                      <p className="mb-2 text-sm">Failed to load video</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setVideoError(false);
+                          setVideoLoading(true);
+                        }}
+                        className="rounded bg-white/20 px-3 py-1 text-xs hover:bg-white/30"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  ) : (
+                    <video
+                      key={completedVideoUrl}
+                      src={completedVideoUrl}
+                      controls
+                      controlsList="nodownload"
+                      preload="metadata"
+                      className="h-full w-full object-contain"
+                      playsInline
+                      onLoadedData={() => setVideoLoading(false)}
+                      onError={(e) => {
+                        console.error('[Video Player] Error loading video:', e);
+                        setVideoError(true);
+                        setVideoLoading(false);
+                      }}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             {/* Back Button - Gray outline style */}
             <button
@@ -1517,6 +1606,17 @@ export function SceneGenerationLayout({
         patientId={patient?.id || ''}
         sessionId={sessionId}
         user={user}
+      />
+
+      <AssetPickerModal
+        isOpen={showAssetPickerModal}
+        onClose={() => {
+          setShowAssetPickerModal(false);
+          setAssetPickerSceneId(null);
+        }}
+        onSelect={handleAssetSelected}
+        patientId={patient?.id}
+        filterType="all"
       />
     </>
   );

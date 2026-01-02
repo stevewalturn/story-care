@@ -27,6 +27,7 @@ export const VideoTaskService = {
       createdAt: new Date(),
     };
     videoTasks.set(taskId, task);
+    console.log(`[VideoTaskService] Created task: ${taskId}, total tasks: ${videoTasks.size}`);
     return task;
   },
 
@@ -34,7 +35,9 @@ export const VideoTaskService = {
    * Get task by ID
    */
   getTask(taskId: string): VideoTask | undefined {
-    return videoTasks.get(taskId);
+    const task = videoTasks.get(taskId);
+    console.log(`[VideoTaskService] Get task: ${taskId}, found: ${!!task}, total tasks: ${videoTasks.size}`);
+    return task;
   },
 
   /**

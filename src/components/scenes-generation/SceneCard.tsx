@@ -3,7 +3,7 @@
 import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import type { CSSProperties } from 'react';
-import { GripVertical, Loader2, Maximize2, Pause, Play, RotateCw, SkipBack, SkipForward, Sparkles, Trash2, Upload, Video, Volume2, VolumeX } from 'lucide-react';
+import { FolderOpen, GripVertical, Info, Loader2, Maximize2, Pause, Play, RotateCw, SkipBack, SkipForward, Sparkles, Trash2, Upload, Video, Volume2, VolumeX } from 'lucide-react';
 import { forwardRef, useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/Input';
 
@@ -32,8 +32,11 @@ type SceneCardProps = {
   onOptimize: (id: string) => void;
   onGenerateImage?: (id: string) => void;
   onUploadImage?: (id: string, file: File) => void;
+  onBrowseAssets?: (id: string) => void;
   onAnimateVideo?: (id: string) => void;
   isGeneratingAnyImage?: boolean;
+  /** Whether the selected model supports prompt input (false for upscaling, style transfer, image variation) */
+  supportsPrompt?: boolean;
   // Drag handle props from dnd-kit
   dragHandleProps?: {
     attributes: DraggableAttributes;
@@ -52,8 +55,10 @@ export const SceneCard = forwardRef<HTMLDivElement, SceneCardProps>(function Sce
   onOptimize,
   onGenerateImage,
   onUploadImage,
+  onBrowseAssets,
   onAnimateVideo,
   isGeneratingAnyImage,
+  supportsPrompt = true,
   dragHandleProps,
   sortableStyle,
   isSortableDragging,
@@ -379,36 +384,59 @@ export const SceneCard = forwardRef<HTMLDivElement, SceneCardProps>(function Sce
         {/* Prompt Section Header */}
         <div className="mb-2 flex items-center justify-between">
           <span className="text-sm font-medium text-gray-700">Prompt</span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onOptimize(scene.id)}
-              className="flex items-center gap-1 text-sm font-medium text-purple-600 transition-colors hover:text-purple-700"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Optimize
-            </button>
-          </div>
+          {supportsPrompt && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onOptimize(scene.id)}
+                className="flex items-center gap-1 text-sm font-medium text-purple-600 transition-colors hover:text-purple-700"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Optimize
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Prompt Textarea */}
-        <textarea
-          value={scene.prompt}
-          onChange={e => handlePromptChange(e.target.value)}
-          placeholder="Describe the scene..."
-          className="mb-4 min-h-[80px] w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
-        />
+        {/* Prompt Textarea or No-Prompt Notice */}
+        {supportsPrompt ? (
+          <textarea
+            value={scene.prompt}
+            onChange={e => handlePromptChange(e.target.value)}
+            placeholder="Describe the scene..."
+            className="mb-4 min-h-[80px] w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
+          />
+        ) : (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+            <Info className="h-4 w-4 flex-shrink-0" />
+            <span>Prompt not used - this model applies a preset style/effect to the reference image</span>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
           {/* Upload Image Button */}
           {onUploadImage && (
             <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={scene.status === 'generating_image'}
               className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
               title="Upload your own image"
             >
               <Upload className="h-4 w-4" />
+            </button>
+          )}
+
+          {/* Browse from Assets Button */}
+          {onBrowseAssets && (
+            <button
+              type="button"
+              onClick={() => onBrowseAssets(scene.id)}
+              disabled={scene.status === 'generating_image'}
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              title="Browse from assets library"
+            >
+              <FolderOpen className="h-4 w-4" />
             </button>
           )}
 

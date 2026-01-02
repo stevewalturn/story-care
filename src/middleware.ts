@@ -129,6 +129,6 @@ export const config = {
   // - … if they start with `/_next`, `/_vercel` or `monitoring`
   // - … the ones containing a dot (e.g. `favicon.ico`)
   // - … API upload routes (to avoid body consumption issues with large files)
-  matcher: '/((?!_next|_vercel|monitoring|api/sessions/upload|api/sessions/upload-url|api/sessions/upload-confirm|.*\\..*).*)',
+  matcher: '/((?!_next|_vercel|monitoring|api/sessions/upload|api/sessions/upload-url|api/sessions/upload-confirm|api/media/upload|.*\\..*).*)',
   runtime: 'nodejs',
 };

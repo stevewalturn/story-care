@@ -100,36 +100,53 @@ export function MediaGrid({ items, onItemClick, onDelete }: MediaGridProps) {
                     className="h-full w-full object-cover"
                   />
                 )
-              : item.type === 'video' && item.thumbnailUrl
+              : item.type === 'video'
                 ? (
                     <>
-                      <img
-                        src={item.thumbnailUrl}
-                        alt={item.title}
-                        className="h-full w-full object-cover"
-                      />
-                      <div className="bg-opacity-20 absolute inset-0 flex items-center justify-center bg-black">
-                        <div className="bg-opacity-90 flex h-12 w-12 items-center justify-center rounded-full bg-white">
-                          <Video className="h-6 w-6 text-gray-700" />
+                      {item.thumbnailUrl
+                        ? (
+                            <img
+                              src={item.thumbnailUrl}
+                              alt={item.title}
+                              className="h-full w-full object-cover"
+                            />
+                          )
+                        : (
+                            <div className="h-full w-full bg-gradient-to-br from-purple-100 to-purple-200" />
+                          )}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 shadow-lg">
+                          <Video className="h-7 w-7 text-purple-600" />
                         </div>
                       </div>
                     </>
                   )
-                : item.type === 'quote' && item.text
+                : item.type === 'audio'
                   ? (
-                      <div className="flex items-center justify-center p-4">
-                        <p className="line-clamp-6 text-center text-sm text-gray-700 italic">
-                          "
-                          {item.text}
-                          "
-                        </p>
-                      </div>
+                      <>
+                        <div className="h-full w-full bg-gradient-to-br from-green-100 to-green-200" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 shadow-lg">
+                            <Music className="h-7 w-7 text-green-600" />
+                          </div>
+                        </div>
+                      </>
                     )
-                  : (
-                      <div className={`flex h-16 w-16 items-center justify-center rounded-2xl ${getTypeColor(item.type)}`}>
-                        {getIcon(item.type)}
-                      </div>
-                    )}
+                  : item.type === 'quote' && item.text
+                    ? (
+                        <div className="flex items-center justify-center p-4">
+                          <p className="line-clamp-6 text-center text-sm text-gray-700 italic">
+                            "
+                            {item.text}
+                            "
+                          </p>
+                        </div>
+                      )
+                    : (
+                        <div className={`flex h-16 w-16 items-center justify-center rounded-2xl ${getTypeColor(item.type)}`}>
+                          {getIcon(item.type)}
+                        </div>
+                      )}
 
             {/* Duration badge */}
             {item.duration && (

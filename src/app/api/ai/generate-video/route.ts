@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       sessionId,
       title = 'AI Generated Video',
       prompt,
-      model = 'seedance-1-lite',
+      model = 'seedance-v1.5-pro-i2v',
       referenceImage,
       duration = 5,
       fps = 24,

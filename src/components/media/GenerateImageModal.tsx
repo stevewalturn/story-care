@@ -1,12 +1,12 @@
 'use client';
 
 import type { PatientReferenceImage } from '@/models/Schema';
-import { Check, Edit2, HelpCircle, Image as ImageIcon, Loader2, Plus, Save, Sparkles, Star, StarOff, Trash2, X } from 'lucide-react';
+import { Check, Edit2, HelpCircle, Image as ImageIcon, Info, Loader2, Plus, Save, Sparkles, Star, StarOff, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAvailableImageModels } from '@/libs/ModelMetadata';
+import { getAllImageModelsFlat, getFilteredImageModels } from '@/libs/ModelMetadata';
 
 type Patient = {
   id: string;
@@ -43,19 +43,8 @@ type GenerateImageModalProps = {
   initialStyle?: string;
 };
 
-// Atlas Cloud models from centralized metadata
-const ATLAS_TEXT_TO_IMAGE_MODELS = [
-  { id: 'flux-schnell', name: 'Flux Schnell', description: 'Fastest generation', supportsReference: false },
-  { id: 'flux-dev', name: 'Flux Dev', description: 'High quality output', supportsReference: false },
-];
-
-const ATLAS_IMAGE_TO_IMAGE_MODELS = [
-  { id: 'flux-redux-dev', name: 'Flux Redux Dev', description: 'Image-to-Image generation', supportsReference: true },
-  { id: 'gemini-2.5-flash-image', name: 'Nano Banana', description: 'Gemini 2.5 Flash Image', supportsReference: true },
-];
-
-// Suppress unused import warning - kept for potential future use
-void getAvailableImageModels;
+// Get all available models from centralized metadata
+// Models are filtered based on useReference toggle state
 
 export function GenerateImageModal({
   isOpen,
@@ -86,9 +75,13 @@ export function GenerateImageModal({
   const [savingAsReference, setSavingAsReference] = useState(false);
   const [useReference, setUseReference] = useState(false); // Default to text-to-image
 
-  // Get available models based on useReference toggle
-  const availableModels = useReference ? ATLAS_IMAGE_TO_IMAGE_MODELS : ATLAS_TEXT_TO_IMAGE_MODELS;
-  const [selectedModel, setSelectedModel] = useState(availableModels[0]?.id || 'flux-schnell');
+  // Get available models based on useReference toggle - filtered by category
+  const imageModels = getFilteredImageModels(useReference);
+  const allAvailableModels = Object.values(imageModels).flat();
+  const [selectedModel, setSelectedModel] = useState(() => {
+    // Get initial model from first available category
+    return allAvailableModels[0]?.value || 'flux-schnell';
+  });
   const [isGenerating, setIsGenerating] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -128,10 +121,12 @@ export function GenerateImageModal({
 
   // Switch model when useReference changes
   useEffect(() => {
-    const models = useReference ? ATLAS_IMAGE_TO_IMAGE_MODELS : ATLAS_TEXT_TO_IMAGE_MODELS;
+    const filteredModels = getFilteredImageModels(useReference);
+    const allModels = Object.values(filteredModels).flat();
     // If current model is not in new list, switch to first available
-    if (!models.find(m => m.id === selectedModel)) {
-      setSelectedModel(models[0]?.id || 'flux-schnell');
+    if (!allModels.find(m => m.value === selectedModel)) {
+      const firstModel = allModels[0];
+      setSelectedModel(firstModel?.value || 'flux-schnell');
     }
   }, [useReference, selectedModel]);
 
@@ -194,7 +189,7 @@ export function GenerateImageModal({
 
       // Decode base64 to binary
       const byteCharacters = atob(base64Data);
-      const byteNumbers: number[] = new Array(byteCharacters.length);
+      const byteNumbers: number[] = Array.from({ length: byteCharacters.length });
       for (let i = 0; i < byteCharacters.length; i++) {
         byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
@@ -586,7 +581,9 @@ export function GenerateImageModal({
   }
 
   // Get current model info from available models
-  const currentModel = availableModels.find(m => m.id === selectedModel) || availableModels[0];
+  const currentModelMeta = getAllImageModelsFlat().find(m => m.value === selectedModel);
+  const currentModelLabel = currentModelMeta?.label || selectedModel;
+  const modelSupportsPrompt = currentModelMeta?.supportsPrompt ?? true;
 
   return (
     <Modal
@@ -921,12 +918,18 @@ export function GenerateImageModal({
                 disabled={isGenerating}
                 className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-sm transition-colors hover:border-gray-300 disabled:cursor-not-allowed disabled:bg-gray-50"
               >
-                <div>
-                  <span className="font-medium text-gray-900">{currentModel?.name}</span>
-                  <span className="ml-2 text-gray-500">
-                    -
-                    {currentModel?.description}
-                  </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-gray-900">{currentModelLabel}</span>
+                  {currentModelMeta?.supportsReference && currentModelMeta.maxReferenceImages > 0 && (
+                    <span className={`rounded px-1.5 py-0.5 text-xs ${
+                      currentModelMeta.maxReferenceImages === 1
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-green-100 text-green-700'
+                    }`}
+                    >
+                      {currentModelMeta.maxReferenceImages === 1 ? '1 ref' : `${currentModelMeta.maxReferenceImages}+ refs`}
+                    </span>
+                  )}
                 </div>
                 <svg className={`h-5 w-5 text-gray-400 transition-transform ${showModelDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -934,35 +937,67 @@ export function GenerateImageModal({
               </button>
 
               {showModelDropdown && (
-                <div className="absolute top-full right-0 left-0 z-10 mt-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                  {availableModels.map(model => (
-                    <button
-                      key={model.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedModel(model.id);
-                        setShowModelDropdown(false);
-                      }}
-                      className={`flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-gray-50 ${
-                        selectedModel === model.id ? 'bg-purple-50' : ''
-                      }`}
-                    >
-                      <div>
-                        <span className="font-medium text-gray-900">{model.name}</span>
-                        <span className="ml-2 text-gray-500">
-                          -
-                          {model.description}
-                        </span>
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowModelDropdown(false)}
+                  />
+                  <div className="absolute top-full right-0 left-0 z-20 mt-1 max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                    {useReference && (
+                      <div className="border-b border-purple-200 bg-purple-50 px-3 py-2">
+                        <p className="text-xs font-medium text-purple-600">Reference Mode - Image-to-Image models only</p>
                       </div>
-                      {selectedModel === model.id && (
-                        <Check className="h-4 w-4 text-purple-600" />
-                      )}
-                    </button>
-                  ))}
-                </div>
+                    )}
+                    {Object.entries(imageModels).map(([provider, providerModels]) => (
+                      <div key={provider} className="border-b border-gray-100 last:border-b-0">
+                        <div className="bg-gray-50 px-3 py-2">
+                          <p className="text-xs font-semibold text-gray-500">{provider}</p>
+                        </div>
+                        {providerModels.map(model => (
+                          <button
+                            key={model.value}
+                            type="button"
+                            onClick={() => {
+                              setSelectedModel(model.value);
+                              setShowModelDropdown(false);
+                            }}
+                            className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50 ${
+                              model.value === selectedModel ? 'bg-purple-50 font-medium text-purple-600' : 'text-gray-700'
+                            }`}
+                          >
+                            <span>{model.label}</span>
+                            <div className="flex items-center gap-2">
+                              {model.supportsReference && model.maxReferenceImages > 0 && (
+                                <span className={`rounded px-1.5 py-0.5 text-xs ${
+                                  model.maxReferenceImages === 1
+                                    ? 'bg-amber-100 text-amber-700'
+                                    : 'bg-green-100 text-green-700'
+                                }`}
+                                >
+                                  {model.maxReferenceImages === 1 ? '1 ref' : `${model.maxReferenceImages}+ refs`}
+                                </span>
+                              )}
+                              {model.value === selectedModel && (
+                                <Check className="h-4 w-4 text-purple-600" />
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </div>
+
+          {/* No Prompt Support Notice */}
+          {!modelSupportsPrompt && (
+            <div className="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5">
+              <Info className="h-3.5 w-3.5 text-amber-600" />
+              <span className="text-xs text-amber-700">No prompt input - transforms reference only</span>
+            </div>
+          )}
 
           {/* Prompt with Optimize button */}
           <div className={isGenerating ? 'opacity-50' : ''}>

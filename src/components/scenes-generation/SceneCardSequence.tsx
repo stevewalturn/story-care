@@ -22,10 +22,13 @@ type SceneCardSequenceProps = {
   onAddScene?: () => void;
   onGenerateImage?: (id: string) => void;
   onUploadImage?: (id: string, file: File) => void;
+  onBrowseAssets?: (id: string) => void;
   onAnimateVideo?: (id: string) => void;
   onReorderScenes?: (oldIndex: number, newIndex: number) => void;
   maxScenes?: number;
   isGeneratingAnyImage?: boolean;
+  /** Whether the selected model supports prompt input */
+  supportsPrompt?: boolean;
 };
 
 // Sortable wrapper for SceneCard
@@ -36,8 +39,10 @@ function SortableSceneCard({
   onOptimize,
   onGenerateImage,
   onUploadImage,
+  onBrowseAssets,
   onAnimateVideo,
   isGeneratingAnyImage,
+  supportsPrompt,
 }: {
   scene: SceneCardData;
   onUpdate: (id: string, updates: Partial<SceneCardData>) => void;
@@ -45,8 +50,10 @@ function SortableSceneCard({
   onOptimize: (id: string) => void;
   onGenerateImage?: (id: string) => void;
   onUploadImage?: (id: string, file: File) => void;
+  onBrowseAssets?: (id: string) => void;
   onAnimateVideo?: (id: string) => void;
   isGeneratingAnyImage?: boolean;
+  supportsPrompt?: boolean;
 }) {
   const {
     attributes,
@@ -75,8 +82,10 @@ function SortableSceneCard({
         onOptimize={onOptimize}
         onGenerateImage={onGenerateImage}
         onUploadImage={onUploadImage}
+        onBrowseAssets={onBrowseAssets}
         onAnimateVideo={onAnimateVideo}
         isGeneratingAnyImage={isGeneratingAnyImage}
+        supportsPrompt={supportsPrompt}
         dragHandleProps={{ attributes, listeners }}
         sortableStyle={style}
         isSortableDragging={isDragging}
@@ -93,10 +102,12 @@ export function SceneCardSequence({
   onAddScene,
   onGenerateImage,
   onUploadImage,
+  onBrowseAssets,
   onAnimateVideo,
   onReorderScenes,
   maxScenes = 5,
   isGeneratingAnyImage,
+  supportsPrompt = true,
 }: SceneCardSequenceProps) {
   const canAddMore = scenes.length < maxScenes;
 
@@ -145,8 +156,10 @@ export function SceneCardSequence({
                   onOptimize={onOptimizePrompt}
                   onGenerateImage={onGenerateImage}
                   onUploadImage={onUploadImage}
+                  onBrowseAssets={onBrowseAssets}
                   onAnimateVideo={onAnimateVideo}
                   isGeneratingAnyImage={isGeneratingAnyImage}
+                  supportsPrompt={supportsPrompt}
                 />
               ))}
 

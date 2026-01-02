@@ -24,26 +24,23 @@ export type VideoGenerationResult = {
 
 /**
  * Generate a video using the specified model
+ * All 46 video models are routed to Atlas Cloud
  */
 export async function generateVideo(
   options: VideoGenerationOptions,
 ): Promise<VideoGenerationResult> {
   const { model, prompt } = options;
 
-  // Route to Atlas Cloud
-  if (model === 'seedance-1-lite') {
-    const { generateVideoWithAtlas } = await import('./providers/AtlasCloud');
-    return await generateVideoWithAtlas({
-      prompt,
-      model: model as AtlasVideoModel,
-      referenceImage: options.referenceImage,
-      duration: options.duration,
-      fps: options.fps,
-      seed: options.seed,
-    });
-  }
-
-  throw new Error(`Unsupported model: ${model}`);
+  // All video models route to Atlas Cloud
+  const { generateVideoWithAtlas } = await import('./providers/AtlasCloud');
+  return await generateVideoWithAtlas({
+    prompt,
+    model: model as AtlasVideoModel,
+    referenceImage: options.referenceImage,
+    duration: options.duration,
+    fps: options.fps,
+    seed: options.seed,
+  });
 }
 
 // Re-export for convenience
