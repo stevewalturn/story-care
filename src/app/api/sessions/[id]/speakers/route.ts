@@ -239,6 +239,17 @@ export async function PUT(
 
     console.log(`[Speakers API] Summary: ${updatedCount} updated, ${skippedCount} skipped`);
 
+    // Mark session as having completed speaker setup
+    await db
+      .update(sessions)
+      .set({
+        speakersSetupCompleted: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(sessions.id, sessionId));
+
+    console.log(`[Speakers API] Marked session ${sessionId} as speakers setup completed`);
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error updating speakers:', error);

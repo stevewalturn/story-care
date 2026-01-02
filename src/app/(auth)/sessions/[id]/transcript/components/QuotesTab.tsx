@@ -6,12 +6,12 @@
  */
 
 import type { QuotesTabProps } from '../types/transcript.types';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Play, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 
-export function QuotesTab({ sessionId, user, refreshKey, selectedPatient, onEditQuote, onDeleteQuote }: QuotesTabProps) {
+export function QuotesTab({ sessionId, user, refreshKey, selectedPatient, onEditQuote, onDeleteQuote, onJumpToTimestamp }: QuotesTabProps) {
   const [quotes, setQuotes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showNewQuoteModal, setShowNewQuoteModal] = useState(false);
@@ -178,16 +178,28 @@ export function QuotesTab({ sessionId, user, refreshKey, selectedPatient, onEdit
                       {quote.speakerName || quote.speakerType || 'Unknown'}
                     </span>
                     {quote.startTimeSeconds && (
-                      <span className="text-xs text-gray-500">
-                        {Math.floor(Number(quote.startTimeSeconds) / 60)}
-                        :
-                        {(Number(quote.startTimeSeconds) % 60).toFixed(0).padStart(2, '0')}
-                        {' '}
-                        -
-                        {Math.floor(Number(quote.endTimeSeconds) / 60)}
-                        :
-                        {(Number(quote.endTimeSeconds) % 60).toFixed(0).padStart(2, '0')}
-                      </span>
+                      <>
+                        <span className="text-xs text-gray-500">
+                          {Math.floor(Number(quote.startTimeSeconds) / 60)}
+                          :
+                          {(Number(quote.startTimeSeconds) % 60).toFixed(0).padStart(2, '0')}
+                          {' '}
+                          -
+                          {Math.floor(Number(quote.endTimeSeconds) / 60)}
+                          :
+                          {(Number(quote.endTimeSeconds) % 60).toFixed(0).padStart(2, '0')}
+                        </span>
+                        {onJumpToTimestamp && (
+                          <button
+                            onClick={() => onJumpToTimestamp(Number(quote.startTimeSeconds))}
+                            className="flex items-center gap-1 rounded-md bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 transition-colors hover:bg-purple-200"
+                            title="Jump to this point in the audio"
+                          >
+                            <Play className="h-3 w-3" />
+                            Play
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                   <div className="flex items-center gap-1">

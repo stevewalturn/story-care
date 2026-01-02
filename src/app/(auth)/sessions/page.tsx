@@ -57,7 +57,7 @@ export default function SessionsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'patients' | 'groups'>('patients');
+  const [viewMode, setViewMode] = useState<'all' | 'patients' | 'groups'>('all');
 
   // Detail view state
   const [selectedPatient, setSelectedPatient] = useState<SelectedPatient | null>(null);
@@ -114,7 +114,7 @@ export default function SessionsPage() {
         const formattedSessions = data.sessions.map((session: any) => ({
           id: session.id,
           title: session.title,
-          date: new Date(session.sessionDate).toLocaleDateString(),
+          date: session.updatedAt ? new Date(session.updatedAt).toISOString() : new Date(session.sessionDate).toLocaleDateString(),
           type: session.sessionType,
           patientId: session.patientId,
           patientName: session.patient?.name,
@@ -350,6 +350,45 @@ export default function SessionsPage() {
       .slice(0, 2);
   };
 
+  // Get display name for groups - prefer custom name, fallback to member names
+  const getDisplayGroupName = (group: { name?: string; members: GroupMember[] }) => {
+    // If group has a custom name (not auto-generated pattern), use it
+    if (group.name && !group.name.startsWith('Session - ')) {
+      return group.name;
+    }
+    // Otherwise, generate from member names
+    if (group.members.length > 0) {
+      return group.members.map(m => m.name.split(' ')[0]).join(' + ');
+    }
+    return group.name || 'Unnamed Group';
+  };
+
+  // Get recent sessions (last 5 across all types)
+  const recentSessions = useMemo(() => {
+    return [...sessions]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5);
+  }, [sessions]);
+
+  // Get all sessions sorted by date for the "All" view
+  const allSessionsSorted = useMemo(() => {
+    let result = [...sessions].sort((a, b) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+
+    // Apply search filter
+    if (searchTerm) {
+      result = result.filter(s =>
+        s.patientName?.toLowerCase().includes(searchTerm.toLowerCase())
+        || s.groupName?.toLowerCase().includes(searchTerm.toLowerCase())
+        || s.groupMembers?.some(m => m.name.toLowerCase().includes(searchTerm.toLowerCase()))
+        || s.title.toLowerCase().includes(searchTerm.toLowerCase()),
+      );
+    }
+
+    return result;
+  }, [sessions, searchTerm]);
+
   // Handle patient card click
   const handlePatientClick = (patient: typeof patientsWithSessions[0]) => {
     setSelectedPatient({
@@ -426,8 +465,74 @@ export default function SessionsPage() {
           </Button>
         </div>
 
-        {/* Patients / Groups Tabs - Underlined style */}
-        <div className="mt-6 flex gap-6 border-b border-gray-200">
+        {/* Recent Sessions Section */}
+        {recentSessions.length > 0 && (
+          <div className="mt-6 mb-4">
+            <h2 className="mb-3 text-sm font-medium text-gray-700">Recent</h2>
+            <div className="scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 flex gap-3 overflow-x-auto pb-2">
+              {recentSessions.map(session => (
+                <button
+                  key={session.id}
+                  type="button"
+                  onClick={() => router.push(`/sessions/${session.id}/transcript`)}
+                  className="flex min-w-[200px] flex-shrink-0 flex-col rounded-lg border border-gray-200 bg-white p-3 text-left transition-all hover:border-purple-300 hover:bg-purple-50"
+                >
+                  {/* Session type badge + avatar */}
+                  <div className="mb-2 flex items-center gap-2">
+                    {session.type === 'group'
+                      ? (
+                          <StackedAvatars members={session.groupMembers || []} size="sm" maxVisible={3} />
+                        )
+                      : (
+                          session.patientAvatarUrl || session.patientReferenceImageUrl
+                            ? (
+                                <img
+                                  src={session.patientAvatarUrl || session.patientReferenceImageUrl}
+                                  alt={session.patientName || ''}
+                                  className="h-8 w-8 rounded-full object-cover"
+                                />
+                              )
+                            : (
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100">
+                                  <span className="text-sm font-medium text-purple-700">
+                                    {session.patientName?.charAt(0) || '?'}
+                                  </span>
+                                </div>
+                              )
+                        )}
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                      {session.type === 'group' ? 'Group' : 'Individual'}
+                    </span>
+                  </div>
+                  {/* Session name */}
+                  <p className="truncate text-sm font-medium text-gray-900">
+                    {session.type === 'group'
+                      ? getDisplayGroupName({ name: session.groupName, members: session.groupMembers || [] })
+                      : session.patientName}
+                  </p>
+                  {/* Time ago */}
+                  <p className="mt-1 text-xs text-gray-500">
+                    {formatRelativeTime(session.date)}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* All / Individuals / Groups Tabs - Underlined style */}
+        <div className="mt-4 flex gap-6 border-b border-gray-200">
+          <button
+            type="button"
+            onClick={() => setViewMode('all')}
+            className={`border-b-2 pb-3 text-sm font-medium transition-colors ${
+              viewMode === 'all'
+                ? 'border-purple-600 text-purple-600'
+                : 'border-transparent text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            All
+          </button>
           <button
             type="button"
             onClick={() => setViewMode('patients')}
@@ -437,7 +542,7 @@ export default function SessionsPage() {
                 : 'border-transparent text-gray-500 hover:text-gray-900'
             }`}
           >
-            Patients
+            Individuals
           </button>
           <button
             type="button"
@@ -611,9 +716,98 @@ export default function SessionsPage() {
               <p className="text-gray-500">Loading sessions...</p>
             </div>
           )
-        : viewMode === 'patients'
+        : viewMode === 'all'
           ? (
-              // Patients View
+              // All Sessions View (Unified chronological list)
+              allSessionsSorted.length === 0
+                ? (
+                    <div className="py-16 text-center">
+                      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+                        <Users className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <h3 className="mb-2 text-lg font-semibold text-gray-900">
+                        {sessions.length === 0 ? 'No sessions yet' : 'No matching sessions'}
+                      </h3>
+                      <p className="mb-6 text-gray-500">
+                        {sessions.length === 0 ? 'Create a session to get started' : 'Try adjusting your search'}
+                      </p>
+                      {sessions.length === 0 ? (
+                        <Button
+                          variant="primary"
+                          onClick={() => handleNewSession()}
+                        >
+                          <Plus className="mr-2 h-5 w-5" />
+                          New Session
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="secondary"
+                          onClick={() => setSearchTerm('')}
+                        >
+                          Clear search
+                        </Button>
+                      )}
+                    </div>
+                  )
+                : (
+                    <div className="space-y-2">
+                      {allSessionsSorted.map(session => (
+                        <button
+                          key={session.id}
+                          type="button"
+                          onClick={() => router.push(`/sessions/${session.id}/transcript`)}
+                          className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 text-left transition-all hover:border-purple-300 hover:bg-purple-50"
+                        >
+                          {/* Avatar */}
+                          {session.type === 'group'
+                            ? (
+                                <StackedAvatars members={session.groupMembers || []} size="md" maxVisible={3} />
+                              )
+                            : (
+                                session.patientAvatarUrl || session.patientReferenceImageUrl
+                                  ? (
+                                      <img
+                                        src={session.patientAvatarUrl || session.patientReferenceImageUrl}
+                                        alt={session.patientName || ''}
+                                        className="h-10 w-10 rounded-full object-cover"
+                                      />
+                                    )
+                                  : (
+                                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
+                                        <span className="text-sm font-medium text-purple-700">
+                                          {session.patientName?.charAt(0) || '?'}
+                                        </span>
+                                      </div>
+                                    )
+                              )}
+
+                          {/* Session info */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="truncate font-medium text-gray-900">
+                                {session.type === 'group'
+                                  ? getDisplayGroupName({ name: session.groupName, members: session.groupMembers || [] })
+                                  : session.patientName}
+                              </p>
+                              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                                {session.type === 'group' ? 'Group' : 'Individual'}
+                              </span>
+                            </div>
+                            <p className="truncate text-sm text-gray-500">{session.title}</p>
+                          </div>
+
+                          {/* Date */}
+                          <p className="whitespace-nowrap text-sm text-gray-500">
+                            {formatRelativeTime(session.date)}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  )
+            )
+          : viewMode === 'patients'
+            ? (
+                // Patients View
               filteredAndSortedPatients.length === 0
                 ? (
                     <div className="py-16 text-center">
@@ -753,9 +947,7 @@ export default function SessionsPage() {
                           {/* Group name and last opened */}
                           <div>
                             <h3 className="font-medium text-gray-900">
-                              {group.members.length > 0
-                                ? group.members.map(m => m.name.split(' ')[0]).join(', ')
-                                : group.name}
+                              {getDisplayGroupName(group)}
                             </h3>
                             <p className="text-sm text-gray-500">
                               Last opened

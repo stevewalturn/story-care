@@ -822,17 +822,22 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
               <div className="flex items-center gap-3">
                 {/* Profile Picture */}
                 <div className="flex-shrink-0">
-                  {speaker.avatarUrl ? (
+                  {speaker.avatarUrl && (
                     <img
                       src={speaker.avatarUrl}
                       alt={speaker.name || `Speaker ${index + 1}`}
                       className="h-10 w-10 rounded-full border-2 border-gray-200 object-cover"
+                      onError={(e) => {
+                        // Hide broken image and show fallback
+                        e.currentTarget.style.display = 'none';
+                        const fallback = e.currentTarget.nextElementSibling;
+                        if (fallback) fallback.classList.remove('hidden');
+                      }}
                     />
-                  ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-gray-200 bg-gray-100 text-sm font-semibold text-gray-700">
-                      {speaker.name ? speaker.name.charAt(0).toUpperCase() : `S${index + 1}`}
-                    </div>
                   )}
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 border-gray-200 bg-gradient-to-br from-purple-500 to-indigo-600 text-sm font-semibold text-white ${speaker.avatarUrl ? 'hidden' : ''}`}>
+                    {speaker.name ? speaker.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : `S${index + 1}`}
+                  </div>
                 </div>
                 <h3 className="text-base font-medium text-gray-900">
                   Speaker
@@ -1009,7 +1014,7 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
                   {[...Array.from({ length: 12 })].map((_, i) => (
                     <div
                       key={i}
-                      className={`animate-waveform- w-1 rounded-full bg-purple-500${(i % 5) + 1}`}
+                      className={`animate-waveform-${(i % 5) + 1} w-1 rounded-full bg-purple-500`}
                       style={{ height: '16px' }}
                     />
                   ))}

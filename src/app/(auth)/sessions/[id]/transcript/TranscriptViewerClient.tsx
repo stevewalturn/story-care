@@ -144,6 +144,9 @@ export function TranscriptViewerClient({
   const [isTranscriptCollapsed, setIsTranscriptCollapsed] = useState(false);
   const [isLibraryCollapsed, setIsLibraryCollapsed] = useState(false);
 
+  // Audio seek control - set by LibraryPanel/QuotesTab to seek audio in TranscriptPanel
+  const [seekToTimestamp, setSeekToTimestamp] = useState<number | null>(null);
+
   // Selected patient from Library Panel (determines where assets are saved)
   const [selectedPatientFromLibrary, setSelectedPatientFromLibrary] = useState<SelectedPatientInfo | null>(null);
 
@@ -490,10 +493,18 @@ export function TranscriptViewerClient({
         quoteText: quoteData.quoteText,
         speaker: quoteData.speaker,
         source: 'transcript_selection',
+        validateAgainstTranscript: true, // Require verbatim match for clinical accuracy
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save quote');
+        const errorData = await response.json().catch(() => ({}));
+
+        // Handle specific validation errors
+        if (errorData.code === 'QUOTE_NOT_IN_TRANSCRIPT') {
+          throw new Error('This quote does not match the transcript verbatim. Please select text directly from the transcript.');
+        }
+
+        throw new Error(errorData.error || 'Failed to save quote');
       }
 
       // Trigger refresh of library panel
@@ -629,6 +640,8 @@ export function TranscriptViewerClient({
             onSpeakerReassign={handleSpeakerReassign}
             isCollapsed={isTranscriptCollapsed}
             onToggleCollapse={() => setIsTranscriptCollapsed(!isTranscriptCollapsed)}
+            seekToTimestamp={seekToTimestamp}
+            onSeekComplete={() => setSeekToTimestamp(null)}
           />
         </div>
 
@@ -678,6 +691,7 @@ export function TranscriptViewerClient({
           onDeleteQuote={quote => setDeletingQuote(quote)}
           isCollapsed={isLibraryCollapsed}
           onToggleCollapse={() => setIsLibraryCollapsed(!isLibraryCollapsed)}
+          onJumpToTimestamp={setSeekToTimestamp}
         />
       </div>
 

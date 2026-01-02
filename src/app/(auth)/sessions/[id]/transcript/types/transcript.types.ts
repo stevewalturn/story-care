@@ -57,6 +57,9 @@ export type TranscriptPanelProps = {
   // Collapse functionality
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  // External seek control - when this value changes, seek audio to this timestamp
+  seekToTimestamp?: number | null;
+  onSeekComplete?: () => void; // Called after seek is performed to reset the value
 };
 
 // Props for AIAssistantPanel
@@ -139,6 +142,7 @@ export type QuotesTabProps = {
   selectedPatient?: string;
   onEditQuote?: (quote: any) => void;
   onDeleteQuote?: (quoteId: string) => void;
+  onJumpToTimestamp?: (timestamp: number) => void; // Jump to audio position
 };
 
 // Props for NotesTab

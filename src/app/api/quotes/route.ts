@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server';
-import { and, desc, eq, ilike, or } from 'drizzle-orm';
+import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { quotes, sessions, speakers } from '@/models/Schema';
+import { quotes, sessions, speakers, transcriptsSchema, utterancesSchema } from '@/models/Schema';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 
 // GET /api/quotes - List quotes
@@ -81,10 +81,13 @@ export async function POST(request: NextRequest) {
       sessionId,
       quoteText,
       speakerId,
+      speaker, // Accept speaker name string as alternative to speakerId
       startTimeSeconds,
       endTimeSeconds,
       tags,
       notes,
+      source: _source, // Track quote source: 'transcript_selection', 'ai_conversation', etc.
+      validateAgainstTranscript = false, // Enable strict validation
     } = body;
 
     // Validate required fields
@@ -95,14 +98,85 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Insert new quote
+    // 2. RESOLVE SPEAKER ID
+    // If speakerId not provided but speaker name is, look up the speaker
+    let resolvedSpeakerId = speakerId || null;
+
+    if (!speakerId && speaker && sessionId) {
+      // Look up speaker by name in this session's speakers
+      // First get the transcript for this session
+      const sessionTranscript = await db.query.transcriptsSchema.findFirst({
+        where: eq(transcriptsSchema.sessionId, sessionId),
+        columns: { id: true },
+      });
+
+      if (sessionTranscript) {
+        const matchingSpeaker = await db.query.speakers.findFirst({
+          where: and(
+            eq(speakers.transcriptId, sessionTranscript.id),
+            or(
+              eq(speakers.speakerName, speaker),
+              ilike(speakers.speakerName, speaker),
+            ),
+          ),
+          columns: { id: true },
+        });
+
+        if (matchingSpeaker) {
+          resolvedSpeakerId = matchingSpeaker.id;
+        }
+      }
+    }
+
+    // 3. VALIDATE QUOTE AGAINST TRANSCRIPT (for clinical accuracy)
+    // When enabled, quote text must exist verbatim in the session's transcript
+    if (validateAgainstTranscript && sessionId) {
+      // Get the transcript for this session
+      const transcript = await db.query.transcriptsSchema.findFirst({
+        where: eq(transcriptsSchema.sessionId, sessionId),
+        columns: { id: true },
+      });
+
+      if (transcript) {
+        // Check if quote text exists in any utterance (case-insensitive partial match)
+        const matchingUtterance = await db.query.utterancesSchema.findFirst({
+          where: and(
+            eq(utterancesSchema.transcriptId, transcript.id),
+            sql`LOWER(${utterancesSchema.text}) LIKE LOWER(${'%' + quoteText.trim() + '%'})`,
+          ),
+          columns: {
+            id: true,
+            speakerId: true,
+            startTimeSeconds: true,
+            endTimeSeconds: true,
+          },
+        });
+
+        if (!matchingUtterance) {
+          return NextResponse.json(
+            {
+              error: 'Quote validation failed: Text must match transcript verbatim. The quoted text was not found in the session transcript.',
+              code: 'QUOTE_NOT_IN_TRANSCRIPT',
+            },
+            { status: 400 },
+          );
+        }
+
+        // Auto-populate speaker and timestamps from matching utterance if not provided
+        if (!resolvedSpeakerId && matchingUtterance.speakerId) {
+          resolvedSpeakerId = matchingUtterance.speakerId;
+        }
+      }
+    }
+
+    // 4. INSERT QUOTE
     const [newQuote] = await db
       .insert(quotes)
       .values({
         patientId,
         sessionId: sessionId || null,
         quoteText,
-        speakerId: speakerId || null,
+        speakerId: resolvedSpeakerId,
         startTimeSeconds: startTimeSeconds ? String(startTimeSeconds) : null,
         endTimeSeconds: endTimeSeconds ? String(endTimeSeconds) : null,
         tags: tags || null,

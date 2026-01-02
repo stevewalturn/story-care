@@ -399,6 +399,9 @@ export const sessionsSchema = pgTable('sessions', {
   sessionSummaryGeneratedAt: timestamp('session_summary_generated_at'),
   sessionSummaryModel: varchar('session_summary_model', { length: 50 }),
 
+  // Speaker setup tracking
+  speakersSetupCompleted: boolean('speakers_setup_completed').default(false),
+
   // Metadata
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

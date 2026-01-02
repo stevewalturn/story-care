@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, or } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNull, lte, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { logPHIAccess } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
@@ -74,8 +74,8 @@ export async function GET(request: NextRequest) {
       whereConditions.push(lte(sessions.sessionDate, endDate));
     }
 
-    // Only show sessions that have a summary generated
-    whereConditions.push(isNotNull(sessions.sessionSummary));
+    // Only show sessions that have completed speaker setup
+    whereConditions.push(eq(sessions.speakersSetupCompleted, true));
 
     // 4. FETCH: Get sessions with module data, group data, transcripts, and speakers
     let allSessions;
@@ -206,6 +206,7 @@ export async function GET(request: NextRequest) {
         patientId: patient?.id || session.patientId,
         groupId: session.groupId,
         createdAt: session.createdAt,
+        updatedAt: session.updatedAt,
         patient,
         group: group ? {
           id: group.id,

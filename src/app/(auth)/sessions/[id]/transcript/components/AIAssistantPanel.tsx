@@ -204,17 +204,25 @@ export function AIAssistantPanel({
   };
 
   const handleSaveQuote = async (quoteData: { patientId: string; quoteText: string; speaker: string }) => {
-    // Save the quote
+    // Save the quote with validation against transcript
     const response = await authenticatedPost('/api/quotes', user, {
       patientId: quoteData.patientId,
       sessionId,
       quoteText: quoteData.quoteText,
       speaker: quoteData.speaker,
       source: 'ai_conversation',
+      validateAgainstTranscript: true, // Require verbatim match for clinical accuracy
     });
 
     if (!response.ok) {
-      throw new Error('Failed to save quote');
+      const errorData = await response.json().catch(() => ({}));
+
+      // Handle specific validation errors
+      if (errorData.code === 'QUOTE_NOT_IN_TRANSCRIPT') {
+        throw new Error('This quote does not match the transcript verbatim. For clinical accuracy, quotes must be exact excerpts from the session transcript.');
+      }
+
+      throw new Error(errorData.error || 'Failed to save quote');
     }
 
     // Refresh library if callback exists

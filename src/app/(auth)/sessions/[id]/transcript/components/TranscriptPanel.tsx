@@ -7,7 +7,7 @@
  */
 
 import type { SpeakerInfo, TranscriptPanelProps, Utterance } from '../types/transcript.types';
-import { ChevronDown, ChevronLeft, ChevronRight, Download, Pause, Pencil, Play } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, Pause, Play } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -47,8 +47,11 @@ export function TranscriptPanel({
   onSpeakerReassign,
   isCollapsed = false,
   onToggleCollapse,
+  seekToTimestamp,
+  onSeekComplete,
 }: TranscriptPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
 
   // Speaker dropdown state
   const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
@@ -64,6 +67,7 @@ export function TranscriptPanel({
   const [duration, setDuration] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [showSpeedDropdown, setShowSpeedDropdown] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
 
   // Audio player handlers
   const togglePlay = async () => {
@@ -135,6 +139,22 @@ export function TranscriptPanel({
       audio.removeEventListener('ended', handleEnded);
     };
   }, []);
+
+  // Handle external seek requests (e.g., from Quote "Jump to Audio" button)
+  useEffect(() => {
+    if (seekToTimestamp !== null && seekToTimestamp !== undefined && audioRef.current) {
+      audioRef.current.currentTime = seekToTimestamp;
+      setCurrentTime(seekToTimestamp);
+      // Start playing from the new position
+      audioRef.current.play().then(() => {
+        setIsPlaying(true);
+      }).catch(err => {
+        console.error('Failed to play audio after seek:', err);
+      });
+      // Notify parent that seek is complete
+      onSeekComplete?.();
+    }
+  }, [seekToTimestamp, onSeekComplete]);
 
   // Click outside handler for speaker dropdown
   useEffect(() => {
@@ -215,21 +235,42 @@ export function TranscriptPanel({
     }
   }, [sessionDate]);
 
-  const filteredUtterances = searchQuery
-    ? utterances.filter(u =>
-        u.text.toLowerCase().includes(searchQuery.toLowerCase())
-        || u.speakerName.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
-    : utterances;
+  // Find all utterances that match the search query (for navigation)
+  const matchingUtteranceIds = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const query = searchQuery.toLowerCase();
+    return utterances
+      .filter(u => u.text.toLowerCase().includes(query) || u.speakerName.toLowerCase().includes(query))
+      .map(u => u.id);
+  }, [searchQuery, utterances]);
+
+  // Reset match index when search changes
+  useEffect(() => {
+    setCurrentMatchIndex(0);
+  }, [searchQuery]);
+
+  // Highlight matching text in a string
+  const highlightText = (text: string, query: string): React.ReactNode => {
+    if (!query.trim()) return text;
+
+    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+
+    return parts.map((part, i) =>
+      regex.test(part) ? (
+        <mark key={i} className="rounded bg-yellow-200 px-0.5 text-yellow-900">{part}</mark>
+      ) : part,
+    );
+  };
 
   // Find the current utterance based on audio playback time
   const currentUtteranceId = useMemo(() => {
     if (!isPlaying && currentTime === 0) return null;
-    const current = filteredUtterances.find(
+    const current = utterances.find(
       u => currentTime >= u.startTime && currentTime < u.endTime,
     );
     return current?.id || null;
-  }, [currentTime, filteredUtterances, isPlaying]);
+  }, [currentTime, utterances, isPlaying]);
 
   // Auto-scroll to current utterance when it changes during playback
   useEffect(() => {
@@ -243,6 +284,22 @@ export function TranscriptPanel({
       }
     }
   }, [currentUtteranceId, isPlaying, searchQuery]);
+
+  // Auto-scroll to current search match
+  useEffect(() => {
+    if (matchingUtteranceIds.length > 0 && searchQuery) {
+      const currentMatchId = matchingUtteranceIds[currentMatchIndex];
+      if (currentMatchId) {
+        const utteranceEl = utteranceRefs.current.get(currentMatchId);
+        if (utteranceEl) {
+          utteranceEl.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          });
+        }
+      }
+    }
+  }, [currentMatchIndex, matchingUtteranceIds, searchQuery]);
 
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
@@ -337,7 +394,7 @@ export function TranscriptPanel({
           )}
         </div>
 
-        {/* Search with Edit Icon */}
+        {/* Search with Navigation */}
         <div className="relative">
           <svg className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -346,12 +403,52 @@ export function TranscriptPanel({
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && matchingUtteranceIds.length > 0) {
+                if (e.shiftKey) {
+                  setCurrentMatchIndex(prev => prev > 0 ? prev - 1 : matchingUtteranceIds.length - 1);
+                } else {
+                  setCurrentMatchIndex(prev => prev < matchingUtteranceIds.length - 1 ? prev + 1 : 0);
+                }
+              }
+            }}
             placeholder="Search"
-            className="w-full rounded-lg border border-gray-200 bg-white py-1.5 pr-10 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:border-purple-500 focus:outline-none"
+            className={`w-full rounded-lg border bg-white py-1.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none ${
+              searchQuery ? 'border-purple-300 pr-24 focus:border-purple-500' : 'border-gray-200 pr-10 focus:border-purple-500'
+            }`}
           />
-          <button className="absolute top-1/2 right-3 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
+          {/* Match counter and navigation - shown when searching */}
+          {searchQuery ? (
+            <div className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-1">
+              <span className="text-xs tabular-nums text-gray-500">
+                {matchingUtteranceIds.length > 0
+                  ? `${currentMatchIndex + 1}/${matchingUtteranceIds.length}`
+                  : '0/0'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentMatchIndex(prev =>
+                  prev > 0 ? prev - 1 : matchingUtteranceIds.length - 1,
+                )}
+                disabled={matchingUtteranceIds.length === 0}
+                className="rounded p-0.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30"
+                title="Previous match (Shift+Enter)"
+              >
+                <ChevronUp className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentMatchIndex(prev =>
+                  prev < matchingUtteranceIds.length - 1 ? prev + 1 : 0,
+                )}
+                disabled={matchingUtteranceIds.length === 0}
+                className="rounded p-0.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30"
+                title="Next match (Enter)"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -366,10 +463,12 @@ export function TranscriptPanel({
             onLoadedMetadata={() => {
               if (audioRef.current) {
                 setDuration(audioRef.current.duration);
+                setAudioError(null); // Clear any previous error on successful load
               }
             }}
             onError={(e) => {
               console.error('Audio load error:', e);
+              setAudioError('Failed to load audio. The file may be unavailable or the link may have expired.');
             }}
           />
         )}
@@ -453,8 +552,19 @@ export function TranscriptPanel({
 
               {/* Download - Consistent Size */}
               <button
-                className="flex h-10 w-10 items-center justify-center rounded-lg transition-colors hover:bg-gray-100"
-                title="Download"
+                onClick={() => {
+                  if (audioUrl) {
+                    const link = document.createElement('a');
+                    link.href = audioUrl;
+                    link.download = `${sessionTitle || 'session'}-audio.mp3`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }
+                }}
+                disabled={!audioUrl}
+                className="flex h-10 w-10 items-center justify-center rounded-lg transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                title="Download audio"
               >
                 <Download className="h-4 w-4 text-gray-600" />
               </button>
@@ -480,6 +590,16 @@ export function TranscriptPanel({
               style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
             />
           </div>
+
+          {/* Audio Error Message */}
+          {audioError && (
+            <div className="flex items-center gap-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+              <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{audioError}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -501,10 +621,12 @@ export function TranscriptPanel({
         className="flex-1 space-y-4 overflow-y-auto bg-white p-4"
         onMouseUp={onTextSelection}
       >
-        {filteredUtterances.map((utterance: Utterance) => {
+        {utterances.map((utterance: Utterance) => {
           const speakerColor = getSpeakerColor(utterance.speakerName, utterance.speakerType) ?? speakerColors.default;
           const initial = utterance.speakerName.charAt(0).toUpperCase();
           const isCurrentUtterance = currentUtteranceId === utterance.id;
+          const isCurrentSearchMatch = searchQuery && matchingUtteranceIds[currentMatchIndex] === utterance.id;
+          const isSearchMatch = searchQuery && matchingUtteranceIds.includes(utterance.id);
 
           return (
             <div
@@ -515,7 +637,11 @@ export function TranscriptPanel({
               className={`flex gap-3 rounded-lg p-2 -mx-2 transition-colors duration-200 ${
                 isCurrentUtterance
                   ? 'bg-purple-50 border-l-2 border-purple-500'
-                  : ''
+                  : isCurrentSearchMatch
+                    ? 'bg-yellow-50 border-l-2 border-yellow-400'
+                    : isSearchMatch
+                      ? 'bg-yellow-50/50'
+                      : ''
               }`}
             >
               {/* Speaker Avatar - Use actual photo if available, otherwise colored initial */}
@@ -627,7 +753,7 @@ export function TranscriptPanel({
                   </button>
                 </div>
                 <p className="text-sm leading-relaxed whitespace-pre-wrap text-gray-700">
-                  {utterance.text}
+                  {highlightText(utterance.text, searchQuery)}
                 </p>
               </div>
             </div>

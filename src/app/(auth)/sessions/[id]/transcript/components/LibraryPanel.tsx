@@ -19,6 +19,7 @@ type ExtendedLibraryPanelProps = LibraryPanelProps & {
   onDeleteQuote?: (quote: any) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  onJumpToTimestamp?: (timestamp: number) => void; // Jump to audio position
 };
 
 export function LibraryPanel({
@@ -34,6 +35,7 @@ export function LibraryPanel({
   onDeleteQuote,
   isCollapsed = false,
   onToggleCollapse,
+  onJumpToTimestamp,
 }: ExtendedLibraryPanelProps) {
   // Main tab state for switching between Media, Quotes, Notes, Profile
   const [activeTab, setActiveTab] = useState<'media' | 'quotes' | 'notes' | 'profile'>('media');
@@ -298,6 +300,7 @@ export function LibraryPanel({
             selectedPatient={selectedPatient}
             onEditQuote={onEditQuote}
             onDeleteQuote={onDeleteQuote}
+            onJumpToTimestamp={onJumpToTimestamp}
           />
         )}
 
