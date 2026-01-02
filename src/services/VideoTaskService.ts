@@ -11,8 +11,24 @@ export type VideoTask = {
   createdAt: Date;
 };
 
-// Singleton task storage
-const videoTasks = new Map<string, VideoTask>();
+// Use globalThis to persist across hot module reloads in development
+// This prevents the Map from being reset when Next.js reloads the module
+const globalKey = Symbol.for('videoTasksStorage');
+
+type GlobalWithTasks = typeof globalThis & {
+  [globalKey]?: Map<string, VideoTask>;
+};
+
+function getVideoTasks(): Map<string, VideoTask> {
+  const g = globalThis as GlobalWithTasks;
+  if (!g[globalKey]) {
+    g[globalKey] = new Map<string, VideoTask>();
+  }
+  return g[globalKey];
+}
+
+// Singleton task storage (persisted via globalThis)
+const videoTasks = getVideoTasks();
 
 // Export task management functions
 export const VideoTaskService = {
