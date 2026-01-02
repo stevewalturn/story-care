@@ -1679,12 +1679,12 @@ export function getAtlasVideoModels(): Array<{
       description: 'Alibaba Wan 2.6 image-to-video',
     },
     {
-      id: 'hailuo-2.3-i2v-pro',
+      id: 'hailuo-2.3-pro-i2v',
       name: 'Hailuo 2.3 Pro',
       description: 'MiniMax Hailuo 2.3 Pro image-to-video',
     },
     {
-      id: 'ray-2-i2v',
+      id: 'luma-ray-2-i2v',
       name: 'Luma Ray 2',
       description: 'Luma Ray 2 image-to-video',
     },
