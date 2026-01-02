@@ -117,7 +117,8 @@ export function GeneralInfoStep({ formData, onNext, onCancel: _onCancel, onChang
   }, [title, sessionDate, description, selectedPatientIds]);
 
   const handleDateSelect = (date: Date) => {
-    setSessionDate(date.toISOString().split('T')[0] || '');
+    // Store full ISO datetime string
+    setSessionDate(date.toISOString());
     setShowDatePicker(false);
   };
 
@@ -195,11 +196,13 @@ export function GeneralInfoStep({ formData, onNext, onCancel: _onCancel, onChang
     });
   };
 
-  // Format date for display
-  const formatDate = (dateStr: string) => {
+  // Format date and time for display
+  const formatDateTime = (dateStr: string) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+    const dateFormatted = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+    const timeFormatted = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    return `${dateFormatted} at ${timeFormatted}`;
   };
 
   return (
@@ -225,10 +228,10 @@ export function GeneralInfoStep({ formData, onNext, onCancel: _onCancel, onChang
           />
         </div>
 
-        {/* Session Date */}
+        {/* Session Date & Time */}
         <div>
           <label className="font-sf-pro mb-2 block text-[14px] font-medium tracking-[-0.28px] text-[#090909]">
-            Session Date
+            Session Date & Time
           </label>
           <button
             onClick={() => setShowDatePicker(true)}
@@ -236,7 +239,7 @@ export function GeneralInfoStep({ formData, onNext, onCancel: _onCancel, onChang
           >
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-gray-400" />
-              <span>{sessionDate ? formatDate(sessionDate) : 'Select date'}</span>
+              <span>{sessionDate ? formatDateTime(sessionDate) : 'Select date & time'}</span>
             </div>
             <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

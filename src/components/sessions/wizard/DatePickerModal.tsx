@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { useState } from 'react';
 
 type DatePickerModalProps = {
@@ -31,6 +31,12 @@ export function DatePickerModal({ isOpen, selectedDate, onSelect, onClose }: Dat
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(selectedDate?.getMonth() ?? today.getMonth());
   const [currentYear, setCurrentYear] = useState(selectedDate?.getFullYear() ?? today.getFullYear());
+  const [selectedDay, setSelectedDay] = useState<number | null>(selectedDate?.getDate() ?? null);
+
+  // Time state - round minutes to nearest 15-minute increment to match dropdown options
+  const roundToNearest15 = (mins: number) => Math.round(mins / 15) * 15 % 60;
+  const [hours, setHours] = useState(selectedDate?.getHours() ?? 10);
+  const [minutes, setMinutes] = useState(roundToNearest15(selectedDate?.getMinutes() ?? 0));
 
   if (!isOpen) return null;
 
@@ -64,11 +70,21 @@ export function DatePickerModal({ isOpen, selectedDate, onSelect, onClose }: Dat
   };
 
   const handleDateClick = (day: number) => {
-    const date = new Date(currentYear, currentMonth, day);
+    setSelectedDay(day);
+  };
+
+  const handleConfirm = () => {
+    if (selectedDay === null) return;
+    const date = new Date(currentYear, currentMonth, selectedDay, hours, minutes);
     onSelect(date);
   };
 
   const isSelectedDate = (day: number) => {
+    // Use local selectedDay state for highlighting
+    if (selectedDay !== null) {
+      return selectedDay === day;
+    }
+    // Fallback to prop for initial state
     if (!selectedDate) return false;
     return (
       selectedDate.getDate() === day
@@ -187,6 +203,68 @@ export function DatePickerModal({ isOpen, selectedDate, onSelect, onClose }: Dat
               </button>
             );
           })}
+        </div>
+
+        {/* Time Picker */}
+        <div className="mt-4 border-t border-gray-200 pt-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Clock className="h-4 w-4" />
+              <span>Time</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Hour Selector */}
+              <select
+                value={hours}
+                onChange={e => setHours(Number(e.target.value))}
+                className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-purple-500 focus:outline-none"
+              >
+                {Array.from({ length: 24 }, (_, i) => {
+                  const displayHour = i % 12 || 12;
+                  const ampm = i >= 12 ? 'PM' : 'AM';
+                  return (
+                    <option key={i} value={i}>
+                      {displayHour}
+                      {' '}
+                      {ampm}
+                    </option>
+                  );
+                })}
+              </select>
+
+              <span className="text-gray-400">:</span>
+
+              {/* Minute Selector */}
+              <select
+                value={minutes}
+                onChange={e => setMinutes(Number(e.target.value))}
+                className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-purple-500 focus:outline-none"
+              >
+                {[0, 15, 30, 45].map(m => (
+                  <option key={m} value={m}>
+                    {m.toString().padStart(2, '0')}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={selectedDay === null}
+            className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+          >
+            Done
+          </button>
         </div>
       </div>
     </div>

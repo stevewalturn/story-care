@@ -1,7 +1,7 @@
 'use client';
 
 import type { TherapeuticDomain } from '@/models/Schema';
-import { Check, ChevronDown, Filter, MessageCircle, Plus, Search, SlidersHorizontal, Users } from 'lucide-react';
+import { Check, ChevronDown, MessageCircle, Plus, Search, SlidersHorizontal, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { GroupDetailView } from '@/components/sessions/GroupDetailView';
@@ -10,9 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { StackedAvatars } from '@/components/ui/StackedAvatars';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Filter and Sort types
-type SessionCountFilter = 'all' | '1-5' | '6-10' | '10+';
-type LastActivityFilter = 'all' | '7d' | '30d' | '3m';
+// Sort types
 type SortOption = 'date-desc' | 'date-asc' | 'name-asc' | 'name-desc' | 'sessions-desc' | 'sessions-asc';
 
 type GroupMember = {
@@ -25,6 +23,7 @@ type Session = {
   id: string;
   title: string;
   date: string;
+  sessionDate: string; // The date set by user when creating the session
   type: 'individual' | 'group';
   patientId?: string | null;
   patientName?: string;
@@ -63,23 +62,16 @@ export default function SessionsPage() {
   const [selectedPatient, setSelectedPatient] = useState<SelectedPatient | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<SelectedGroup | null>(null);
 
-  // Filter and Sort state
-  const [sessionCountFilter, setSessionCountFilter] = useState<SessionCountFilter>('all');
-  const [lastActivityFilter, setLastActivityFilter] = useState<LastActivityFilter>('all');
+  // Sort state
   const [sortOption, setSortOption] = useState<SortOption>('date-desc');
-  const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
 
   // Refs for click-outside handling
-  const filterRef = useRef<HTMLDivElement>(null);
   const sortRef = useRef<HTMLDivElement>(null);
 
   // Handle click outside for dropdowns
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
-        setFilterDropdownOpen(false);
-      }
       if (sortRef.current && !sortRef.current.contains(event.target as Node)) {
         setSortDropdownOpen(false);
       }
@@ -115,6 +107,7 @@ export default function SessionsPage() {
           id: session.id,
           title: session.title,
           date: session.updatedAt ? new Date(session.updatedAt).toISOString() : new Date(session.sessionDate).toLocaleDateString(),
+          sessionDate: session.sessionDate,
           type: session.sessionType,
           patientId: session.patientId,
           patientName: session.patient?.name,
@@ -212,40 +205,13 @@ export default function SessionsPage() {
     );
   }, [sessions]);
 
-  // Apply filters and sort to patients
+  // Apply search and sort to patients
   const filteredAndSortedPatients = useMemo(() => {
     let result = [...patientsWithSessions];
 
     // Apply search filter
     if (searchTerm) {
       result = result.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    }
-
-    // Apply session count filter
-    if (sessionCountFilter !== 'all') {
-      result = result.filter((p) => {
-        switch (sessionCountFilter) {
-          case '1-5': return p.sessionCount >= 1 && p.sessionCount <= 5;
-          case '6-10': return p.sessionCount >= 6 && p.sessionCount <= 10;
-          case '10+': return p.sessionCount > 10;
-          default: return true;
-        }
-      });
-    }
-
-    // Apply last activity filter
-    if (lastActivityFilter !== 'all') {
-      const now = new Date();
-      result = result.filter((p) => {
-        const lastDate = new Date(p.lastOpened);
-        const diffInDays = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
-        switch (lastActivityFilter) {
-          case '7d': return diffInDays <= 7;
-          case '30d': return diffInDays <= 30;
-          case '3m': return diffInDays <= 90;
-          default: return true;
-        }
-      });
     }
 
     // Apply sort
@@ -262,9 +228,9 @@ export default function SessionsPage() {
     });
 
     return result;
-  }, [patientsWithSessions, searchTerm, sessionCountFilter, lastActivityFilter, sortOption]);
+  }, [patientsWithSessions, searchTerm, sortOption]);
 
-  // Apply filters and sort to groups
+  // Apply search and sort to groups
   const filteredAndSortedGroups = useMemo(() => {
     let result = [...groupsWithSessions];
 
@@ -276,33 +242,6 @@ export default function SessionsPage() {
       );
     }
 
-    // Apply session count filter
-    if (sessionCountFilter !== 'all') {
-      result = result.filter((g) => {
-        switch (sessionCountFilter) {
-          case '1-5': return g.sessionCount >= 1 && g.sessionCount <= 5;
-          case '6-10': return g.sessionCount >= 6 && g.sessionCount <= 10;
-          case '10+': return g.sessionCount > 10;
-          default: return true;
-        }
-      });
-    }
-
-    // Apply last activity filter
-    if (lastActivityFilter !== 'all') {
-      const now = new Date();
-      result = result.filter((g) => {
-        const lastDate = new Date(g.lastOpened);
-        const diffInDays = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
-        switch (lastActivityFilter) {
-          case '7d': return diffInDays <= 7;
-          case '30d': return diffInDays <= 30;
-          case '3m': return diffInDays <= 90;
-          default: return true;
-        }
-      });
-    }
-
     // Apply sort
     result.sort((a, b) => {
       switch (sortOption) {
@@ -317,10 +256,7 @@ export default function SessionsPage() {
     });
 
     return result;
-  }, [groupsWithSessions, searchTerm, sessionCountFilter, lastActivityFilter, sortOption]);
-
-  // Check if any filters are active
-  const hasActiveFilters = sessionCountFilter !== 'all' || lastActivityFilter !== 'all';
+  }, [groupsWithSessions, searchTerm, sortOption]);
 
   // Format relative time
   const formatRelativeTime = (dateString: string) => {
@@ -338,6 +274,13 @@ export default function SessionsPage() {
     if (diffInDays < 7) return `${diffInDays} days ago`;
     if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
     return `${Math.floor(diffInDays / 30)} months ago`;
+  };
+
+  // Format session date nicely (e.g., "Jan 2, 2026")
+  const formatSessionDate = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   // Get initials for avatar
@@ -370,11 +313,9 @@ export default function SessionsPage() {
       .slice(0, 5);
   }, [sessions]);
 
-  // Get all sessions sorted by date for the "All" view
+  // Get all sessions sorted for the "All" view
   const allSessionsSorted = useMemo(() => {
-    let result = [...sessions].sort((a, b) =>
-      new Date(b.date).getTime() - new Date(a.date).getTime(),
-    );
+    let result = [...sessions];
 
     // Apply search filter
     if (searchTerm) {
@@ -386,8 +327,30 @@ export default function SessionsPage() {
       );
     }
 
+    // Helper to get display name for sorting
+    const getDisplayName = (s: Session) => {
+      if (s.type === 'group') {
+        return s.groupName || s.groupMembers?.map(m => m.name).join(' + ') || '';
+      }
+      return s.patientName || '';
+    };
+
+    // Apply sort
+    result.sort((a, b) => {
+      switch (sortOption) {
+        case 'name-asc': return getDisplayName(a).localeCompare(getDisplayName(b));
+        case 'name-desc': return getDisplayName(b).localeCompare(getDisplayName(a));
+        case 'date-desc': return new Date(b.date).getTime() - new Date(a.date).getTime();
+        case 'date-asc': return new Date(a.date).getTime() - new Date(b.date).getTime();
+        // For sessions view, sessions-desc/asc sorts by date since individual sessions don't have count
+        case 'sessions-desc': return new Date(b.date).getTime() - new Date(a.date).getTime();
+        case 'sessions-asc': return new Date(a.date).getTime() - new Date(b.date).getTime();
+        default: return 0;
+      }
+    });
+
     return result;
-  }, [sessions, searchTerm]);
+  }, [sessions, searchTerm, sortOption]);
 
   // Handle patient card click
   const handlePatientClick = (patient: typeof patientsWithSessions[0]) => {
@@ -510,8 +473,14 @@ export default function SessionsPage() {
                       ? getDisplayGroupName({ name: session.groupName, members: session.groupMembers || [] })
                       : session.patientName}
                   </p>
+                  {/* Session date */}
+                  {session.sessionDate && (
+                    <p className="text-xs text-gray-600">
+                      {formatSessionDate(session.sessionDate)}
+                    </p>
+                  )}
                   {/* Time ago */}
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-0.5 text-xs text-gray-400">
                     {formatRelativeTime(session.date)}
                   </p>
                 </button>
@@ -572,105 +541,11 @@ export default function SessionsPage() {
         </div>
         <div className="flex-1" />
 
-        {/* Filter Dropdown */}
-        <div className="relative" ref={filterRef}>
-          <button
-            type="button"
-            onClick={() => {
-              setFilterDropdownOpen(!filterDropdownOpen);
-              setSortDropdownOpen(false);
-            }}
-            className={`flex h-10 items-center gap-2 rounded-lg border px-4 text-sm transition-colors hover:bg-gray-50 ${
-              hasActiveFilters
-                ? 'border-purple-500 bg-purple-50 text-purple-600'
-                : 'border-gray-300 text-gray-600'
-            }`}
-          >
-            <Filter className="h-4 w-4" />
-            Filter
-            {hasActiveFilters && (
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 text-xs text-white">
-                {(sessionCountFilter !== 'all' ? 1 : 0) + (lastActivityFilter !== 'all' ? 1 : 0)}
-              </span>
-            )}
-            <ChevronDown className={`h-4 w-4 transition-transform ${filterDropdownOpen ? 'rotate-180' : ''}`} />
-          </button>
-
-          {filterDropdownOpen && (
-            <div className="absolute right-0 z-20 mt-2 w-64 rounded-lg border border-gray-200 bg-white shadow-lg">
-              {/* Session Count Filter */}
-              <div className="border-b border-gray-100 p-3">
-                <p className="mb-2 text-xs font-semibold tracking-wide text-gray-500 uppercase">Session Count</p>
-                {[
-                  { value: 'all' as const, label: 'All' },
-                  { value: '1-5' as const, label: '1-5 sessions' },
-                  { value: '6-10' as const, label: '6-10 sessions' },
-                  { value: '10+' as const, label: '10+ sessions' },
-                ].map(option => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setSessionCountFilter(option.value)}
-                    className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-sm transition-colors hover:bg-gray-50 ${
-                      sessionCountFilter === option.value ? 'text-purple-600' : 'text-gray-700'
-                    }`}
-                  >
-                    {option.label}
-                    {sessionCountFilter === option.value && <Check className="h-4 w-4" />}
-                  </button>
-                ))}
-              </div>
-
-              {/* Last Activity Filter */}
-              <div className="p-3">
-                <p className="mb-2 text-xs font-semibold tracking-wide text-gray-500 uppercase">Last Activity</p>
-                {[
-                  { value: 'all' as const, label: 'All time' },
-                  { value: '7d' as const, label: 'Last 7 days' },
-                  { value: '30d' as const, label: 'Last 30 days' },
-                  { value: '3m' as const, label: 'Last 3 months' },
-                ].map(option => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setLastActivityFilter(option.value)}
-                    className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-sm transition-colors hover:bg-gray-50 ${
-                      lastActivityFilter === option.value ? 'text-purple-600' : 'text-gray-700'
-                    }`}
-                  >
-                    {option.label}
-                    {lastActivityFilter === option.value && <Check className="h-4 w-4" />}
-                  </button>
-                ))}
-              </div>
-
-              {/* Clear Filters */}
-              {hasActiveFilters && (
-                <div className="border-t border-gray-100 p-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSessionCountFilter('all');
-                      setLastActivityFilter('all');
-                    }}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50"
-                  >
-                    Clear all filters
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
         {/* Sort Dropdown */}
         <div className="relative" ref={sortRef}>
           <button
             type="button"
-            onClick={() => {
-              setSortDropdownOpen(!sortDropdownOpen);
-              setFilterDropdownOpen(false);
-            }}
+            onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
             className="flex h-10 items-center gap-2 rounded-lg border border-gray-300 px-4 text-sm text-gray-600 transition-colors hover:bg-gray-50"
           >
             <SlidersHorizontal className="h-4 w-4" />
@@ -789,6 +664,11 @@ export default function SessionsPage() {
                                   ? getDisplayGroupName({ name: session.groupName, members: session.groupMembers || [] })
                                   : session.patientName}
                               </p>
+                              {session.sessionDate && (
+                                <span className="text-sm text-gray-500">
+                                  {formatSessionDate(session.sessionDate)}
+                                </span>
+                              )}
                               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
                                 {session.type === 'group' ? 'Group' : 'Individual'}
                               </span>
@@ -818,7 +698,7 @@ export default function SessionsPage() {
                           {patientsWithSessions.length === 0 ? 'No patients yet' : 'No matching patients'}
                         </h3>
                         <p className="mb-6 text-gray-500">
-                          {patientsWithSessions.length === 0 ? 'Create a session to get started' : 'Try adjusting your filters'}
+                          {patientsWithSessions.length === 0 ? 'Create a session to get started' : 'Try adjusting your search'}
                         </p>
                         {patientsWithSessions.length === 0 ? (
                           <Button
@@ -831,13 +711,9 @@ export default function SessionsPage() {
                         ) : (
                           <Button
                             variant="secondary"
-                            onClick={() => {
-                              setSessionCountFilter('all');
-                              setLastActivityFilter('all');
-                              setSearchTerm('');
-                            }}
+                            onClick={() => setSearchTerm('')}
                           >
-                            Clear filters
+                            Clear search
                           </Button>
                         )}
                       </div>
@@ -900,7 +776,7 @@ export default function SessionsPage() {
                           {groupsWithSessions.length === 0 ? 'No groups yet' : 'No matching groups'}
                         </h3>
                         <p className="mb-6 text-gray-500">
-                          {groupsWithSessions.length === 0 ? 'Create a group session to get started' : 'Try adjusting your filters'}
+                          {groupsWithSessions.length === 0 ? 'Create a group session to get started' : 'Try adjusting your search'}
                         </p>
                         {groupsWithSessions.length === 0 ? (
                           <Button
@@ -913,13 +789,9 @@ export default function SessionsPage() {
                         ) : (
                           <Button
                             variant="secondary"
-                            onClick={() => {
-                              setSessionCountFilter('all');
-                              setLastActivityFilter('all');
-                              setSearchTerm('');
-                            }}
+                            onClick={() => setSearchTerm('')}
                           >
-                            Clear filters
+                            Clear search
                           </Button>
                         )}
                       </div>

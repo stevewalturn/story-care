@@ -28,7 +28,7 @@ export default function NewSessionPage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [formData, setFormData] = useState<SessionFormData>({
     title: '',
-    sessionDate: new Date().toISOString().split('T')[0] || '',
+    sessionDate: new Date().toISOString(), // Full datetime with time
     description: '',
     patientIds: [],
     audioFile: null,
