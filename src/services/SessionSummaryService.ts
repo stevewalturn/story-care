@@ -110,20 +110,24 @@ export async function generateSessionSummary(sessionId: string): Promise<string>
   // Get patient/group name
   const patientName = patient?.name || group?.name || 'Unknown';
 
-  // Build summary structure
-  const summaryPrompt = `You are creating a comprehensive session summary for use as AI context. This summary will be used by a therapeutic AI assistant to provide informed analysis.
+  // Build summary structure - NO QUOTES to respect participant filtering
+  const summaryPrompt = `You are creating a brief session summary for AI context. This summary provides background context only.
 
-Extract the following from this therapy session transcript:
+Extract the following from this therapy session:
 
-1. **Key Therapeutic Themes** (2-4 themes)
-2. **Significant Moments** (with timestamps)
-3. **Emotional Patterns** (shifts, recurring emotions)
-4. **Metaphors & Symbolic Language** used by patient
-5. **Clinical Observations** (resistance, breakthroughs, narrative patterns)
-6. **Narrative Therapy Opportunities** (potential for visual storytelling)
+1. **Session Overview** - Brief description of what was discussed
+2. **Key Therapeutic Themes** (2-4 themes, no quotes)
+3. **Emotional Tone** - Overall emotional atmosphere
+4. **Clinical Observations** - Brief notes on progress, challenges
+5. **Treatment Focus** - What the session was working toward
+
+**IMPORTANT RULES:**
+- Do NOT include any verbatim quotes from the transcript
+- Do NOT include specific dialogue or utterances
+- Keep it to 200-300 words maximum
+- Focus on high-level themes and observations only
 
 Format your response in markdown with clear headers and bullet points.
-Be concise but comprehensive. Include specific quotes with timestamps when relevant.
 
 **Session Details:**
 - Title: ${session.title}
@@ -133,7 +137,7 @@ Be concise but comprehensive. Include specific quotes with timestamps when relev
 ${treatmentModule ? `- Module: ${treatmentModule.name} (${treatmentModule.domain})` : ''}
 - Duration: ${session.audioDurationSeconds ? `${Math.floor(session.audioDurationSeconds / 60)} minutes` : 'Unknown'}
 
-**Full Transcript:**
+**Transcript for analysis:**
 ${formattedTranscript}`;
 
   const messages: ChatMessage[] = [
@@ -153,7 +157,7 @@ ${formattedTranscript}`;
     messages,
     model: 'gpt-4o-mini',
     temperature: 0.3, // Lower temperature for consistent summaries
-    maxTokens: 2000, // Allow for detailed summaries
+    maxTokens: 500, // Brief summary without quotes (200-300 words)
   });
 
   // Build final formatted summary

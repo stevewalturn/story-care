@@ -5,10 +5,69 @@
  */
 
 export type AtlasImageModel
-  // Text-to-Image
+  // Text-to-Image (Flux)
   = | 'flux-schnell'
     | 'flux-dev'
     | 'flux-2-flex-t2i'
+    | 'flux-1.1-pro-ultra'
+    | 'flux-1.1-pro'
+    | 'flux-kontext-max-t2i'
+    | 'flux-kontext-pro-t2i'
+    | 'flux-dev-ultra-fast'
+    | 'flux-dev-lora'
+    | 'flux-dev-lora-ultra-fast'
+    | 'flux-schnell-lora'
+    | 'flux-krea-dev-lora-t2i'
+  // Text-to-Image (Seedream)
+    | 'seedream-4.5-t2i'
+    | 'seedream-4.5-seq-t2i'
+    | 'seedream-4-t2i'
+    | 'seedream-4-seq-t2i'
+    | 'seedream-3.1-t2i'
+    | 'seedream-3-t2i'
+  // Text-to-Image (Imagen)
+    | 'imagen4-ultra'
+    | 'imagen4'
+    | 'imagen4-fast'
+    | 'atlascloud-imagen4'
+    | 'imagen3'
+    | 'imagen3-fast'
+  // Text-to-Image (Nano Banana/Gemini)
+    | 'nano-banana-pro-t2i-ultra'
+    | 'nano-banana-pro-t2i'
+    | 'nano-banana-pro-t2i-dev'
+    | 'nano-banana-t2i'
+    | 'nano-banana-t2i-dev'
+    | 'gemini-2.5-flash-t2i'
+    | 'gemini-2.5-flash-t2i-dev'
+  // Text-to-Image (Ideogram)
+    | 'ideogram-v3-quality'
+    | 'ideogram-v3-balanced'
+    | 'ideogram-v3-turbo'
+    | 'ideogram-v2'
+    | 'ideogram-v2-turbo'
+    | 'ideogram-v2a-turbo'
+  // Text-to-Image (Recraft)
+    | 'recraft-v3'
+    | 'recraft-v3-svg'
+    | 'recraft-20b'
+    | 'recraft-20b-svg'
+  // Text-to-Image (Wan)
+    | 'wan-2.6-t2i'
+    | 'wan-2.5-t2i'
+    | 'wan-2.1-t2i'
+  // Text-to-Image (Luma)
+    | 'photon-t2i'
+    | 'photon-flash-t2i'
+  // Text-to-Image (AtlasCloud)
+    | 'hunyuan-image-3'
+    | 'neta-lumina'
+    | 'qwen-t2i'
+    | 'hidream-i1-full'
+    | 'hidream-i1-dev'
+  // Text-to-Image (Z-Image)
+    | 'z-image-turbo'
+    | 'z-image-turbo-lora'
   // Image-to-Image (Flux Redux)
     | 'flux-redux-dev'
     | 'flux-redux-pro'
@@ -212,6 +271,575 @@ const MODEL_CONFIGS: Record<AtlasImageModel, ModelConfig> = {
     maxReferenceImages: 0,
     supportsPrompt: true,
   },
+  'flux-1.1-pro-ultra': {
+    atlasName: 'black-forest-labs/flux-1.1-pro-ultra',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 3.5,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'flux-1.1-pro': {
+    atlasName: 'black-forest-labs/flux-1.1-pro',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 3.5,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'flux-kontext-max-t2i': {
+    atlasName: 'black-forest-labs/flux-kontext-max/text-to-image',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 3.5,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'flux-kontext-pro-t2i': {
+    atlasName: 'black-forest-labs/flux-kontext-pro/text-to-image',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 3.5,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'flux-dev-ultra-fast': {
+    atlasName: 'black-forest-labs/flux-dev-ultra-fast',
+    minSize: '1024*1024',
+    defaultSteps: 12,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 3.5,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'flux-dev-lora': {
+    atlasName: 'black-forest-labs/flux-dev-lora',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 3.5,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'flux-dev-lora-ultra-fast': {
+    atlasName: 'black-forest-labs/flux-dev-lora-ultra-fast',
+    minSize: '1024*1024',
+    defaultSteps: 12,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 3.5,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'flux-schnell-lora': {
+    atlasName: 'black-forest-labs/flux-schnell-lora',
+    minSize: '1024*1024',
+    defaultSteps: 4,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 3.5,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'flux-krea-dev-lora-t2i': {
+    atlasName: 'black-forest-labs/flux-krea-dev-lora',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 3.5,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+
+  // Text-to-Image (Seedream/ByteDance)
+  'seedream-4.5-t2i': {
+    atlasName: 'bytedance/seedream-v4.5',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 5.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'seedream-4.5-seq-t2i': {
+    atlasName: 'bytedance/seedream-v4.5/sequential',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 5.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'seedream-4-t2i': {
+    atlasName: 'bytedance/seedream-v4',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 5.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'seedream-4-seq-t2i': {
+    atlasName: 'bytedance/seedream-v4/sequential',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 5.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'seedream-3.1-t2i': {
+    atlasName: 'bytedance/seedream-v3.1',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 5.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'seedream-3-t2i': {
+    atlasName: 'bytedance/seedream-v3',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 5.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+
+  // Text-to-Image (Imagen/Google)
+  'imagen4-ultra': {
+    atlasName: 'google/imagen4-ultra',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 7.5,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'imagen4': {
+    atlasName: 'google/imagen4',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 7.5,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'imagen4-fast': {
+    atlasName: 'google/imagen4-fast',
+    minSize: '1024*1024',
+    defaultSteps: 12,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 7.5,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'atlascloud-imagen4': {
+    atlasName: 'atlascloud/imagen4',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 7.5,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'imagen3': {
+    atlasName: 'google/imagen3',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 7.5,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'imagen3-fast': {
+    atlasName: 'google/imagen3-fast',
+    minSize: '1024*1024',
+    defaultSteps: 12,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 7.5,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+
+  // Text-to-Image (Nano Banana/Gemini)
+  'nano-banana-pro-t2i-ultra': {
+    atlasName: 'google/nano-banana-pro/text-to-image-ultra',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 6.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'nano-banana-pro-t2i': {
+    atlasName: 'google/nano-banana-pro/text-to-image',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 6.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'nano-banana-pro-t2i-dev': {
+    atlasName: 'google/nano-banana-pro/text-to-image-developer',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 6.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'nano-banana-t2i': {
+    atlasName: 'google/nano-banana/text-to-image',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 6.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'nano-banana-t2i-dev': {
+    atlasName: 'google/nano-banana/text-to-image-developer',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 6.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'gemini-2.5-flash-t2i': {
+    atlasName: 'google/gemini-2.5-flash-image/text-to-image',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 6.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'gemini-2.5-flash-t2i-dev': {
+    atlasName: 'google/gemini-2.5-flash-image/text-to-image-developer',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 6.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+
+  // Text-to-Image (Ideogram)
+  'ideogram-v3-quality': {
+    atlasName: 'ideogram-ai/ideogram-v3-quality',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 7.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'ideogram-v3-balanced': {
+    atlasName: 'ideogram-ai/ideogram-v3-balanced',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 7.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'ideogram-v3-turbo': {
+    atlasName: 'ideogram-ai/ideogram-v3-turbo',
+    minSize: '1024*1024',
+    defaultSteps: 12,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 7.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'ideogram-v2': {
+    atlasName: 'ideogram-ai/ideogram-v2',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 7.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'ideogram-v2-turbo': {
+    atlasName: 'ideogram-ai/ideogram-v2-turbo',
+    minSize: '1024*1024',
+    defaultSteps: 12,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 7.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'ideogram-v2a-turbo': {
+    atlasName: 'ideogram-ai/ideogram-v2a-turbo',
+    minSize: '1024*1024',
+    defaultSteps: 12,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 7.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+
+  // Text-to-Image (Recraft)
+  'recraft-v3': {
+    atlasName: 'recraft-ai/recraft-v3',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 7.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'recraft-v3-svg': {
+    atlasName: 'recraft-ai/recraft-v3-svg',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 7.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'recraft-20b': {
+    atlasName: 'recraft-ai/recraft-20b',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 7.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'recraft-20b-svg': {
+    atlasName: 'recraft-ai/recraft-20b-svg',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 7.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+
+  // Text-to-Image (Wan/Alibaba)
+  'wan-2.6-t2i': {
+    atlasName: 'alibaba/wan-2.6/text-to-image',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 5.5,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'wan-2.5-t2i': {
+    atlasName: 'alibaba/wan-2.5/text-to-image',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 5.5,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'wan-2.1-t2i': {
+    atlasName: 'alibaba/wan-2.1/text-to-image',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 5.5,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+
+  // Text-to-Image (Luma)
+  'photon-t2i': {
+    atlasName: 'luma/photon',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 5.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'photon-flash-t2i': {
+    atlasName: 'luma/photon-flash',
+    minSize: '1024*1024',
+    defaultSteps: 12,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 5.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+
+  // Text-to-Image (AtlasCloud)
+  'hunyuan-image-3': {
+    atlasName: 'atlascloud/hunyuan-image-3',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 5.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'neta-lumina': {
+    atlasName: 'atlascloud/neta-lumina',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 5.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'qwen-t2i': {
+    atlasName: 'atlascloud/qwen-image/text-to-image',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 5.5,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'hidream-i1-full': {
+    atlasName: 'atlascloud/hidream-i1-full',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 5.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'hidream-i1-dev': {
+    atlasName: 'atlascloud/hidream-i1-dev',
+    minSize: '1024*1024',
+    defaultSteps: 28,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 5.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+
+  // Text-to-Image (Z-Image)
+  'z-image-turbo': {
+    atlasName: 'z-image/turbo',
+    minSize: '1024*1024',
+    defaultSteps: 12,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 5.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+  'z-image-turbo-lora': {
+    atlasName: 'z-image/turbo-lora',
+    minSize: '1024*1024',
+    defaultSteps: 12,
+    requiresImage: false,
+    imageField: null,
+    category: 'text-to-image',
+    defaultGuidanceScale: 5.0,
+    maxReferenceImages: 0,
+    supportsPrompt: true,
+  },
+
   'flux-2-dev-edit': {
     atlasName: 'black-forest-labs/flux-2-dev/edit',
     minSize: '1024*1024',
@@ -905,7 +1533,7 @@ export async function generateImageWithAtlas(
     seed: options.seed ?? 0,
     size,
     num_images: options.numImages || 1,
-    output_format: 'jpeg',
+    output_format: 'jpg',
     guidance_scale: options.guidanceScale ?? modelConfig.defaultGuidanceScale,
     num_inference_steps: options.numInferenceSteps ?? modelConfig.defaultSteps,
     enable_sync_mode: false,

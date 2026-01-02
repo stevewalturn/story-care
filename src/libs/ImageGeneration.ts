@@ -79,12 +79,71 @@ export async function generateImage(
     });
   }
 
-  // Route to Atlas Cloud (All 52 image models from AtlasCloud.ts)
+  // Route to Atlas Cloud (All image models from AtlasCloud.ts)
   const atlasCloudModels = [
-    // Text-to-Image
+    // Text-to-Image (Flux)
     'flux-schnell',
     'flux-dev',
     'flux-2-flex-t2i',
+    'flux-1.1-pro-ultra',
+    'flux-1.1-pro',
+    'flux-kontext-max-t2i',
+    'flux-kontext-pro-t2i',
+    'flux-dev-ultra-fast',
+    'flux-dev-lora',
+    'flux-dev-lora-ultra-fast',
+    'flux-schnell-lora',
+    'flux-krea-dev-lora-t2i',
+    // Text-to-Image (Seedream)
+    'seedream-4.5-t2i',
+    'seedream-4.5-seq-t2i',
+    'seedream-4-t2i',
+    'seedream-4-seq-t2i',
+    'seedream-3.1-t2i',
+    'seedream-3-t2i',
+    // Text-to-Image (Imagen)
+    'imagen4-ultra',
+    'imagen4',
+    'imagen4-fast',
+    'atlascloud-imagen4',
+    'imagen3',
+    'imagen3-fast',
+    // Text-to-Image (Nano Banana/Gemini)
+    'nano-banana-pro-t2i-ultra',
+    'nano-banana-pro-t2i',
+    'nano-banana-pro-t2i-dev',
+    'nano-banana-t2i',
+    'nano-banana-t2i-dev',
+    'gemini-2.5-flash-t2i',
+    'gemini-2.5-flash-t2i-dev',
+    // Text-to-Image (Ideogram)
+    'ideogram-v3-quality',
+    'ideogram-v3-balanced',
+    'ideogram-v3-turbo',
+    'ideogram-v2',
+    'ideogram-v2-turbo',
+    'ideogram-v2a-turbo',
+    // Text-to-Image (Recraft)
+    'recraft-v3',
+    'recraft-v3-svg',
+    'recraft-20b',
+    'recraft-20b-svg',
+    // Text-to-Image (Wan)
+    'wan-2.6-t2i',
+    'wan-2.5-t2i',
+    'wan-2.1-t2i',
+    // Text-to-Image (Luma)
+    'photon-t2i',
+    'photon-flash-t2i',
+    // Text-to-Image (AtlasCloud)
+    'hunyuan-image-3',
+    'neta-lumina',
+    'qwen-t2i',
+    'hidream-i1-full',
+    'hidream-i1-dev',
+    // Text-to-Image (Z-Image)
+    'z-image-turbo',
+    'z-image-turbo-lora',
     // Flux Redux
     'flux-redux-dev',
     'flux-redux-pro',

@@ -1620,7 +1620,7 @@ export function SceneGenerationLayout({
         }}
         onSelect={handleAssetSelected}
         patientId={patient?.id}
-        filterType="all"
+        mediaOnly
       />
     </>
   );

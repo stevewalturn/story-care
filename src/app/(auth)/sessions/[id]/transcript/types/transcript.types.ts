@@ -68,6 +68,7 @@ export type AIAssistantPanelProps = {
   patientName: string;
   user: User | null;
   speakers?: SpeakerInfo[];
+  utterances?: Utterance[]; // Full transcript for prompt auto-execute with context
   assignedModule: TreatmentModule | null;
   triggerPrompt: string | null; // DEPRECATED: Use triggerSystemPrompt + triggerUserText
   triggerSystemPrompt?: string | null; // System prompt from Analyze Selection modal

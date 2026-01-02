@@ -8,17 +8,23 @@
 import type { AIAssistantPanelProps } from '../types/transcript.types';
 import type { AIPromptOption } from '@/components/sessions/AnalyzeSelectionModal';
 import type { PatientOption } from '@/components/sessions/SaveNoteModal';
-import { ChevronDown, FileText, Quote } from 'lucide-react';
+import type { ModuleAiPrompt } from '@/models/Schema';
+import { ChevronDown, FileText, Quote, Settings } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { CreatePromptModal } from '@/components/prompts/CreatePromptModal';
+import { EditPromptModal } from '@/components/prompts/EditPromptModal';
+import { PromptLibrary } from '@/components/prompts/PromptLibrary';
 import { AssistantMessageContent } from '@/components/sessions/AssistantMessageContent';
 import { JSONOutputRenderer } from '@/components/sessions/JSONOutputRenderer';
 import { ModuleSelectorModal } from '@/components/sessions/ModuleSelectorModal';
 import { SaveNoteModal } from '@/components/sessions/SaveNoteModal';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
+import { Modal } from '@/components/ui/Modal';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 import { detectAndExtractJSON } from '@/utils/JSONSchemaDetector';
+import { formatTranscriptForAI, truncateTranscript } from '@/utils/TranscriptFormatter';
 
 // AI Models grouped by provider - matching Figma design
 const AI_MODEL_GROUPS = [
@@ -72,6 +78,7 @@ export function AIAssistantPanel({
   patientName: _patientName,
   user,
   speakers,
+  utterances,
   assignedModule,
   triggerPrompt,
   triggerSystemPrompt,
@@ -118,6 +125,11 @@ export function AIAssistantPanel({
   const [selectedTextForQuote, setSelectedTextForQuote] = useState('');
   // Patients list for modals
   const [sessionPatients, setSessionPatients] = useState<PatientOption[]>([]);
+  // Prompt Library Modal state
+  const [showPromptLibraryModal, setShowPromptLibraryModal] = useState(false);
+  const [showCreatePromptModal, setShowCreatePromptModal] = useState(false);
+  const [showEditPromptModal, setShowEditPromptModal] = useState(false);
+  const [editingPrompt, setEditingPrompt] = useState<ModuleAiPrompt | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputContainerRef = useRef<HTMLDivElement>(null);
@@ -263,6 +275,7 @@ export function AIAssistantPanel({
   const [_showAllPrompts, _setShowAllPrompts] = useState(false);
   const [selectedPromptId, setSelectedPromptId] = useState('');
   const [selectedSystemPrompt, setSelectedSystemPrompt] = useState<string | null>(null); // Hidden system prompt
+  const [selectedPromptName, setSelectedPromptName] = useState<string | null>(null); // For display when sending without user input
 
   // Load chat history on mount
   useEffect(() => {
@@ -463,8 +476,11 @@ export function AIAssistantPanel({
       return;
     }
 
-    // Show only user's text in chat history (not the system prompt)
-    const userMessage = { role: 'user' as const, content: userText, timestamp: new Date() };
+    // Show descriptive message when prompt is selected but no user text
+    const displayMessage = userText.trim()
+      ? userText
+      : (effectiveSystemPrompt ? `Analyzing with "${selectedPromptName || 'prompt'}"...` : userText);
+    const userMessage = { role: 'user' as const, content: displayMessage, timestamp: new Date() };
     setMessages(prev => [...prev, userMessage]);
     setPrompt('');
     setIsLoading(true);
@@ -472,6 +488,7 @@ export function AIAssistantPanel({
     // Clear system prompt and selected text after sending
     setSelectedSystemPrompt(null);
     setSelectedPromptId('');
+    setSelectedPromptName(null);
     onPromptSent(); // Clear parent's selected text state
 
     try {
@@ -587,7 +604,7 @@ export function AIAssistantPanel({
     return 'Prompt';
   };
 
-  // Handle prompt selection with module context - sets up prompt as context for next message
+  // Handle prompt selection - prepares prompt for manual Send (user clicks Send button)
   const handlePromptSelection = (promptData: AIPromptOption | { id: string; name: string; prompt: string }) => {
     // Get the system prompt text - prefer systemPrompt field, fallback to promptText for backward compatibility
     const systemPrompt = 'systemPrompt' in promptData && promptData.systemPrompt
@@ -595,7 +612,8 @@ export function AIAssistantPanel({
       : ('promptText' in promptData ? promptData.promptText : promptData.prompt);
     const promptId = promptData.id;
 
-    setSelectedPromptId(promptId);
+    // Close dropdown immediately for better UX
+    setShowPromptDropdown(false);
 
     // Check if this is a module-linked prompt
     const isModulePrompt = modulePrompts.some(p => p.id === promptId);
@@ -607,16 +625,50 @@ export function AIAssistantPanel({
       finalSystemPrompt = `${_moduleAiPromptText}\n\n---\n\n${systemPrompt}`;
     }
 
-    // Store system prompt separately
-    setSelectedSystemPrompt(finalSystemPrompt);
+    // Build transcript context based on participant filter
+    let transcriptContext = '';
+    let participantNote = 'All Participants';
 
-    // Auto-populate textarea with selected text (matching Analyze modal behavior)
-    // This provides concrete context for the prompt to work with
-    if (currentSelectedText && currentSelectedText.trim()) {
-      setPrompt(currentSelectedText);
+    if (utterances && utterances.length > 0) {
+      let filterId: string | null = null;
+
+      if (selectedParticipant === 'all') {
+        filterId = null;
+        participantNote = 'All Participants';
+      } else if (selectedParticipant === 'therapist') {
+        // Find therapist speaker ID from utterances
+        const therapistUtterance = utterances.find(u => u.speakerType === 'therapist');
+        filterId = therapistUtterance?.speakerId || null;
+        participantNote = `Therapist (${dbUser?.name || 'You'})`;
+      } else {
+        // Specific speaker selected
+        filterId = selectedParticipant;
+        const speaker = speakers?.find(s => s.id === selectedParticipant);
+        participantNote = speaker?.name || 'Selected Participant';
+      }
+
+      // Format transcript with optional speaker filtering
+      const rawTranscript = formatTranscriptForAI(utterances, filterId);
+      transcriptContext = truncateTranscript(rawTranscript);
     } else {
-      setPrompt('');
+      transcriptContext = '[No transcript available. Please ensure the session has been transcribed.]';
     }
+
+    // Build the full system prompt with transcript context
+    const fullSystemPrompt = `${finalSystemPrompt}
+
+---
+
+**Session Transcript** (${participantNote}):
+
+${transcriptContext}`;
+
+    // Store the prompt for manual Send - user can optionally add text before clicking Send
+    setSelectedPromptId(promptId);
+    setSelectedPromptName(promptData.name);
+    setSelectedSystemPrompt(fullSystemPrompt);
+    // Leave input empty - user can optionally type something or just click Send
+    setPrompt('');
   };
 
   // Calculate visible messages (show last N messages)
@@ -1270,13 +1322,23 @@ export function AIAssistantPanel({
                 )}
               </div>
 
+              {/* Gear Button for Prompt Library */}
+              <button
+                type="button"
+                onClick={() => setShowPromptLibraryModal(true)}
+                className="flex items-center justify-center rounded-lg bg-white p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                title="Manage Prompts"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+
             </div>
 
             {/* Send Button - Black Circle with Up Arrow (Exact Figma: 32x32px) */}
             <button
               type="button"
               onClick={() => handleSendMessage()}
-              disabled={isLoading || !prompt.trim()}
+              disabled={isLoading || (!prompt.trim() && !selectedSystemPrompt)}
               className="flex items-center justify-center rounded-full bg-gray-900 text-white transition-all hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300"
               style={{
                 width: '32px',
@@ -1326,6 +1388,76 @@ export function AIAssistantPanel({
         patients={sessionPatients}
         onSave={handleSaveQuote}
       />
+
+      {/* Prompt Library Modal */}
+      <Modal
+        isOpen={showPromptLibraryModal}
+        onClose={() => setShowPromptLibraryModal(false)}
+        title="Prompt Library"
+        size="2xl"
+      >
+        <PromptLibrary
+          onSelectPrompt={(prompt) => {
+            setShowPromptLibraryModal(false);
+            // Convert ModuleAiPrompt to AIPromptOption format and execute
+            handlePromptSelection({
+              id: prompt.id,
+              name: prompt.name,
+              systemPrompt: prompt.promptText,
+              promptText: prompt.promptText,
+              description: prompt.description,
+              category: prompt.category || 'analysis',
+              icon: prompt.icon || 'sparkles',
+              outputType: prompt.outputType as 'text' | 'json',
+            });
+          }}
+          onAddClick={() => {
+            setShowCreatePromptModal(true);
+          }}
+          onEditClick={(prompt) => {
+            setEditingPrompt(prompt);
+            setShowEditPromptModal(true);
+          }}
+          onDeleteClick={async (promptId) => {
+            if (confirm('Are you sure you want to delete this prompt?')) {
+              try {
+                await authenticatedFetch(`/api/prompts/${promptId}`, user, { method: 'DELETE' });
+                // PromptLibrary auto-refreshes via its internal fetchPrompts
+              } catch (error) {
+                console.error('Error deleting prompt:', error);
+              }
+            }
+          }}
+        />
+      </Modal>
+
+      {/* Create Prompt Modal */}
+      {showCreatePromptModal && (
+        <CreatePromptModal
+          scope="private"
+          onClose={() => setShowCreatePromptModal(false)}
+          onCreated={() => {
+            setShowCreatePromptModal(false);
+            // PromptLibrary will auto-refresh
+          }}
+        />
+      )}
+
+      {/* Edit Prompt Modal */}
+      {showEditPromptModal && editingPrompt && (
+        <EditPromptModal
+          promptId={editingPrompt.id}
+          onClose={() => {
+            setShowEditPromptModal(false);
+            setEditingPrompt(null);
+          }}
+          onUpdated={() => {
+            setShowEditPromptModal(false);
+            setEditingPrompt(null);
+            // PromptLibrary will auto-refresh
+          }}
+        />
+      )}
     </div>
   );
 }

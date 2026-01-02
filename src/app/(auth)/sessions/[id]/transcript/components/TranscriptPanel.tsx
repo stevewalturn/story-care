@@ -634,7 +634,17 @@ export function TranscriptPanel({
               ref={(el) => {
                 if (el) utteranceRefs.current.set(utterance.id, el);
               }}
-              className={`-mx-2 flex gap-3 rounded-lg p-2 transition-colors duration-200 ${
+              onClick={() => {
+                if (audioRef.current) {
+                  audioRef.current.currentTime = utterance.startTime;
+                  setCurrentTime(utterance.startTime);
+                  if (!isPlaying) {
+                    audioRef.current.play();
+                    setIsPlaying(true);
+                  }
+                }
+              }}
+              className={`-mx-2 flex cursor-pointer gap-3 rounded-lg p-2 transition-colors duration-200 hover:bg-gray-50 ${
                 isCurrentUtterance
                   ? 'border-l-2 border-purple-500 bg-purple-50'
                   : isCurrentSearchMatch
@@ -665,9 +675,12 @@ export function TranscriptPanel({
                   {/* Speaker Name with Dropdown */}
                   <div className="relative" ref={activeDropdownId === utterance.id ? dropdownRef : undefined}>
                     <button
-                      onClick={() => setActiveDropdownId(
-                        activeDropdownId === utterance.id ? null : utterance.id,
-                      )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveDropdownId(
+                          activeDropdownId === utterance.id ? null : utterance.id,
+                        );
+                      }}
                       disabled={reassigningUtteranceId === utterance.id}
                       className={`flex items-center gap-1 text-sm font-medium transition-colors ${
                         reassigningUtteranceId === utterance.id
@@ -736,7 +749,8 @@ export function TranscriptPanel({
                   {/* Timestamp - Clickable to seek */}
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (audioRef.current) {
                         audioRef.current.currentTime = utterance.startTime;
                         setCurrentTime(utterance.startTime);

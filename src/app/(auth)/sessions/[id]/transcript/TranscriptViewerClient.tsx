@@ -653,6 +653,7 @@ export function TranscriptViewerClient({
               patientName={patientName}
               user={user}
               speakers={speakers}
+              utterances={utterances}
               assignedModule={assignedModule}
               triggerPrompt={aiPrompt}
               triggerSystemPrompt={aiSystemPrompt}

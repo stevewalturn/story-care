@@ -48,7 +48,7 @@ type SceneCardProps = {
   isSortableDragging?: boolean;
 };
 
-export const SceneCard = function SceneCard({ ref, scene, onUpdate, onDelete, onOptimize, onGenerateImage, onUploadImage, onBrowseAssets, onAnimateVideo, isGeneratingAnyImage, supportsPrompt = true, dragHandleProps, sortableStyle, isSortableDragging }: SceneCardProps & { ref?: React.RefObject<HTMLDivElement | null> }) {
+export const SceneCard = function SceneCard({ ref, scene, onUpdate, onDelete, onOptimize, onGenerateImage, onUploadImage, onBrowseAssets, onAnimateVideo, isGeneratingAnyImage, supportsPrompt = true, dragHandleProps, sortableStyle, isSortableDragging }: SceneCardProps & { ref?: React.Ref<HTMLDivElement> }) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);

@@ -63,7 +63,7 @@ export function PromptLibrary({
         params.append('search', searchQuery);
       }
 
-      const response = await authenticatedFetch(`/api/prompts?${params}`, user);
+      const response = await authenticatedFetch(`/api/therapist/prompts?${params}`, user);
       if (!response.ok) {
         throw new Error('Failed to fetch prompts');
       }
@@ -81,7 +81,10 @@ export function PromptLibrary({
     }
   };
 
-  const filteredPrompts = prompts;
+  // Client-side category filtering (API doesn't support category param)
+  const filteredPrompts = selectedCategory === 'all'
+    ? prompts
+    : prompts.filter(p => p.category === selectedCategory);
 
   const handleCopy = (promptId: string, content: string) => {
     navigator.clipboard.writeText(content);
