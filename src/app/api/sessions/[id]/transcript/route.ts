@@ -78,11 +78,11 @@ export async function GET(
 
         // Compute speaker name with proper fallback (handle empty strings)
         // Priority: 1) Explicitly assigned speakerName, 2) User's name from DB, 3) Speaker label
-        const speakerName =
-          (utterance.speaker?.speakerName && utterance.speaker.speakerName.trim()) ||
-          (utterance.userName && utterance.userName.trim()) ||
-          utterance.speaker?.speakerLabel ||
-          'Unknown Speaker';
+        const speakerName
+          = (utterance.speaker?.speakerName && utterance.speaker.speakerName.trim())
+            || (utterance.userName && utterance.userName.trim())
+            || utterance.speaker?.speakerLabel
+            || 'Unknown Speaker';
 
         return {
           id: utterance.id,

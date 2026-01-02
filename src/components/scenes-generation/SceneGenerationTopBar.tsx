@@ -264,7 +264,8 @@ export function SceneGenerationTopBar({
                             model.maxReferenceImages === 1
                               ? 'bg-amber-100 text-amber-700'
                               : 'bg-green-100 text-green-700'
-                          }`}>
+                          }`}
+                          >
                             {model.maxReferenceImages === 1 ? '1 ref' : `${model.maxReferenceImages}+ refs`}
                           </span>
                         )}
@@ -376,7 +377,7 @@ export function SceneGenerationTopBar({
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        {referenceImages.map(img => {
+                        {referenceImages.map((img) => {
                           const isSelected = selectedReferenceImageIds?.includes(img.id) ?? true;
                           return (
                             <button
@@ -423,7 +424,7 @@ export function SceneGenerationTopBar({
                                 </div>
                               )}
                               {img.name && (
-                                <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-1 py-0.5">
+                                <div className="absolute right-0 bottom-0 left-0 bg-black/50 px-1 py-0.5">
                                   <p className="truncate text-xs text-white">{img.name}</p>
                                 </div>
                               )}

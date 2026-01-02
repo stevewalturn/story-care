@@ -5,12 +5,12 @@ import { arrayMove } from '@dnd-kit/sortable';
 import { ChevronDown, ChevronUp, Loader2, PlayCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import { AssetPickerModal } from '@/components/pages/AssetPickerModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVideoJobPolling } from '@/hooks/useVideoJobPolling';
 import { getAllImageModelsFlat, getFilteredImageModels, isValidVideoModel } from '@/libs/ModelMetadata';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 import { generateSceneDescription, generateSceneTitle } from '@/utils/SceneHelpers';
-import { AssetPickerModal } from '@/components/pages/AssetPickerModal';
 import { CompilationProgressModal } from './CompilationProgressModal';
 import { MusicGenerationOptionsModal } from './MusicGenerationOptionsModal';
 import { MusicGenerationPanel } from './MusicGenerationPanel';
@@ -1363,7 +1363,11 @@ export function SceneGenerationLayout({
 
               {/* Status text */}
               <p className="mb-4 text-sm text-gray-600">
-                {processingStep || 'Processing...'} • {Math.round(processingProgress)}%
+                {processingStep || 'Processing...'}
+                {' '}
+                •
+                {Math.round(processingProgress)}
+                %
               </p>
 
               <p className="text-center text-xs text-gray-500">

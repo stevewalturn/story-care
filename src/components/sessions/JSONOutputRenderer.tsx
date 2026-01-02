@@ -477,7 +477,7 @@ function renderPreview(
                       : Array.isArray(data.lyrical_option.suggested_lyrics)
                         ? data.lyrical_option.suggested_lyrics.slice(0, 200).join('\n')
                         : typeof data.lyrical_option.suggested_lyrics === 'object'
-                          ? JSON.stringify(data.lyrical_option.suggested_lyrics, null, 2).slice(0, 200) + '...'
+                          ? `${JSON.stringify(data.lyrical_option.suggested_lyrics, null, 2).slice(0, 200)}...`
                           : String(data.lyrical_option.suggested_lyrics)}
                   </p>
                 </div>

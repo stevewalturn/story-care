@@ -797,7 +797,7 @@ export default function SessionsPage() {
                           </div>
 
                           {/* Date */}
-                          <p className="whitespace-nowrap text-sm text-gray-500">
+                          <p className="text-sm whitespace-nowrap text-gray-500">
                             {formatRelativeTime(session.date)}
                           </p>
                         </button>
@@ -808,158 +808,158 @@ export default function SessionsPage() {
           : viewMode === 'patients'
             ? (
                 // Patients View
-              filteredAndSortedPatients.length === 0
-                ? (
-                    <div className="py-16 text-center">
-                      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
-                        <Users className="h-8 w-8 text-gray-400" />
+                filteredAndSortedPatients.length === 0
+                  ? (
+                      <div className="py-16 text-center">
+                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+                          <Users className="h-8 w-8 text-gray-400" />
+                        </div>
+                        <h3 className="mb-2 text-lg font-semibold text-gray-900">
+                          {patientsWithSessions.length === 0 ? 'No patients yet' : 'No matching patients'}
+                        </h3>
+                        <p className="mb-6 text-gray-500">
+                          {patientsWithSessions.length === 0 ? 'Create a session to get started' : 'Try adjusting your filters'}
+                        </p>
+                        {patientsWithSessions.length === 0 ? (
+                          <Button
+                            variant="primary"
+                            onClick={() => handleNewSession()}
+                          >
+                            <Plus className="mr-2 h-5 w-5" />
+                            New Session
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="secondary"
+                            onClick={() => {
+                              setSessionCountFilter('all');
+                              setLastActivityFilter('all');
+                              setSearchTerm('');
+                            }}
+                          >
+                            Clear filters
+                          </Button>
+                        )}
                       </div>
-                      <h3 className="mb-2 text-lg font-semibold text-gray-900">
-                        {patientsWithSessions.length === 0 ? 'No patients yet' : 'No matching patients'}
-                      </h3>
-                      <p className="mb-6 text-gray-500">
-                        {patientsWithSessions.length === 0 ? 'Create a session to get started' : 'Try adjusting your filters'}
-                      </p>
-                      {patientsWithSessions.length === 0 ? (
-                        <Button
-                          variant="primary"
-                          onClick={() => handleNewSession()}
-                        >
-                          <Plus className="mr-2 h-5 w-5" />
-                          New Session
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="secondary"
-                          onClick={() => {
-                            setSessionCountFilter('all');
-                            setLastActivityFilter('all');
-                            setSearchTerm('');
-                          }}
-                        >
-                          Clear filters
-                        </Button>
-                      )}
-                    </div>
-                  )
-                : (
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      {filteredAndSortedPatients.map(patient => (
-                        <button
-                          key={patient.id}
-                          type="button"
-                          onClick={() => handlePatientClick(patient)}
-                          className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left transition-all hover:border-purple-200 hover:shadow-md"
-                        >
-                          {/* Avatar - Large circular */}
-                          {patient.avatarUrl
-                            ? (
-                                <img
-                                  src={patient.avatarUrl}
-                                  alt={patient.name}
-                                  className="h-14 w-14 rounded-full object-cover"
-                                />
-                              )
-                            : (
-                                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-purple-600 text-lg font-medium text-white">
-                                  {getInitials(patient.name)}
-                                </div>
-                              )}
+                    )
+                  : (
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        {filteredAndSortedPatients.map(patient => (
+                          <button
+                            key={patient.id}
+                            type="button"
+                            onClick={() => handlePatientClick(patient)}
+                            className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left transition-all hover:border-purple-200 hover:shadow-md"
+                          >
+                            {/* Avatar - Large circular */}
+                            {patient.avatarUrl
+                              ? (
+                                  <img
+                                    src={patient.avatarUrl}
+                                    alt={patient.name}
+                                    className="h-14 w-14 rounded-full object-cover"
+                                  />
+                                )
+                              : (
+                                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-purple-600 text-lg font-medium text-white">
+                                    {getInitials(patient.name)}
+                                  </div>
+                                )}
 
-                          {/* Info */}
-                          <div className="min-w-0 flex-1">
-                            <h3 className="font-medium text-gray-900">{patient.name}</h3>
-                            <p className="text-sm text-gray-500">
-                              Last opened
-                              {' '}
-                              {formatRelativeTime(patient.lastOpened)}
-                            </p>
-                          </div>
+                            {/* Info */}
+                            <div className="min-w-0 flex-1">
+                              <h3 className="font-medium text-gray-900">{patient.name}</h3>
+                              <p className="text-sm text-gray-500">
+                                Last opened
+                                {' '}
+                                {formatRelativeTime(patient.lastOpened)}
+                              </p>
+                            </div>
 
-                          {/* Session Badge */}
-                          <div className="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-sm text-gray-600">
-                            <MessageCircle className="h-4 w-4" />
-                            {patient.sessionCount}
-                            {' '}
-                            {patient.sessionCount === 1 ? 'Session' : 'Sessions'}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )
-            )
-          : (
-              // Groups View
-              filteredAndSortedGroups.length === 0
-                ? (
-                    <div className="py-16 text-center">
-                      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
-                        <Users className="h-8 w-8 text-gray-400" />
-                      </div>
-                      <h3 className="mb-2 text-lg font-semibold text-gray-900">
-                        {groupsWithSessions.length === 0 ? 'No groups yet' : 'No matching groups'}
-                      </h3>
-                      <p className="mb-6 text-gray-500">
-                        {groupsWithSessions.length === 0 ? 'Create a group session to get started' : 'Try adjusting your filters'}
-                      </p>
-                      {groupsWithSessions.length === 0 ? (
-                        <Button
-                          variant="primary"
-                          onClick={() => handleNewSession()}
-                        >
-                          <Plus className="mr-2 h-5 w-5" />
-                          New Group Session
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="secondary"
-                          onClick={() => {
-                            setSessionCountFilter('all');
-                            setLastActivityFilter('all');
-                            setSearchTerm('');
-                          }}
-                        >
-                          Clear filters
-                        </Button>
-                      )}
-                    </div>
-                  )
-                : (
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      {filteredAndSortedGroups.map(group => (
-                        <button
-                          key={group.id}
-                          type="button"
-                          onClick={() => handleGroupClick(group)}
-                          className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 text-left transition-all hover:border-purple-200 hover:shadow-md"
-                        >
-                          {/* Top row: Stacked avatars + session count */}
-                          <div className="flex items-center justify-between">
-                            <StackedAvatars members={group.members} size="md" maxVisible={3} />
+                            {/* Session Badge */}
                             <div className="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-sm text-gray-600">
                               <MessageCircle className="h-4 w-4" />
-                              {group.sessionCount}
+                              {patient.sessionCount}
                               {' '}
-                              {group.sessionCount === 1 ? 'Session' : 'Sessions'}
+                              {patient.sessionCount === 1 ? 'Session' : 'Sessions'}
                             </div>
-                          </div>
+                          </button>
+                        ))}
+                      </div>
+                    )
+              )
+            : (
+              // Groups View
+                filteredAndSortedGroups.length === 0
+                  ? (
+                      <div className="py-16 text-center">
+                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+                          <Users className="h-8 w-8 text-gray-400" />
+                        </div>
+                        <h3 className="mb-2 text-lg font-semibold text-gray-900">
+                          {groupsWithSessions.length === 0 ? 'No groups yet' : 'No matching groups'}
+                        </h3>
+                        <p className="mb-6 text-gray-500">
+                          {groupsWithSessions.length === 0 ? 'Create a group session to get started' : 'Try adjusting your filters'}
+                        </p>
+                        {groupsWithSessions.length === 0 ? (
+                          <Button
+                            variant="primary"
+                            onClick={() => handleNewSession()}
+                          >
+                            <Plus className="mr-2 h-5 w-5" />
+                            New Group Session
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="secondary"
+                            onClick={() => {
+                              setSessionCountFilter('all');
+                              setLastActivityFilter('all');
+                              setSearchTerm('');
+                            }}
+                          >
+                            Clear filters
+                          </Button>
+                        )}
+                      </div>
+                    )
+                  : (
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        {filteredAndSortedGroups.map(group => (
+                          <button
+                            key={group.id}
+                            type="button"
+                            onClick={() => handleGroupClick(group)}
+                            className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 text-left transition-all hover:border-purple-200 hover:shadow-md"
+                          >
+                            {/* Top row: Stacked avatars + session count */}
+                            <div className="flex items-center justify-between">
+                              <StackedAvatars members={group.members} size="md" maxVisible={3} />
+                              <div className="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-sm text-gray-600">
+                                <MessageCircle className="h-4 w-4" />
+                                {group.sessionCount}
+                                {' '}
+                                {group.sessionCount === 1 ? 'Session' : 'Sessions'}
+                              </div>
+                            </div>
 
-                          {/* Group name and last opened */}
-                          <div>
-                            <h3 className="font-medium text-gray-900">
-                              {getDisplayGroupName(group)}
-                            </h3>
-                            <p className="text-sm text-gray-500">
-                              Last opened
-                              {' '}
-                              {formatRelativeTime(group.lastOpened)}
-                            </p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )
-            )}
+                            {/* Group name and last opened */}
+                            <div>
+                              <h3 className="font-medium text-gray-900">
+                                {getDisplayGroupName(group)}
+                              </h3>
+                              <p className="text-sm text-gray-500">
+                                Last opened
+                                {' '}
+                                {formatRelativeTime(group.lastOpened)}
+                              </p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )
+              )}
     </div>
   );
 }

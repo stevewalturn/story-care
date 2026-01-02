@@ -189,7 +189,7 @@ export function GenerateMusicModal({
         )}
         {type === 'lyrical' && option.suggested_lyrics && (
           <div className="mb-3 rounded bg-white/60 p-2">
-            <p className="line-clamp-4 text-xs text-gray-600 italic whitespace-pre-wrap">
+            <p className="line-clamp-4 text-xs whitespace-pre-wrap text-gray-600 italic">
               {typeof option.suggested_lyrics === 'string'
                 ? option.suggested_lyrics
                 : typeof option.suggested_lyrics === 'object'

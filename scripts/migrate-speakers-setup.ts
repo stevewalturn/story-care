@@ -8,11 +8,11 @@ import path from 'node:path';
 // Load environment variables FIRST before any other imports
 import dotenv from 'dotenv';
 
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
-
 import { isNotNull, sql } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { sessions } from '@/models/Schema';
+
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 async function migrateSessionsWithSummaries() {
   console.log('Starting migration: Setting speakersSetupCompleted for sessions with summaries...');
@@ -32,7 +32,7 @@ async function migrateSessionsWithSummaries() {
     }
 
     // Update all sessions that have a summary
-    const result = await db
+    await db
       .update(sessions)
       .set({ speakersSetupCompleted: true })
       .where(isNotNull(sessions.sessionSummary));
@@ -48,7 +48,6 @@ async function migrateSessionsWithSummaries() {
       .where(sql`${sessions.speakersSetupCompleted} = true`);
 
     console.log(`\nVerification: ${updatedCount[0]?.count || 0} sessions now have speakersSetupCompleted = true`);
-
   } catch (error) {
     console.error('Migration failed:', error);
     process.exit(1);

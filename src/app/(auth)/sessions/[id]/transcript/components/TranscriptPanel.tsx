@@ -148,7 +148,7 @@ export function TranscriptPanel({
       // Start playing from the new position
       audioRef.current.play().then(() => {
         setIsPlaying(true);
-      }).catch(err => {
+      }).catch((err) => {
         console.error('Failed to play audio after seek:', err);
       });
       // Notify parent that seek is complete
@@ -420,7 +420,7 @@ export function TranscriptPanel({
           {/* Match counter and navigation - shown when searching */}
           {searchQuery ? (
             <div className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-1">
-              <span className="text-xs tabular-nums text-gray-500">
+              <span className="text-xs text-gray-500 tabular-nums">
                 {matchingUtteranceIds.length > 0
                   ? `${currentMatchIndex + 1}/${matchingUtteranceIds.length}`
                   : '0/0'}
@@ -634,11 +634,11 @@ export function TranscriptPanel({
               ref={(el) => {
                 if (el) utteranceRefs.current.set(utterance.id, el);
               }}
-              className={`flex gap-3 rounded-lg p-2 -mx-2 transition-colors duration-200 ${
+              className={`-mx-2 flex gap-3 rounded-lg p-2 transition-colors duration-200 ${
                 isCurrentUtterance
-                  ? 'bg-purple-50 border-l-2 border-purple-500'
+                  ? 'border-l-2 border-purple-500 bg-purple-50'
                   : isCurrentSearchMatch
-                    ? 'bg-yellow-50 border-l-2 border-yellow-400'
+                    ? 'border-l-2 border-yellow-400 bg-yellow-50'
                     : isSearchMatch
                       ? 'bg-yellow-50/50'
                       : ''

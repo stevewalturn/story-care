@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
         const matchingUtterance = await db.query.utterancesSchema.findFirst({
           where: and(
             eq(utterancesSchema.transcriptId, transcript.id),
-            sql`LOWER(${utterancesSchema.text}) LIKE LOWER(${'%' + quoteText.trim() + '%'})`,
+            sql`LOWER(${utterancesSchema.text}) LIKE LOWER(${`%${quoteText.trim()}%`})`,
           ),
           columns: {
             id: true,

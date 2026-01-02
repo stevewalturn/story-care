@@ -226,7 +226,7 @@ async function testModel(
     }
   }
 
-  console.log(`\n[${ modelId}] Testing with config:`);
+  console.log(`\n[${modelId}] Testing with config:`);
   console.log(`  Atlas Name: ${config.atlasName}`);
   console.log(`  Min Size: ${config.minSize}`);
   console.log(`  Requires Image: ${config.requiresImage}`);
@@ -305,7 +305,7 @@ async function main() {
   }
 
   // Summary
-  console.log('\n' + '='.repeat(60));
+  console.log(`\n${'='.repeat(60)}`);
   console.log('SUMMARY');
   console.log('='.repeat(60));
 
@@ -325,11 +325,11 @@ async function main() {
   }
 
   // Export configuration for use in code
-  console.log('\n' + '='.repeat(60));
+  console.log(`\n${'='.repeat(60)}`);
   console.log('MODEL CONFIGURATION EXPORT');
   console.log('='.repeat(60));
   console.log('\nCopy this configuration to AtlasCloud.ts:\n');
-  console.log('const MODEL_CONFIGS: Record<string, ModelConfig> = ' + JSON.stringify(MODEL_CONFIGS, null, 2) + ';');
+  console.log(`const MODEL_CONFIGS: Record<string, ModelConfig> = ${JSON.stringify(MODEL_CONFIGS, null, 2)};`);
 }
 
 main().catch(console.error);

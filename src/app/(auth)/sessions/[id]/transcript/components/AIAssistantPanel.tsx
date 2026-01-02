@@ -1030,7 +1030,9 @@ export function AIAssistantPanel({
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span className="text-xs font-medium text-purple-700">
-              Using selected text with &quot;{getSelectedPromptName()}&quot; prompt
+              Using selected text with &quot;
+              {getSelectedPromptName()}
+              &quot; prompt
             </span>
             <button
               onClick={() => {
@@ -1129,9 +1131,9 @@ export function AIAssistantPanel({
                         {speakers
                           .filter((speaker, index, self) =>
                             // Deduplicate by name
-                            self.findIndex(s => s.name === speaker.name) === index &&
+                            self.findIndex(s => s.name === speaker.name) === index
                             // Exclude therapist (already shown with "(You)")
-                            speaker.name !== dbUser?.name
+                            && speaker.name !== dbUser?.name,
                           )
                           .map(speaker => (
                             <button

@@ -622,8 +622,8 @@ export function TranscriptViewerClient({
         <div className={`h-full ${
           isTranscriptCollapsed ? 'w-12 flex-shrink-0'
             : !isAIAssistantOpen && isLibraryCollapsed ? 'mx-auto max-w-4xl flex-1'
-              : !isAIAssistantOpen ? 'max-w-[980px] flex-1'
-                : 'w-[450px] flex-shrink-0'
+                : !isAIAssistantOpen ? 'max-w-[980px] flex-1'
+                    : 'w-[450px] flex-shrink-0'
         }`}
         >
           <TranscriptPanel

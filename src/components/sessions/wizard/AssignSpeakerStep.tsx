@@ -1112,13 +1112,13 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Timestamp</label>
-                <div className="mt-1 rounded-md bg-gray-100 p-2 text-sm font-mono text-gray-800">
+                <div className="mt-1 rounded-md bg-gray-100 p-2 font-mono text-sm text-gray-800">
                   {errorDetails.timestamp}
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Session ID</label>
-                <div className="mt-1 truncate rounded-md bg-gray-100 p-2 text-sm font-mono text-gray-800">
+                <div className="mt-1 truncate rounded-md bg-gray-100 p-2 font-mono text-sm text-gray-800">
                   {errorDetails.sessionId}
                 </div>
               </div>
@@ -1142,7 +1142,7 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Raw Error</label>
-              <div className="mt-1 rounded-md bg-gray-100 p-2 text-sm font-mono text-gray-800">
+              <div className="mt-1 rounded-md bg-gray-100 p-2 font-mono text-sm text-gray-800">
                 {errorDetails.rawError}
               </div>
             </div>

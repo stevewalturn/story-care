@@ -18,9 +18,9 @@ if (typeof window !== 'undefined') {
     // Skip common non-critical browser errors
     const message = event.message || '';
     if (
-      message.includes('ResizeObserver loop') ||
-      message.includes('Script error.') ||
-      message === ''
+      message.includes('ResizeObserver loop')
+      || message.includes('Script error.')
+      || message === ''
     ) {
       return;
     }

@@ -240,7 +240,9 @@ export default function PublicSharePage({ params }: Props) {
         <div className="mb-10">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-purple-100/80 px-4 py-2 backdrop-blur-sm">
             <span className="text-sm font-medium text-purple-700">
-              Personalized for {pageData.page.patientName}
+              Personalized for
+              {' '}
+              {pageData.page.patientName}
             </span>
           </div>
           <h1 className="mb-3 text-4xl font-bold text-gray-900">{pageData.page.title}</h1>
@@ -296,7 +298,7 @@ export default function PublicSharePage({ params }: Props) {
 
                 {block.blockType === 'quote' && block.textContent && (
                   <blockquote className="border-l-4 border-purple-500 pl-4">
-                    <div className="prose prose-lg max-w-none italic text-gray-700">
+                    <div className="prose prose-lg max-w-none text-gray-700 italic">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {block.textContent}
                       </ReactMarkdown>
@@ -507,7 +509,7 @@ export default function PublicSharePage({ params }: Props) {
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-10 py-4 font-medium text-white shadow-lg transition-all hover:shadow-xl hover:from-purple-700 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-10 py-4 font-medium text-white shadow-lg transition-all hover:from-purple-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
               type="button"
             >
               {isSubmitting ? (

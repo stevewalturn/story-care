@@ -4,7 +4,7 @@ import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import type { CSSProperties } from 'react';
 import { FolderOpen, GripVertical, Info, Loader2, Maximize2, Pause, Play, RotateCw, SkipBack, SkipForward, Sparkles, Trash2, Upload, Video, Volume2, VolumeX } from 'lucide-react';
-import { forwardRef, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/Input';
 
 export type SceneCardData = {
@@ -48,21 +48,7 @@ type SceneCardProps = {
   isSortableDragging?: boolean;
 };
 
-export const SceneCard = forwardRef<HTMLDivElement, SceneCardProps>(function SceneCard({
-  scene,
-  onUpdate,
-  onDelete,
-  onOptimize,
-  onGenerateImage,
-  onUploadImage,
-  onBrowseAssets,
-  onAnimateVideo,
-  isGeneratingAnyImage,
-  supportsPrompt = true,
-  dragHandleProps,
-  sortableStyle,
-  isSortableDragging,
-}, ref) {
+export const SceneCard = function SceneCard({ ref, scene, onUpdate, onDelete, onOptimize, onGenerateImage, onUploadImage, onBrowseAssets, onAnimateVideo, isGeneratingAnyImage, supportsPrompt = true, dragHandleProps, sortableStyle, isSortableDragging }: SceneCardProps & { ref?: React.RefObject<HTMLDivElement | null> }) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -463,4 +449,4 @@ export const SceneCard = forwardRef<HTMLDivElement, SceneCardProps>(function Sce
       </div>
     </div>
   );
-});
+};

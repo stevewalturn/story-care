@@ -533,7 +533,7 @@ export function AssetPickerModal({
                   onClick={() => handleSelect(asset)}
                   className="w-full rounded-lg border border-gray-200 p-4 text-left transition-all hover:border-purple-500 hover:shadow-md"
                 >
-                  <div className="prose prose-sm prose-gray max-w-none line-clamp-4 text-gray-900">
+                  <div className="prose prose-sm line-clamp-4 max-w-none text-gray-900 prose-gray">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {`"${asset.quoteText}"`}
                     </ReactMarkdown>
@@ -581,7 +581,7 @@ export function AssetPickerModal({
                       </span>
                     </div>
                   )}
-                  <div className="prose prose-sm prose-gray max-w-none line-clamp-6 text-gray-900">
+                  <div className="prose prose-sm line-clamp-6 max-w-none text-gray-900 prose-gray">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {asset.content}
                     </ReactMarkdown>

@@ -76,58 +76,58 @@ export type AtlasImageModel
     | 'advanced-photography'
     | 'american-comic-style';
 
-export type AtlasVideoModel =
+export type AtlasVideoModel
   // Featured
-  | 'sora-2-i2v-pro'
-  | 'sora-2-i2v'
-  | 'veo3.1-i2v'
-  | 'veo3-i2v'
-  | 'seedance-v1.5-pro-i2v'
-  | 'kling-2.6-pro-i2v'
+  = | 'sora-2-i2v-pro'
+    | 'sora-2-i2v'
+    | 'veo3.1-i2v'
+    | 'veo3-i2v'
+    | 'seedance-v1.5-pro-i2v'
+    | 'kling-2.6-pro-i2v'
   // Premium
-  | 'kling-video-o1-i2v'
-  | 'veo3.1-ref-i2v'
-  | 'veo2-i2v'
-  | 'kling-2.5-turbo-pro-i2v'
-  | 'kling-2.1-start-end-i2v'
-  | 'kling-2.0-master-i2v'
-  | 'hailuo-2.3-pro-i2v'
-  | 'luma-ray-2-i2v'
-  | 'vidu-ref-2.0-i2v'
-  | 'vidu-ref-q1-i2v'
+    | 'kling-video-o1-i2v'
+    | 'veo3.1-ref-i2v'
+    | 'veo2-i2v'
+    | 'kling-2.5-turbo-pro-i2v'
+    | 'kling-2.1-start-end-i2v'
+    | 'kling-2.0-master-i2v'
+    | 'hailuo-2.3-pro-i2v'
+    | 'luma-ray-2-i2v'
+    | 'vidu-ref-2.0-i2v'
+    | 'vidu-ref-q1-i2v'
   // Standard
-  | 'sora-2-i2v-pro-dev'
-  | 'sora-2-i2v-dev'
-  | 'veo3.1-fast-i2v'
-  | 'veo3-fast-i2v'
-  | 'hailuo-2.3-standard-i2v'
-  | 'hailuo-02-t2v-pro'
-  | 'kling-1.6-multi-pro-i2v'
-  | 'kling-1.6-multi-std-i2v'
-  | 'ltx-2-pro-i2v'
-  | 'vidu-start-end-2.0'
-  | 'pika-2.0-turbo-i2v'
-  | 'pixverse-4.5-fast-i2v'
-  | 'magi-1-24b'
+    | 'sora-2-i2v-pro-dev'
+    | 'sora-2-i2v-dev'
+    | 'veo3.1-fast-i2v'
+    | 'veo3-fast-i2v'
+    | 'hailuo-2.3-standard-i2v'
+    | 'hailuo-02-t2v-pro'
+    | 'kling-1.6-multi-pro-i2v'
+    | 'kling-1.6-multi-std-i2v'
+    | 'ltx-2-pro-i2v'
+    | 'vidu-start-end-2.0'
+    | 'pika-2.0-turbo-i2v'
+    | 'pixverse-4.5-fast-i2v'
+    | 'magi-1-24b'
   // Budget
-  | 'wan-2.6-i2v'
-  | 'wan-2.5-i2v'
-  | 'wan-2.5-fast-i2v'
-  | 'wan-2.2-lora-i2v'
-  | 'ltx-2-fast-i2v'
-  | 'ltx-video-097-i2v'
-  | 'seedance-v1-pro-fast-i2v'
-  | 'hailuo-2.3-fast-i2v'
-  | 'kling-effects'
+    | 'wan-2.6-i2v'
+    | 'wan-2.5-i2v'
+    | 'wan-2.5-fast-i2v'
+    | 'wan-2.2-lora-i2v'
+    | 'ltx-2-fast-i2v'
+    | 'ltx-video-097-i2v'
+    | 'seedance-v1-pro-fast-i2v'
+    | 'hailuo-2.3-fast-i2v'
+    | 'kling-effects'
   // Video Effects
-  | 'video-zoom-out'
-  | 'video-shake-dance'
-  | 'video-love-drop'
-  | 'video-jiggle-up'
-  | 'video-fishermen'
-  | 'video-flying'
-  | 'video-gender-swap'
-  | 'video-hulk';
+    | 'video-zoom-out'
+    | 'video-shake-dance'
+    | 'video-love-drop'
+    | 'video-jiggle-up'
+    | 'video-fishermen'
+    | 'video-flying'
+    | 'video-gender-swap'
+    | 'video-hulk';
 
 /**
  * Model configuration with specific requirements
@@ -1016,7 +1016,7 @@ export async function generateVideoWithAtlas(
   console.log('[AtlasCloud Video] Input model from options:', options.model);
   console.log('[AtlasCloud Video] Resolved model (after default):', model);
   console.log('[AtlasCloud Video] Mapped Atlas API model:', atlasModel);
-  console.log('[AtlasCloud Video] Prompt:', options.prompt?.substring(0, 100) + '...');
+  console.log('[AtlasCloud Video] Prompt:', `${options.prompt?.substring(0, 100)}...`);
   console.log('[AtlasCloud Video] Image (reference):', options.referenceImage ? 'YES (provided)' : 'NO');
   console.log('[AtlasCloud Video] Duration:', options.duration || 5);
 
