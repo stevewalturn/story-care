@@ -40,13 +40,6 @@ const AI_MODEL_GROUPS = [
     ],
   },
   {
-    provider: 'Anthropic',
-    models: [
-      { id: 'claude-haiku-4', name: 'Claude Haiku 4' },
-      { id: 'claude-3.7-sonnet', name: 'Claude 3.7 Sonnet' },
-    ],
-  },
-  {
     provider: 'Google',
     models: [
       { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
