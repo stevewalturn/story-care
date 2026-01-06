@@ -642,6 +642,8 @@ export function TranscriptViewerClient({
             onToggleCollapse={() => setIsTranscriptCollapsed(!isTranscriptCollapsed)}
             seekToTimestamp={seekToTimestamp}
             onSeekComplete={() => setSeekToTimestamp(null)}
+            analyzeMode={analyzeMode}
+            onAnalyzeModeChange={setAnalyzeMode}
           />
         </div>
 

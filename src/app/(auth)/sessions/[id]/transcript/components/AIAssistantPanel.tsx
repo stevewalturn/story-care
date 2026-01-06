@@ -15,6 +15,7 @@ import { CreatePromptModal } from '@/components/prompts/CreatePromptModal';
 import { EditPromptModal } from '@/components/prompts/EditPromptModal';
 import { PromptLibrary } from '@/components/prompts/PromptLibrary';
 import { AssistantMessageContent } from '@/components/sessions/AssistantMessageContent';
+import { BulkSaveQuotesModal } from '@/components/sessions/BulkSaveQuotesModal';
 import { JSONOutputRenderer } from '@/components/sessions/JSONOutputRenderer';
 import { MessagePreviewModal } from '@/components/sessions/MessagePreviewModal';
 import { ModuleSelectorModal } from '@/components/sessions/ModuleSelectorModal';
@@ -133,6 +134,9 @@ export function AIAssistantPanel({
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewContent, setPreviewContent] = useState('');
   const [previewTimestamp, setPreviewTimestamp] = useState<Date | null>(null);
+  // Bulk Save Quotes Modal state
+  const [showBulkSaveQuotesModal, setShowBulkSaveQuotesModal] = useState(false);
+  const [bulkQuotes, setBulkQuotes] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputContainerRef = useRef<HTMLDivElement>(null);
@@ -263,6 +267,47 @@ export function AIAssistantPanel({
   const handleDownloadMessage = async (content: string) => {
     const plainText = stripMarkdownForPlainText(content);
     downloadAsTextFile(plainText, 'clinical-note');
+  };
+
+  // Bulk Save Quotes Modal handlers
+  const handleOpenBulkSaveQuotesModal = (quotes: any[]) => {
+    setBulkQuotes(quotes);
+    setShowBulkSaveQuotesModal(true);
+  };
+
+  const handleCloseBulkSaveQuotesModal = () => {
+    setShowBulkSaveQuotesModal(false);
+    setBulkQuotes([]);
+  };
+
+  const handleBulkSaveQuotes = async (quoteData: { patientId: string }) => {
+    try {
+      const response = await Promise.all(
+        bulkQuotes.map(quote =>
+          authenticatedPost('/api/quotes', user, {
+            patientId: quoteData.patientId,
+            sessionId,
+            quoteText: quote.quote_text || quote.text,
+            speaker: quote.speaker || 'Unknown',
+            tags: quote.tags || [],
+            notes: quote.context || quote.significance || '',
+          }),
+        ),
+      );
+
+      const successCount = response.filter(r => r.ok).length;
+
+      // Refresh library if callback exists
+      if (onLibraryRefresh) {
+        onLibraryRefresh();
+      }
+
+      alert(`✅ Saved ${successCount}/${bulkQuotes.length} quotes successfully.`);
+    }
+    catch (error) {
+      console.error('Error saving quotes:', error);
+      throw error;
+    }
   };
 
   // Close dropdowns when clicking outside
@@ -832,33 +877,16 @@ ${transcriptContext}`;
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Clear Chat Button */}
-            <button
-              onClick={() => setShowClearChatConfirm(true)}
-              disabled={messages.length === 0}
-              className="flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
-              title="Clear all chat messages"
-            >
-              <Trash2 className="h-3 w-3" />
-              Clear Chat
-            </button>
-            {/* Analyze Mode Toggle */}
-            <button
-              onClick={() => onAnalyzeModeChange?.(!analyzeMode)}
-              className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-colors ${
-                analyzeMode
-                  ? 'bg-green-50 text-green-700 hover:bg-green-100'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-              title={analyzeMode ? 'Click to disable text selection analysis' : 'Click to enable text selection analysis'}
-            >
-              <div className={`h-1.5 w-1.5 rounded-full ${analyzeMode ? 'bg-green-500' : 'bg-gray-400'}`} />
-              Analyze
-              {' '}
-              {analyzeMode ? 'On' : 'Off'}
-            </button>
-          </div>
+          {/* Clear Chat Button */}
+          <button
+            onClick={() => setShowClearChatConfirm(true)}
+            disabled={messages.length === 0}
+            className="flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+            title="Clear all chat messages"
+          >
+            <Trash2 className="h-3 w-3" />
+            Clear Chat
+          </button>
         </div>
       </div>
 
@@ -1111,6 +1139,7 @@ ${transcriptContext}`;
                             onOpenSceneGeneration={onOpenSceneGeneration}
                             onOpenModuleSelector={handleOpenModuleSelector}
                             onOpenSaveNoteModal={handleOpenSaveNoteModalFromJSON}
+                            onOpenBulkSaveQuotes={handleOpenBulkSaveQuotesModal}
                           />
                         ) : (
                           <AssistantMessageContent content={message.content} />
@@ -1624,6 +1653,15 @@ ${transcriptContext}`;
         content={previewContent}
         timestamp={previewTimestamp || undefined}
         onDownload={() => handleDownloadMessage(previewContent)}
+      />
+
+      {/* Bulk Save Quotes Modal */}
+      <BulkSaveQuotesModal
+        isOpen={showBulkSaveQuotesModal}
+        onClose={handleCloseBulkSaveQuotesModal}
+        quotes={bulkQuotes}
+        patients={sessionPatients}
+        onSave={handleBulkSaveQuotes}
       />
     </div>
   );

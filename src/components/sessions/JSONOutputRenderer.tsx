@@ -61,6 +61,7 @@ type JSONOutputRendererProps = {
     content: string;
     tags?: string[];
   }) => void;
+  onOpenBulkSaveQuotes?: (quotes: any[]) => void;
   onRetry?: () => void;
 };
 
@@ -77,6 +78,7 @@ export function JSONOutputRenderer({
   onOpenSceneGeneration,
   onOpenModuleSelector,
   onOpenSaveNoteModal,
+  onOpenBulkSaveQuotes,
   onRetry,
 }: JSONOutputRendererProps) {
   const router = useRouter();
@@ -98,6 +100,15 @@ export function JSONOutputRenderer({
       return;
     }
 
+    // Handle callback actions (e.g., onOpenBulkSaveQuotes)
+    if ('callback' in action && action.callback) {
+      if (action.callback === 'onOpenBulkSaveQuotes' && onOpenBulkSaveQuotes) {
+        const quotes = (jsonData as any).extracted_quotes || (jsonData as any).quotes || [];
+        onOpenBulkSaveQuotes(quotes);
+      }
+      return;
+    }
+
     // Set processing action ID (with index for image_references)
     const processingId = imageIndex !== undefined ? `${action.id}_${imageIndex}` : action.id;
     setProcessingAction(processingId);
@@ -105,6 +116,10 @@ export function JSONOutputRenderer({
     try {
       // Dynamically import action handlers
       const { ACTION_HANDLERS } = await import('@/services/JSONActionHandlers');
+
+      if (!action.handler) {
+        throw new Error('No handler specified for action');
+      }
 
       const handler = ACTION_HANDLERS[action.handler];
       if (!handler) {

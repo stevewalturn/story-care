@@ -7,7 +7,8 @@ export type SchemaAction = {
   id: string; // Unique action identifier
   label: string; // Button label text
   icon: string; // Icon name (lucide-react icon)
-  handler: string; // Handler function name in JSONActionHandlers
+  handler?: string; // Handler function name in JSONActionHandlers
+  callback?: string; // Callback function name (e.g., onOpenBulkSaveQuotes)
   confirmation?: string; // Optional confirmation message
   batchable?: boolean; // Whether this action processes multiple items
   destructive?: boolean; // Whether this action modifies/deletes data
@@ -152,7 +153,7 @@ export const SCHEMA_ACTIONS: Record<JSONSchemaType, SchemaAction[]> = {
       id: 'save_quotes',
       label: 'Save All Quotes',
       icon: 'quote',
-      handler: 'handleSaveQuotes',
+      callback: 'onOpenBulkSaveQuotes',
       batchable: true,
     },
   ],

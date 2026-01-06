@@ -49,6 +49,8 @@ export function TranscriptPanel({
   onToggleCollapse,
   seekToTimestamp,
   onSeekComplete,
+  analyzeMode = false,
+  onAnalyzeModeChange,
 }: TranscriptPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
@@ -603,15 +605,34 @@ export function TranscriptPanel({
         </div>
       </div>
 
-      {/* Instruction Banner - Subtle */}
-      <div className="border-b border-gray-100 bg-gray-50/50 px-4 py-1.5">
-        <div className="flex items-center justify-center gap-1.5">
-          <svg className="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-          </svg>
-          <p className="text-xs text-gray-500">
-            Select text to analyze or generate content
-          </p>
+      {/* Instruction Banner - Seamless */}
+      <div className="border-b border-purple-100 bg-white px-4 py-2">
+        <div className="flex items-center gap-2">
+          {/* Analyze Toggle - Enhanced */}
+          <button
+            onClick={() => onAnalyzeModeChange?.(!analyzeMode)}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold border shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 ${
+              analyzeMode
+                ? 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 hover:shadow'
+                : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+            }`}
+            title={analyzeMode ? 'Click to disable text selection analysis' : 'Click to enable text selection analysis'}
+          >
+            <div className={`h-2 w-2 rounded-full transition-all duration-200 ${analyzeMode ? 'bg-purple-500' : 'bg-gray-400'}`} />
+            Analyze {analyzeMode ? 'On' : 'Off'}
+          </button>
+
+          {/* Instruction Text - Enhanced */}
+          <div className="flex items-center gap-2">
+            <svg className="h-3.5 w-3.5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+            </svg>
+            <p className="text-xs font-medium text-gray-600">
+              {analyzeMode
+                ? 'Click or drag to select text, then analyze'
+                : 'Select text to analyze or generate content'}
+            </p>
+          </div>
         </div>
       </div>
 
