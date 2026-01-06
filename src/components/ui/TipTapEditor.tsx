@@ -205,6 +205,7 @@ export function TipTapEditor({
   className = '',
 }: TipTapEditorProps) {
   const editor = useEditor({
+    immediatelyRender: false, // Fix SSR hydration mismatch
     extensions: [
       StarterKit,
       Underline,

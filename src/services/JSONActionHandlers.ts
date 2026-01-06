@@ -2,6 +2,7 @@
 // Contains handler functions for processing JSON outputs from AI Assistant
 
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
+import { markdownToHTML } from '@/utils/MarkdownToHTML';
 
 export type ActionContext = {
   jsonData: any;
@@ -690,10 +691,13 @@ export async function handleSaveTherapeuticNote(ctx: ActionContext) {
     return;
   }
 
+  // Convert markdown to HTML before passing to TipTap
+  const htmlContent = markdownToHTML(jsonData.note_content || '');
+
   // Open the modal with pre-filled content
   onOpenSaveNoteModal({
     title: jsonData.note_title || 'Therapeutic Note',
-    content: jsonData.note_content || '',
+    content: htmlContent,
     tags: jsonData.tags || ['therapeutic', 'ai-generated'],
   });
 

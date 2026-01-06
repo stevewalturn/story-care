@@ -4,6 +4,8 @@ import type { TherapeuticSceneCard } from '@/components/transcript/TherapeuticSc
 import type { SchemaAction } from '@/config/SchemaActions';
 import type { AnyJSONSchema, JSONSchemaType } from '@/types/JSONSchemas';
 import {
+  ChevronDown,
+  ChevronUp,
   Circle,
   FileText,
   Film,
@@ -18,6 +20,8 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { TherapeuticSceneCardRenderer } from '@/components/transcript/TherapeuticSceneCardRenderer';
 import { getActionsForSchema, getSchemaDescription, getSchemaDisplayName } from '@/config/SchemaActions';
 
@@ -81,6 +85,8 @@ export function JSONOutputRenderer({
     isOpen: boolean;
     templateTitle: string;
   } | null>(null);
+  // Track which therapeutic notes are expanded
+  const [expandedNotes, setExpandedNotes] = useState<Set<number>>(new Set());
 
   const { schemaType } = jsonData;
   // Filter out actions for music_generation - cards are now clickable directly
@@ -142,6 +148,95 @@ export function JSONOutputRenderer({
     }
   };
 
+  /**
+   * Renders markdown content with proper styling for therapeutic notes
+   */
+  const renderMarkdownContent = (content: string, isExpanded: boolean, noteIndex: number) => {
+    const TRUNCATE_LENGTH = 200;
+    const shouldTruncate = content.length > TRUNCATE_LENGTH;
+    const displayContent = !isExpanded && shouldTruncate
+      ? `${content.slice(0, TRUNCATE_LENGTH)}...`
+      : content;
+
+    return (
+      <div className="space-y-2">
+        <div className="prose prose-sm max-w-none text-xs">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              h1: ({ node, ...props }: any) => (
+                <h1 className="text-base font-bold text-gray-900 mt-3 mb-2" {...props} />
+              ),
+              h2: ({ node, ...props }: any) => (
+                <h2 className="text-sm font-semibold text-gray-900 mt-2 mb-1.5" {...props} />
+              ),
+              h3: ({ node, ...props }: any) => (
+                <h3 className="text-xs font-semibold text-gray-900 mt-2 mb-1" {...props} />
+              ),
+              p: ({ node, ...props }: any) => (
+                <p className="text-xs text-gray-600 my-1" {...props} />
+              ),
+              ul: ({ node, ...props }: any) => (
+                <ul className="list-disc list-inside text-xs text-gray-600 my-1 space-y-0.5" {...props} />
+              ),
+              ol: ({ node, ...props }: any) => (
+                <ol className="list-decimal list-inside text-xs text-gray-600 my-1 space-y-0.5" {...props} />
+              ),
+              li: ({ node, ...props }: any) => (
+                <li className="text-xs text-gray-600" {...props} />
+              ),
+              strong: ({ node, ...props }: any) => (
+                <strong className="font-semibold text-gray-900" {...props} />
+              ),
+              em: ({ node, ...props }: any) => (
+                <em className="italic text-gray-700" {...props} />
+              ),
+              code: ({ node, inline, ...props }: any) =>
+                inline ? (
+                  <code className="bg-gray-100 rounded px-1 py-0.5 text-xs font-mono" {...props} />
+                ) : (
+                  <code className="block bg-gray-100 rounded p-2 text-xs font-mono my-1" {...props} />
+                ),
+              blockquote: ({ node, ...props }: any) => (
+                <blockquote className="border-l-2 border-purple-300 pl-3 italic text-gray-600 my-1" {...props} />
+              ),
+            }}
+          >
+            {displayContent}
+          </ReactMarkdown>
+        </div>
+
+        {shouldTruncate && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const newExpanded = new Set(expandedNotes);
+              if (isExpanded) {
+                newExpanded.delete(noteIndex);
+              } else {
+                newExpanded.add(noteIndex);
+              }
+              setExpandedNotes(newExpanded);
+            }}
+            className="flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700 transition-colors"
+          >
+            {isExpanded ? (
+              <>
+                <ChevronUp className="h-3 w-3" />
+                Show less
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-3 w-3" />
+                Show more
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="rounded-lg border border-gray-200 bg-gradient-to-br from-purple-50 to-purple-50 p-4">
       {/* Header */}
@@ -166,7 +261,7 @@ export function JSONOutputRenderer({
       </div>
 
       {/* Preview / Summary */}
-      <div className="mb-3 rounded-lg bg-white/80 p-3">{renderPreview(schemaType, jsonData, onOpenSceneGeneration, onOpenImageModal, onOpenMusicModal, onRetry)}</div>
+      <div className="mb-3 rounded-lg bg-white/80 p-3">{renderPreview(schemaType, jsonData, onOpenSceneGeneration, onOpenImageModal, onOpenMusicModal, onRetry, expandedNotes, setExpandedNotes, renderMarkdownContent)}</div>
 
       {/* Action Buttons - skip for image_references since each card has its own button */}
       {schemaType !== 'image_references' && (
@@ -313,6 +408,9 @@ function renderPreview(
     lyricalOption?: any;
   }) => void,
   onRetry?: () => void,
+  expandedNotes?: Set<number>,
+  setExpandedNotes?: (notes: Set<number>) => void,
+  renderMarkdownContent?: (content: string, isExpanded: boolean, noteIndex: number) => JSX.Element,
 ) {
   switch (schemaType) {
     case 'therapeutic_scene_card':
@@ -892,11 +990,20 @@ function renderPreview(
       );
     }
 
-    case 'therapeutic_note':
+    case 'therapeutic_note': {
+      // Generate a unique index for this note based on content hash
+      const noteIndex = (data.note_title + data.note_content).split('').reduce((acc, char) => {
+        return ((acc << 5) - acc) + char.charCodeAt(0);
+      }, 0);
+      const isExpanded = expandedNotes?.has(noteIndex) ?? false;
+
       return (
         <div className="space-y-2 text-sm">
           <p className="font-semibold text-gray-900">{data.note_title}</p>
-          <p className="line-clamp-3 text-xs text-gray-600">{data.note_content}</p>
+          {renderMarkdownContent
+            ? renderMarkdownContent(data.note_content || '', isExpanded, noteIndex)
+            : <p className="text-xs text-gray-600 whitespace-pre-wrap">{data.note_content}</p>
+          }
           {data.tags && data.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {data.tags.map((tag: string, i: number) => (
@@ -908,6 +1015,7 @@ function renderPreview(
           )}
         </div>
       );
+    }
 
     case 'quote_extraction': {
       const quotes = data.extracted_quotes || data.quotes || [];

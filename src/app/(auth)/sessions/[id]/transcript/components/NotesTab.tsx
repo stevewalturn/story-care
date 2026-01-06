@@ -9,9 +9,9 @@ import type { NotesTabProps } from '../types/transcript.types';
 import type { PatientOption } from '@/components/sessions/SaveNoteModal';
 import { Edit2, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
 import { SaveNoteModal } from '@/components/sessions/SaveNoteModal';
 import { Modal } from '@/components/ui/Modal';
+import { HTMLContent } from '@/components/ui/HTMLContent';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 
 export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKey, selectedPatient }: NotesTabProps) {
@@ -264,10 +264,11 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
                     </div>
                   </div>
 
-                  {/* Markdown content */}
-                  <div className="prose prose-sm max-w-none text-sm leading-relaxed text-gray-700">
-                    <ReactMarkdown>{displayContent}</ReactMarkdown>
-                  </div>
+                  {/* Note content */}
+                  <HTMLContent
+                    html={displayContent}
+                    className="text-sm leading-relaxed text-gray-700"
+                  />
 
                   {/* Show more button - opens modal */}
                   {shouldTruncate && (
@@ -356,10 +357,8 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
               </div>
             </div>
 
-            {/* Full note content with markdown */}
-            <div className="prose prose-sm max-w-none">
-              <ReactMarkdown>{viewingNote.content}</ReactMarkdown>
-            </div>
+            {/* Full note content */}
+            <HTMLContent html={viewingNote.content} />
 
             {/* Tags */}
             {viewingNote.tags && viewingNote.tags.length > 0 && (
