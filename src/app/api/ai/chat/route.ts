@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
       selectedUtteranceIds,
       model = 'gemini-2.5-flash', // Default model - cost-optimized with caching
       hasPromptSelected = false, // Flag: when true, skip FREE CHAT system prompt (allow JSON output)
+      displayMessage, // Clean message for database storage (without transcript)
     } = body;
 
     if (!messages || !Array.isArray(messages)) {
@@ -254,12 +255,14 @@ Remember: PLAIN TEXT ONLY. NO JSON.`;
         const lastUserMessage = messages[messages.length - 1];
 
         if (lastUserMessage && lastUserMessage.role === 'user') {
-          // Save user message
+          // Save user message - use displayMessage if provided (without transcript), otherwise use full content
+          const messageToStore = displayMessage || lastUserMessage.content;
+
           await db.insert(aiChatMessages).values({
             sessionId,
             therapistId: user.dbUserId,
             role: 'user',
-            content: lastUserMessage.content,
+            content: messageToStore, // Store clean message without transcript for better UX
             selectedText: selectedText || null,
             selectedUtteranceIds: selectedUtteranceIds || null,
             aiModel: result.model, // Track which model was used

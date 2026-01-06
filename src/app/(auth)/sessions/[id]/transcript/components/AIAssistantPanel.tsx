@@ -559,6 +559,7 @@ ${userText}`;
         sessionId,
         model: selectedModel,
         hasPromptSelected: !!effectiveSystemPrompt, // Flag to skip FREE CHAT system prompt when a prompt is selected
+        displayMessage, // Send clean message for database storage (without transcript)
       });
 
       if (!response.ok) {
