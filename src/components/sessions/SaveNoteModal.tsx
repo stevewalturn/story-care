@@ -3,6 +3,7 @@
 import { ChevronDown, Save, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
+import { TipTapEditor } from '../ui/TipTapEditor';
 
 export type PatientOption = {
   id: string;
@@ -86,7 +87,9 @@ export function SaveNoteModal({
   };
 
   const handleSave = async () => {
-    if (!content.trim()) {
+    // Check if content is empty (strip HTML tags for validation)
+    const textContent = content.replace(/<[^>]*>/g, '').trim();
+    if (!textContent) {
       alert('Note content cannot be empty');
       return;
     }
@@ -101,7 +104,7 @@ export function SaveNoteModal({
       await onSave({
         patientId: selectedPatientId,
         title: title.trim() || 'AI Conversation Note',
-        content: content.trim(),
+        content, // Keep HTML formatting
         tags,
       });
       // Reset form
@@ -246,14 +249,13 @@ export function SaveNoteModal({
               {' '}
               <span className="text-red-500">*</span>
             </label>
-            <textarea
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              rows={8}
+            <TipTapEditor
+              content={content}
+              onChange={setContent}
               placeholder="Enter note content..."
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              className="min-h-[300px]"
             />
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-2 text-xs text-gray-500">
               This note will be saved to the patient's record for future reference
             </p>
           </div>
@@ -327,7 +329,7 @@ export function SaveNoteModal({
           <Button
             variant="primary"
             onClick={handleSave}
-            disabled={isSaving || !content.trim() || patients.length === 0 || !selectedPatientId}
+            disabled={isSaving || !content.replace(/<[^>]*>/g, '').trim() || patients.length === 0 || !selectedPatientId}
           >
             {isSaving ? 'Saving...' : 'Save Note'}
           </Button>

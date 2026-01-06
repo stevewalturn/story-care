@@ -536,6 +536,7 @@ export const mediaLibrarySchema: any = pgTable('media_library', {
   // Media details
   title: varchar('title', { length: 255 }).notNull(),
   description: text('description'),
+  notes: text('notes'), // Therapist-only private notes
   mediaType: mediaTypeEnum('media_type').notNull(),
   mediaUrl: text('media_url').notNull(),
   thumbnailUrl: text('thumbnail_url'),

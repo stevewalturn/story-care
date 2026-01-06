@@ -63,6 +63,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('[Chat API] Received request');
+    console.log('[Chat API] Model:', model);
+    console.log('[Chat API] Messages count:', messages?.length);
+    console.log('[Chat API] Last message length:', messages?.[messages.length - 1]?.content?.length);
+    console.log('[Chat API] Session ID:', sessionId);
+
     // 4. AUTHORIZATION: If sessionId provided, verify user has access
     if (sessionId) {
       await requireSessionAccess(request, sessionId);

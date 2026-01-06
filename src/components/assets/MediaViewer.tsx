@@ -10,6 +10,8 @@ type MediaItem = {
   title: string;
   url: string;
   thumbnailUrl?: string;
+  description?: string | null;
+  notes?: string | null;
   patientName?: string;
   sessionName?: string;
   createdAt: Date;
@@ -17,6 +19,8 @@ type MediaItem = {
   text?: string;
   tags?: string[];
   prompt?: string; // AI generation prompt
+  status?: string; // 'completed', 'processing', 'failed'
+  sourceType?: string;
 };
 
 type MediaViewerProps = {
@@ -141,6 +145,23 @@ export function MediaViewer({ item, onClose }: MediaViewerProps) {
                 <h2 className="mb-2 text-2xl font-bold text-gray-900">
                   {item.title}
                 </h2>
+
+                {/* Status Badge */}
+                {item.status && (
+                  <div className="mb-2">
+                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
+                      item.status === 'completed' ? 'bg-green-100 text-green-700' :
+                      item.status === 'processing' ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {item.status === 'completed' && '✓ '}
+                      {item.status === 'processing' && '⏳ '}
+                      {item.status === 'failed' && '✗ '}
+                      {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                    </span>
+                  </div>
+                )}
+
                 <p className="text-sm text-gray-600">
                   Created
                   {' '}
@@ -197,6 +218,24 @@ export function MediaViewer({ item, onClose }: MediaViewerProps) {
                 </p>
                 <p className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
                   {item.prompt}
+                </p>
+              </div>
+            )}
+
+            {/* Description */}
+            {item.description && (
+              <div className="mb-6">
+                <p className="mb-2 text-sm font-medium text-gray-700">Description</p>
+                <p className="text-sm text-gray-600">{item.description}</p>
+              </div>
+            )}
+
+            {/* Therapist Notes */}
+            {item.notes && (
+              <div className="mb-6">
+                <p className="mb-2 text-sm font-medium text-gray-700">Therapist Notes</p>
+                <p className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
+                  {item.notes}
                 </p>
               </div>
             )}

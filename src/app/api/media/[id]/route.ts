@@ -63,7 +63,7 @@ export async function PUT(
     const user = await requireMediaAccess(request, id);
 
     const body = await request.json();
-    const { title, tags, thumbnailUrl } = body;
+    const { title, tags, thumbnailUrl, description, notes } = body;
 
     const [updatedMedia] = await db
       .update(mediaLibrary)
@@ -71,6 +71,8 @@ export async function PUT(
         title,
         tags,
         thumbnailUrl,
+        description,
+        notes,
         updatedAt: new Date(),
       })
       .where(eq(mediaLibrary.id, id))
@@ -86,7 +88,7 @@ export async function PUT(
     // Log PHI modification
     const { logPHIUpdate } = await import('@/libs/AuditLogger');
     await logPHIUpdate(user.dbUserId, 'media', id, request, {
-      changedFields: ['title', 'tags', 'thumbnailUrl'],
+      changedFields: ['title', 'tags', 'thumbnailUrl', 'description', 'notes'],
     });
 
     return NextResponse.json({ media: updatedMedia });

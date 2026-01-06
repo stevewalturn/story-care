@@ -3,6 +3,7 @@
 import { Save, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '../ui/Button';
+import { TipTapEditor } from '../ui/TipTapEditor';
 
 type CreateNoteModalProps = {
   isOpen: boolean;
@@ -47,7 +48,9 @@ export function CreateNoteModal({
   };
 
   const handleSave = async () => {
-    if (!content.trim()) {
+    // Check if content is empty (strip HTML tags for validation)
+    const textContent = content.replace(/<[^>]*>/g, '').trim();
+    if (!textContent) {
       alert('Note content cannot be empty');
       return;
     }
@@ -56,7 +59,7 @@ export function CreateNoteModal({
       setIsSaving(true);
       await onSave({
         title: title.trim() || 'Untitled Note',
-        content: content.trim(),
+        content, // Keep HTML formatting
         tags,
       });
       // Reset form
@@ -123,19 +126,12 @@ export function CreateNoteModal({
               {' '}
               <span className="text-red-500">*</span>
             </label>
-            <textarea
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              rows={8}
+            <TipTapEditor
+              content={content}
+              onChange={setContent}
               placeholder="Enter note content..."
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
-              autoFocus
+              className="min-h-[300px]"
             />
-            <p className="mt-1 text-xs text-gray-500">
-              {content.length}
-              {' '}
-              characters
-            </p>
           </div>
 
           {/* Tags */}

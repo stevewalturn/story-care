@@ -651,6 +651,7 @@ export function TranscriptViewerClient({
             <AIAssistantPanel
               sessionId={sessionId}
               patientName={patientName}
+              patientId={patientId}
               user={user}
               speakers={speakers}
               utterances={utterances}

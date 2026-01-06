@@ -25,6 +25,7 @@ type JSONOutputRendererProps = {
   jsonData: AnyJSONSchema & { schemaType: JSONSchemaType };
   sessionId: string;
   user: any;
+  patientId?: string; // Optional patient ID for saving quotes/notes
   onActionComplete: (result: { message: string; data?: any }) => void;
   onProgress: (update: string) => void;
   onOpenImageModal?: (data: {
@@ -63,6 +64,7 @@ export function JSONOutputRenderer({
   jsonData,
   sessionId,
   user,
+  patientId,
   onActionComplete,
   onProgress,
   onOpenImageModal,
@@ -120,6 +122,7 @@ export function JSONOutputRenderer({
         jsonData,
         sessionId,
         user,
+        patientId,
         onProgress,
         onComplete: wrappedOnComplete,
         onOpenImageModal,

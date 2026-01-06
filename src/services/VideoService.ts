@@ -496,6 +496,73 @@ export class VideoService {
   }
 
   /**
+   * Extract last frame from video
+   * Uses ffprobe to get duration, then extracts frame 3 seconds before end
+   */
+  static async extractLastFrame(
+    videoPath: string,
+    outputPath: string,
+  ): Promise<string> {
+    try {
+      // Get video metadata to find duration
+      const metadata = await this.getVideoMetadata(videoPath);
+      const duration = parseFloat(metadata.format.duration);
+
+      // Extract frame 3 seconds before end (or at 0 if video < 3s)
+      const timestamp = Math.max(0, duration - 3);
+
+      // Use ffmpeg to extract the frame
+      // -ss: seek to timestamp
+      // -vframes 1: extract exactly 1 frame
+      // -q:v 2: high quality (scale 2-31, lower is better)
+      const command = `ffmpeg -ss ${timestamp} -i "${videoPath}" -vframes 1 -q:v 2 "${outputPath}" -y`;
+
+      await execAsync(command);
+      return outputPath;
+    } catch (error) {
+      console.error('Error extracting last frame:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Extract last frame from video URL and upload to GCS
+   */
+  static async extractLastFrameFromUrl(
+    videoUrl: string,
+    mediaId: string,
+  ): Promise<{ imageUrl: string; imagePath: string }> {
+    this.ensureTempDir();
+
+    try {
+      // Download video
+      const videoFilename = `video-${mediaId}.mp4`;
+      const videoPath = await this.downloadMedia(videoUrl, videoFilename);
+
+      // Extract last frame
+      const frameFilename = `frame-${mediaId}-${Date.now()}.jpg`;
+      const framePath = path.join(this.tempDir, frameFilename);
+      await this.extractLastFrame(videoPath, framePath);
+
+      // Upload to GCS
+      const frameBuffer = fs.readFileSync(framePath);
+      const uploadResult = await uploadFile(frameBuffer, frameFilename, {
+        folder: 'media/extracted-frames',
+        contentType: 'image/jpeg',
+        makePublic: false,
+      });
+
+      return {
+        imageUrl: uploadResult.url,
+        imagePath: uploadResult.path,
+      };
+    } finally {
+      // Cleanup temp files
+      this.cleanupTempFiles();
+    }
+  }
+
+  /**
    * Upload assembled video and thumbnail to GCS
    */
   static async uploadToGCS(

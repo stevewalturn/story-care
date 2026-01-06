@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Music, Pencil, Plus, RefreshCw, Trash2, Upload, Users, Video } from 'lucide-react';
+import { ChevronDown, Download, Edit2, Eye, Frame, MoreVertical, Music, Pencil, Plus, RefreshCw, Sparkles, Trash2, Upload, Users, Video } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MediaViewer } from '@/components/assets/MediaViewer';
+import { EditMediaModal } from '@/components/media/EditMediaModal';
 import { GenerateImageModal } from '@/components/media/GenerateImageModal';
 import { GenerateMusicModal } from '@/components/media/GenerateMusicModal';
 import { CreateNoteModal } from '@/components/notes/CreateNoteModal';
@@ -23,13 +24,16 @@ type MediaItem = {
   id: string;
   title: string;
   description: string | null;
+  notes: string | null;
   mediaType: 'image' | 'video' | 'audio';
   mediaUrl: string;
   thumbnailUrl: string | null;
   durationSeconds: number | null;
   sourceType: string;
   tags: string[] | null;
+  status: string;
   createdAt: string;
+  patientId: string | null;
   patientName: string;
   sessionTitle?: string;
   generationPrompt?: string | null;
@@ -86,6 +90,23 @@ export function AssetsClient() {
   // Media generation state
   const [showGenerateImageModal, setShowGenerateImageModal] = useState(false);
   const [showGenerateMusicModal, setShowGenerateMusicModal] = useState(false);
+
+  // Menu state
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  // View Details state
+  const [viewingMedia, setViewingMedia] = useState<MediaItem | null>(null);
+
+  // Edit Details state
+  const [editingMedia, setEditingMedia] = useState<MediaItem | null>(null);
+
+  // Regenerate state (for Generate New Version)
+  const [_regenerateImageData, setRegenerateImageData] = useState<any>(null);
+  const [_regenerateVideoData, setRegenerateVideoData] = useState<any>(null);
+  const [_regenerateMusicData, setRegenerateMusicData] = useState<any>(null);
+
+  // Animate to Video state
+  const [_animateImageData, setAnimateImageData] = useState<any>(null);
 
   // In-progress tasks state
   const [inProgressTasks, setInProgressTasks] = useState<any[]>([]);
@@ -422,6 +443,160 @@ export function AssetsClient() {
     } finally {
       setIsDeletingMedia(false);
     }
+  };
+
+  // View Details handler
+  const handleViewDetails = (item: MediaItem) => {
+    setViewingMedia(item);
+  };
+
+  // Download handler
+  const handleDownload = async (item: MediaItem) => {
+    if (!item.mediaUrl) {
+      toast.error('No file available to download');
+      return;
+    }
+
+    try {
+      // Determine extension from URL or media type
+      const urlPath = item.mediaUrl.split('?')[0];
+      const extension = urlPath?.split('.').pop()?.toLowerCase() ||
+        (item.mediaType === 'image' ? 'jpg' :
+         item.mediaType === 'audio' ? 'mp3' : 'mp4');
+
+      const filename = `${item.title.replace(/[^a-z0-9]/gi, '_')}.${extension}`;
+
+      // Download using fetch + blob (works with presigned URLs)
+      const toastId = toast.loading('Downloading...');
+      const response = await fetch(item.mediaUrl);
+
+      if (!response.ok) throw new Error('Download failed');
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      // Trigger download
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+
+      toast.dismiss(toastId);
+      toast.success('Download started');
+    } catch (error) {
+      console.error('Download failed:', error);
+      toast.error('Failed to download file');
+    }
+  };
+
+  // Save Media Details handler (for Edit Modal)
+  const handleSaveMediaDetails = async (updates: Partial<MediaItem>) => {
+    if (!editingMedia || !user) return;
+
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch(`/api/media/${editingMedia.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) throw new Error('Failed to update');
+
+      // Update local state
+      setMedia(prev => prev.map(item =>
+        item.id === editingMedia.id ? { ...item, ...updates } : item
+      ));
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Extract Last Frame handler
+  const handleExtractLastFrame = async (item: MediaItem) => {
+    if (item.mediaType !== 'video') {
+      toast.error('Can only extract frames from videos');
+      return;
+    }
+
+    if (!user) return;
+
+    const toastId = toast.loading('Extracting last frame...');
+
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch(`/api/media/${item.id}/extract-frame`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to extract frame');
+      }
+
+      const { image } = await response.json();
+
+      // Add to top of media list
+      setMedia(prev => [image, ...prev]);
+
+      toast.dismiss(toastId);
+      toast.success('Last frame extracted and saved to library');
+    } catch (error: any) {
+      toast.dismiss(toastId);
+      toast.error(error.message || 'Failed to extract last frame');
+    }
+  };
+
+  // Generate New Version handler
+  const handleGenerateNewVersion = (item: MediaItem) => {
+    if (!item.generationPrompt) {
+      toast.error('No generation prompt available for this media');
+      return;
+    }
+
+    if (item.mediaType === 'image') {
+      setRegenerateImageData({
+        prompt: item.generationPrompt,
+        title: `${item.title} - Variation`,
+        description: item.description || '',
+        patientId: item.patientId,
+      });
+      setShowGenerateImageModal(true);
+    } else if (item.mediaType === 'video') {
+      setRegenerateVideoData({ prompt: item.generationPrompt });
+      // Note: Video modal not implemented yet
+      toast.error('Video regeneration not yet implemented');
+    } else if (item.mediaType === 'audio') {
+      setRegenerateMusicData({
+        prompt: item.generationPrompt,
+        title: `${item.title} - Variation`,
+      });
+      setShowGenerateMusicModal(true);
+    }
+  };
+
+  // Animate to Video handler
+  const handleAnimateToVideo = (item: MediaItem) => {
+    if (item.mediaType !== 'image') {
+      toast.error('Can only animate images to video');
+      return;
+    }
+
+    setAnimateImageData({
+      url: item.mediaUrl,
+      title: item.title,
+    });
+    // Note: Video modal not implemented yet
+    toast.error('Animate to video not yet implemented');
   };
 
   const handleMediaClick = (item: MediaItem) => {
@@ -1081,17 +1256,127 @@ export function AssetsClient() {
                         </div>
 
                         {/* Actions Menu */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeletingMedia(item);
-                          }}
-                          className="flex-shrink-0 rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-                        >
-                          <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                          </svg>
-                        </button>
+                        <div className="relative">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(openMenuId === item.id ? null : item.id);
+                            }}
+                            className="flex-shrink-0 rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                          >
+                            <MoreVertical className="h-5 w-5" />
+                          </button>
+
+                          {openMenuId === item.id && (
+                            <>
+                              {/* Backdrop */}
+                              <div
+                                className="fixed inset-0 z-10"
+                                onClick={() => setOpenMenuId(null)}
+                              />
+
+                              {/* Dropdown Menu */}
+                              <div className="absolute right-0 z-20 mt-2 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                                {/* View Details */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenuId(null);
+                                    handleViewDetails(item);
+                                  }}
+                                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                  View Details
+                                </button>
+
+                                {/* Download */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenuId(null);
+                                    handleDownload(item);
+                                  }}
+                                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  <Download className="h-4 w-4" />
+                                  Download
+                                </button>
+
+                                {/* Edit Details */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenuId(null);
+                                    setEditingMedia(item);
+                                  }}
+                                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                  Edit Details
+                                </button>
+
+                                {/* Extract Last Frame - Video only */}
+                                {item.mediaType === 'video' && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenMenuId(null);
+                                      handleExtractLastFrame(item);
+                                    }}
+                                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                                  >
+                                    <Frame className="h-4 w-4" />
+                                    Extract Last Frame
+                                  </button>
+                                )}
+
+                                {/* Generate New Version */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenuId(null);
+                                    handleGenerateNewVersion(item);
+                                  }}
+                                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  <Sparkles className="h-4 w-4" />
+                                  Generate New Version
+                                </button>
+
+                                {/* Animate to Video - Image only */}
+                                {item.mediaType === 'image' && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenMenuId(null);
+                                      handleAnimateToVideo(item);
+                                    }}
+                                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                                  >
+                                    <Video className="h-4 w-4" />
+                                    Animate to Video
+                                  </button>
+                                )}
+
+                                <hr className="my-1" />
+
+                                {/* Delete */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenuId(null);
+                                    setDeletingMedia(item);
+                                  }}
+                                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Delete
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1772,6 +2057,31 @@ export function AssetsClient() {
             loadMedia();
             loadInProgressTasks();
           }}
+        />
+      )}
+
+      {/* View Details Modal */}
+      {viewingMedia && (
+        <MediaViewer
+          item={{
+            ...viewingMedia,
+            url: viewingMedia.mediaUrl,
+            type: viewingMedia.mediaType as 'image' | 'video' | 'audio',
+            createdAt: new Date(viewingMedia.createdAt),
+            thumbnailUrl: viewingMedia.thumbnailUrl ?? undefined,
+            tags: viewingMedia.tags ?? undefined,
+          }}
+          onClose={() => setViewingMedia(null)}
+        />
+      )}
+
+      {/* Edit Media Modal */}
+      {editingMedia && (
+        <EditMediaModal
+          isOpen={!!editingMedia}
+          onClose={() => setEditingMedia(null)}
+          media={editingMedia}
+          onSave={handleSaveMediaDetails}
         />
       )}
     </div>

@@ -35,6 +35,7 @@ export type ActionContext = {
     content: string;
     tags?: string[];
   }) => void;
+  patientId?: string; // Patient ID for saving quotes/notes
   imageIndex?: number; // For image_references and video_references actions
 };
 
@@ -707,11 +708,34 @@ export async function handleSaveTherapeuticNote(ctx: ActionContext) {
  * Save all extracted quotes
  */
 export async function handleSaveQuotes(ctx: ActionContext) {
-  const { jsonData, sessionId, user, onProgress, onComplete } = ctx;
+  const { jsonData, sessionId, user, patientId, onProgress, onComplete } = ctx;
   const quotes = jsonData.extracted_quotes || jsonData.quotes || [];
 
   if (quotes.length === 0) {
     onComplete({ message: '⚠️ No quotes to save.' });
+    return;
+  }
+
+  // Get patientId from context or fetch from session
+  let resolvedPatientId = patientId;
+
+  if (!resolvedPatientId) {
+    try {
+      onProgress('📋 Getting session information...');
+      const sessionResponse = await authenticatedFetch(`/api/sessions/${sessionId}`, user);
+      if (sessionResponse.ok) {
+        const sessionData = await sessionResponse.json();
+        resolvedPatientId = sessionData.session?.patient?.id || sessionData.session?.patientId;
+      }
+    } catch (error) {
+      console.error('Error fetching session:', error);
+    }
+  }
+
+  if (!resolvedPatientId) {
+    onComplete({
+      message: '❌ Cannot save quotes: No patient associated with this session. Please assign a patient to the session first.',
+    });
     return;
   }
 
@@ -725,8 +749,10 @@ export async function handleSaveQuotes(ctx: ActionContext) {
 
     try {
       const response = await authenticatedPost('/api/quotes', user, {
+        patientId: resolvedPatientId,
         sessionId,
         quoteText: quote.quote_text || quote.text,
+        speaker: quote.speaker || 'Unknown',
         tags: quote.tags || [],
         notes: quote.context || quote.significance || '',
       });
@@ -736,9 +762,12 @@ export async function handleSaveQuotes(ctx: ActionContext) {
         results.push(result);
         onProgress(`✅ Saved quote ${i + 1}`);
       } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error(`Failed to save quote ${i + 1}:`, errorData);
         onProgress(`❌ Failed to save quote ${i + 1}`);
       }
-    } catch {
+    } catch (error) {
+      console.error(`Error saving quote ${i + 1}:`, error);
       onProgress(`❌ Error saving quote ${i + 1}`);
     }
   }

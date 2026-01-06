@@ -9,13 +9,14 @@ import type { AIAssistantPanelProps } from '../types/transcript.types';
 import type { AIPromptOption } from '@/components/sessions/AnalyzeSelectionModal';
 import type { PatientOption } from '@/components/sessions/SaveNoteModal';
 import type { ModuleAiPrompt } from '@/models/Schema';
-import { ChevronDown, FileText, Quote, Settings } from 'lucide-react';
+import { ChevronDown, Download, Eye, FileText, Quote, Settings } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { CreatePromptModal } from '@/components/prompts/CreatePromptModal';
 import { EditPromptModal } from '@/components/prompts/EditPromptModal';
 import { PromptLibrary } from '@/components/prompts/PromptLibrary';
 import { AssistantMessageContent } from '@/components/sessions/AssistantMessageContent';
 import { JSONOutputRenderer } from '@/components/sessions/JSONOutputRenderer';
+import { MessagePreviewModal } from '@/components/sessions/MessagePreviewModal';
 import { ModuleSelectorModal } from '@/components/sessions/ModuleSelectorModal';
 import { SaveNoteModal } from '@/components/sessions/SaveNoteModal';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
@@ -23,6 +24,7 @@ import { Modal } from '@/components/ui/Modal';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
+import { downloadAsTextFile, stripMarkdownForPlainText } from '@/utils/FileDownloadHelpers';
 import { detectAndExtractJSON } from '@/utils/JSONSchemaDetector';
 import { formatTranscriptForAI, truncateTranscript } from '@/utils/TranscriptFormatter';
 
@@ -69,6 +71,7 @@ const formatMessageTime = (date: Date): string => {
 export function AIAssistantPanel({
   sessionId,
   patientName: _patientName,
+  patientId,
   user,
   speakers,
   utterances,
@@ -97,7 +100,7 @@ export function AIAssistantPanel({
   const [visibleMessageCount, setVisibleMessageCount] = useState(10); // Pagination state
   const [isLoading, setIsLoading] = useState(false);
   const [_isLoadingHistory, _setIsLoadingHistory] = useState(true);
-  const [selectedModel, setSelectedModel] = useState('gpt-4.1');
+  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash'); // Default to Gemini for better context handling
   const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [showPromptDropdown, setShowPromptDropdown] = useState(false);
   const [hoveredPromptId, setHoveredPromptId] = useState<string | null>(null);
@@ -123,6 +126,10 @@ export function AIAssistantPanel({
   const [showCreatePromptModal, setShowCreatePromptModal] = useState(false);
   const [showEditPromptModal, setShowEditPromptModal] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState<ModuleAiPrompt | null>(null);
+  // Message Preview Modal state
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewContent, setPreviewContent] = useState('');
+  const [previewTimestamp, setPreviewTimestamp] = useState<Date | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputContainerRef = useRef<HTMLDivElement>(null);
@@ -234,6 +241,25 @@ export function AIAssistantPanel({
     if (onLibraryRefresh) {
       onLibraryRefresh();
     }
+  };
+
+  // Message Preview Modal handlers
+  const handleOpenPreviewModal = (content: string, timestamp: Date) => {
+    setPreviewContent(content);
+    setPreviewTimestamp(timestamp);
+    setShowPreviewModal(true);
+  };
+
+  const handleClosePreviewModal = () => {
+    setShowPreviewModal(false);
+    setPreviewContent('');
+    setPreviewTimestamp(null);
+  };
+
+  // Download handler
+  const handleDownloadMessage = async (content: string) => {
+    const plainText = stripMarkdownForPlainText(content);
+    downloadAsTextFile(plainText, 'clinical-note');
   };
 
   // Close dropdowns when clicking outside
@@ -444,6 +470,28 @@ export function AIAssistantPanel({
       ? systemPromptOverride
       : selectedSystemPrompt;
 
+    // CRITICAL FIX: Always include transcript context for free chat
+    // Build transcript context based on participant filter
+    let transcriptContext = '';
+    if (!effectiveSystemPrompt && utterances && utterances.length > 0) {
+      let filterId: string | null = null;
+
+      if (selectedParticipant === 'all') {
+        filterId = null;
+      } else if (selectedParticipant === 'therapist') {
+        const therapistUtterance = utterances.find(u => u.speakerType === 'therapist');
+        filterId = therapistUtterance?.speakerId || null;
+      } else {
+        filterId = selectedParticipant;
+      }
+
+      // Format and truncate transcript
+      const rawTranscript = formatTranscriptForAI(utterances, filterId);
+      console.log('[AIAssistantPanel] FREE CHAT - Raw transcript length:', rawTranscript.length);
+      transcriptContext = truncateTranscript(rawTranscript, undefined, selectedModel);
+      console.log('[AIAssistantPanel] FREE CHAT - Truncated transcript length:', transcriptContext.length);
+    }
+
     // If a system prompt is selected, combine it with user text
     // Format like Analyze modal: promptText + '\n\nSelected text:\n"' + text + '"'
     let fullPrompt = userText;
@@ -455,6 +503,22 @@ export function AIAssistantPanel({
         // Just the system prompt if no text provided
         fullPrompt = effectiveSystemPrompt;
       }
+    } else if (transcriptContext) {
+      // For free chat, prepend transcript context to user message
+      const participantNote = selectedParticipant === 'all'
+        ? 'All Participants'
+        : selectedParticipant === 'therapist'
+        ? `Therapist (${dbUser?.name || 'You'})`
+        : speakers?.find(s => s.id === selectedParticipant)?.name || 'Selected Participant';
+
+      fullPrompt = `**Session Transcript** (${participantNote}):
+
+${transcriptContext}
+
+---
+
+**User Question:**
+${userText}`;
     }
 
     // Add participant filter context to the prompt
@@ -486,6 +550,10 @@ export function AIAssistantPanel({
 
     try {
       // Send full prompt (with system instructions) to AI
+      console.log('[AIAssistantPanel] Sending to API:');
+      console.log('[AIAssistantPanel] Model:', selectedModel);
+      console.log('[AIAssistantPanel] Total message length:', fullPrompt.length);
+
       const response = await authenticatedPost('/api/ai/chat', user, {
         messages: [...messages, { role: 'user', content: fullPrompt }],
         sessionId,
@@ -642,7 +710,14 @@ export function AIAssistantPanel({
 
       // Format transcript with optional speaker filtering
       const rawTranscript = formatTranscriptForAI(utterances, filterId);
-      transcriptContext = truncateTranscript(rawTranscript);
+
+      console.log('[AIAssistantPanel] Selected model:', selectedModel);
+      console.log('[AIAssistantPanel] Selected participant:', selectedParticipant);
+      console.log('[AIAssistantPanel] Raw transcript length:', rawTranscript.length);
+
+      transcriptContext = truncateTranscript(rawTranscript, undefined, selectedModel);
+
+      console.log('[AIAssistantPanel] Truncated transcript length:', transcriptContext.length);
     } else {
       transcriptContext = '[No transcript available. Please ensure the session has been transcribed.]';
     }
@@ -979,6 +1054,7 @@ ${transcriptContext}`;
                             jsonData={jsonData}
                             sessionId={sessionId}
                             user={user}
+                            patientId={patientId}
                             onActionComplete={(_result) => {
                               if (onLibraryRefresh) {
                                 onLibraryRefresh();
@@ -1003,9 +1079,18 @@ ${transcriptContext}`;
                       )}
                     </div>
 
-                    {/* Action Buttons (Non-JSON messages only - Save to Notes/Quotes) */}
+                    {/* Action Buttons (Non-JSON messages only - Preview, Copy, Download, Save to Notes/Quotes) */}
                     {message.role === 'assistant' && !jsonData && (
                       <div className="mt-2 flex items-center gap-1 px-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        {/* Preview button */}
+                        <button
+                          type="button"
+                          className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                          title="Preview full message"
+                          onClick={() => handleOpenPreviewModal(message.content, message.timestamp)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
                         {/* Copy button */}
                         <button
                           type="button"
@@ -1016,6 +1101,15 @@ ${transcriptContext}`;
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                           </svg>
+                        </button>
+                        {/* Download button */}
+                        <button
+                          type="button"
+                          className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                          title="Download as text file"
+                          onClick={() => handleDownloadMessage(message.content)}
+                        >
+                          <Download className="h-4 w-4" />
                         </button>
                         {/* Save as Note button */}
                         <button
@@ -1451,6 +1545,15 @@ ${transcriptContext}`;
           }}
         />
       )}
+
+      {/* Message Preview Modal */}
+      <MessagePreviewModal
+        isOpen={showPreviewModal}
+        onClose={handleClosePreviewModal}
+        content={previewContent}
+        timestamp={previewTimestamp || undefined}
+        onDownload={() => handleDownloadMessage(previewContent)}
+      />
     </div>
   );
 }

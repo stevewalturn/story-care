@@ -65,21 +65,51 @@ export function getTranscriptStats(
 /**
  * Truncate transcript if it exceeds max length
  * @param transcript - Formatted transcript string
- * @param maxLength - Maximum character length (default ~50K chars for ~12.5K words)
+ * @param maxLength - Maximum character length (optional, defaults based on model)
+ * @param model - AI model identifier for model-aware truncation
  * @returns Truncated transcript with notice if needed
  */
 export function truncateTranscript(
   transcript: string,
-  maxLength: number = 50000,
+  maxLength?: number,
+  model?: string,
 ): string {
-  if (transcript.length <= maxLength) {
+  console.log('[TranscriptFormatter] Raw transcript length:', transcript.length);
+  console.log('[TranscriptFormatter] Model:', model);
+  console.log('[TranscriptFormatter] Explicit maxLength:', maxLength);
+
+  // Determine max length based on model context limits
+  let effectiveMaxLength: number;
+
+  if (maxLength) {
+    effectiveMaxLength = maxLength;
+  } else if (model) {
+    // Use model-aware truncation if model is provided
+    const { getMaxTranscriptLength } = require('./ModelContextLimits');
+    effectiveMaxLength = getMaxTranscriptLength(model);
+  } else {
+    // Fallback to conservative default if no model or maxLength provided
+    effectiveMaxLength = 50000; // ~12.5K tokens - safe for most models
+  }
+
+  console.log('[TranscriptFormatter] Effective max length:', effectiveMaxLength);
+
+  if (transcript.length <= effectiveMaxLength) {
+    console.log('[TranscriptFormatter] ✅ No truncation needed');
     return transcript;
   }
 
-  const truncated = transcript.substring(0, maxLength);
+  const truncated = transcript.substring(0, effectiveMaxLength);
   // Find last complete line
   const lastNewline = truncated.lastIndexOf('\n');
   const cleanTruncated = lastNewline > 0 ? truncated.substring(0, lastNewline) : truncated;
 
-  return `${cleanTruncated}\n\n[... transcript truncated for length. ${transcript.length - cleanTruncated.length} characters omitted ...]`;
+  const omittedChars = transcript.length - cleanTruncated.length;
+  const omittedTokens = Math.floor(omittedChars / 4); // Approximate
+
+  console.log('[TranscriptFormatter] ⚠️ TRUNCATED!');
+  console.log('[TranscriptFormatter] Final length:', cleanTruncated.length);
+  console.log('[TranscriptFormatter] Omitted:', omittedChars, 'chars (~', omittedTokens, 'tokens)');
+
+  return `${cleanTruncated}\n\n[... transcript truncated for model context limits. ${omittedChars.toLocaleString()} characters (~${omittedTokens.toLocaleString()} tokens) omitted ...]`;
 }

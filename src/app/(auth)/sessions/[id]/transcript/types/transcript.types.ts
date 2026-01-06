@@ -66,6 +66,7 @@ export type TranscriptPanelProps = {
 export type AIAssistantPanelProps = {
   sessionId: string;
   patientName: string;
+  patientId?: string; // Patient ID for saving quotes/notes
   user: User | null;
   speakers?: SpeakerInfo[];
   utterances?: Utterance[]; // Full transcript for prompt auto-execute with context

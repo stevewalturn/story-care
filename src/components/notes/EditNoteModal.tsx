@@ -3,6 +3,7 @@
 import { Pencil, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
+import { TipTapEditor } from '../ui/TipTapEditor';
 
 type Note = {
   id: string;
@@ -63,7 +64,9 @@ export function EditNoteModal({
   };
 
   const handleSave = async () => {
-    if (!content.trim()) {
+    // Check if content is empty (strip HTML tags for validation)
+    const textContent = content.replace(/<[^>]*>/g, '').trim();
+    if (!textContent) {
       alert('Note content cannot be empty');
       return;
     }
@@ -72,7 +75,7 @@ export function EditNoteModal({
       setIsSaving(true);
       await onSave(note.id, {
         title: title.trim() || 'Untitled Note',
-        content: content.trim(),
+        content, // Keep HTML formatting
         tags,
       });
       onClose();
@@ -126,19 +129,12 @@ export function EditNoteModal({
               {' '}
               <span className="text-red-500">*</span>
             </label>
-            <textarea
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              rows={8}
+            <TipTapEditor
+              content={content}
+              onChange={setContent}
               placeholder="Enter note content..."
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
-              autoFocus
+              className="min-h-[300px]"
             />
-            <p className="mt-1 text-xs text-gray-500">
-              {content.length}
-              {' '}
-              characters
-            </p>
           </div>
 
           {/* Tags */}
@@ -195,7 +191,7 @@ export function EditNoteModal({
           <Button
             variant="primary"
             onClick={handleSave}
-            disabled={isSaving || !content.trim()}
+            disabled={isSaving || !content.replace(/<[^>]*>/g, '').trim()}
           >
             {isSaving ? 'Saving...' : 'Save Changes'}
           </Button>
