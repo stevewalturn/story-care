@@ -25,7 +25,7 @@ export function markdownToHTML(markdown: string): string {
 
   // Convert unordered lists
   html = html.replace(/^\- (.*)$/gm, '<li>$1</li>');
-  html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+  html = html.replace(/(<li>[\s\S]*<\/li>)/, '<ul>$1</ul>');
 
   // Convert ordered lists
   html = html.replace(/^\d+\. (.*)$/gm, '<li>$1</li>');

@@ -18,6 +18,7 @@ import {
   RefreshCw,
   Save,
 } from 'lucide-react';
+import type { JSX } from 'react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -424,7 +425,7 @@ function renderPreview(
   }) => void,
   onRetry?: () => void,
   expandedNotes?: Set<number>,
-  setExpandedNotes?: (notes: Set<number>) => void,
+  _setExpandedNotes?: (notes: Set<number>) => void,
   renderMarkdownContent?: (content: string, isExpanded: boolean, noteIndex: number) => JSX.Element,
 ) {
   switch (schemaType) {
@@ -1007,7 +1008,7 @@ function renderPreview(
 
     case 'therapeutic_note': {
       // Generate a unique index for this note based on content hash
-      const noteIndex = (data.note_title + data.note_content).split('').reduce((acc, char) => {
+      const noteIndex = (data.note_title + data.note_content).split('').reduce((acc: number, char: string) => {
         return ((acc << 5) - acc) + char.charCodeAt(0);
       }, 0);
       const isExpanded = expandedNotes?.has(noteIndex) ?? false;

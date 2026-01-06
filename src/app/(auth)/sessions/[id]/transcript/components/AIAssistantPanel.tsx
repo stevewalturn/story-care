@@ -877,16 +877,33 @@ ${transcriptContext}`;
               )}
             </div>
           </div>
-          {/* Clear Chat Button */}
-          <button
-            onClick={() => setShowClearChatConfirm(true)}
-            disabled={messages.length === 0}
-            className="flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
-            title="Clear all chat messages"
-          >
-            <Trash2 className="h-3 w-3" />
-            Clear Chat
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Clear Chat Button */}
+            <button
+              onClick={() => setShowClearChatConfirm(true)}
+              disabled={messages.length === 0}
+              className="flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+              title="Clear all chat messages"
+            >
+              <Trash2 className="h-3 w-3" />
+              Clear Chat
+            </button>
+            {/* Analyze Mode Toggle */}
+            <button
+              onClick={() => onAnalyzeModeChange?.(!analyzeMode)}
+              className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-colors ${
+                analyzeMode
+                  ? 'bg-green-50 text-green-700 hover:bg-green-100'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title={analyzeMode ? 'Click to disable text selection analysis' : 'Click to enable text selection analysis'}
+            >
+              <div className={`h-1.5 w-1.5 rounded-full ${analyzeMode ? 'bg-green-500' : 'bg-gray-400'}`} />
+              Analyze
+              {' '}
+              {analyzeMode ? 'On' : 'Off'}
+            </button>
+          </div>
         </div>
       </div>
 
