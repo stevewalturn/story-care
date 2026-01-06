@@ -9,7 +9,7 @@ import type { AIAssistantPanelProps } from '../types/transcript.types';
 import type { AIPromptOption } from '@/components/sessions/AnalyzeSelectionModal';
 import type { PatientOption } from '@/components/sessions/SaveNoteModal';
 import type { ModuleAiPrompt } from '@/models/Schema';
-import { ChevronDown, Download, Eye, FileText, Quote, Settings } from 'lucide-react';
+import { ChevronDown, Download, Eye, FileText, Quote, Settings, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { CreatePromptModal } from '@/components/prompts/CreatePromptModal';
 import { EditPromptModal } from '@/components/prompts/EditPromptModal';
@@ -121,6 +121,9 @@ export function AIAssistantPanel({
   const [selectedTextForQuote, setSelectedTextForQuote] = useState('');
   // Patients list for modals
   const [sessionPatients, setSessionPatients] = useState<PatientOption[]>([]);
+  // Clear Chat confirmation
+  const [showClearChatConfirm, setShowClearChatConfirm] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   // Prompt Library Modal state
   const [showPromptLibraryModal, setShowPromptLibraryModal] = useState(false);
   const [showCreatePromptModal, setShowCreatePromptModal] = useState(false);
@@ -625,6 +628,33 @@ ${userText}`;
     setVisibleMessageCount(prev => prev + 10);
   };
 
+  // Clear all chat messages
+  const handleClearChat = async () => {
+    if (!sessionId || !user) return;
+
+    setIsClearing(true);
+    try {
+      const response = await authenticatedFetch(
+        `/api/ai/clear-chat?sessionId=${sessionId}`,
+        user,
+        { method: 'DELETE' },
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to clear chat');
+      }
+
+      // Clear local state
+      setMessages([]);
+      setShowClearChatConfirm(false);
+    } catch (error) {
+      console.error('Error clearing chat:', error);
+      alert('Failed to clear chat. Please try again.');
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   // Note: filterByOutputType function removed - can be re-added when prompt filtering UI is implemented
   // Filter logic would be: if outputTypeFilter === 'all' return all; else filter by prompt.outputType
 
@@ -803,6 +833,16 @@ ${transcriptContext}`;
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Clear Chat Button */}
+            <button
+              onClick={() => setShowClearChatConfirm(true)}
+              disabled={messages.length === 0}
+              className="flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+              title="Clear all chat messages"
+            >
+              <Trash2 className="h-3 w-3" />
+              Clear Chat
+            </button>
             {/* Analyze Mode Toggle */}
             <button
               onClick={() => onAnalyzeModeChange?.(!analyzeMode)}
@@ -1476,6 +1516,36 @@ ${transcriptContext}`;
         patients={sessionPatients}
         onSave={handleSaveQuote}
       />
+
+      {/* Clear Chat Confirmation Modal */}
+      <Modal
+        isOpen={showClearChatConfirm}
+        onClose={() => setShowClearChatConfirm(false)}
+        title="Clear All Chat Messages?"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            This will permanently delete all chat messages for this session. This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setShowClearChatConfirm(false)}
+              disabled={isClearing}
+              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleClearChat}
+              disabled={isClearing}
+              className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isClearing ? 'Clearing...' : 'Clear All Messages'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Prompt Library Modal */}
       <Modal
