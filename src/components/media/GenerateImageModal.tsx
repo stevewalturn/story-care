@@ -2,7 +2,7 @@
 
 import type { PatientReferenceImage } from '@/models/Schema';
 import { Check, Edit2, HelpCircle, Image as ImageIcon, Info, Loader2, Plus, Save, Sparkles, Star, StarOff, Trash2, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
@@ -71,7 +71,6 @@ export function GenerateImageModal({
   const [sourceQuote, setSourceQuote] = useState(initialSourceQuote);
   const [style, setStyle] = useState(initialStyle);
   const [showModelDropdown, setShowModelDropdown] = useState(false);
-  const [uploadedReferenceImage, setUploadedReferenceImage] = useState<string | null>(null);
   const [savingAsReference, setSavingAsReference] = useState(false);
   const [useReference, setUseReference] = useState(false); // Default to text-to-image
 
@@ -107,6 +106,10 @@ export function GenerateImageModal({
 
   // Check if we have generated any images (determines layout)
   const hasGeneratedImages = generatedImages.length > 0 || generatingSlots.length > 0;
+
+  // Get current model metadata for reference image limits
+  const currentModelMeta = getAllImageModelsFlat().find(m => m.value === selectedModel);
+  const maxReferenceImages = currentModelMeta?.maxReferenceImages ?? 0;
 
   // Update state when initial props change (when modal opens with new data from JSON actions)
   useEffect(() => {
@@ -168,72 +171,13 @@ export function GenerateImageModal({
     fetchReferenceImages();
   }, [isOpen, patientId, user]);
 
-  // Handle saving uploaded image as reference
-  const handleSaveAsReference = async () => {
-    if (!uploadedReferenceImage || !patientId || savingAsReference) return;
-
-    setSavingAsReference(true);
-    try {
-      const idToken = await user?.getIdToken();
-      if (!idToken) {
-        throw new Error('Not authenticated');
-      }
-
-      // Convert base64 data URL to blob
-      const matches = uploadedReferenceImage.match(/^data:([^;]+);base64,(.+)$/);
-      if (!matches || !matches[1] || !matches[2]) {
-        throw new Error('Invalid image format');
-      }
-      const contentType = matches[1];
-      const base64Data = matches[2];
-
-      // Decode base64 to binary
-      const byteCharacters = atob(base64Data);
-      const byteNumbers: number[] = Array.from({ length: byteCharacters.length });
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: contentType });
-
-      // Create file from blob
-      const file = new File([blob], 'reference-image.png', { type: contentType });
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('isPrimary', referenceImages.length === 0 ? 'true' : 'false');
-      formData.append('label', 'From image generation');
-
-      const response = await fetch(`/api/patients/${patientId}/reference-images`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save reference image');
-      }
-
-      // Refresh reference images and clear the uploaded image (hides the save prompt)
-      const data = await response.json();
-      setReferenceImages(prev => [data.image, ...prev]);
-      setUploadedReferenceImage(null); // Hide the "Save as reference" prompt
-    } catch (err) {
-      // Improved error logging - handle various error formats
-      const errorMessage = err instanceof Error
-        ? err.message
-        : typeof err === 'object' && err !== null
-          ? JSON.stringify(err)
-          : 'Failed to save reference image';
-      console.error('Error saving reference image:', errorMessage);
-      alert(errorMessage);
-    } finally {
-      setSavingAsReference(false);
+  // Trim selection when model changes and has a lower maxReferenceImages limit
+  useEffect(() => {
+    if (maxReferenceImages > 0 && selectedRefImageIds.length > maxReferenceImages) {
+      // Keep only the first maxReferenceImages selections
+      setSelectedRefImageIds(prev => prev.slice(0, maxReferenceImages));
     }
-  };
+  }, [maxReferenceImages, selectedRefImageIds.length]);
 
   // Handle setting primary reference
   const handleSetPrimary = async (imageId: string) => {
@@ -334,29 +278,45 @@ export function GenerateImageModal({
     }
   };
 
-  // Toggle reference image selection
+  // Toggle reference image selection (respects model's maxReferenceImages limit)
   const toggleRefImageSelection = (imageId: string) => {
-    setSelectedRefImageIds(prev =>
-      prev.includes(imageId)
-        ? prev.filter(id => id !== imageId)
-        : [...prev, imageId],
-    );
+    setSelectedRefImageIds((prev) => {
+      // If already selected, always allow deselection
+      if (prev.includes(imageId)) {
+        return prev.filter(id => id !== imageId);
+      }
+
+      // If model only supports 1 reference, replace selection
+      if (maxReferenceImages === 1) {
+        return [imageId];
+      }
+
+      // For multi-image models, check if at limit
+      if (maxReferenceImages > 0 && prev.length >= maxReferenceImages) {
+        // At limit - replace oldest selection
+        return [...prev.slice(1), imageId];
+      }
+
+      // Add to selection
+      return [...prev, imageId];
+    });
   };
 
-  // Select/deselect all reference images
+  // Select/deselect all reference images (respects model's maxReferenceImages limit)
   const toggleAllRefImages = () => {
-    if (selectedRefImageIds.length === referenceImages.length) {
+    if (selectedRefImageIds.length > 0) {
       setSelectedRefImageIds([]); // Deselect all
     } else {
-      setSelectedRefImageIds(referenceImages.map(img => img.id)); // Select all
+      // Select up to maxReferenceImages
+      const limit = maxReferenceImages > 0 ? maxReferenceImages : referenceImages.length;
+      const toSelect = referenceImages.slice(0, limit).map(img => img.id);
+      setSelectedRefImageIds(toSelect);
     }
   };
 
-  const handleReferenceImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      return;
-    }
+  // Core upload function used by both click and drag-drop
+  const uploadReferenceImage = async (file: File) => {
+    if (!patientId) return;
 
     // Check if it's an image
     if (!file.type.startsWith('image/')) {
@@ -364,12 +324,98 @@ export function GenerateImageModal({
       return;
     }
 
-    // Convert to base64
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setUploadedReferenceImage(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    // Auto-save: Upload directly to API
+    setSavingAsReference(true);
+    try {
+      const idToken = await user?.getIdToken();
+      if (!idToken) {
+        throw new Error('Not authenticated');
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('isPrimary', referenceImages.length === 0 ? 'true' : 'false');
+      formData.append('label', 'Reference image');
+
+      const response = await fetch(`/api/patients/${patientId}/reference-images`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save reference image');
+      }
+
+      // Add to reference images and auto-select it (respecting model limit)
+      const data = await response.json();
+      setReferenceImages(prev => [data.image, ...prev]);
+      setSelectedRefImageIds((prev) => {
+        // If model only supports 1 reference, replace selection
+        if (maxReferenceImages === 1) {
+          return [data.image.id];
+        }
+        // If at limit, replace oldest
+        if (maxReferenceImages > 0 && prev.length >= maxReferenceImages) {
+          return [...prev.slice(1), data.image.id];
+        }
+        // Add to selection
+        return [...prev, data.image.id];
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save reference image';
+      console.error('Error saving reference image:', errorMessage);
+      setError(errorMessage);
+    } finally {
+      setSavingAsReference(false);
+    }
+  };
+
+  const handleReferenceImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadReferenceImage(file);
+  };
+
+  // Drag and drop handlers
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounterRef = useRef(0);
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCounterRef.current = 0;
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    await uploadReferenceImage(file);
   };
 
   // Optimize prompt with AI
@@ -418,12 +464,7 @@ export function GenerateImageModal({
       // Build reference images array from selected images
       const selectedReferenceImages: string[] = [];
 
-      // First priority: uploaded image
-      if (uploadedReferenceImage) {
-        selectedReferenceImages.push(uploadedReferenceImage);
-      }
-
-      // Second priority: selected patient reference images
+      // Use selected patient reference images
       if (useReference && selectedRefImageIds.length > 0) {
         const selectedImages = referenceImages
           .filter(img => selectedRefImageIds.includes(img.id))
@@ -572,7 +613,6 @@ export function GenerateImageModal({
     setDescription('');
     setSourceQuote('');
     setStyle('');
-    setUploadedReferenceImage(null);
     setUseReference(true);
     setError(null);
     setGeneratedImages([]);
@@ -586,8 +626,7 @@ export function GenerateImageModal({
     return null;
   }
 
-  // Get current model info from available models
-  const currentModelMeta = getAllImageModelsFlat().find(m => m.value === selectedModel);
+  // Get additional model info for UI display
   const currentModelLabel = currentModelMeta?.label || selectedModel;
   const modelSupportsPrompt = currentModelMeta?.supportsPrompt ?? true;
 
@@ -688,88 +727,118 @@ export function GenerateImageModal({
                       </div>
                     ) : (
                       <>
-                        {/* Select All / Deselect All toggle */}
+                        {/* Select All / Deselect All toggle with model limit info */}
                         {referenceImages.length > 0 && (
                           <div className="mb-2 flex items-center gap-2">
                             <button
                               onClick={toggleAllRefImages}
                               className="text-xs text-purple-600 hover:text-purple-700"
                             >
-                              {selectedRefImageIds.length === referenceImages.length ? 'Deselect All' : 'Select All'}
+                              {selectedRefImageIds.length > 0
+                                ? 'Deselect All'
+                                : maxReferenceImages === 1
+                                  ? 'Select 1'
+                                  : `Select ${Math.min(maxReferenceImages || referenceImages.length, referenceImages.length)}`}
                             </button>
                             <span className="text-xs text-gray-500">
-                              (
-                              {selectedRefImageIds.length}
-                              {' '}
-                              of
-                              {' '}
-                              {referenceImages.length}
-                              {' '}
-                              selected)
+                              ({selectedRefImageIds.length}
+                              {maxReferenceImages > 0 && ` of ${maxReferenceImages} max`}
+                              {maxReferenceImages === 0 && ` of ${referenceImages.length}`}
+                              {' '}selected)
                             </span>
+                            {maxReferenceImages === 1 && (
+                              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700">
+                                1 image only
+                              </span>
+                            )}
                           </div>
                         )}
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-3">
                           {referenceImages.map(img => (
                             <div
                               key={img.id}
-                              className="group relative cursor-pointer"
-                              onClick={() => toggleRefImageSelection(img.id)}
+                              className="group relative"
                             >
-                              <img
-                                src={img.imageUrl.startsWith('http') ? img.imageUrl : `/api/media/signed-url?path=${encodeURIComponent(img.imageUrl)}`}
-                                alt={img.label || 'Reference'}
-                                className={`h-16 w-16 rounded-lg border-2 object-cover transition-all ${
+                              {/* Main clickable area for selection */}
+                              <button
+                                type="button"
+                                onClick={() => toggleRefImageSelection(img.id)}
+                                className={`relative h-20 w-20 overflow-hidden rounded-lg border-3 transition-all ${
                                   selectedRefImageIds.includes(img.id)
-                                    ? 'border-purple-500 ring-2 ring-purple-300'
-                                    : 'border-gray-200 opacity-60'
+                                    ? 'border-purple-500 shadow-lg shadow-purple-200'
+                                    : 'border-gray-200 opacity-70 hover:opacity-100 hover:border-gray-300'
                                 }`}
-                              />
+                              >
+                                <img
+                                  src={img.imageUrl.startsWith('http') ? img.imageUrl : `/api/media/signed-url?path=${encodeURIComponent(img.imageUrl)}`}
+                                  alt={img.label || 'Reference'}
+                                  className="h-full w-full object-cover"
+                                />
+                                {/* Selection overlay on hover */}
+                                <div
+                                  className={`absolute inset-0 flex items-center justify-center transition-all ${
+                                    selectedRefImageIds.includes(img.id)
+                                      ? 'bg-purple-500/20'
+                                      : 'bg-black/0 hover:bg-black/30'
+                                  }`}
+                                >
+                                  {!selectedRefImageIds.includes(img.id) && (
+                                    <span className="rounded bg-white/90 px-2 py-1 text-xs font-medium text-gray-700 opacity-0 group-hover:opacity-100">
+                                      Select
+                                    </span>
+                                  )}
+                                </div>
+                              </button>
                               {/* Selection checkbox indicator */}
                               <div
-                                className={`absolute -top-1 -left-1 flex h-5 w-5 items-center justify-center rounded-full border-2 ${
+                                onClick={() => toggleRefImageSelection(img.id)}
+                                className={`absolute -top-1.5 -left-1.5 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border-2 shadow-sm transition-all ${
                                   selectedRefImageIds.includes(img.id)
                                     ? 'border-purple-500 bg-purple-500'
-                                    : 'border-gray-300 bg-white'
+                                    : 'border-gray-400 bg-white hover:border-purple-400'
                                 }`}
                               >
                                 {selectedRefImageIds.includes(img.id) && (
-                                  <Check className="h-3 w-3 text-white" />
+                                  <Check className="h-3.5 w-3.5 text-white" />
                                 )}
                               </div>
                               {/* Primary indicator */}
                               {img.isPrimary && (
-                                <div className="absolute -top-1 -right-1 rounded-full bg-purple-500 p-0.5">
-                                  <Star className="h-2.5 w-2.5 fill-white text-white" />
+                                <div className="absolute -top-1.5 -right-1.5 rounded-full bg-purple-500 p-1 shadow-sm">
+                                  <Star className="h-3 w-3 fill-white text-white" />
                                 </div>
                               )}
-                              {/* Action buttons on hover */}
-                              <div
-                                className="absolute inset-0 flex items-center justify-center gap-1 rounded-lg bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
-                                onClick={e => e.stopPropagation()} // Prevent toggle when clicking actions
-                              >
+                              {/* Action buttons - visible on hover, positioned at bottom */}
+                              <div className="absolute right-0 bottom-0 left-0 flex justify-center gap-1 rounded-b-lg bg-gradient-to-t from-black/70 to-transparent px-1 py-1.5 opacity-0 transition-opacity group-hover:opacity-100">
                                 {!img.isPrimary && (
                                   <button
-                                    onClick={() => handleSetPrimary(img.id)}
-                                    className="rounded-full bg-white p-1 hover:bg-gray-100"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSetPrimary(img.id);
+                                    }}
+                                    className="rounded-full bg-white/90 p-1.5 hover:bg-white"
                                     title="Set as primary"
                                   >
                                     <StarOff className="h-3 w-3 text-gray-700" />
                                   </button>
                                 )}
                                 <button
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setEditingLabelId(img.id);
                                     setLabelValue(img.label || '');
                                   }}
-                                  className="rounded-full bg-white p-1 hover:bg-gray-100"
+                                  className="rounded-full bg-white/90 p-1.5 hover:bg-white"
                                   title="Edit label"
                                 >
                                   <Edit2 className="h-3 w-3 text-gray-700" />
                                 </button>
                                 <button
-                                  onClick={() => handleDeleteReference(img.id)}
-                                  className="rounded-full bg-white p-1 hover:bg-gray-100"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteReference(img.id);
+                                  }}
+                                  className="rounded-full bg-white/90 p-1.5 hover:bg-white"
                                   title="Delete"
                                 >
                                   <Trash2 className="h-3 w-3 text-red-600" />
@@ -779,8 +848,26 @@ export function GenerateImageModal({
                           ))}
 
                           {/* Upload new reference image button */}
-                          <label className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-white transition-colors hover:border-purple-400">
-                            <Plus className="h-6 w-6 text-gray-400" />
+                          <label
+                            className={`flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed bg-white transition-colors ${
+                              isDragging
+                                ? 'border-purple-500 bg-purple-50'
+                                : 'border-gray-300 hover:border-purple-400 hover:bg-gray-50'
+                            }`}
+                            onDragEnter={handleDragEnter}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            title="Click or drag to add reference image"
+                          >
+                            {isDragging ? (
+                              <div className="h-6 w-6 rounded-full border-2 border-purple-500" />
+                            ) : (
+                              <>
+                                <Plus className="h-6 w-6 text-gray-400" />
+                                <span className="mt-1 text-xs text-gray-400">Add</span>
+                              </>
+                            )}
                             <input
                               type="file"
                               accept="image/*"
@@ -792,42 +879,11 @@ export function GenerateImageModal({
                       </>
                     )}
 
-                    {/* Show "Save as Reference" button for uploaded images */}
-                    {uploadedReferenceImage && (
+                    {/* Show saving indicator */}
+                    {savingAsReference && (
                       <div className="mt-3 flex items-center gap-2 rounded-lg bg-blue-50 p-2">
-                        <img src={uploadedReferenceImage} alt="Uploaded" className="h-10 w-10 rounded object-cover" />
-                        <p className="flex-1 text-xs text-blue-700">
-                          Save this as a reference for
-                          {' '}
-                          {patientName}
-                          ?
-                        </p>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={handleSaveAsReference}
-                          disabled={savingAsReference}
-                          className="flex items-center gap-1"
-                        >
-                          {savingAsReference ? (
-                            <>
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                              Saving...
-                            </>
-                          ) : (
-                            <>
-                              <Save className="h-3 w-3" />
-                              Save
-                            </>
-                          )}
-                        </Button>
-                        <button
-                          onClick={() => setUploadedReferenceImage(null)}
-                          disabled={savingAsReference}
-                          className="rounded p-1 text-gray-500 hover:bg-gray-100 disabled:opacity-50"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
+                        <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                        <p className="text-xs text-blue-700">Saving reference image...</p>
                       </div>
                     )}
 
@@ -870,22 +926,30 @@ export function GenerateImageModal({
                       Upload an image to use as a reference for image-to-image generation.
                     </p>
 
-                    {uploadedReferenceImage ? (
-                      <div className="flex items-center gap-3">
-                        <img src={uploadedReferenceImage} alt="Uploaded" className="h-20 w-20 rounded-lg border-2 border-purple-500 object-cover" />
-                        <button
-                          onClick={() => setUploadedReferenceImage(null)}
-                          className="flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-                        >
-                          <X className="h-4 w-4" />
-                          Remove
-                        </button>
+                    {savingAsReference ? (
+                      <div className="flex h-20 w-full items-center justify-center rounded-lg border-2 border-dashed border-blue-300 bg-blue-50">
+                        <div className="flex items-center gap-2 text-blue-600">
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          <span className="text-sm">Saving reference image...</span>
+                        </div>
                       </div>
                     ) : (
-                      <label className="flex h-20 w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-white transition-colors hover:border-purple-400">
+                      <label
+                        className={`flex h-20 w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed bg-white transition-colors ${
+                          isDragging
+                            ? 'border-purple-500 bg-purple-50'
+                            : 'border-gray-300 hover:border-purple-400'
+                        }`}
+                        onDragEnter={handleDragEnter}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                      >
                         <div className="flex items-center gap-2 text-gray-500">
                           <Plus className="h-5 w-5" />
-                          <span className="text-sm">Click to upload reference image</span>
+                          <span className="text-sm">
+                            {isDragging ? 'Drop image here' : 'Click or drag image here'}
+                          </span>
                         </div>
                         <input
                           type="file"
