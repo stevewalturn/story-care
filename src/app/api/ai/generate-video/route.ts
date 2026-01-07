@@ -157,6 +157,15 @@ async function generateVideoAsync(params: VideoGenParams) {
 
     VideoTaskService.updateTask(taskId, { progress: 95 });
 
+    // Build notes with generation parameters for enhanced metadata
+    const generationNotes = JSON.stringify({
+      fps,
+      duration,
+      model,
+      referenceImageUsed: !!referenceImage,
+      generatedAt: new Date().toISOString(),
+    });
+
     // Save to media library (patientId can be null for group sessions)
     const dbResult = await db
       .insert(mediaLibrary)
@@ -172,6 +181,9 @@ async function generateVideoAsync(params: VideoGenParams) {
         aiModel: `atlas-${model}`,
         durationSeconds: duration,
         status: 'completed',
+        notes: generationNotes,
+        referenceImageUrl: referenceImage || null,
+        tags: ['ai-generated', 'atlas-video'],
       })
       .returning();
 

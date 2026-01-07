@@ -182,6 +182,14 @@ export async function POST(request: NextRequest) {
     const sessionId = formData.get('sessionId') as string | null;
 
     if (patientId) {
+      // Build notes with upload metadata
+      const uploadNotes = JSON.stringify({
+        originalFilename: file.name,
+        fileSize: fileSize,
+        contentType: contentType,
+        uploadedAt: new Date().toISOString(),
+      });
+
       // Save to media library
       const result = await db
         .insert(mediaLibrary)
@@ -194,6 +202,8 @@ export async function POST(request: NextRequest) {
           sourceType: 'uploaded',
           sourceSessionId: sessionId || null,
           status: 'completed',
+          notes: uploadNotes,
+          tags: ['uploaded', mediaType],
         })
         .returning();
 

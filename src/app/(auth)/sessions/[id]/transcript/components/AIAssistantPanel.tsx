@@ -15,7 +15,7 @@ import { CreatePromptModal } from '@/components/prompts/CreatePromptModal';
 import { EditPromptModal } from '@/components/prompts/EditPromptModal';
 import { PromptLibrary } from '@/components/prompts/PromptLibrary';
 import { AssistantMessageContent } from '@/components/sessions/AssistantMessageContent';
-import { BulkSaveQuotesModal } from '@/components/sessions/BulkSaveQuotesModal';
+import { BulkSaveQuotesModal, type QuoteWithPatient } from '@/components/sessions/BulkSaveQuotesModal';
 import { JSONOutputRenderer } from '@/components/sessions/JSONOutputRenderer';
 import { MessagePreviewModal } from '@/components/sessions/MessagePreviewModal';
 import { ModuleSelectorModal } from '@/components/sessions/ModuleSelectorModal';
@@ -280,19 +280,20 @@ export function AIAssistantPanel({
     setBulkQuotes([]);
   };
 
-  const handleBulkSaveQuotes = async (quoteData: { patientId: string }) => {
+  const handleBulkSaveQuotes = async (quotePatientMappings: QuoteWithPatient[]) => {
     try {
       const response = await Promise.all(
-        bulkQuotes.map(quote =>
-          authenticatedPost('/api/quotes', user, {
-            patientId: quoteData.patientId,
+        quotePatientMappings.map(({ quoteIndex, patientId }) => {
+          const quote = bulkQuotes[quoteIndex];
+          return authenticatedPost('/api/quotes', user, {
+            patientId, // Per-quote patient ID
             sessionId,
             quoteText: quote.quote_text || quote.text,
             speaker: quote.speaker || 'Unknown',
             tags: quote.tags || [],
             notes: quote.context || quote.significance || '',
-          }),
-        ),
+          });
+        }),
       );
 
       const successCount = response.filter(r => r.ok).length;
@@ -302,7 +303,7 @@ export function AIAssistantPanel({
         onLibraryRefresh();
       }
 
-      alert(`✅ Saved ${successCount}/${bulkQuotes.length} quotes successfully.`);
+      alert(`Saved ${successCount}/${bulkQuotes.length} quotes successfully.`);
     }
     catch (error) {
       console.error('Error saving quotes:', error);

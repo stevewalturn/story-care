@@ -6,9 +6,10 @@
  */
 
 import type { MediaTabProps } from '../types/transcript.types';
+import type { MediaDetailsData } from '@/components/media/MediaDetailsModal';
 import { ExternalLink, Music, RefreshCw, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { FullscreenMediaViewer } from '@/components/media/FullscreenMediaViewer';
+import { MediaDetailsModal } from '@/components/media/MediaDetailsModal';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 // Helper to get presigned URL for GCS paths
@@ -34,7 +35,7 @@ export function MediaTab({
   const [media, setMedia] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, _setSearchQuery] = useState('');
-  const [fullscreenMedia, setFullscreenMedia] = useState<any | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<MediaDetailsData | null>(null);
 
   // Convert mediaFilter prop to API filter type
   const filterType = (() => {
@@ -322,7 +323,7 @@ export function MediaTab({
               <div
                 key={item.id}
                 className="group cursor-pointer overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:border-purple-300 hover:shadow-md"
-                onClick={() => setFullscreenMedia(item)}
+                onClick={() => setSelectedMedia(item)}
               >
                 {/* Thumbnail */}
                 <div className="relative aspect-square bg-gray-100">
@@ -403,11 +404,11 @@ export function MediaTab({
         )}
       </div>
 
-      {/* Fullscreen Media Viewer */}
-      <FullscreenMediaViewer
-        isOpen={!!fullscreenMedia}
-        onClose={() => setFullscreenMedia(null)}
-        media={fullscreenMedia}
+      {/* Media Details Modal */}
+      <MediaDetailsModal
+        isOpen={!!selectedMedia}
+        onClose={() => setSelectedMedia(null)}
+        media={selectedMedia}
       />
 
       {/* Delete Confirmation Dialog */}

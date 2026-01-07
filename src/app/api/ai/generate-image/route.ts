@@ -237,6 +237,20 @@ export async function POST(request: NextRequest) {
 
     // 3. Save to database (save GCS path, not presigned URL)
     // patientId can be null for group session media
+
+    // Build notes with generation parameters for enhanced metadata
+    const generationNotes = JSON.stringify({
+      width: width || null,
+      height: height || null,
+      aspectRatio: aspectRatio || null,
+      negativePrompt: negativePrompt || null,
+      seed: seed || null,
+      quality: quality || null,
+      style: style || null,
+      referenceImagesUsed: referenceImages.length > 0 ? referenceImages.length : 0,
+      generatedAt: new Date().toISOString(),
+    });
+
     const result = await db
       .insert(mediaLibrary)
       .values({
@@ -250,6 +264,9 @@ export async function POST(request: NextRequest) {
         generationPrompt: prompt,
         aiModel: usedModel,
         status: 'completed',
+        notes: generationNotes,
+        referenceImageUrl: referenceImages.length > 0 ? referenceImages[0] : null,
+        tags: ['ai-generated', usedModel.split('-')[0]], // e.g., ['ai-generated', 'gemini'] or ['ai-generated', 'dall']
       })
       .returning();
 

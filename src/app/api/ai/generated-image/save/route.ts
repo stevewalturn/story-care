@@ -108,7 +108,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Save to database (save GCS path, not presigned URL)
+    // 3. Build notes with generation parameters for enhanced metadata
+    const generationNotes = JSON.stringify({
+      sourceQuote: sourceQuote || null,
+      style: style || null,
+      savedAt: new Date().toISOString(),
+    });
+
+    // 4. Save to database (save GCS path, not presigned URL)
     const result = await db
       .insert(mediaLibrary)
       .values({
@@ -123,10 +130,8 @@ export async function POST(request: NextRequest) {
         generationPrompt: prompt,
         aiModel: model,
         status: 'completed',
-        metadata: {
-          sourceQuote: sourceQuote || null,
-          style: style || null,
-        },
+        notes: generationNotes,
+        tags: ['ai-generated', model ? model.split('-')[0] : 'saved'],
       })
       .returning();
 

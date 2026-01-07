@@ -273,6 +273,8 @@ Review the selected transcript segment and identify:
 
 Extract 3-5 quotes with context.
 
+For each quote, identify which patient it belongs to or is most relevant to. Use the patient's name if identifiable from the conversation context.
+
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 
 IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
@@ -282,6 +284,7 @@ IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is req
     {
       "quote_text": "exact quote",
       "speaker": "speaker name",
+      "patient_name": "patient name this quote belongs to",
       "context": "why therapeutically significant",
       "tags": ["tag1", "tag2"]
     }
@@ -303,6 +306,7 @@ IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is req
             properties: {
               quote_text: { type: 'string' },
               speaker: { type: 'string' },
+              patient_name: { type: 'string' },
               context: { type: 'string' },
               tags: { type: 'array', items: { type: 'string' } },
             },

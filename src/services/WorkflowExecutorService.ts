@@ -295,18 +295,29 @@ export class WorkflowExecutor {
 
       // Save to media library if requested
       if (save_to_library && context.patientId) {
+        // Build notes with workflow context
+        const workflowNotes = JSON.stringify({
+          workflowId: context.workflowId || null,
+          style: style || null,
+          generatedAt: new Date().toISOString(),
+          source: 'workflow',
+        });
+
         const result = await db
           .insert(mediaLibrary)
           .values({
             patientId: context.patientId,
-            therapistId: context.therapistId || null,
-            type: 'image',
-            url: imageUrl,
+            createdByTherapistId: context.therapistId || '',
+            mediaType: 'image',
+            mediaUrl: imageUrl,
             title: `Generated Image`,
             description: prompt_template,
-            metadata: { style, prompt: prompt_template },
-            generatedByAi: true,
-            createdAt: new Date(),
+            generationPrompt: prompt_template,
+            sourceType: 'generated',
+            sourceSessionId: context.sessionId || null,
+            status: 'completed',
+            notes: workflowNotes,
+            tags: ['ai-generated', 'workflow'],
           })
           .returning();
 
@@ -342,7 +353,7 @@ export class WorkflowExecutor {
     context: WorkflowContext,
   ): Promise<ActionExecutionResult> {
     try {
-      const { music_prompt, mood, duration, save_to_library } = values;
+      const { music_prompt, mood, duration, save_to_library, instrumental } = values;
 
       if (!music_prompt) {
         throw new Error('Music prompt is required');
@@ -356,18 +367,33 @@ export class WorkflowExecutor {
 
       // Save to media library if requested
       if (save_to_library && context.patientId) {
+        // Build notes with workflow context and music parameters
+        const workflowNotes = JSON.stringify({
+          workflowId: context.workflowId || null,
+          mood: mood || null,
+          duration: duration || null,
+          instrumental: instrumental === true,
+          type: instrumental === true ? 'instrumental' : 'lyrical',
+          generatedAt: new Date().toISOString(),
+          source: 'workflow',
+        });
+
         const result = await db
           .insert(mediaLibrary)
           .values({
             patientId: context.patientId,
-            therapistId: context.therapistId || null,
-            type: 'audio',
-            url: audioUrl,
-            title: `Generated Music - ${mood}`,
+            createdByTherapistId: context.therapistId || '',
+            mediaType: 'audio',
+            mediaUrl: audioUrl,
+            title: `Generated Music - ${mood || (instrumental ? 'Instrumental' : 'Lyrical')}`,
             description: music_prompt,
-            metadata: { mood, duration, prompt: music_prompt },
-            generatedByAi: true,
-            createdAt: new Date(),
+            generationPrompt: music_prompt,
+            sourceType: 'generated',
+            sourceSessionId: context.sessionId || null,
+            status: 'completed',
+            durationSeconds: duration ? Math.round(duration) : null,
+            notes: workflowNotes,
+            tags: ['ai-generated', 'workflow-music', instrumental ? 'instrumental' : 'lyrical'],
           })
           .returning();
 
@@ -386,6 +412,8 @@ export class WorkflowExecutor {
           prompt: music_prompt,
           mood,
           duration,
+          instrumental: instrumental === true,
+          type: instrumental === true ? 'instrumental' : 'lyrical',
           audio_url: audioUrl,
           generated: true,
           mediaId,

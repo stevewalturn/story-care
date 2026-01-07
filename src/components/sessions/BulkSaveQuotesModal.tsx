@@ -1,16 +1,21 @@
 'use client';
 
 import type { PatientOption } from './SaveNoteModal';
-import { ChevronDown, Quote, X } from 'lucide-react';
+import { Check, ChevronDown, Quote, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
+
+export type QuoteWithPatient = {
+  quoteIndex: number;
+  patientId: string;
+};
 
 type BulkSaveQuotesModalProps = {
   isOpen: boolean;
   onClose: () => void;
   quotes: any[];
   patients: PatientOption[];
-  onSave: (quoteData: { patientId: string }) => Promise<void>;
+  onSave: (quotePatientMappings: QuoteWithPatient[]) => Promise<void>;
 };
 
 export function BulkSaveQuotesModal({
@@ -21,26 +26,57 @@ export function BulkSaveQuotesModal({
   onSave,
 }: BulkSaveQuotesModalProps) {
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedPatientId, setSelectedPatientId] = useState<string>('');
-  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+  const [quotePatientSelections, setQuotePatientSelections] = useState<Record<number, string>>({});
+  const [activeDropdownIndex, setActiveDropdownIndex] = useState<number | null>(null);
 
+  // Initialize patient selections when quotes or patients change
   useEffect(() => {
-    if (patients.length > 0 && !selectedPatientId) {
-      setSelectedPatientId(patients[0]!.id);
+    if (patients.length > 0 && quotes.length > 0) {
+      const initialSelections: Record<number, string> = {};
+      quotes.forEach((quote, index) => {
+        // Try to match AI-suggested patient_name to actual patient
+        const suggestedPatient = quote.patient_name
+          ? patients.find(p => p.name.toLowerCase() === quote.patient_name.toLowerCase())
+          : null;
+        // Use AI suggestion if found, otherwise default to first patient
+        initialSelections[index] = suggestedPatient?.id || patients[0]!.id;
+      });
+      setQuotePatientSelections(initialSelections);
     }
-  }, [patients, selectedPatientId]);
+  }, [patients, quotes]);
 
-  const selectedPatient = patients.find(p => p.id === selectedPatientId);
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setActiveDropdownIndex(null);
+    }
+  }, [isOpen]);
+
+  const getSelectedPatient = (index: number) => {
+    const patientId = quotePatientSelections[index];
+    return patients.find(p => p.id === patientId);
+  };
+
+  const handlePatientChange = (quoteIndex: number, patientId: string) => {
+    setQuotePatientSelections(prev => ({ ...prev, [quoteIndex]: patientId }));
+    setActiveDropdownIndex(null);
+  };
+
+  const allQuotesHavePatient = quotes.length > 0 && quotes.every((_, index) => quotePatientSelections[index]);
 
   const handleSave = async () => {
-    if (!selectedPatientId) {
-      alert('Please select a patient');
+    if (!allQuotesHavePatient) {
+      alert('Please select a patient for all quotes');
       return;
     }
 
     try {
       setIsSaving(true);
-      await onSave({ patientId: selectedPatientId });
+      const quotePatientMappings: QuoteWithPatient[] = quotes.map((_, index) => ({
+        quoteIndex: index,
+        patientId: quotePatientSelections[index]!,
+      }));
+      await onSave(quotePatientMappings);
       onClose();
     }
     catch (error) {
@@ -80,49 +116,14 @@ export function BulkSaveQuotesModal({
 
         {/* Body */}
         <div className="max-h-[60vh] space-y-4 overflow-y-auto px-6 py-4">
-          {/* Patient Selection */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
-              Patient
-              {' '}
-              <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <button
-                onClick={() => setShowPatientDropdown(!showPatientDropdown)}
-                className="flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-left text-sm transition-colors hover:border-purple-500"
-              >
-                <span className="text-gray-900">
-                  {selectedPatient
-                    ? selectedPatient.name
-                    : 'Select a patient'}
-                </span>
-                <ChevronDown className="h-4 w-4 text-gray-400" />
-              </button>
-
-              {/* Patient Dropdown */}
-              {showPatientDropdown && (
-                <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg">
-                  {patients.map(patient => (
-                    <button
-                      key={patient.id}
-                      onClick={() => {
-                        setSelectedPatientId(patient.id);
-                        setShowPatientDropdown(false);
-                      }}
-                      className="block w-full px-3 py-2 text-left text-sm transition-colors hover:bg-purple-50"
-                    >
-                      <div className="font-medium text-gray-900">
-                        {patient.name}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
+          {/* No patients warning */}
+          {patients.length === 0 && (
+            <div className="rounded-lg bg-yellow-50 px-4 py-3 text-sm text-yellow-700">
+              <p>No patients available. Please add patients to this session first.</p>
             </div>
-          </div>
+          )}
 
-          {/* Quotes Preview */}
+          {/* Quotes with per-quote patient selection */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">
               Quotes to Save
@@ -135,12 +136,15 @@ export function BulkSaveQuotesModal({
                 >
                   <div className="flex items-start gap-2">
                     <Quote className="mt-0.5 h-4 w-4 flex-shrink-0 text-purple-600" />
-                    <div className="flex-1 space-y-1">
+                    <div className="flex-1 space-y-2">
+                      {/* Quote text */}
                       <p className="text-sm text-gray-900">
                         "
                         {quote.quote_text || quote.text}
                         "
                       </p>
+
+                      {/* Metadata row */}
                       <div className="flex items-center gap-2 text-xs text-gray-500">
                         <span>
                           Speaker:
@@ -158,6 +162,45 @@ export function BulkSaveQuotesModal({
                           </>
                         )}
                       </div>
+
+                      {/* Per-quote patient selector */}
+                      {patients.length > 0 && (
+                        <div className="relative">
+                          <button
+                            onClick={() => setActiveDropdownIndex(activeDropdownIndex === index ? null : index)}
+                            className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs transition-colors hover:border-purple-300 hover:bg-purple-50"
+                          >
+                            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 text-xs font-medium text-purple-600">
+                              {getSelectedPatient(index)?.name?.charAt(0) || '?'}
+                            </div>
+                            <span className="max-w-[120px] truncate text-gray-700">
+                              {getSelectedPatient(index)?.name || 'Select patient'}
+                            </span>
+                            <ChevronDown className="h-3 w-3 text-gray-400" />
+                          </button>
+
+                          {/* Patient dropdown */}
+                          {activeDropdownIndex === index && (
+                            <div className="absolute left-0 z-20 mt-1 min-w-[180px] rounded-lg border border-gray-200 bg-white shadow-lg">
+                              {patients.map(patient => (
+                                <button
+                                  key={patient.id}
+                                  onClick={() => handlePatientChange(index, patient.id)}
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-purple-50"
+                                >
+                                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 text-xs font-medium text-purple-600">
+                                    {patient.name.charAt(0)}
+                                  </div>
+                                  <span className="flex-1 truncate">{patient.name}</span>
+                                  {quotePatientSelections[index] === patient.id && (
+                                    <Check className="h-3 w-3 flex-shrink-0 text-purple-600" />
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -168,13 +211,8 @@ export function BulkSaveQuotesModal({
           {/* Info Banner */}
           <div className="rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-700">
             <p>
-              All
-              {' '}
-              {quotes.length}
-              {' '}
-              quotes will be saved to the selected
-              patient's library. You can view and manage them in the Library
-              panel.
+              Each quote will be saved to its assigned patient's library.
+              You can view and manage them in the Library panel.
             </p>
           </div>
         </div>
@@ -184,7 +222,7 @@ export function BulkSaveQuotesModal({
           <Button variant="secondary" onClick={onClose} disabled={isSaving}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isSaving || !selectedPatientId}>
+          <Button onClick={handleSave} disabled={isSaving || !allQuotesHavePatient || patients.length === 0}>
             {isSaving ? 'Saving...' : `Save ${quotes.length} Quotes`}
           </Button>
         </div>

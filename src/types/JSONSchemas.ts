@@ -235,6 +235,7 @@ export type QuoteExtractionSchema = {
   extracted_quotes?: Array<{
     quote_text: string;
     speaker: string; // Speaker name or type
+    patient_name?: string; // Patient this quote belongs to
     context: string; // Why this quote is significant
     tags?: string[]; // Optional tags
     timestamp?: {
@@ -246,6 +247,7 @@ export type QuoteExtractionSchema = {
     // Alternative structure (for compatibility)
     text: string;
     speaker: string;
+    patient_name?: string; // Patient this quote belongs to
     significance: string;
     tags?: string[];
   }>;

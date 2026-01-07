@@ -3,7 +3,7 @@ import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { generatePresignedUrlsForMedia } from '@/libs/GCS';
-import { mediaLibrary, sessions, users } from '@/models/Schema';
+import { mediaLibrary, scenes, sessions, users } from '@/models/Schema';
 
 // GET /api/media - List media files
 export async function GET(request: NextRequest) {
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const mediaType = searchParams.get('type');
     const search = searchParams.get('search');
 
-    // Select with patient and session info
+    // Select with patient, session, and scene info
     let query = db
       .select({
         id: mediaLibrary.id,
@@ -32,10 +32,16 @@ export async function GET(request: NextRequest) {
         patientId: mediaLibrary.patientId,
         patientName: users.name,
         sessionTitle: sessions.title,
+        // Additional fields for MediaDetailsModal
+        status: mediaLibrary.status,
+        notes: mediaLibrary.notes,
+        aiModel: mediaLibrary.aiModel,
+        sceneTitle: scenes.title,
       })
       .from(mediaLibrary)
       .leftJoin(users, eq(mediaLibrary.patientId, users.id))
-      .leftJoin(sessions, eq(mediaLibrary.sourceSessionId, sessions.id));
+      .leftJoin(sessions, eq(mediaLibrary.sourceSessionId, sessions.id))
+      .leftJoin(scenes, eq(mediaLibrary.sceneId, scenes.id));
 
     // Build filters
     const filters = [];

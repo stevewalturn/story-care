@@ -327,12 +327,51 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
       // Only create media record if scene has a patient
       if (!existingMedia && scene.patientId) {
+        // Get clip and audio track counts for enhanced description
+        const clipsData = await db
+          .select()
+          .from(sceneClips)
+          .where(eq(sceneClips.sceneId, sceneId));
+
+        const audioTracksData = await db
+          .select()
+          .from(sceneAudioTracks)
+          .where(eq(sceneAudioTracks.sceneId, sceneId));
+
+        // Build enhanced description
+        const clipCount = clipsData.length;
+        const audioTrackCount = audioTracksData.length;
+        let description = scene.description || '';
+
+        // If no description, create one based on composition
+        if (!description) {
+          const parts = [];
+          if (clipCount > 0) {
+            parts.push(`${clipCount} video clip${clipCount > 1 ? 's' : ''}`);
+          }
+          if (audioTrackCount > 0) {
+            parts.push(`${audioTrackCount} audio track${audioTrackCount > 1 ? 's' : ''}`);
+          }
+          description = parts.length > 0
+            ? `Assembled scene from ${parts.join(' and ')}`
+            : 'Scene created by merging video clips with audio';
+        }
+
+        // Build notes with assembly metadata
+        const assemblyNotes = JSON.stringify({
+          clipCount,
+          audioTrackCount,
+          durationSeconds: job.durationSeconds,
+          assembledAt: new Date().toISOString(),
+        });
+
         // Create new media record for the scene video in patient's library
         const newMediaResult = await db.insert(mediaLibrary).values({
           patientId: scene.patientId,
           createdByTherapistId: scene.createdByTherapistId || '',
           title: `${scene.title || 'Scene Video'}`,
-          description: scene.description || 'Compiled scene video',
+          description,
+          notes: assemblyNotes,
           mediaType: 'video',
           mediaUrl: job.outputUrl,
           thumbnailUrl: job.thumbnailUrl || scene.thumbnailUrl || undefined,
@@ -340,6 +379,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
           sourceType: 'scene', // Indicates this is created by Scenes feature
           sceneId,
           status: 'completed',
+          tags: ['scene', 'assembled'],
         }).returning();
         const newMedia = Array.isArray(newMediaResult) ? newMediaResult[0] : null;
         console.log(`[Scene Assembly] Saved video to patient library: ${newMedia?.id} for scene ${sceneId}`);
