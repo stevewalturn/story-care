@@ -7,7 +7,7 @@
 
 import type { NotesTabProps } from '../types/transcript.types';
 import type { PatientOption } from '@/components/sessions/SaveNoteModal';
-import { Edit2, Trash2 } from 'lucide-react';
+import { Check, Copy, Edit2, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SaveNoteModal } from '@/components/sessions/SaveNoteModal';
 import { Modal } from '@/components/ui/Modal';
@@ -22,6 +22,28 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
   const [viewingNote, setViewingNote] = useState<any>(null);
   const [editingNote, setEditingNote] = useState<any>(null);
   const [showEditNoteModal, setShowEditNoteModal] = useState(false);
+  const [copiedNoteId, setCopiedNoteId] = useState<string | null>(null);
+
+  // Handle copy note content - converts HTML to plain text preserving newlines
+  const handleCopyNote = async (note: any) => {
+    try {
+      // Convert HTML to plain text while preserving newlines
+      let plainContent = note.content
+        .replace(/<br\s*\/?>/gi, '\n') // Convert <br> to newline
+        .replace(/<\/p>/gi, '\n\n') // Convert </p> to double newline
+        .replace(/<\/div>/gi, '\n') // Convert </div> to newline
+        .replace(/<\/li>/gi, '\n') // Convert </li> to newline
+        .replace(/<[^>]*>/g, '') // Strip remaining HTML tags
+        .replace(/\n{3,}/g, '\n\n') // Collapse multiple newlines to max 2
+        .trim();
+      const fullText = note.title ? `${note.title}\n\n${plainContent}` : plainContent;
+      await navigator.clipboard.writeText(fullText);
+      setCopiedNoteId(note.id);
+      setTimeout(() => setCopiedNoteId(null), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+    }
+  };
 
   // Load notes for this session (refreshes when refreshKey changes)
   useEffect(() => {
@@ -235,13 +257,25 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
                   key={note.id}
                   className="rounded-lg border border-gray-200 bg-white p-4 transition-all hover:border-purple-500 hover:shadow-sm"
                 >
-                  {/* Header with Edit/Delete buttons */}
+                  {/* Header with Copy/Edit/Delete buttons */}
                   <div className="mb-2 flex items-start justify-between">
                     <h4 className="font-medium text-gray-900">{note.title || 'Untitled Note'}</h4>
                     <div className="flex items-center gap-1">
                       <span className="text-xs text-gray-500">
                         {note.createdAt ? new Date(note.createdAt).toLocaleDateString() : ''}
                       </span>
+                      {/* Copy button */}
+                      <button
+                        onClick={() => handleCopyNote(note)}
+                        className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-purple-600"
+                        title="Copy content"
+                      >
+                        {copiedNoteId === note.id ? (
+                          <Check className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </button>
                       {/* Edit button */}
                       <button
                         onClick={() => {
@@ -343,6 +377,24 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
                 {viewingNote.createdAt ? new Date(viewingNote.createdAt).toLocaleDateString() : ''}
               </span>
               <div className="flex items-center gap-2">
+                {/* Copy button */}
+                <button
+                  onClick={() => handleCopyNote(viewingNote)}
+                  className="flex items-center gap-1 rounded px-2 py-1 text-xs text-gray-600 transition-colors hover:bg-gray-100"
+                >
+                  {copiedNoteId === viewingNote.id ? (
+                    <>
+                      <Check className="h-3 w-3 text-green-600" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3 w-3" />
+                      Copy
+                    </>
+                  )}
+                </button>
+                {/* Edit button */}
                 <button
                   onClick={() => {
                     setViewingNote(null);

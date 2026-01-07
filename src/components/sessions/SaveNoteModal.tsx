@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Save, X } from 'lucide-react';
+import { Check, ChevronDown, Copy, Save, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
 import { TipTapEditor } from '../ui/TipTapEditor';
@@ -42,6 +42,7 @@ export function SaveNoteModal({
   const [isSaving, setIsSaving] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string>(patients[0]?.id || '');
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+  const [copiedContent, setCopiedContent] = useState(false);
 
   // Update selected patient when patients prop changes
   useEffect(() => {
@@ -83,6 +84,27 @@ export function SaveNoteModal({
     if (e.key === 'Enter') {
       e.preventDefault();
       handleAddTag();
+    }
+  };
+
+  // Copy note content to clipboard - preserves newlines
+  const handleCopyContent = async () => {
+    try {
+      // Convert HTML to plain text while preserving newlines
+      const plainContent = content
+        .replace(/<br\s*\/?>/gi, '\n') // Convert <br> to newline
+        .replace(/<\/p>/gi, '\n\n') // Convert </p> to double newline
+        .replace(/<\/div>/gi, '\n') // Convert </div> to newline
+        .replace(/<\/li>/gi, '\n') // Convert </li> to newline
+        .replace(/<[^>]*>/g, '') // Strip remaining HTML tags
+        .replace(/\n{3,}/g, '\n\n') // Collapse multiple newlines to max 2
+        .trim();
+      const fullText = title.trim() ? `${title.trim()}\n\n${plainContent}` : plainContent;
+      await navigator.clipboard.writeText(fullText);
+      setCopiedContent(true);
+      setTimeout(() => setCopiedContent(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
     }
   };
 
@@ -323,6 +345,24 @@ export function SaveNoteModal({
 
         {/* Footer */}
         <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
+          <Button
+            variant="secondary"
+            onClick={handleCopyContent}
+            disabled={!content.replace(/<[^>]*>/g, '').trim()}
+            className="mr-auto"
+          >
+            {copiedContent ? (
+              <>
+                <Check className="mr-1.5 h-4 w-4 text-green-600" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Copy className="mr-1.5 h-4 w-4" />
+                Copy Content
+              </>
+            )}
+          </Button>
           <Button variant="ghost" onClick={onClose} disabled={isSaving}>
             Cancel
           </Button>

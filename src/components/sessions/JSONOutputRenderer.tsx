@@ -4,9 +4,11 @@ import type { TherapeuticSceneCard } from '@/components/transcript/TherapeuticSc
 import type { SchemaAction } from '@/config/SchemaActions';
 import type { AnyJSONSchema, JSONSchemaType } from '@/types/JSONSchemas';
 import {
+  Check,
   ChevronDown,
   ChevronUp,
   Circle,
+  Copy,
   FileText,
   Film,
   HelpCircle,
@@ -90,6 +92,29 @@ export function JSONOutputRenderer({
   } | null>(null);
   // Track which therapeutic notes are expanded
   const [expandedNotes, setExpandedNotes] = useState<Set<number>>(new Set());
+  // Track copied state for feedback
+  const [copiedContent, setCopiedContent] = useState<boolean>(false);
+
+  // Handle copy content for therapeutic notes - preserves newlines
+  const handleCopyNoteContent = async (title: string, content: string) => {
+    try {
+      // Convert HTML to plain text while preserving newlines
+      const plainContent = content
+        .replace(/<br\s*\/?>/gi, '\n') // Convert <br> to newline
+        .replace(/<\/p>/gi, '\n\n') // Convert </p> to double newline
+        .replace(/<\/div>/gi, '\n') // Convert </div> to newline
+        .replace(/<\/li>/gi, '\n') // Convert </li> to newline
+        .replace(/<[^>]*>/g, '') // Strip remaining HTML tags
+        .replace(/\n{3,}/g, '\n\n') // Collapse multiple newlines to max 2
+        .trim();
+      const fullText = `${title}\n\n${plainContent}`;
+      await navigator.clipboard.writeText(fullText);
+      setCopiedContent(true);
+      setTimeout(() => setCopiedContent(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+    }
+  };
 
   const { schemaType } = jsonData;
   // Filter out actions for music_generation - cards are now clickable directly
@@ -282,6 +307,25 @@ export function JSONOutputRenderer({
       {/* Action Buttons - skip for image_references since each card has its own button */}
       {schemaType !== 'image_references' && (
         <div className="flex flex-wrap gap-2">
+          {/* Copy Content button for therapeutic_note */}
+          {schemaType === 'therapeutic_note' && (
+            <button
+              onClick={() => handleCopyNoteContent(jsonData.note_title || 'Note', jsonData.note_content || '')}
+              className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-all hover:bg-gray-50"
+            >
+              {copiedContent ? (
+                <>
+                  <Check className="h-4 w-4 text-green-600" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4" />
+                  Copy Content
+                </>
+              )}
+            </button>
+          )}
           {schemaType === 'video_references' && jsonData.videos && actions[0] ? (
           // For video_references, render one button per video
             (() => {
