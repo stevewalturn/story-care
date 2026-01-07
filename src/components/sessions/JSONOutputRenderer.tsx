@@ -1079,26 +1079,72 @@ function renderPreview(
 
     case 'quote_extraction': {
       const quotes = data.extracted_quotes || data.quotes || [];
+      const displayQuotes = quotes.slice(0, 4);
+      const remainingCount = quotes.length - displayQuotes.length;
+
       return (
-        <div className="space-y-2 text-sm">
-          <p className="font-semibold text-gray-900">Extracted Quotes:</p>
-          <ul className="space-y-1 text-xs text-gray-700">
-            {quotes.slice(0, 3).map((quote: any, i: number) => (
-              <li key={i} className="line-clamp-2">
-                "
-                {quote.quote_text || quote.text}
-                "
-              </li>
+        <div className="space-y-3 text-sm">
+          <div className="flex items-center justify-between">
+            <p className="font-semibold text-gray-900">
+              {quotes.length}
+              {' '}
+              Quote
+              {quotes.length !== 1 ? 's' : ''}
+              {' '}
+              Extracted
+            </p>
+          </div>
+          <div className="space-y-2">
+            {displayQuotes.map((quote: any, i: number) => (
+              <div
+                key={i}
+                className="rounded-lg border border-purple-100 bg-gradient-to-r from-purple-50 to-white p-3"
+              >
+                <div className="flex gap-2">
+                  <span className="mt-0.5 text-purple-400">"</span>
+                  <div className="flex-1 space-y-1.5">
+                    <p className="text-xs leading-relaxed text-gray-800">
+                      {quote.quote_text || quote.text}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {quote.speaker && (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-gray-500">
+                          <span className="font-medium">{quote.speaker}</span>
+                        </span>
+                      )}
+                      {quote.tags && quote.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {quote.tags.slice(0, 3).map((tag: string, tagIdx: number) => (
+                            <span
+                              key={tagIdx}
+                              className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[9px] font-medium text-purple-600"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                          {quote.tags.length > 3 && (
+                            <span className="text-[9px] text-gray-400">
+                              +
+                              {quote.tags.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             ))}
-            {quotes.length > 3 && (
-              <li className="text-gray-500">
-                ...and
-                {quotes.length - 3}
-                {' '}
-                more
-              </li>
-            )}
-          </ul>
+          </div>
+          {remainingCount > 0 && (
+            <p className="text-center text-xs text-gray-400">
+              +
+              {remainingCount}
+              {' '}
+              more quote
+              {remainingCount !== 1 ? 's' : ''}
+            </p>
+          )}
         </div>
       );
     }
