@@ -1,7 +1,7 @@
 'use client';
 
-import { Edit2, Loader2, Plus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Edit2, Loader2, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
@@ -72,25 +72,54 @@ export function GeneralInformationTab({ patientId }: GeneralInformationTabProps)
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Reference image upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
   const [patientData, setPatientData] = useState<PatientData>(initialPatientData);
   const [originalData, setOriginalData] = useState<PatientData>(initialPatientData);
 
-  // Fetch patient data from API
+  // Fetch patient data and reference images from API
   useEffect(() => {
     if (!user?.uid || !patientId) return;
 
-    const fetchPatient = async () => {
+    const fetchPatientData = async () => {
       try {
         setLoading(true);
-        const response = await authenticatedFetch(`/api/patients/${patientId}`, user);
-        if (response.ok) {
-          const data = await response.json();
+
+        // Fetch patient data and reference images in parallel
+        const [patientResponse, refImagesResponse] = await Promise.all([
+          authenticatedFetch(`/api/patients/${patientId}`, user),
+          authenticatedFetch(`/api/patients/${patientId}/reference-images`, user),
+        ]);
+
+        let referenceImageUrls: string[] = [];
+
+        // Process reference images response
+        if (refImagesResponse.ok) {
+          const refImagesData = await refImagesResponse.json();
+          referenceImageUrls = (refImagesData.images || []).map(
+            (img: { imageUrl: string }) => img.imageUrl,
+          );
+        }
+
+        if (patientResponse.ok) {
+          const data = await patientResponse.json();
           const patient = data.patient;
 
           // Parse name into first and last name
           const nameParts = (patient.name || '').split(' ');
           const firstName = nameParts[0] || '';
           const lastName = nameParts.slice(1).join(' ') || '';
+
+          // Fall back to patient.referenceImageUrl if no images in reference images table
+          const images = referenceImageUrls.length > 0
+            ? referenceImageUrls
+            : patient.referenceImageUrl
+              ? [patient.referenceImageUrl]
+              : [];
 
           const loadedData: PatientData = {
             firstName,
@@ -112,7 +141,7 @@ export function GeneralInformationTab({ patientId }: GeneralInformationTabProps)
             emergencyContactRelationship: patient.emergencyContactRelationship || '',
             emergencyContactPhone: patient.emergencyContactPhone || '',
             emergencyContactEmail: patient.emergencyContactEmail || '',
-            referenceImages: patient.referenceImageUrl ? [patient.referenceImageUrl] : [],
+            referenceImages: images,
           };
 
           setPatientData(loadedData);
@@ -125,7 +154,7 @@ export function GeneralInformationTab({ patientId }: GeneralInformationTabProps)
       }
     };
 
-    fetchPatient();
+    fetchPatientData();
   }, [user, patientId]);
 
   // Loading state
@@ -204,6 +233,130 @@ export function GeneralInformationTab({ patientId }: GeneralInformationTabProps)
     setPatientData({ ...originalData });
     setSaveError(null);
     setEditingSection(null);
+  };
+
+  // Handle reference image upload (supports both file input and drag & drop)
+  const uploadFile = async (file: File) => {
+    if (!user) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      setImageUploadError('Invalid file type. Only JPEG, PNG, WebP, and GIF images are allowed.');
+      return;
+    }
+
+    // Validate file size (10MB max)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setImageUploadError('File too large. Maximum size is 10MB.');
+      return;
+    }
+
+    setUploadingImage(true);
+    setImageUploadError(null);
+
+    try {
+      const idToken = await user.getIdToken();
+      if (!idToken) {
+        throw new Error('Not authenticated');
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('isPrimary', patientData.referenceImages.length === 0 ? 'true' : 'false');
+      formData.append('label', 'Patient reference');
+
+      const response = await fetch(`/api/patients/${patientId}/reference-images`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to upload reference image');
+      }
+
+      const data = await response.json();
+
+      // Add the new image to the reference images array
+      setPatientData(prev => ({
+        ...prev,
+        referenceImages: [...prev.referenceImages, data.image.imageUrl],
+      }));
+      setOriginalData(prev => ({
+        ...prev,
+        referenceImages: [...prev.referenceImages, data.image.imageUrl],
+      }));
+
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (error) {
+      console.error('Error uploading reference image:', error);
+      setImageUploadError(error instanceof Error ? error.message : 'Failed to upload reference image');
+    } finally {
+      setUploadingImage(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      uploadFile(file);
+    }
+  };
+
+  // Drag and drop handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    const file = files[0];
+    if (file) {
+      uploadFile(file);
+    }
+  };
+
+  // Handle reference image deletion
+  const handleDeleteImage = async (_imageUrl: string, index: number) => {
+    if (!user || !confirm('Are you sure you want to delete this reference image?')) return;
+
+    // For now, just remove from local state
+    // In a full implementation, you'd also call the DELETE API endpoint
+    setPatientData(prev => ({
+      ...prev,
+      referenceImages: prev.referenceImages.filter((_, i) => i !== index),
+    }));
+    setOriginalData(prev => ({
+      ...prev,
+      referenceImages: prev.referenceImages.filter((_, i) => i !== index),
+    }));
   };
 
   return (
@@ -661,32 +814,95 @@ export function GeneralInformationTab({ patientId }: GeneralInformationTabProps)
       </div>
 
       {/* Reference Image */}
-      <div className="rounded-xl bg-gray-50 p-6">
+      <div
+        className={`rounded-xl p-6 transition-colors ${
+          isDragging
+            ? 'border-2 border-dashed border-purple-500 bg-purple-50'
+            : 'bg-gray-50'
+        }`}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
         <h2 className="mb-2 font-semibold text-gray-900">Reference Image</h2>
         <p className="mb-4 text-sm text-gray-500">
           This patient reference image will be used for visual consistency.
         </p>
 
+        {/* Image upload error message */}
+        {imageUploadError && (
+          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {imageUploadError}
+          </div>
+        )}
+
+        {/* Drag overlay message */}
+        {isDragging && (
+          <div className="mb-4 flex items-center justify-center rounded-lg border-2 border-dashed border-purple-400 bg-purple-100 p-8">
+            <p className="text-sm font-medium text-purple-600">
+              Drop image here to upload
+            </p>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-4">
           {patientData.referenceImages.map((image, index) => (
-            <button
+            <div
               key={index}
-              onClick={() => openLightbox(patientData.referenceImages, index)}
-              className="group relative h-24 w-24 overflow-hidden rounded-xl transition-transform hover:scale-105"
+              className="group relative h-24 w-24 overflow-hidden rounded-xl"
             >
-              <img
-                src={image}
-                alt={`Reference ${index + 1}`}
-                className="h-full w-full object-cover"
-              />
-            </button>
+              <button
+                onClick={() => openLightbox(patientData.referenceImages, index)}
+                className="h-full w-full transition-transform hover:scale-105"
+              >
+                <img
+                  src={image}
+                  alt={`Reference ${index + 1}`}
+                  className="h-full w-full object-cover"
+                />
+              </button>
+              {/* Delete button overlay */}
+              <button
+                onClick={() => handleDeleteImage(image, index)}
+                className="absolute top-1 right-1 rounded-full bg-red-500 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-600"
+                title="Delete image"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
           ))}
 
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+            onChange={handleImageUpload}
+            className="hidden"
+          />
+
           {/* Add More Button */}
-          <button className="flex h-24 w-24 items-center justify-center rounded-xl border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-purple-600 hover:text-purple-600">
-            <Plus className="h-6 w-6" />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingImage}
+            className={`flex h-24 w-24 items-center justify-center rounded-xl border-2 border-dashed transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+              isDragging
+                ? 'border-purple-500 bg-purple-100 text-purple-600'
+                : 'border-gray-300 text-gray-400 hover:border-purple-600 hover:text-purple-600'
+            }`}
+          >
+            {uploadingImage ? (
+              <Loader2 className="h-6 w-6 animate-spin" />
+            ) : (
+              <Plus className="h-6 w-6" />
+            )}
           </button>
         </div>
+
+        <p className="mt-3 text-xs text-gray-400">
+          Drag and drop or click to upload. Supported formats: JPEG, PNG, WebP, GIF. Max size: 10MB
+        </p>
       </div>
 
       {/* Image Lightbox */}

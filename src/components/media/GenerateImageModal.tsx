@@ -222,8 +222,14 @@ export function GenerateImageModal({
       setReferenceImages(prev => [data.image, ...prev]);
       setUploadedReferenceImage(null); // Hide the "Save as reference" prompt
     } catch (err) {
-      console.error('Error saving reference image:', err);
-      alert(err instanceof Error ? err.message : 'Failed to save reference image');
+      // Improved error logging - handle various error formats
+      const errorMessage = err instanceof Error
+        ? err.message
+        : typeof err === 'object' && err !== null
+          ? JSON.stringify(err)
+          : 'Failed to save reference image';
+      console.error('Error saving reference image:', errorMessage);
+      alert(errorMessage);
     } finally {
       setSavingAsReference(false);
     }
