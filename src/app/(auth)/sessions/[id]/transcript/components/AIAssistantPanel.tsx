@@ -144,6 +144,10 @@ export function AIAssistantPanel({
   const headerRef = useRef<HTMLDivElement>(null);
   const moduleDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Automatic retry tracking for malformed JSON
+  const currentRetryCountRef = useRef<number>(0);
+  const MAX_AUTO_RETRY = 3;
+
   // Module selector callback
   const handleOpenModuleSelector = (options: { onModuleSelected: (moduleId: string) => void }) => {
     setModuleSelectionCallback(() => options.onModuleSelected);
@@ -515,7 +519,7 @@ export function AIAssistantPanel({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  const handleSendMessage = async (messageText?: string, systemPromptOverride?: string | null) => {
+  const handleSendMessage = async (messageText?: string, systemPromptOverride?: string | null, isAutoRetry: boolean = false) => {
     const userText = messageText || prompt;
 
     // Use override if provided (for Analyze mode), otherwise use state
@@ -523,6 +527,11 @@ export function AIAssistantPanel({
     const effectiveSystemPrompt = systemPromptOverride !== undefined
       ? systemPromptOverride
       : selectedSystemPrompt;
+
+    // Reset retry counter for new user messages (not auto-retries)
+    if (!isAutoRetry) {
+      currentRetryCountRef.current = 0;
+    }
 
     // CRITICAL FIX: Always include transcript context for free chat
     // Build transcript context based on participant filter
@@ -621,7 +630,44 @@ ${userText}`;
       }
 
       const data = await response.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.message, timestamp: new Date() }]);
+      const assistantMessage = { role: 'assistant' as const, content: data.message, timestamp: new Date() };
+      setMessages(prev => [...prev, assistantMessage]);
+
+      // Check for malformed JSON and auto-retry (2-3 times max)
+      if (shouldRetryForMalformedJSON(data.message)) {
+        if (currentRetryCountRef.current < MAX_AUTO_RETRY) {
+          console.log(`[AIAssistantPanel] Malformed JSON detected - auto-retrying (attempt ${currentRetryCountRef.current + 1}/${MAX_AUTO_RETRY})`);
+
+          // Increment retry count
+          currentRetryCountRef.current += 1;
+
+          // Add a system message to inform user about retry
+          setMessages(prev => [
+            ...prev,
+            {
+              role: 'assistant' as const,
+              content: `_Detected formatting issue. Automatically retrying (attempt ${currentRetryCountRef.current}/${MAX_AUTO_RETRY})..._`,
+              timestamp: new Date(),
+            },
+          ]);
+
+          // Wait a brief moment for UI update, then retry
+          setTimeout(() => {
+            // Remove both the failed message and the retry notification
+            setMessages(prev => prev.slice(0, -2));
+
+            // Re-send the user message (use fullPrompt from above)
+            handleSendMessage(userText, effectiveSystemPrompt, true);
+          }, 800);
+        } else {
+          console.warn(`[AIAssistantPanel] Max retry attempts (${MAX_AUTO_RETRY}) reached for malformed JSON`);
+          // Reset counter for next request
+          currentRetryCountRef.current = 0;
+        }
+      } else {
+        // Successful response - reset counter for next request
+        currentRetryCountRef.current = 0;
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       setMessages(prev => [
