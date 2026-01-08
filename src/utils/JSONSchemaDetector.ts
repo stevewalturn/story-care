@@ -10,22 +10,23 @@ import type { AnyJSONSchema, JSONSchemaType } from '@/types/JSONSchemas';
  */
 export function detectJSONSchema(content: string): (AnyJSONSchema & { schemaType: JSONSchemaType }) | null {
   try {
-    // Try to parse as JSON
     const parsed = JSON.parse(content);
+    console.log('[detectJSONSchema] Parsed JSON successfully, keys:', Object.keys(parsed));
 
-    // Detect schema type based on structure
     const schemaType = inferSchemaType(parsed);
+    console.log('[detectJSONSchema] Inferred schema type:', schemaType);
 
     if (schemaType) {
-      return {
-        ...parsed,
-        schemaType,
-      };
+      return { ...parsed, schemaType };
     }
 
+    console.warn('[detectJSONSchema] Could not infer schema type. Parsed data:', parsed);
     return null;
-  } catch {
-    // Not valid JSON or doesn't match any known schema
+  } catch (error) {
+    console.warn('[detectJSONSchema] JSON parse failed - MALFORMED JSON DETECTED');
+    console.warn('[detectJSONSchema] Error:', error);
+    console.warn('[detectJSONSchema] Content preview:', content.substring(0, 300));
+    // Return null to indicate malformed JSON - caller should retry the AI request
     return null;
   }
 }
@@ -310,11 +311,17 @@ export function extractJSONFromMarkdown(content: string): string {
       const extracted = match[1].trim();
       // Verify it looks like JSON (starts with { or [)
       if (extracted.startsWith('{') || extracted.startsWith('[')) {
+        console.log('[extractJSONFromMarkdown] Extracted JSON, length:', extracted.length);
+        console.log('[extractJSONFromMarkdown] First 200 chars:', extracted.substring(0, 200));
         return extracted;
+      } else {
+        console.warn('[extractJSONFromMarkdown] Matched but doesnt start with { or [. Starts with:', extracted.substring(0, 50));
       }
     }
   }
 
+  console.warn('[extractJSONFromMarkdown] No JSON code block found. Content has ``` =', content.includes('```'));
+  console.log('[extractJSONFromMarkdown] Content preview:', content.substring(0, 300));
   return content;
 }
 
@@ -440,6 +447,33 @@ export function validateJSONSchema(data: any, schemaType: JSONSchemaType): boole
     }
   } catch {
     return false;
+  }
+}
+
+/**
+ * Check if content appears to contain malformed JSON that should be retried
+ * @param content - Content to check
+ * @returns true if content has JSON structure but parsing failed (should retry)
+ */
+export function shouldRetryForMalformedJSON(content: string): boolean {
+  // Check if content has JSON code block markers
+  if (!content.includes('```json') && !content.includes('```\n{')) {
+    return false;
+  }
+
+  // Try to extract JSON
+  const extracted = extractJSONFromMarkdown(content);
+  if (extracted === content) {
+    return false; // No extraction happened
+  }
+
+  // Try to parse - if it fails, we should retry
+  try {
+    JSON.parse(extracted);
+    return false; // Parsing succeeded, no need to retry
+  } catch {
+    console.log('[shouldRetryForMalformedJSON] Malformed JSON detected - should retry');
+    return true; // Parsing failed - this should be retried
   }
 }
 

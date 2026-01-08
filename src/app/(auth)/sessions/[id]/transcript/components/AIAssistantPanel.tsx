@@ -26,7 +26,8 @@ import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 import { downloadAsTextFile, stripMarkdownForPlainText } from '@/utils/FileDownloadHelpers';
-import { detectAndExtractJSON } from '@/utils/JSONSchemaDetector';
+import { detectAndExtractJSON, shouldRetryForMalformedJSON } from '@/utils/JSONSchemaDetector';
+import { markdownToHTML } from '@/utils/MarkdownToHTML';
 import { formatTranscriptForAI, truncateTranscript } from '@/utils/TranscriptFormatter';
 
 // AI Models grouped by provider - matching Figma design
@@ -163,7 +164,9 @@ export function AIAssistantPanel({
 
   // Save Note Modal handlers
   const handleOpenSaveNoteModal = (content: string) => {
-    setSelectedTextForNote(content);
+    // Convert markdown to HTML before storing
+    const htmlContent = markdownToHTML(content);
+    setSelectedTextForNote(htmlContent);
     setNoteTitle('');
     setNoteTags([]);
     setShowSaveNoteModal(true);
@@ -171,7 +174,9 @@ export function AIAssistantPanel({
 
   // Save Note Modal handler for JSON output (with pre-filled data)
   const handleOpenSaveNoteModalFromJSON = (data: { title: string; content: string; tags?: string[] }) => {
-    setSelectedTextForNote(data.content);
+    // Convert markdown to HTML before storing
+    const htmlContent = markdownToHTML(data.content);
+    setSelectedTextForNote(htmlContent);
     setNoteTitle(data.title);
     setNoteTags(data.tags || []);
     setShowSaveNoteModal(true);
