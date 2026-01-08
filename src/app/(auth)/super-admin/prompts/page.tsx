@@ -7,8 +7,8 @@
 
 import type { PromptTemplate } from '@/models/Schema';
 import { AlertCircle, Edit, Eye, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { CreatePromptModal } from '@/components/prompts/CreatePromptModal';
 import { ViewEditPromptModal } from '@/components/prompts/ViewEditPromptModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
@@ -22,7 +22,6 @@ export default function SuperAdminPromptsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState<PromptTemplate | null>(null);
 
   // Fetch prompts
@@ -109,14 +108,13 @@ export default function SuperAdminPromptsPage() {
                 <p className="text-sm text-gray-600">Manage platform-wide AI prompt templates</p>
               </div>
             </div>
-            <button
-              onClick={() => setShowCreateModal(true)}
+            <Link
+              href="/super-admin/prompts/create"
               className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
-              type="button"
             >
               <Plus className="h-4 w-4" />
               Create System Prompt
-            </button>
+            </Link>
           </div>
         </div>
 
@@ -196,18 +194,6 @@ export default function SuperAdminPromptsPage() {
           </div>
         )}
       </div>
-
-      {/* Create Prompt Modal */}
-      {showCreateModal && (
-        <CreatePromptModal
-          scope="system"
-          onClose={() => setShowCreateModal(false)}
-          onCreated={() => {
-            setShowCreateModal(false);
-            fetchPrompts();
-          }}
-        />
-      )}
 
       {/* View/Edit Prompt Modal */}
       {selectedPrompt && (
@@ -332,14 +318,13 @@ function SystemPromptCard({ prompt, onView, onDelete }: SystemPromptCardProps) {
           <Eye className="h-3.5 w-3.5" />
           View
         </button>
-        <button
-          onClick={onView}
+        <Link
+          href={`/super-admin/prompts/${prompt.id}/edit`}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-          type="button"
         >
           <Edit className="h-3.5 w-3.5" />
           Edit
-        </button>
+        </Link>
         <button
           onClick={() => onDelete(prompt.id)}
           className="flex items-center justify-center gap-1.5 rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"

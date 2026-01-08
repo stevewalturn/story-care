@@ -14,12 +14,11 @@ import { getBlockDefinition } from '@/config/PromptBuilderBlocks';
 type BlockPropertyPanelProps = {
   block: BlockInstance | null;
   onUpdate: (blockId: string, values: Record<string, any>) => void;
-  onUpdateFieldPrompt: (blockId: string, fieldId: string, prompt: string) => void;
   onUpdateSystemPrompt: (blockId: string, systemPrompt: string) => void;
   onClose: () => void;
 };
 
-export function BlockPropertyPanel({ block, onUpdate, onUpdateFieldPrompt, onUpdateSystemPrompt, onClose }: BlockPropertyPanelProps) {
+export function BlockPropertyPanel({ block, onUpdate, onUpdateSystemPrompt, onClose }: BlockPropertyPanelProps) {
   const [isSystemPromptExpanded, setIsSystemPromptExpanded] = useState(false);
   const [isSchemaExpanded, setIsSchemaExpanded] = useState(false);
 
@@ -53,17 +52,8 @@ export function BlockPropertyPanel({ block, onUpdate, onUpdateFieldPrompt, onUpd
     });
   };
 
-  const handleFieldPromptChange = (fieldId: string, prompt: string) => {
-    onUpdateFieldPrompt(block.id, fieldId, prompt);
-  };
-
   const handleSystemPromptChange = (prompt: string) => {
     onUpdateSystemPrompt(block.id, prompt);
-  };
-
-  // Get the effective field prompt (custom if set, otherwise default)
-  const getFieldPrompt = (fieldId: string, defaultPrompt?: string): string => {
-    return block.customFieldPrompts?.[fieldId] ?? defaultPrompt ?? '';
   };
 
   return (
@@ -181,10 +171,7 @@ export function BlockPropertyPanel({ block, onUpdate, onUpdateFieldPrompt, onUpd
               key={field.id}
               field={field}
               value={block.values[field.id]}
-              fieldPrompt={getFieldPrompt(field.id, field.fieldPrompt)}
-              isAIBlock={isAIBlock}
               onChange={(value) => handleFieldChange(field.id, value)}
-              onFieldPromptChange={(prompt) => handleFieldPromptChange(field.id, prompt)}
             />
           ))}
         </div>
@@ -206,15 +193,10 @@ export function BlockPropertyPanel({ block, onUpdate, onUpdateFieldPrompt, onUpd
 type FieldEditorProps = {
   field: BlockField;
   value: any;
-  fieldPrompt: string;
-  isAIBlock: boolean;
   onChange: (value: any) => void;
-  onFieldPromptChange: (prompt: string) => void;
 };
 
-function FieldEditor({ field, value, fieldPrompt, isAIBlock, onChange, onFieldPromptChange }: FieldEditorProps) {
-  const [isPromptExpanded, setIsPromptExpanded] = useState(false);
-
+function FieldEditor({ field, value, onChange }: FieldEditorProps) {
   const renderInput = () => {
     switch (field.type) {
       case 'text':
@@ -332,40 +314,6 @@ function FieldEditor({ field, value, fieldPrompt, isAIBlock, onChange, onFieldPr
       {renderInput()}
       {field.helpText && (
         <p className="text-xs text-gray-500">{field.helpText}</p>
-      )}
-
-      {/* AI Instruction Editor - Only for AI blocks with field prompts */}
-      {isAIBlock && (field.fieldPrompt || fieldPrompt) && (
-        <div className="mt-2">
-          <button
-            type="button"
-            onClick={() => setIsPromptExpanded(!isPromptExpanded)}
-            className="flex w-full items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-left text-xs font-medium text-purple-700 hover:bg-purple-100"
-          >
-            {isPromptExpanded ? (
-              <ChevronDown className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5" />
-            )}
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>AI Instruction</span>
-          </button>
-
-          {isPromptExpanded && (
-            <div className="mt-2 rounded-lg border border-purple-200 bg-purple-50/50 p-3">
-              <p className="mb-2 text-xs text-purple-600">
-                This instruction tells the AI how to generate content for this field:
-              </p>
-              <textarea
-                value={fieldPrompt}
-                onChange={(e) => onFieldPromptChange(e.target.value)}
-                rows={3}
-                className="w-full rounded-lg border border-purple-300 bg-white px-3 py-2 text-xs focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
-                placeholder="Enter AI instruction for this field..."
-              />
-            </div>
-          )}
-        </div>
       )}
     </div>
   );

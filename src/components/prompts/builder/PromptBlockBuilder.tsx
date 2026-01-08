@@ -118,7 +118,6 @@ export function PromptBlockBuilder({
           blockType: block.blockType,
           values: block.values || {},
           order: block.order ?? index,
-          customFieldPrompts: block.customFieldPrompts || {},
           customSystemPrompt: block.customSystemPrompt || undefined,
         }));
         setBlocks(loadedBlocks);
@@ -193,20 +192,6 @@ export function PromptBlockBuilder({
   const handleUpdateBlock = (blockId: string, values: Record<string, any>) => {
     setBlocks(blocks.map(b =>
       b.id === blockId ? { ...b, values } : b,
-    ));
-  };
-
-  const handleUpdateFieldPrompt = (blockId: string, fieldId: string, prompt: string) => {
-    setBlocks(blocks.map(b =>
-      b.id === blockId
-        ? {
-            ...b,
-            customFieldPrompts: {
-              ...b.customFieldPrompts,
-              [fieldId]: prompt,
-            },
-          }
-        : b,
     ));
   };
 
@@ -358,7 +343,6 @@ export function PromptBlockBuilder({
           blockType: b.blockType,
           values: b.values,
           order: b.order,
-          customFieldPrompts: b.customFieldPrompts,
           customSystemPrompt: b.customSystemPrompt,
         })),
       };
@@ -744,7 +728,6 @@ Continue exploring the relationship between perfectionism and self-worth. Consid
                 <BlockPropertyPanel
                   block={selectedBlock}
                   onUpdate={handleUpdateBlock}
-                  onUpdateFieldPrompt={handleUpdateFieldPrompt}
                   onUpdateSystemPrompt={handleUpdateSystemPrompt}
                   onClose={() => setSelectedBlockId(null)}
                 />

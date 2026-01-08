@@ -84,8 +84,6 @@ export type BlockInstance = {
   blockType: string; // Block definition ID
   values: Record<string, any>;
   order: number;
-  // Custom field prompts (overrides default fieldPrompt from definition)
-  customFieldPrompts?: Record<string, string>;
   // Custom system prompt (overrides defaultSystemPrompt from definition)
   customSystemPrompt?: string;
 };
