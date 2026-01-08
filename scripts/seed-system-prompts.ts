@@ -23,7 +23,7 @@ const pool = new Pool({
 
 const db = drizzle(pool, { schema });
 
-// === ESSENTIAL SYSTEM PROMPTS (6 JSON PROMPTS) ===
+// === ESSENTIAL SYSTEM PROMPTS (7 JSON PROMPTS) ===
 // Only JSON-formatted prompts with implemented renderers
 const systemPrompts = [
   // === UTILITY PROMPTS (5) ===
@@ -441,6 +441,89 @@ Focus on moments of:
       required: ['schemaType', 'type', 'title', 'patient', 'scenes', 'status'],
     },
   },
+
+  // 7. VIDEO GENERATION (JSON) - Image-to-Video Workflow
+  {
+    name: 'Potential Videos',
+    promptText: '', // DEPRECATED: Use systemPrompt instead
+    systemPrompt: `Generate video suggestions using image-to-video workflow based on transcript themes.
+
+This uses a TWO-STEP process:
+1. First, generate a reference image (still frame)
+2. Then, animate that image into a short video
+
+Analyze the selected text for:
+1. Natural metaphors or visual imagery the patient uses
+2. Emotional states or transformations described
+3. Symbolic moments that could be visualized
+4. Settings or environments mentioned
+
+Suggest 3-5 video concepts (5-10 seconds each).
+
+**CRITICAL FIELDS:**
+
+1. **reference_image_prompt** (REQUIRED): A detailed DALL-E/image generation prompt for the STARTING frame. Include:
+   - Specific visual composition and framing
+   - Lighting, colors, and atmosphere
+   - Subject positioning and details
+   - Artistic style (photorealistic, artistic, dreamlike, etc.)
+   - 2-3 sentences, very detailed
+
+2. **prompt**: Animation/motion direction describing HOW to animate the image:
+   - Camera movement (slow pan, gentle zoom, static with particle effects)
+   - Subject motion (subtle breathing, turning, walking)
+   - Environmental animation (clouds moving, water flowing, leaves falling)
+   - Lighting changes (sunrise, shadows shifting)
+   - 1-2 sentences
+
+CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
+
+IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
+{
+  "schemaType": "video_references",
+  "videos": [
+    {
+      "title": "Video title",
+      "reference_image_prompt": "DETAILED image prompt: A serene forest clearing at golden hour, soft sunlight filtering through tall oak trees, creating dappled shadows on moss-covered ground. A single figure sits peacefully on a fallen log, their posture relaxed and contemplative. Photorealistic style with warm, dreamy lighting.",
+      "prompt": "Gentle camera push-in toward the figure, subtle movement of leaves in the breeze, light rays slowly shifting as clouds pass, figure takes a deep breath with shoulders rising slightly",
+      "duration": 5,
+      "style": "cinematic",
+      "therapeutic_purpose": "Why this video supports healing",
+      "source_quote": "Quote from transcript",
+      "motion_description": "Brief summary of the animation"
+    }
+  ]
+}`,
+    userPrompt: null,
+    description: 'Generate video suggestions using image-to-video workflow',
+    category: 'creative',
+    icon: 'video',
+    outputType: 'json',
+    jsonSchema: {
+      type: 'object',
+      properties: {
+        schemaType: { type: 'string', enum: ['video_references'] },
+        videos: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              title: { type: 'string' },
+              reference_image_prompt: { type: 'string' },
+              prompt: { type: 'string' },
+              duration: { type: 'number' },
+              style: { type: 'string' },
+              therapeutic_purpose: { type: 'string' },
+              source_quote: { type: 'string' },
+              motion_description: { type: 'string' },
+            },
+            required: ['title', 'reference_image_prompt', 'prompt', 'therapeutic_purpose'],
+          },
+        },
+      },
+      required: ['schemaType', 'videos'],
+    },
+  },
 ];
 
 async function seedSystemPrompts() {
@@ -524,7 +607,7 @@ async function seedSystemPrompts() {
 
     console.log('');
     console.log('✨ Seed complete!');
-    console.log(`Processed ${systemPrompts.length} system prompts (6 JSON prompts)`);
+    console.log(`Processed ${systemPrompts.length} system prompts (7 JSON prompts)`);
 
     await pool.end();
     process.exit(0);

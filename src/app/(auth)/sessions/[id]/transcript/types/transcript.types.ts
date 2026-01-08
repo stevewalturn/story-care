@@ -63,6 +63,8 @@ export type TranscriptPanelProps = {
   // Analyze mode toggle
   analyzeMode?: boolean;
   onAnalyzeModeChange?: (enabled: boolean) => void;
+  // Speaker labeling modal
+  onOpenSpeakerLabeling?: () => void;
 };
 
 // Props for AIAssistantPanel

@@ -5,9 +5,22 @@
  * Displays comprehensive metadata for images, videos, and audio in a side-by-side layout
  */
 
-import { Download, ExternalLink, Image, Music, Video, X } from 'lucide-react';
+import { Download, ExternalLink, Image, Music, Pencil, Video, X } from 'lucide-react';
 import { useEffect } from 'react';
 import { Button } from '../ui/Button';
+
+// Helper to check if a string is JSON (legacy metadata stored in notes)
+const isJsonString = (str: string): boolean => {
+  if (!str || typeof str !== 'string') return false;
+  const trimmed = str.trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return false;
+  try {
+    JSON.parse(str);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 export type MediaDetailsData = {
   id: string;
@@ -24,18 +37,21 @@ export type MediaDetailsData = {
   aiModel?: string;
   createdAt: string;
   durationSeconds?: number;
+  generationMetadata?: Record<string, unknown>; // AI generation parameters
 };
 
 type MediaDetailsModalProps = {
   isOpen: boolean;
   onClose: () => void;
   media: MediaDetailsData | null;
+  onEdit?: () => void; // Callback to open edit modal
 };
 
 export function MediaDetailsModal({
   isOpen,
   onClose,
   media,
+  onEdit,
 }: MediaDetailsModalProps) {
   // Close on Escape key
   useEffect(() => {
@@ -58,8 +74,8 @@ export function MediaDetailsModal({
 
   if (!isOpen || !media) return null;
 
-  // Parse notes JSON if available
-  let parsedNotes: {
+  // Parse generation metadata from dedicated field
+  const parsedMetadata = media.generationMetadata as {
     type?: 'instrumental' | 'lyrical';
     instrumental?: boolean;
     model?: string;
@@ -72,26 +88,22 @@ export function MediaDetailsModal({
     audioTrackCount?: number;
     extractedFrom?: string;
     sourceVideoTitle?: string;
-  } | null = null;
-
-  if (media.notes) {
-    try {
-      parsedNotes = JSON.parse(media.notes);
-    } catch {
-      // Notes is not JSON, will display as plain text
-    }
-  }
+    fps?: number;
+    duration?: number;
+    referenceImageUsed?: boolean;
+    generatedAt?: string;
+  } | null;
 
   // Determine audio type (lyrical/instrumental)
   const getAudioType = (): 'Lyrical' | 'Instrumental' | null => {
     if (media.mediaType !== 'audio') return null;
 
     // 1. Check notes JSON for explicit type
-    if (parsedNotes?.type) {
-      return parsedNotes.type === 'instrumental' ? 'Instrumental' : 'Lyrical';
+    if (parsedMetadata?.type) {
+      return parsedMetadata.type === 'instrumental' ? 'Instrumental' : 'Lyrical';
     }
-    if (parsedNotes?.instrumental !== undefined) {
-      return parsedNotes.instrumental ? 'Instrumental' : 'Lyrical';
+    if (parsedMetadata?.instrumental !== undefined) {
+      return parsedMetadata.instrumental ? 'Instrumental' : 'Lyrical';
     }
 
     // 2. Check tags for lyrical/instrumental
@@ -261,10 +273,10 @@ export function MediaDetailsModal({
               )}
 
               {/* Mood (for audio) */}
-              {parsedNotes?.mood && (
+              {parsedMetadata?.mood && (
                 <div>
                   <p className="text-sm font-medium text-gray-500">Mood</p>
-                  <p className="mt-1 text-sm text-gray-900">{parsedNotes.mood}</p>
+                  <p className="mt-1 text-sm text-gray-900">{parsedMetadata.mood}</p>
                 </div>
               )}
 
@@ -317,10 +329,10 @@ export function MediaDetailsModal({
                 </div>
               )}
 
-              {/* Notes */}
-              {media.notes && (
+              {/* Therapist Notes - only show if not JSON (hide legacy metadata) */}
+              {media.notes && !isJsonString(media.notes) && (
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Notes</p>
+                  <p className="text-sm font-medium text-gray-500">Therapist Notes</p>
                   <p className="mt-1 text-sm text-gray-900">{media.notes}</p>
                 </div>
               )}
@@ -362,14 +374,26 @@ export function MediaDetailsModal({
 
         {/* Footer */}
         <div className="flex items-center justify-between border-t border-gray-200 px-6 py-4">
-          <Button
-            variant="secondary"
-            onClick={handleOpen}
-            className="flex items-center gap-2"
-          >
-            <ExternalLink className="h-4 w-4" />
-            Open
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={handleOpen}
+              className="flex items-center gap-2"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Open
+            </Button>
+            {onEdit && (
+              <Button
+                variant="secondary"
+                onClick={onEdit}
+                className="flex items-center gap-2"
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Button>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <Button variant="ghost" onClick={onClose}>
               Close

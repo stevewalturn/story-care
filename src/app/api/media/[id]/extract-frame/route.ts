@@ -55,13 +55,13 @@ export async function POST(
       id,
     );
 
-    // Build notes with extraction metadata
-    const extractionNotes = JSON.stringify({
+    // Build extraction metadata (separate from therapist notes)
+    const generationMetadata = {
       extractedFrom: id,
       sourceVideoTitle: media.title,
       extractedAt: new Date().toISOString(),
       frameType: 'last',
-    });
+    };
 
     // Create new media library entry for the extracted frame
     const newImages = await db.insert(mediaLibrary).values({
@@ -76,7 +76,8 @@ export async function POST(
       createdByTherapistId: user.dbUserId,
       tags: media.tags ? [...media.tags, 'extracted-frame'] : ['extracted-frame'],
       status: 'completed',
-      notes: extractionNotes,
+      notes: null, // Keep clean for therapist use
+      generationMetadata, // Extraction metadata
     }).returning();
 
     const newImage = (newImages as any[])[0];

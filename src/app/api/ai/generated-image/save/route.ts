@@ -108,12 +108,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Build notes with generation parameters for enhanced metadata
-    const generationNotes = JSON.stringify({
+    // 3. Build generation metadata (separate from therapist notes)
+    const generationMetadata = {
       sourceQuote: sourceQuote || null,
       style: style || null,
       savedAt: new Date().toISOString(),
-    });
+    };
 
     // 4. Save to database (save GCS path, not presigned URL)
     const result = await db
@@ -130,7 +130,8 @@ export async function POST(request: NextRequest) {
         generationPrompt: prompt,
         aiModel: model,
         status: 'completed',
-        notes: generationNotes,
+        notes: null, // Keep clean for therapist use
+        generationMetadata, // AI generation parameters
         tags: ['ai-generated', model ? model.split('-')[0] : 'saved'],
       })
       .returning();

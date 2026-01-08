@@ -7,8 +7,8 @@
 
 import type { PromptTemplate } from '@/models/Schema';
 import { Eye, FileText, MessageCircle, Plus, Search, Sparkles, Target, Trash2 } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { CreatePromptModal } from '@/components/prompts/CreatePromptModal';
 import { ViewEditPromptModal } from '@/components/prompts/ViewEditPromptModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
@@ -34,7 +34,6 @@ export default function PromptLibraryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [scopeFilter, setScopeFilter] = useState<string>('all');
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState<PromptTemplate | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
@@ -58,11 +57,6 @@ export default function PromptLibraryPage() {
   };
 
   const handleViewDetails = (prompt: PromptTemplate) => {
-    setSelectedPrompt(prompt);
-    setIsViewModalOpen(true);
-  };
-
-  const handleEdit = (prompt: PromptTemplate) => {
     setSelectedPrompt(prompt);
     setIsViewModalOpen(true);
   };
@@ -130,14 +124,13 @@ export default function PromptLibraryPage() {
             <h1 className="text-2xl font-bold text-gray-900">Prompt Library</h1>
             <p className="text-sm text-gray-600">Browse and manage AI analysis prompts</p>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            type="button"
+          <Link
+            href="/therapist/prompt-library/create"
             className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-purple-700"
           >
             <Plus className="h-4 w-4" />
             Create Prompt
-          </button>
+          </Link>
         </div>
 
         {/* Filters */}
@@ -237,7 +230,6 @@ export default function PromptLibraryPage() {
                   prompt={prompt}
                   onUpdate={fetchPrompts}
                   onView={handleViewDetails}
-                  onEdit={handleEdit}
                   onDelete={handleDelete}
                   editable
                 />
@@ -253,18 +245,6 @@ export default function PromptLibraryPage() {
           </div>
         )}
       </div>
-
-      {/* Create Prompt Modal */}
-      {showCreateModal && (
-        <CreatePromptModal
-          scope="private"
-          onClose={() => setShowCreateModal(false)}
-          onCreated={() => {
-            setShowCreateModal(false);
-            fetchPrompts();
-          }}
-        />
-      )}
 
       {/* View/Edit Prompt Modal */}
       {isViewModalOpen && selectedPrompt && (
@@ -289,14 +269,12 @@ function PromptCard({
   prompt,
   onUpdate: _onUpdate,
   onView,
-  onEdit,
   onDelete,
   editable = false,
 }: {
   prompt: PromptTemplate;
   onUpdate: () => void;
   onView: (prompt: PromptTemplate) => void;
-  onEdit?: (prompt: PromptTemplate) => void;
   onDelete?: (prompt: PromptTemplate) => void;
   editable?: boolean;
 }) {
@@ -341,15 +319,14 @@ function PromptCard({
       </div>
 
       {/* Edit/Delete Buttons - Only for editable prompts */}
-      {editable && onEdit && onDelete && (
+      {editable && onDelete && (
         <div className="mt-2 flex gap-2">
-          <button
-            type="button"
-            onClick={() => onEdit(prompt)}
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          <Link
+            href={`/therapist/prompt-library/${prompt.id}/edit`}
+            className="flex flex-1 items-center justify-center rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
           >
             Edit
-          </button>
+          </Link>
           <button
             type="button"
             onClick={() => onDelete(prompt)}

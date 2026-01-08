@@ -104,6 +104,63 @@ export async function PUT(
   }
 }
 
+// PATCH /api/media/[id] - Partial update
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await params;
+
+    // Verify user has access to this media
+    const user = await requireMediaAccess(request, id);
+
+    const body = await request.json();
+    const { title, tags, thumbnailUrl, description, notes } = body;
+
+    // Build update object with only provided fields
+    const updateData: Record<string, any> = { updatedAt: new Date() };
+    if (title !== undefined) updateData.title = title;
+    if (tags !== undefined) updateData.tags = tags;
+    if (thumbnailUrl !== undefined) updateData.thumbnailUrl = thumbnailUrl;
+    if (description !== undefined) updateData.description = description;
+    if (notes !== undefined) updateData.notes = notes;
+
+    const [updatedMedia] = await db
+      .update(mediaLibrary)
+      .set(updateData)
+      .where(eq(mediaLibrary.id, id))
+      .returning();
+
+    if (!updatedMedia) {
+      return NextResponse.json(
+        { error: 'Media not found' },
+        { status: 404 },
+      );
+    }
+
+    // Log PHI modification
+    const { logPHIUpdate } = await import('@/libs/AuditLogger');
+    await logPHIUpdate(user.dbUserId, 'media', id, request, {
+      changedFields: Object.keys(updateData).filter(k => k !== 'updatedAt'),
+    });
+
+    // Generate presigned URLs for response
+    const [mediaWithSignedUrl] = await generatePresignedUrlsForMedia([updatedMedia], 1);
+
+    return NextResponse.json({ media: mediaWithSignedUrl });
+  } catch (error) {
+    if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('Forbidden'))) {
+      return handleAuthError(error);
+    }
+    console.error('Error updating media:', error);
+    return NextResponse.json(
+      { error: 'Failed to update media' },
+      { status: 500 },
+    );
+  }
+}
+
 // DELETE /api/media/[id]
 export async function DELETE(
   request: NextRequest,

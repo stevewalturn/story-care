@@ -7,7 +7,7 @@
  */
 
 import type { SpeakerInfo, TranscriptPanelProps, Utterance } from '../types/transcript.types';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, Pause, Play } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, Pause, Play, Users } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -51,6 +51,7 @@ export function TranscriptPanel({
   onSeekComplete,
   analyzeMode = false,
   onAnalyzeModeChange,
+  onOpenSpeakerLabeling,
 }: TranscriptPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
@@ -393,6 +394,20 @@ export function TranscriptPanel({
           )}
           {formattedDate && (
             <span className="text-xs text-gray-500">{formattedDate}</span>
+          )}
+          {/* Edit Speakers Button */}
+          {onOpenSpeakerLabeling && (
+            <>
+              <span className="text-gray-300">•</span>
+              <button
+                onClick={onOpenSpeakerLabeling}
+                className="flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-xs font-medium text-gray-600 transition-colors hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700"
+                title="Edit speaker assignments"
+              >
+                <Users className="h-3 w-3" />
+                <span>Edit Speakers</span>
+              </button>
+            </>
           )}
         </div>
 

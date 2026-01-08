@@ -10,8 +10,8 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { GenerateJSONWithAI } from './GenerateJSONWithAI';
-import { PromptJSONEditor } from './PromptJSONEditor';
 import { PromptPreviewPanel } from './PromptPreviewPanel';
+import { VisualSchemaBuilder } from './VisualSchemaBuilder';
 
 type PromptScope = 'system' | 'organization' | 'private';
 type PromptCategory = 'analysis' | 'creative' | 'extraction' | 'reflection';
@@ -58,30 +58,40 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
     }
   };
 
+  // Map API error field names to UI field names
+  const mapErrorFieldToLabel = (error: string): string => {
+    return error
+      .replace(/\bname\b/gi, 'Prompt Name')
+      .replace(/\bsystemPrompt\b/gi, 'Prompt Instructions')
+      .replace(/\bpromptText\b/gi, 'Prompt Instructions')
+      .replace(/\bcategory\b/gi, 'Category')
+      .replace(/\bjsonSchema\b/gi, 'Output Schema');
+  };
+
   const handleCreate = async () => {
-    // Validation
+    // Validation with clear field names
     if (!name.trim()) {
-      setError('Please enter a prompt name');
+      setError('Please enter a Prompt Name');
       return;
     }
 
     if (!promptText.trim()) {
-      setError('Please enter prompt instructions');
+      setError('Please enter Prompt Instructions');
       return;
     }
 
     if (promptText.trim().length < 50) {
-      setError('Prompt instructions must be at least 50 characters');
+      setError('Prompt Instructions must be at least 50 characters');
       return;
     }
 
     if (!jsonOutputString.trim()) {
-      setError('Please define the JSON output structure');
+      setError('Please define the Output Schema by selecting an output type');
       return;
     }
 
     if (!isJsonValid) {
-      setError('JSON output structure has validation errors. Please fix them before creating.');
+      setError('Output Schema has validation errors. Please fix them before creating.');
       return;
     }
 
@@ -116,7 +126,8 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
       onCreated();
     }
     catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      setError(mapErrorFieldToLabel(errorMessage));
       setIsCreating(false);
     }
   };
@@ -246,10 +257,10 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
                   </p>
                 </div>
 
-                {/* JSON Output Structure with Tabs */}
+                {/* Output Schema with Tabs */}
                 <div>
                   <label className="mb-2 block text-sm font-medium text-gray-700">
-                    JSON Output Structure
+                    Output Schema
                     {' '}
                     <span className="text-red-500">*</span>
                   </label>
@@ -265,7 +276,7 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
                           : 'text-gray-500 hover:text-gray-700'
                       }`}
                     >
-                      Edit JSON
+                      Configure Schema
                     </button>
                     <button
                       type="button"
@@ -276,7 +287,7 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
                           : 'text-gray-500 hover:text-gray-700'
                       }`}
                     >
-                      Preview
+                      Preview Output
                     </button>
                   </div>
 
@@ -284,11 +295,12 @@ export function CreatePromptModal({ scope, onClose, onCreated }: CreatePromptMod
                   <div className="mt-4">
                     {activeTab === 'edit'
                       ? (
-                          <PromptJSONEditor
+                          <VisualSchemaBuilder
                             value={jsonOutputString}
                             onChange={setJsonOutputString}
                             onValidationChange={setIsJsonValid}
                             onGenerateWithAI={() => setShowAIModal(true)}
+                            disabled={isCreating}
                           />
                         )
                       : (

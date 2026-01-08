@@ -9,12 +9,12 @@ import type { PromptTemplate } from '@/models/Schema';
 import { Save, Sparkles, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { JSONSchemaEditor } from '@/components/prompts/JSONSchemaEditor';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedDelete, authenticatedPatch } from '@/utils/AuthenticatedFetch';
 import { JSONSchemaTreeView } from './JSONSchemaTreeView';
 import { PromptPreviewPanel } from './PromptPreviewPanel';
+import { VisualSchemaBuilder } from './VisualSchemaBuilder';
 
 type ViewEditPromptModalProps = {
   prompt: PromptTemplate;
@@ -64,13 +64,38 @@ export function ViewEditPromptModal({
   const [icon, setIcon] = useState(prompt.icon || 'sparkles');
   const [outputType, setOutputType] = useState<'text' | 'json'>((prompt.outputType as 'text' | 'json') || 'text');
   const [jsonSchema, setJsonSchema] = useState(prompt.jsonSchema || null);
+  const [jsonSchemaString, setJsonSchemaString] = useState(prompt.jsonSchema ? JSON.stringify(prompt.jsonSchema, null, 2) : '');
+  const [isJsonValid, setIsJsonValid] = useState(true);
   const [showJsonEditor, setShowJsonEditor] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'preview'>('details');
 
   const handleSave = async () => {
-    if (!name.trim() || !promptText.trim() || !category) {
-      toast.error('Please fill in all required fields');
+    if (!name.trim()) {
+      toast.error('Please enter a Prompt Name');
       return;
+    }
+    if (!promptText.trim()) {
+      toast.error('Please enter Prompt Instructions');
+      return;
+    }
+    if (!category) {
+      toast.error('Please select a Category');
+      return;
+    }
+    if (outputType === 'json' && !isJsonValid) {
+      toast.error('Output Schema has validation errors');
+      return;
+    }
+
+    // Parse JSON schema string if needed
+    let parsedJsonSchema = null;
+    if (outputType === 'json' && jsonSchemaString.trim()) {
+      try {
+        parsedJsonSchema = JSON.parse(jsonSchemaString);
+      } catch {
+        toast.error('Invalid JSON in Output Schema');
+        return;
+      }
     }
 
     setSaving(true);
@@ -87,7 +112,7 @@ export function ViewEditPromptModal({
           category,
           icon,
           outputType,
-          jsonSchema: jsonSchema || null,
+          jsonSchema: parsedJsonSchema,
         },
       );
 
@@ -302,24 +327,26 @@ export function ViewEditPromptModal({
                       className="mt-2 text-sm text-purple-600 hover:text-purple-700 hover:underline"
                       type="button"
                     >
-                      Configure JSON Schema →
+                      Configure Output Schema →
                     </button>
                   )}
                 </div>
 
-                {/* JSON Schema Editor (Conditional) */}
+                {/* Output Schema Editor (Conditional) */}
                 {showJsonEditor && isEditing && outputType === 'json' && (
-                  <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
-                    <JSONSchemaEditor
-                      promptId={prompt.id}
-                      promptName={name}
-                      currentJsonSchema={jsonSchema}
-                      onSave={async (data) => {
-                        setJsonSchema(data.jsonSchema || null);
-                        setShowJsonEditor(false);
-                        toast.success('JSON schema configuration saved');
+                  <div className="rounded-lg border border-gray-200">
+                    <VisualSchemaBuilder
+                      value={jsonSchemaString}
+                      onChange={(value) => {
+                        setJsonSchemaString(value);
+                        try {
+                          setJsonSchema(JSON.parse(value));
+                        } catch {
+                          setJsonSchema(null);
+                        }
                       }}
-                      onCancel={() => setShowJsonEditor(false)}
+                      onValidationChange={setIsJsonValid}
+                      disabled={saving}
                     />
                   </div>
                 )}
@@ -350,10 +377,10 @@ export function ViewEditPromptModal({
                   )}
                 </div>
 
-                {/* Prompt Text */}
+                {/* Prompt Instructions */}
                 <div>
                   <label className="mb-2 block text-sm font-medium text-gray-900">
-                    Prompt Text
+                    Prompt Instructions
                     {' '}
                     <span className="text-red-500">*</span>
                   </label>
@@ -461,12 +488,14 @@ export function ViewEditPromptModal({
                       setShowJsonEditor(false);
                       // Reset form
                       setName(prompt.name);
-                      setPromptText(prompt.promptText);
+                      setPromptText(prompt.systemPrompt || '');
                       setDescription(prompt.description || '');
                       setCategory(prompt.category);
                       setIcon(prompt.icon || 'sparkles');
                       setOutputType((prompt.outputType as 'text' | 'json') || 'text');
                       setJsonSchema(prompt.jsonSchema || null);
+                      setJsonSchemaString(prompt.jsonSchema ? JSON.stringify(prompt.jsonSchema, null, 2) : '');
+                      setIsJsonValid(true);
                     }}
                   >
                     Cancel

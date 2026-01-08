@@ -76,6 +76,7 @@ export const sourceTypeEnum = pgEnum('source_type', [
   'scene',
   'animated_from_image',
   'therapist_created',
+  'extracted',
 ]);
 export const mediaStatusEnum = pgEnum('media_status', [
   'processing',
@@ -557,6 +558,7 @@ export const mediaLibrarySchema: any = pgTable('media_library', {
   generationPrompt: text('generation_prompt'),
   aiModel: varchar('ai_model', { length: 100 }),
   referenceImageUrl: text('reference_image_url'),
+  generationMetadata: jsonb('generation_metadata'), // Structured AI generation parameters (fps, model, dimensions, etc.)
 
   // Chat context (if generated from AI chat)
   chatMessageId: uuid('chat_message_id'), // References ai_chat_messages

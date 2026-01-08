@@ -12,8 +12,9 @@ import { SceneGenerationLayout } from '@/components/scenes-generation/SceneGener
 import { AnalyzeSelectionModal } from '@/components/sessions/AnalyzeSelectionModal';
 import { AssignModuleModal } from '@/components/sessions/AssignModuleModal';
 import { EditQuoteModal } from '@/components/sessions/EditQuoteModal';
-import { GenerateVideoModal } from '@/components/sessions/GenerateVideoModal';
+import { GenerateVideoModal } from '@/components/media/GenerateVideoModal';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
+import { SpeakerLabelingModal } from '@/components/sessions/SpeakerLabelingModal';
 import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
@@ -59,6 +60,7 @@ export function TranscriptViewerClient({
   const [isAssignModuleModalOpen, setIsAssignModuleModalOpen] = useState(false);
   const [showSceneGenerationModal, setShowSceneGenerationModal] = useState(false);
   const [sceneCardData, setSceneCardData] = useState<any>(null);
+  const [showSpeakerLabelingModal, setShowSpeakerLabelingModal] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [selectedTextSource, setSelectedTextSource] = useState<'transcript' | 'ai'>('transcript');
   const [aiPrompt, setAiPrompt] = useState<string | null>(null); // DEPRECATED
@@ -79,6 +81,13 @@ export function TranscriptViewerClient({
   const [musicModalInitialData, setMusicModalInitialData] = useState<{
     instrumentalOption?: any;
     lyricalOption?: any;
+  }>({});
+
+  // Video modal initial data (for pre-filling from JSON actions)
+  const [videoModalInitialData, setVideoModalInitialData] = useState<{
+    prompt?: string;
+    title?: string;
+    sourceQuote?: string;
   }>({});
 
   // Quote edit/delete state
@@ -133,6 +142,44 @@ export function TranscriptViewerClient({
       return u;
     }));
   }, [user, sessionId, utterances]);
+
+  // Handler for speaker labeling modal save - refresh speakers and utterances
+  const handleSpeakerLabelingSave = useCallback(async () => {
+    try {
+      // Re-fetch speakers
+      const speakersResponse = await authenticatedFetch(`/api/sessions/${sessionId}/speakers`, user);
+      if (speakersResponse.ok) {
+        const speakersData = await speakersResponse.json();
+        setFetchedSpeakers(speakersData.speakers.map((s: any) => ({
+          id: s.id,
+          name: s.speakerName || s.speakerLabel || 'Unknown',
+          type: s.speakerType || 'patient',
+          initial: (s.speakerName || s.speakerLabel || 'U').charAt(0).toUpperCase(),
+        })));
+      }
+
+      // Re-fetch utterances to get updated speaker names
+      const transcriptResponse = await authenticatedFetch(`/api/sessions/${sessionId}/transcript`, user);
+      if (transcriptResponse.ok) {
+        const transcriptData = await transcriptResponse.json();
+        const transformedUtterances: Utterance[] = transcriptData.utterances.map((u: any) => ({
+          id: u.id,
+          speakerId: u.speakerId,
+          speakerName: u.speaker?.speakerName || u.speaker?.speakerLabel || 'Unknown',
+          speakerType: u.speaker?.speakerType || 'patient',
+          text: u.text,
+          startTime: Number.parseFloat(u.startTimeSeconds || '0'),
+          endTime: Number.parseFloat(u.endTimeSeconds || '0'),
+          confidence: Number.parseFloat(u.confidenceScore || '1'),
+          avatarUrl: u.avatarUrl,
+          referenceImageUrl: u.referenceImageUrl,
+        }));
+        setUtterances(transformedUtterances);
+      }
+    } catch (error) {
+      console.error('Error refreshing speaker data:', error);
+    }
+  }, [sessionId, user]);
 
   // Analyze Mode state (for controlling automatic text selection analysis)
   const [analyzeMode, setAnalyzeMode] = useState(false);
@@ -410,24 +457,11 @@ export function TranscriptViewerClient({
     }
   };
 
-  // Handler for video generation
-  const handleGenerateVideo = async (imageId: string, duration: number) => {
-    try {
-      const response = await authenticatedPost('/api/ai/generate-video', user, {
-        imageId,
-        duration,
-        sessionId,
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate video');
-      }
-
-      await response.json();
-      // Trigger library refresh
-    } catch (error) {
-      console.error('Error generating video:', error);
-    }
+  // Handler for video generation (called by GenerateVideoModal after completion)
+  const handleGenerateVideo = (_videoUrl: string, _prompt: string) => {
+    // Video was already generated and saved by the modal
+    // Just refresh the media library
+    setMediaRefreshKey((prev: number) => prev + 1);
   };
 
   // Callback to open image modal with pre-filled data (from JSON actions)
@@ -453,12 +487,13 @@ export function TranscriptViewerClient({
     prompt: string;
     title?: string;
     duration?: number;
-    referenceImagePrompt?: string;
     sourceQuote?: string;
   }) => {
-    // For now, just open the video modal with the prompt
-    // TODO: Add state for initial video data if needed
-    setSelectedText(data.prompt);
+    setVideoModalInitialData({
+      prompt: data.prompt,
+      title: data.title,
+      sourceQuote: data.sourceQuote,
+    });
     setShowVideoModal(true);
   };
 
@@ -644,6 +679,7 @@ export function TranscriptViewerClient({
             onSeekComplete={() => setSeekToTimestamp(null)}
             analyzeMode={analyzeMode}
             onAnalyzeModeChange={setAnalyzeMode}
+            onOpenSpeakerLabeling={() => setShowSpeakerLabelingModal(true)}
           />
         </div>
 
@@ -746,8 +782,16 @@ export function TranscriptViewerClient({
 
       <GenerateVideoModal
         isOpen={showVideoModal}
-        onClose={() => setShowVideoModal(false)}
+        onClose={() => {
+          setShowVideoModal(false);
+          setVideoModalInitialData({});
+          setMediaRefreshKey(prev => prev + 1);
+        }}
         onGenerate={handleGenerateVideo}
+        initialPrompt={videoModalInitialData.prompt}
+        sessionId={sessionId}
+        patientId={selectedPatientFromLibrary?.id || patientId}
+        patientName={selectedPatientFromLibrary?.name || patientName}
       />
 
       <GenerateMusicModal
@@ -841,6 +885,14 @@ export function TranscriptViewerClient({
           } : undefined}
         />
       )}
+
+      {/* Speaker Labeling Modal */}
+      <SpeakerLabelingModal
+        isOpen={showSpeakerLabelingModal}
+        onClose={() => setShowSpeakerLabelingModal(false)}
+        sessionId={sessionId}
+        onSave={handleSpeakerLabelingSave}
+      />
     </>
   );
 }

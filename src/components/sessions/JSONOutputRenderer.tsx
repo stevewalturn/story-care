@@ -30,11 +30,12 @@ import { getActionsForSchema, getSchemaDescription, getSchemaDisplayName } from 
 
 type JSONOutputRendererProps = {
   jsonData: AnyJSONSchema & { schemaType: JSONSchemaType };
-  sessionId: string;
-  user: any;
+  sessionId?: string; // Optional in preview mode
+  user?: any; // Optional in preview mode
   patientId?: string; // Optional patient ID for saving quotes/notes
-  onActionComplete: (result: { message: string; data?: any }) => void;
-  onProgress: (update: string) => void;
+  previewMode?: boolean; // When true, hide action buttons and disable interactions
+  onActionComplete?: (result: { message: string; data?: any }) => void;
+  onProgress?: (update: string) => void;
   onOpenImageModal?: (data: {
     prompt: string;
     style?: string;
@@ -73,6 +74,7 @@ export function JSONOutputRenderer({
   sessionId,
   user,
   patientId,
+  previewMode = false,
   onActionComplete,
   onProgress,
   onOpenImageModal,
@@ -121,6 +123,9 @@ export function JSONOutputRenderer({
   const actions = schemaType === 'music_generation' ? [] : getActionsForSchema(schemaType);
 
   const handleAction = async (action: SchemaAction, imageIndex?: number) => {
+    // Disable actions in preview mode
+    if (previewMode) return;
+
     // Show confirmation if needed
     if (action.confirmation && !window.confirm(action.confirmation)) {
       return;
@@ -162,15 +167,17 @@ export function JSONOutputRenderer({
           });
         }
         // Always call the original onActionComplete
-        onActionComplete(result);
+        if (onActionComplete) {
+          onActionComplete(result);
+        }
       };
 
       await handler({
         jsonData,
-        sessionId,
+        sessionId: sessionId || '',
         user,
         patientId,
-        onProgress,
+        onProgress: onProgress || (() => {}),
         onComplete: wrappedOnComplete,
         onOpenImageModal,
         onOpenVideoModal,
@@ -181,9 +188,11 @@ export function JSONOutputRenderer({
       });
     } catch (error) {
       console.error('Action error:', error);
-      onActionComplete({
-        message: `❌ Failed to ${action.label.toLowerCase()}. Please try again.`,
-      });
+      if (onActionComplete) {
+        onActionComplete({
+          message: `❌ Failed to ${action.label.toLowerCase()}. Please try again.`,
+        });
+      }
     } finally {
       setProcessingAction(null);
     }
@@ -302,10 +311,10 @@ export function JSONOutputRenderer({
       </div>
 
       {/* Preview / Summary */}
-      <div className="mb-3 rounded-lg bg-white/80 p-3">{renderPreview(schemaType, jsonData, onOpenSceneGeneration, onOpenImageModal, onOpenMusicModal, onRetry, expandedNotes, setExpandedNotes, renderMarkdownContent)}</div>
+      <div className="mb-3 rounded-lg bg-white/80 p-3">{renderPreview(schemaType, jsonData, onOpenSceneGeneration, onOpenImageModal, onOpenMusicModal, onRetry, expandedNotes, setExpandedNotes, renderMarkdownContent, previewMode)}</div>
 
-      {/* Action Buttons - skip for image_references since each card has its own button */}
-      {schemaType !== 'image_references' && (
+      {/* Action Buttons - skip for image_references since each card has its own button, and hide in preview mode */}
+      {!previewMode && schemaType !== 'image_references' && (
         <div className="flex flex-wrap gap-2">
           {/* Copy Content button for therapeutic_note */}
           {schemaType === 'therapeutic_note' && (
@@ -471,6 +480,7 @@ function renderPreview(
   expandedNotes?: Set<number>,
   _setExpandedNotes?: (notes: Set<number>) => void,
   renderMarkdownContent?: (content: string, isExpanded: boolean, noteIndex: number) => JSX.Element,
+  previewMode?: boolean,
 ) {
   switch (schemaType) {
     case 'therapeutic_scene_card':
@@ -532,17 +542,18 @@ function renderPreview(
           <p className="text-sm font-semibold text-gray-900">Choose Music Style</p>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {/* Instrumental Option - NOW CLICKABLE */}
+            {/* Instrumental Option - NOW CLICKABLE (unless in preview mode) */}
             <button
               onClick={() => {
-                if (onOpenMusicModal && data.instrumental_option) {
+                if (!previewMode && onOpenMusicModal && data.instrumental_option) {
                   onOpenMusicModal({
                     instrumentalOption: data.instrumental_option,
                     lyricalOption: undefined,
                   });
                 }
               }}
-              className="group relative overflow-hidden rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 p-5 text-left transition-all hover:border-purple-400 hover:shadow-xl focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:outline-none"
+              disabled={previewMode}
+              className={`group relative overflow-hidden rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 p-5 text-left transition-all ${previewMode ? 'cursor-default' : 'hover:border-purple-400 hover:shadow-xl focus:ring-2 focus:ring-purple-500 focus:ring-offset-2'} focus:outline-none`}
             >
               {/* Icon Badge */}
               <div className="mb-4 inline-flex items-center justify-center rounded-full bg-purple-500 p-3 shadow-lg">
@@ -593,17 +604,18 @@ function renderPreview(
               <div className="absolute -right-8 -bottom-8 h-24 w-24 rounded-full bg-purple-400/20 transition-transform group-hover:scale-150" />
             </button>
 
-            {/* Lyrical Option - NOW CLICKABLE */}
+            {/* Lyrical Option - NOW CLICKABLE (unless in preview mode) */}
             <button
               onClick={() => {
-                if (onOpenMusicModal && data.lyrical_option) {
+                if (!previewMode && onOpenMusicModal && data.lyrical_option) {
                   onOpenMusicModal({
                     instrumentalOption: undefined,
                     lyricalOption: data.lyrical_option,
                   });
                 }
               }}
-              className="group relative overflow-hidden rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 p-5 text-left transition-all hover:border-purple-400 hover:shadow-xl focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:outline-none"
+              disabled={previewMode}
+              className={`group relative overflow-hidden rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 p-5 text-left transition-all ${previewMode ? 'cursor-default' : 'hover:border-purple-400 hover:shadow-xl focus:ring-2 focus:ring-purple-500 focus:ring-offset-2'} focus:outline-none`}
             >
               {/* Icon Badge */}
               <div className="mb-4 inline-flex items-center justify-center rounded-full bg-purple-500 p-3 shadow-lg">
@@ -868,26 +880,28 @@ function renderPreview(
                 </div>
               )}
 
-              {/* Generate Image Button */}
-              <button
-                onClick={() => {
-                  if (onOpenImageModal) {
-                    onOpenImageModal({
-                      prompt: img.prompt,
-                      style: img.style,
-                      title: img.title,
-                      description: img.description || img.conceptDescription || img.therapeutic_purpose,
-                      sourceQuote: img.source_quote,
-                    });
-                  }
-                }}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-purple-700"
-              >
-                <Image className="h-4 w-4" />
-                Generate Image: "
-                {img.title}
-                "
-              </button>
+              {/* Generate Image Button - hidden in preview mode */}
+              {!previewMode && (
+                <button
+                  onClick={() => {
+                    if (onOpenImageModal) {
+                      onOpenImageModal({
+                        prompt: img.prompt,
+                        style: img.style,
+                        title: img.title,
+                        description: img.description || img.conceptDescription || img.therapeutic_purpose,
+                        sourceQuote: img.source_quote,
+                      });
+                    }
+                  }}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-purple-700"
+                >
+                  <Image className="h-4 w-4" />
+                  Generate Image: "
+                  {img.title}
+                  "
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -1052,7 +1066,9 @@ function renderPreview(
 
     case 'therapeutic_note': {
       // Generate a unique index for this note based on content hash
-      const noteIndex = (data.note_title + data.note_content).split('').reduce((acc: number, char: string) => {
+      const titleStr = String(data.note_title || '');
+      const contentStr = String(data.note_content || '');
+      const noteIndex = (titleStr + contentStr).split('').reduce((acc: number, char: string) => {
         return ((acc << 5) - acc) + char.charCodeAt(0);
       }, 0);
       const isExpanded = expandedNotes?.has(noteIndex) ?? false;

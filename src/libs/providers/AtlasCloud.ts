@@ -1533,7 +1533,7 @@ export async function generateImageWithAtlas(
     seed: options.seed ?? 0,
     size,
     num_images: options.numImages || 1,
-    output_format: 'jpg',
+    output_format: 'jpeg',
     guidance_scale: options.guidanceScale ?? modelConfig.defaultGuidanceScale,
     num_inference_steps: options.numInferenceSteps ?? modelConfig.defaultSteps,
     enable_sync_mode: false,
@@ -1648,13 +1648,19 @@ export async function generateVideoWithAtlas(
   console.log('[AtlasCloud Video] Image (reference):', options.referenceImage ? 'YES (provided)' : 'NO');
   console.log('[AtlasCloud Video] Duration:', options.duration || 5);
 
-  const requestBody = {
+  // Base parameters for all models
+  const requestBody: Record<string, any> = {
     model: atlasModel,
     prompt: options.prompt,
     image: options.referenceImage || '',
     duration: options.duration || 5,
-    seed: options.seed ?? -1,
   };
+
+  // Add seed ONLY for models that support it (NOT Sora models)
+  const isSoraModel = atlasModel.startsWith('openai/sora');
+  if (!isSoraModel) {
+    requestBody.seed = options.seed ?? -1;
+  }
 
   console.log('[AtlasCloud Video] Full request body:', JSON.stringify(requestBody, null, 2));
 

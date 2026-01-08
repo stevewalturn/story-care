@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
         notes: mediaLibrary.notes,
         aiModel: mediaLibrary.aiModel,
         sceneTitle: scenes.title,
+        generationMetadata: mediaLibrary.generationMetadata,
       })
       .from(mediaLibrary)
       .leftJoin(users, eq(mediaLibrary.patientId, users.id))

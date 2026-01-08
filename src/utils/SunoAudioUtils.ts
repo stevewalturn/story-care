@@ -37,16 +37,16 @@ export async function downloadAndSaveAudio(
 
   console.log(`[Suno Audio] Uploaded to GCS: ${gcsPath}`);
 
-  // 3. Build notes with generation parameters for enhanced metadata
+  // 3. Build generation metadata (separate from therapist notes)
   const isInstrumental = task.instrumental === true;
-  const generationNotes = JSON.stringify({
+  const generationMetadata = {
     model: task.model,
     instrumental: isInstrumental,
     type: isInstrumental ? 'instrumental' : 'lyrical',
     duration: audioData.duration || task.duration,
     generatedAt: new Date().toISOString(),
     sunoTaskId: task.taskId,
-  });
+  };
 
   // 4. Save to media_library (store path, not signed URL)
   const result = await db
@@ -63,7 +63,8 @@ export async function downloadAndSaveAudio(
       sourceSessionId: task.sessionId,
       createdByTherapistId: task.createdByTherapistId,
       title: audioData.title || task.title || 'AI Generated Music',
-      notes: generationNotes,
+      notes: null, // Keep clean for therapist use
+      generationMetadata, // AI generation parameters
       tags: ['ai-generated', 'suno-music', isInstrumental ? 'instrumental' : 'lyrical'],
     })
     .returning();
