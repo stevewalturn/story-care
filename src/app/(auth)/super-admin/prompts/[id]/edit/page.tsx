@@ -12,5 +12,5 @@ export default function SuperAdminEditPromptPage() {
   const params = useParams();
   const promptId = params.id as string;
 
-  return <PromptBlockBuilder mode="edit" promptId={promptId} />;
+  return <PromptBlockBuilder mode="edit" promptId={promptId} scope="system" />;
 }

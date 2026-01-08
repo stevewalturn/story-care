@@ -139,7 +139,21 @@ export function MediaDetailsModal({
   // Handle download
   const handleDownload = async () => {
     try {
-      const response = await fetch(media.mediaUrl);
+      let downloadUrl = media.mediaUrl;
+
+      // If it's a GCS path, get signed URL first
+      if (!media.mediaUrl.startsWith('http')) {
+        const signedUrlResponse = await fetch(
+          `/api/media/signed-url?path=${encodeURIComponent(media.mediaUrl)}`
+        );
+        if (signedUrlResponse.ok) {
+          const data = await signedUrlResponse.json();
+          downloadUrl = data.signedUrl || data.url;
+        }
+      }
+
+      // Now fetch and download
+      const response = await fetch(downloadUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -153,14 +167,23 @@ export function MediaDetailsModal({
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Download failed:', error);
-      // Fallback: open in new tab
-      window.open(media.mediaUrl, '_blank');
+      // Fallback: try to open signed URL
+      if (!media.mediaUrl.startsWith('http')) {
+        window.open(`/api/media/signed-url?path=${encodeURIComponent(media.mediaUrl)}&redirect=true`, '_blank');
+      } else {
+        window.open(media.mediaUrl, '_blank');
+      }
     }
   };
 
   // Handle open in new tab
   const handleOpen = () => {
-    window.open(media.mediaUrl, '_blank');
+    if (!media.mediaUrl.startsWith('http')) {
+      // Use signed URL for GCS paths
+      window.open(`/api/media/signed-url?path=${encodeURIComponent(media.mediaUrl)}&redirect=true`, '_blank');
+    } else {
+      window.open(media.mediaUrl, '_blank');
+    }
   };
 
   // Format duration for display

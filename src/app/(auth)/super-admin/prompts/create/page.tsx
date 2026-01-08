@@ -8,5 +8,5 @@
 import { PromptBlockBuilder } from '@/components/prompts/builder/PromptBlockBuilder';
 
 export default function SuperAdminCreatePromptPage() {
-  return <PromptBlockBuilder mode="create" />;
+  return <PromptBlockBuilder mode="create" scope="system" />;
 }

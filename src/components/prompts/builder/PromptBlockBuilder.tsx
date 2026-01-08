@@ -41,6 +41,7 @@ type BuilderTab = 'basic' | 'content' | 'preview' | 'json';
 type PromptBlockBuilderProps = {
   mode?: 'create' | 'edit';
   promptId?: string;
+  scope?: 'private' | 'organization' | 'system'; // Determines API endpoint
   initialName?: string;
   initialDescription?: string;
   initialCategory?: PromptCategory;
@@ -50,6 +51,7 @@ type PromptBlockBuilderProps = {
 export function PromptBlockBuilder({
   mode = 'create',
   promptId,
+  scope = 'private',
   initialName = '',
   initialDescription = '',
   initialCategory = 'creative',
@@ -93,12 +95,61 @@ export function PromptBlockBuilder({
     }
   }, [mode, promptId, user]);
 
+  // Migrate legacy prompts (created before block builder) to block format
+  const migrateLegacyPromptToBlocks = (prompt: any): BlockInstance[] => {
+    console.log('[Migration] Starting for prompt:', prompt.id);
+    console.log('[Migration] jsonSchema:', prompt.jsonSchema);
+
+    // Extract schema type from jsonSchema
+    let schemaType: string | null = null;
+    try {
+      const schema = typeof prompt.jsonSchema === 'string'
+        ? JSON.parse(prompt.jsonSchema)
+        : prompt.jsonSchema;
+      schemaType = schema?.schemaType || schema?.properties?.schemaType?.enum?.[0];
+      console.log('[Migration] Extracted schemaType:', schemaType);
+    } catch (e) {
+      console.error('[Migration] Failed to parse jsonSchema:', e);
+      toast.error('Invalid prompt schema format');
+      return [];
+    }
+
+    if (!schemaType) {
+      console.error('[Migration] No schemaType found in jsonSchema');
+      toast.error('Prompt missing schema type');
+      return [];
+    }
+
+    // Use schemaType directly as block type (no mapping needed)
+    console.log('[Migration] Creating block with type:', schemaType);
+    const blockInstance = createBlockInstance(schemaType);
+
+    if (!blockInstance) {
+      console.error('[Migration] Failed to create block instance for type:', schemaType);
+      toast.error(`Unknown block type: ${schemaType}`);
+      return [];
+    }
+
+    // Preserve legacy systemPrompt
+    if (prompt.systemPrompt) {
+      blockInstance.customSystemPrompt = prompt.systemPrompt;
+    }
+
+    console.log('[Migration] Success! Created block:', blockInstance);
+    return [blockInstance];
+  };
+
   const loadPromptData = async () => {
     if (!user || !promptId) return;
 
     setIsLoading(true);
     try {
-      const response = await authenticatedFetch(`/api/therapist/prompts/${promptId}`, user);
+      // Use correct API endpoint based on scope
+      const endpoint = scope === 'system'
+        ? `/api/super-admin/prompts/${promptId}`
+        : `/api/therapist/prompts/${promptId}`;
+
+      const response = await authenticatedFetch(endpoint, user);
       if (!response.ok) {
         throw new Error('Failed to load prompt');
       }
@@ -112,7 +163,8 @@ export function PromptBlockBuilder({
       setCategory(prompt.category || 'creative');
 
       // Convert stored blocks to BlockInstance format
-      if (prompt.blocks && Array.isArray(prompt.blocks)) {
+      if (prompt.blocks && Array.isArray(prompt.blocks) && prompt.blocks.length > 0) {
+        // New format - load blocks as-is
         const loadedBlocks: BlockInstance[] = prompt.blocks.map((block: any, index: number) => ({
           id: `block-${Date.now()}-${index}`,
           blockType: block.blockType,
@@ -121,11 +173,27 @@ export function PromptBlockBuilder({
           customSystemPrompt: block.customSystemPrompt || undefined,
         }));
         setBlocks(loadedBlocks);
+      } else if (prompt.jsonSchema) {
+        // Legacy format - migrate to block structure
+        console.log('Migrating legacy prompt to block format');
+        const migratedBlocks = migrateLegacyPromptToBlocks(prompt);
+
+        if (migratedBlocks.length === 0) {
+          toast.error('Failed to migrate legacy prompt. Please contact support.');
+          console.error('Migration failed for prompt:', prompt.id, prompt.jsonSchema);
+        } else {
+          setBlocks(migratedBlocks);
+          toast.success('Legacy prompt migrated to block format');
+        }
       }
     } catch (error) {
       console.error('Error loading prompt:', error);
       toast.error('Failed to load prompt');
-      router.push('/therapist/prompt-library');
+      // Redirect to appropriate page based on scope
+      const redirectPath = scope === 'system'
+        ? '/super-admin/prompts'
+        : '/therapist/prompt-library';
+      router.push(redirectPath);
     } finally {
       setIsLoading(false);
     }
@@ -283,8 +351,7 @@ export function PromptBlockBuilder({
       systemPrompt += `Generate the following fields:\n\n`;
 
       for (const field of definition.fields) {
-        // Get custom prompt if set, otherwise use default
-        const fieldPrompt = block.customFieldPrompts?.[field.id] ?? field.fieldPrompt;
+        const fieldPrompt = field.fieldPrompt;
 
         if (fieldPrompt) {
           systemPrompt += `**${field.label}**${field.required ? ' (Required)' : ''}:\n`;
@@ -347,9 +414,14 @@ export function PromptBlockBuilder({
         })),
       };
 
-      const endpoint = isEditing
-        ? `/api/therapist/prompts/${promptId}`
+      // Use correct API endpoint based on scope
+      const baseEndpoint = scope === 'system'
+        ? '/api/super-admin/prompts'
         : '/api/therapist/prompts';
+
+      const endpoint = isEditing
+        ? `${baseEndpoint}/${promptId}`
+        : baseEndpoint;
       const method = isEditing ? 'PATCH' : 'POST';
 
       const response = await authenticatedFetch(endpoint, user, {
@@ -364,7 +436,12 @@ export function PromptBlockBuilder({
       }
 
       toast.success(isEditing ? 'Prompt updated successfully!' : 'Prompt created successfully!', { id: toastId });
-      router.push('/therapist/prompt-library');
+
+      // Redirect to appropriate page based on scope
+      const redirectPath = scope === 'system'
+        ? '/super-admin/prompts'
+        : '/therapist/prompt-library';
+      router.push(redirectPath);
     } catch (error) {
       console.error('Error saving prompt:', error);
       toast.error(
@@ -578,6 +655,11 @@ Continue exploring the relationship between perfectionism and self-worth. Consid
 
   const isEditing = mode === 'edit';
 
+  // Determine back link based on scope
+  const backLink = scope === 'system'
+    ? '/super-admin/prompts'
+    : '/therapist/prompt-library';
+
   return (
     <DndContext
       sensors={sensors}
@@ -591,7 +673,7 @@ Continue exploring the relationship between perfectionism and self-worth. Consid
         <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
           <div className="flex items-center gap-4">
             <Link
-              href="/therapist/prompt-library"
+              href={backLink}
               className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
             >
               <ArrowLeft className="h-5 w-5" />
