@@ -56,8 +56,7 @@ export async function GET(
       const members = await db
         .select({
           id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
+          name: users.name,
           avatarUrl: users.avatarUrl,
         })
         .from(groupMembers)
@@ -66,12 +65,32 @@ export async function GET(
 
       groupMembersList = members.map(m => ({
         userId: m.id,
-        name: `${m.firstName || ''} ${m.lastName || ''}`.trim() || 'Unknown',
+        name: m.name || 'Unknown',
         avatarUrl: m.avatarUrl,
       }));
     }
 
-    // 7. GET TRANSCRIPT ID
+    // 7. BUILD SESSION-SPECIFIC PATIENT LIST (only patients in this session)
+    // Instead of fetching ALL therapist patients, use only patients from this session
+    let therapistPatients: { id: string; name: string; avatarUrl: string | null }[] = [];
+
+    if (session.patientId && patient) {
+      // Individual session - only include the session's patient
+      therapistPatients = [{
+        id: patient.id,
+        name: patient.name || 'Unknown',
+        avatarUrl: patient.avatarUrl,
+      }];
+    } else if (session.groupId && groupMembersList.length > 0) {
+      // Group session - include all patients from the group
+      therapistPatients = groupMembersList.map(m => ({
+        id: m.userId,
+        name: m.name,
+        avatarUrl: m.avatarUrl || null,
+      }));
+    }
+
+    // 8. GET TRANSCRIPT ID
     const transcript = await db.query.transcripts.findFirst({
       where: eq(transcripts.sessionId, sessionId),
     });
@@ -83,12 +102,13 @@ export async function GET(
       );
     }
 
-    // 4. FETCH ALL SPEAKERS
+    // 4. FETCH ALL SPEAKERS (sorted by label for consistent ordering)
     console.log(`[Speakers GET API] Fetching speakers for transcript ${transcript.id} (session ${sessionId})`);
     const speakersList = await db
       .select()
       .from(speakers)
-      .where(eq(speakers.transcriptId, transcript.id));
+      .where(eq(speakers.transcriptId, transcript.id))
+      .orderBy(asc(speakers.speakerLabel));
 
     console.log(`[Speakers GET API] Found ${speakersList.length} speakers:`, speakersList.map(s => ({
       id: s.id,
@@ -130,14 +150,19 @@ export async function GET(
       speakers: speakersWithSamples,
       sessionContext: {
         sessionType: session.sessionType,
-        therapistName: therapist ? `${therapist.firstName || ''} ${therapist.lastName || ''}`.trim() || 'Therapist' : 'Therapist',
-        patientName: patient ? `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Patient' : 'Patient',
+        therapistName: therapist?.name || 'Therapist',
+        patientName: patient?.name || 'Patient',
         therapistId: session.therapistId,
         patientId: session.patientId,
         therapistAvatarUrl: therapist?.avatarUrl || null,
         patientAvatarUrl: patient?.avatarUrl || null,
       },
       groupMembers: groupMembersList,
+      therapistPatients: therapistPatients.map(p => ({
+        id: p.id,
+        name: p.name || 'Unknown Patient',
+        avatarUrl: p.avatarUrl || null,
+      })),
     });
   } catch (error) {
     console.error('Error fetching speakers:', error);
@@ -234,14 +259,14 @@ export async function PUT(
       let userId = speakerData.userId || null;
 
       // Fall back to therapist resolution only if not provided by frontend
-      if (!userId && speakerData.type === 'therapist') {
+      if (!userId && speakerData.speakerType === 'therapist') {
         userId = user.dbUserId;
       }
 
       console.log(`[Speakers API] Updating speaker ${speakerData.id}:`, {
-        label: speakerData.label,
-        type: speakerData.type,
-        name: speakerData.name,
+        speakerLabel: speakerData.speakerLabel,
+        speakerType: speakerData.speakerType,
+        speakerName: speakerData.speakerName,
         userId,
       });
 
@@ -249,8 +274,8 @@ export async function PUT(
       const result = await db
         .update(speakers)
         .set({
-          speakerType: speakerData.type,
-          speakerName: speakerData.name,
+          speakerType: speakerData.speakerType,
+          speakerName: speakerData.speakerName,
           userId,
         })
         .where(eq(speakers.id, speakerData.id))

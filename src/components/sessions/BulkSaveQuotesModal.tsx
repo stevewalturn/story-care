@@ -10,6 +10,14 @@ export type QuoteWithPatient = {
   patientId: string;
 };
 
+// Format seconds to MM:SS
+const formatTime = (seconds: number | undefined): string => {
+  if (seconds === undefined) return '';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
 type BulkSaveQuotesModalProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -195,12 +203,27 @@ export function BulkSaveQuotesModal({
                         </p>
 
                         {/* Metadata row */}
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                           <span>
                             Speaker:
                             {' '}
                             {quote.speaker || 'Unknown'}
                           </span>
+                          {/* Timestamp display */}
+                          {(quote.start_time_seconds !== undefined || quote.timestamp?.start !== undefined) && (
+                            <>
+                              <span>•</span>
+                              <span className="font-medium text-purple-600">
+                                {formatTime(quote.start_time_seconds ?? quote.timestamp?.start)}
+                                {(quote.end_time_seconds !== undefined || quote.timestamp?.end !== undefined) && (
+                                  <>
+                                    {' - '}
+                                    {formatTime(quote.end_time_seconds ?? quote.timestamp?.end)}
+                                  </>
+                                )}
+                              </span>
+                            </>
+                          )}
                           {quote.tags && quote.tags.length > 0 && (
                             <>
                               <span>•</span>

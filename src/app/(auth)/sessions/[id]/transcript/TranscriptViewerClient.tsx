@@ -1,6 +1,6 @@
 'use client';
 
-import type { SelectedPatientInfo, SpeakerInfo, Utterance } from './types/transcript.types';
+import type { SaveQuoteData, SelectedPatientInfo, SpeakerInfo, Utterance } from './types/transcript.types';
 import type { AIPromptOption } from '@/components/sessions/AnalyzeSelectionModal';
 import type { PatientOption } from '@/components/sessions/SaveNoteModal';
 import type { TreatmentModule } from '@/models/Schema';
@@ -12,6 +12,7 @@ import { MediaUploadModal } from '@/components/media/MediaUploadModal';
 import { SceneGenerationLayout } from '@/components/scenes-generation/SceneGenerationLayout';
 import { AnalyzeSelectionModal } from '@/components/sessions/AnalyzeSelectionModal';
 import { AssignModuleModal } from '@/components/sessions/AssignModuleModal';
+import { BulkSaveQuotesModal, type QuoteWithPatient } from '@/components/sessions/BulkSaveQuotesModal';
 import { EditQuoteModal } from '@/components/sessions/EditQuoteModal';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
 import { SpeakerLabelingModal } from '@/components/sessions/SpeakerLabelingModal';
@@ -56,6 +57,8 @@ export function TranscriptViewerClient({
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [showMusicModal, setShowMusicModal] = useState(false);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [showBulkQuoteModal, setShowBulkQuoteModal] = useState(false);
+  const [bulkQuotes, setBulkQuotes] = useState<any[]>([]);
   const [showMediaUploadModal, setShowMediaUploadModal] = useState(false);
   const [isAssignModuleModalOpen, setIsAssignModuleModalOpen] = useState(false);
   const [showSceneGenerationModal, setShowSceneGenerationModal] = useState(false);
@@ -63,6 +66,7 @@ export function TranscriptViewerClient({
   const [showSpeakerLabelingModal, setShowSpeakerLabelingModal] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [selectedTextSource, setSelectedTextSource] = useState<'transcript' | 'ai'>('transcript');
+  const [selectedUtterance, setSelectedUtterance] = useState<Utterance | null>(null);
   // Separate state for system prompt and user text (for Analyze Selection modal)
   const [aiSystemPrompt, setAiSystemPrompt] = useState<string | null>(null);
   const [aiUserText, setAiUserText] = useState<string | null>(null);
@@ -179,9 +183,6 @@ export function TranscriptViewerClient({
       console.error('Error refreshing speaker data:', error);
     }
   }, [sessionId, user]);
-
-  // Analyze Mode state (for controlling automatic text selection analysis)
-  const [analyzeMode, setAnalyzeMode] = useState(false);
 
   // Panel visibility states
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(true);
@@ -373,37 +374,75 @@ export function TranscriptViewerClient({
     fetchAiPrompts();
   }, [sessionId, user, assignedModule]); // Re-fetch when module changes
 
-  // Handler for text selection from transcript
+  // Find the utterance that contains the selected text
+  const findUtteranceForSelection = useCallback((selectedTextStr: string): Utterance | null => {
+    if (!selectedTextStr || selectedTextStr.length < 10) return null;
+
+    // Normalize text for comparison (remove extra whitespace, case insensitive)
+    const normalizedSelection = selectedTextStr.toLowerCase().trim();
+
+    // Find utterance that contains this text
+    return utterances.find((u) => {
+      const normalizedUtteranceText = u.text.toLowerCase().trim();
+      // Check if utterance text contains the selection (or vice versa for partial selections)
+      return normalizedUtteranceText.includes(normalizedSelection)
+        || normalizedSelection.includes(normalizedUtteranceText.substring(0, 50));
+    }) || null;
+  }, [utterances]);
+
+  // Handler for text selection from transcript (tracks selection for use in chatbox)
   const handleTextSelection = () => {
     const selection = window.getSelection();
     const text = selection?.toString().trim();
 
     if (text && text.length > 10) {
-      // Always update selectedText for use in chatbox prompts
+      // Update selectedText for use in chatbox prompts
       setSelectedText(text);
       setSelectedTextSource('transcript');
 
-      // Only open analyze modal if Analyze Mode is enabled
-      if (analyzeMode) {
-        setShowAnalyzeModal(true);
-      }
+      // Find matching utterance for timestamps
+      const matchingUtterance = findUtteranceForSelection(text);
+      setSelectedUtterance(matchingUtterance);
     }
   };
 
-  // Handler for text selection from AI conversation
-  const handleAITextSelection = () => {
-    // Only open analyze modal if Analyze Mode is enabled
-    if (!analyzeMode) return;
+  // Handler for "Analyze" button from floating menu - opens AnalyzeSelectionModal
+  const handleOpenAnalyzeModal = useCallback(() => {
+    const selection = window.getSelection();
+    const text = selection?.toString().trim();
 
+    if (text && text.length > 10) {
+      setSelectedText(text);
+      setSelectedTextSource('transcript');
+      const matchingUtterance = findUtteranceForSelection(text);
+      setSelectedUtterance(matchingUtterance);
+      setShowAnalyzeModal(true);
+    }
+  }, [findUtteranceForSelection]);
+
+  // Handler for "Save as Quote" from floating menu in TranscriptPanel
+  const handleSaveQuoteFromSelection = useCallback((data: SaveQuoteData) => {
+    // Create a quote object matching the BulkSaveQuotesModal format
+    const quote = {
+      quote_text: data.selectedText,
+      speaker: data.speakerName,
+      patient_name: data.speakerName, // For auto-matching patient
+      start_time_seconds: data.startTime,
+      end_time_seconds: data.endTime,
+      tags: [],
+    };
+    setBulkQuotes([quote]);
+    setShowBulkQuoteModal(true);
+  }, []);
+
+  // Handler for text selection from AI conversation (just tracks selection, no modal)
+  const handleAITextSelection = () => {
     const selection = window.getSelection();
     const text = selection?.toString().trim();
 
     if (text && text.length > 10) {
       setSelectedText(text);
       setSelectedTextSource('ai');
-      // Show a menu to choose between saving as note or quote
-      // For now, we'll show both options in the analyze modal
-      setShowAnalyzeModal(true);
     }
   };
 
@@ -519,6 +558,8 @@ export function TranscriptViewerClient({
     patientId: string;
     quoteText: string;
     speaker: string;
+    startTimeSeconds?: number;
+    endTimeSeconds?: number;
   }) => {
     try {
       const response = await authenticatedPost('/api/quotes', user, {
@@ -526,6 +567,8 @@ export function TranscriptViewerClient({
         sessionId,
         quoteText: quoteData.quoteText,
         speaker: quoteData.speaker,
+        startTimeSeconds: quoteData.startTimeSeconds,
+        endTimeSeconds: quoteData.endTimeSeconds,
         source: 'transcript_selection',
         validateAgainstTranscript: true, // Require verbatim match for clinical accuracy
       });
@@ -545,6 +588,38 @@ export function TranscriptViewerClient({
       setMediaRefreshKey(prev => prev + 1);
     } catch (error) {
       console.error('Error saving quote:', error);
+      throw error;
+    }
+  };
+
+  // Handler for bulk quote save (from BulkSaveQuotesModal)
+  const handleBulkSaveQuotes = async (quotePatientMappings: QuoteWithPatient[]) => {
+    try {
+      const response = await Promise.all(
+        quotePatientMappings.map(({ quoteIndex, patientId }) => {
+          const quote = bulkQuotes[quoteIndex];
+          return authenticatedPost('/api/quotes', user, {
+            patientId,
+            sessionId,
+            quoteText: quote.quote_text || quote.text,
+            speaker: quote.speaker || 'Unknown',
+            tags: quote.tags || [],
+            notes: quote.context || quote.significance || '',
+            startTimeSeconds: quote.start_time_seconds ?? quote.timestamp?.start,
+            endTimeSeconds: quote.end_time_seconds ?? quote.timestamp?.end,
+            source: 'transcript_selection',
+          });
+        }),
+      );
+
+      const successCount = response.filter(r => r.ok).length;
+      setMediaRefreshKey(prev => prev + 1);
+
+      if (successCount < quotePatientMappings.length) {
+        alert(`Saved ${successCount}/${quotePatientMappings.length} quotes.`);
+      }
+    } catch (error) {
+      console.error('Error saving quotes:', error);
       throw error;
     }
   };
@@ -666,6 +741,7 @@ export function TranscriptViewerClient({
             utterances={utterances}
             audioUrl={audioUrl}
             onTextSelection={handleTextSelection}
+            onSaveQuote={handleSaveQuoteFromSelection}
             user={user}
             groupName={groupName}
             sessionDate={sessionData?.sessionDate}
@@ -676,8 +752,7 @@ export function TranscriptViewerClient({
             onToggleCollapse={() => setIsTranscriptCollapsed(!isTranscriptCollapsed)}
             seekToTimestamp={seekToTimestamp}
             onSeekComplete={() => setSeekToTimestamp(null)}
-            analyzeMode={analyzeMode}
-            onAnalyzeModeChange={setAnalyzeMode}
+            onOpenAnalyzeModal={handleOpenAnalyzeModal}
             onOpenSpeakerLabeling={() => setShowSpeakerLabelingModal(true)}
           />
         </div>
@@ -708,9 +783,8 @@ export function TranscriptViewerClient({
               onOpenMusicModal={handleOpenMusicModal}
               onOpenSceneGeneration={handleOpenSceneGeneration}
               onLibraryRefresh={() => setMediaRefreshKey(prev => prev + 1)}
-              analyzeMode={analyzeMode}
-              onAnalyzeModeChange={setAnalyzeMode}
               onClose={() => setIsAIAssistantOpen(false)}
+              onJumpToTimestamp={setSeekToTimestamp}
             />
           </div>
         )}
@@ -723,7 +797,29 @@ export function TranscriptViewerClient({
           onOpenUpload={() => setShowMediaUploadModal(true)}
           onOpenGenerateImage={() => setShowImageModal(true)}
           onOpenGenerateVideo={() => setShowVideoModal(true)}
-          onOpenGenerateMusic={() => setShowMusicModal(true)}
+          onOpenGenerateMusicLyrical={() => {
+            setMusicModalInitialData({
+              lyricalOption: {
+                title: 'Therapeutic Song',
+                music_description: 'A lyrical song based on this therapy session',
+              },
+            });
+            setShowMusicModal(true);
+          }}
+          onOpenGenerateMusicInstrumental={() => {
+            setMusicModalInitialData({
+              instrumentalOption: {
+                title: 'Therapeutic Music',
+                music_description: 'An instrumental piece based on this therapy session',
+              },
+            });
+            setShowMusicModal(true);
+          }}
+          onOpenGenerateScene={() => {
+            // Open scene generation with empty initial scenes
+            setSceneCardData({ scenes: [] });
+            setShowSceneGenerationModal(true);
+          }}
           refreshKey={mediaRefreshKey}
           onTaskComplete={handleTaskComplete}
           onSelectedPatientChange={setSelectedPatientFromLibrary}
@@ -755,10 +851,28 @@ export function TranscriptViewerClient({
 
       <SaveQuoteModal
         isOpen={showQuoteModal}
-        onClose={() => setShowQuoteModal(false)}
+        onClose={() => {
+          setShowQuoteModal(false);
+          setSelectedUtterance(null);
+        }}
         selectedText={selectedText}
         patients={sessionPatients}
         onSave={handleSaveQuote}
+        startTimeSeconds={selectedUtterance?.startTime}
+        endTimeSeconds={selectedUtterance?.endTime}
+        speakerName={selectedUtterance?.speakerName}
+      />
+
+      {/* Bulk Quote Save Modal (used for transcript text selection) */}
+      <BulkSaveQuotesModal
+        isOpen={showBulkQuoteModal}
+        onClose={() => {
+          setShowBulkQuoteModal(false);
+          setBulkQuotes([]);
+        }}
+        quotes={bulkQuotes}
+        patients={sessionPatients}
+        onSave={handleBulkSaveQuotes}
       />
 
       <GenerateImageModal

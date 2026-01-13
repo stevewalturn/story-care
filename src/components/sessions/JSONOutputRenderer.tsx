@@ -16,6 +16,7 @@ import {
   Image,
   Mic,
   Music,
+  Play,
   PlusCircle,
   Quote,
   RefreshCw,
@@ -67,6 +68,7 @@ type JSONOutputRendererProps = {
   }) => void;
   onOpenBulkSaveQuotes?: (quotes: any[]) => void;
   onRetry?: () => void;
+  onJumpToTimestamp?: (timestamp: number) => void;
 };
 
 export function JSONOutputRenderer({
@@ -85,6 +87,7 @@ export function JSONOutputRenderer({
   onOpenSaveNoteModal,
   onOpenBulkSaveQuotes,
   onRetry,
+  onJumpToTimestamp,
 }: JSONOutputRendererProps) {
   const router = useRouter();
   const [processingAction, setProcessingAction] = useState<string | null>(null);
@@ -311,7 +314,7 @@ export function JSONOutputRenderer({
       </div>
 
       {/* Preview / Summary */}
-      <div className="mb-3 rounded-lg bg-white/80 p-3">{renderPreview(schemaType, jsonData, onOpenSceneGeneration, onOpenImageModal, onOpenMusicModal, onRetry, expandedNotes, setExpandedNotes, renderMarkdownContent, previewMode)}</div>
+      <div className="mb-3 rounded-lg bg-white/80 p-3">{renderPreview(schemaType, jsonData, onOpenSceneGeneration, onOpenImageModal, onOpenMusicModal, onRetry, expandedNotes, setExpandedNotes, renderMarkdownContent, previewMode, onJumpToTimestamp)}</div>
 
       {/* Action Buttons - skip for image_references since each card has its own button, and hide in preview mode */}
       {!previewMode && schemaType !== 'image_references' && (
@@ -481,6 +484,7 @@ function renderPreview(
   _setExpandedNotes?: (notes: Set<number>) => void,
   renderMarkdownContent?: (content: string, isExpanded: boolean, noteIndex: number) => JSX.Element,
   previewMode?: boolean,
+  onJumpToTimestamp?: (timestamp: number) => void,
 ) {
   switch (schemaType) {
     case 'therapeutic_scene_card':
@@ -1097,6 +1101,13 @@ function renderPreview(
       const displayQuotes = quotes.slice(0, 4);
       const remainingCount = quotes.length - displayQuotes.length;
 
+      // Helper to format timestamp
+      const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+      };
+
       return (
         <div className="space-y-3 text-sm">
           <div className="flex items-center justify-between">
@@ -1126,6 +1137,23 @@ function renderPreview(
                         <span className="inline-flex items-center gap-1 text-[10px] text-gray-500">
                           <span className="font-medium">{quote.speaker}</span>
                         </span>
+                      )}
+                      {/* Show timestamp and jump button if available */}
+                      {(quote.start_time_seconds !== undefined || quote.startTimeSeconds !== undefined) && onJumpToTimestamp && (
+                        <button
+                          onClick={() => onJumpToTimestamp(quote.start_time_seconds ?? quote.startTimeSeconds)}
+                          className="inline-flex items-center gap-1 rounded-md bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700 transition-colors hover:bg-purple-200"
+                          title="Jump to this quote in the transcript"
+                        >
+                          <Play className="h-2.5 w-2.5" />
+                          {formatTime(quote.start_time_seconds ?? quote.startTimeSeconds)}
+                          {(quote.end_time_seconds !== undefined || quote.endTimeSeconds !== undefined) && (
+                            <>
+                              {' - '}
+                              {formatTime(quote.end_time_seconds ?? quote.endTimeSeconds)}
+                            </>
+                          )}
+                        </button>
                       )}
                       {quote.tags && quote.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1">
@@ -1716,6 +1744,105 @@ function renderPreview(
           )}
         </div>
       );
+
+    case 'analysis_and_images': {
+      return (
+        <div className="space-y-6">
+          {/* Analysis Section */}
+          {data.analysis && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+              <h3 className="mb-3 text-sm font-semibold text-blue-900">📊 Therapeutic Analysis</h3>
+              {data.analysis.therapeutic_context && (
+                <p className="mb-3 text-sm leading-relaxed text-blue-800">{data.analysis.therapeutic_context}</p>
+              )}
+              {data.analysis.key_themes && data.analysis.key_themes.length > 0 && (
+                <div className="mb-3">
+                  <p className="mb-1 text-xs font-medium text-blue-700">Key Themes:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {data.analysis.key_themes.map((theme: string, i: number) => (
+                      <span key={i} className="rounded-full bg-blue-200 px-2 py-0.5 text-xs text-blue-800">
+                        {theme}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {data.analysis.emotional_landscape && (
+                <p className="text-sm leading-relaxed text-blue-700 italic">{data.analysis.emotional_landscape}</p>
+              )}
+              {data.analysis.narrative_elements && data.analysis.narrative_elements.length > 0 && (
+                <div className="mt-3">
+                  <p className="mb-1 text-xs font-medium text-blue-700">Narrative Elements:</p>
+                  <ul className="space-y-1">
+                    {data.analysis.narrative_elements.map((el: string, i: number) => (
+                      <li key={i} className="text-xs text-blue-800">• {el}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Images Section */}
+          {data.images && Array.isArray(data.images) && data.images.length > 0 && (
+            <div className="space-y-4">
+              <p className="text-sm font-semibold text-gray-900">
+                🖼️ {data.images.length} Image Suggestion{data.images.length !== 1 ? 's' : ''}
+              </p>
+              {data.images.map((img: any, index: number) => (
+                <div
+                  key={index}
+                  className="border-l-4 border-gray-200 bg-white py-3 pl-4"
+                >
+                  {/* Title */}
+                  <h3 className="mb-2 text-base font-semibold text-gray-900">{img.title}</h3>
+
+                  {/* Description */}
+                  {(img.description || img.therapeutic_purpose) && (
+                    <p className="mb-4 text-sm leading-relaxed text-gray-600">
+                      {img.description || img.therapeutic_purpose}
+                    </p>
+                  )}
+
+                  {/* Source Quote */}
+                  {img.source_quote && (
+                    <div className="mb-4 border-l-4 border-purple-500 bg-purple-50 py-3 pl-4">
+                      <p className="mb-1 text-xs font-semibold tracking-wide text-purple-700 uppercase">
+                        Patient Quote
+                      </p>
+                      <p className="text-sm leading-relaxed text-purple-900 italic">
+                        "{img.source_quote}"
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Generate Image Button - hidden in preview mode */}
+                  {!previewMode && (
+                    <button
+                      onClick={() => {
+                        if (onOpenImageModal) {
+                          onOpenImageModal({
+                            prompt: img.prompt,
+                            style: img.style,
+                            title: img.title,
+                            description: img.description || img.therapeutic_purpose,
+                            sourceQuote: img.source_quote,
+                          });
+                        }
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-purple-700"
+                    >
+                      <Image className="h-4 w-4" />
+                      Generate Image: "{img.title}"
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
 
     default:
       return (

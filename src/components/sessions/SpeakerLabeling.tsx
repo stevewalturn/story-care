@@ -16,6 +16,7 @@ type Speaker = {
   userId?: string;
   avatarUrl?: string;
   sampleAudioUrl?: string;
+  sampleText?: string | null;
   utteranceCount: number;
   totalDuration: number; // in seconds
 };
@@ -36,11 +37,18 @@ type GroupMember = {
   avatarUrl?: string;
 };
 
+type TherapistPatient = {
+  id: string;
+  name: string;
+  avatarUrl?: string | null;
+};
+
 type SpeakerLabelingProps = {
   sessionId: string;
   speakers: Speaker[];
   sessionContext: SessionContext;
   groupMembers: GroupMember[];
+  therapistPatients: TherapistPatient[];
   onSave: (speakers: Speaker[]) => void;
   onCancel: () => void;
 };
@@ -50,6 +58,7 @@ export function SpeakerLabeling({
   speakers: initialSpeakers,
   sessionContext,
   groupMembers,
+  therapistPatients,
   onSave,
   onCancel,
 }: SpeakerLabelingProps) {
@@ -71,12 +80,26 @@ export function SpeakerLabeling({
             ...speaker,
             type: 'therapist' as const,
             name: speaker.name || sessionContext.therapistName,
+            userId: sessionContext.therapistId,
+            avatarUrl: sessionContext.therapistAvatarUrl || undefined,
           };
         } else {
+          // For patient, auto-assign if only one patient available
+          const singlePatient = therapistPatients.length === 1 ? therapistPatients[0] : null;
+          if (singlePatient) {
+            return {
+              ...speaker,
+              type: 'patient' as const,
+              name: speaker.name || singlePatient.name,
+              userId: singlePatient.id,
+              avatarUrl: singlePatient.avatarUrl || undefined,
+            };
+          }
+          // Multiple patients - set type but leave name for selection
           return {
             ...speaker,
             type: 'patient' as const,
-            name: speaker.name || sessionContext.patientName,
+            name: speaker.name || '',
           };
         }
       });
@@ -95,6 +118,8 @@ export function SpeakerLabeling({
             ...speaker,
             type: 'therapist' as const,
             name: speaker.name || sessionContext.therapistName,
+            userId: sessionContext.therapistId,
+            avatarUrl: sessionContext.therapistAvatarUrl || undefined,
           };
         } else {
           return {
@@ -134,14 +159,16 @@ export function SpeakerLabeling({
   const getNameOptions = (speakerType: Speaker['type']) => {
     if (speakerType === 'therapist') {
       return [
-        { value: sessionContext.therapistName, label: sessionContext.therapistName },
+        { value: sessionContext.therapistId, label: sessionContext.therapistName },
       ];
     }
 
     if (speakerType === 'patient') {
-      return [
-        { value: sessionContext.patientName, label: sessionContext.patientName },
-      ];
+      // Show all therapist's patients for selection
+      return therapistPatients.map(patient => ({
+        value: patient.id,
+        label: patient.name,
+      }));
     }
 
     if (speakerType === 'group_member') {
@@ -163,20 +190,33 @@ export function SpeakerLabeling({
           // Auto-populate name and userId when type changes
           let newName = s.name;
           let newUserId = s.userId;
+          let newAvatarUrl = s.avatarUrl;
 
           if (newType === 'therapist') {
             newName = sessionContext.therapistName;
-            newUserId = undefined; // Will be auto-linked by API
+            newUserId = sessionContext.therapistId;
+            newAvatarUrl = sessionContext.therapistAvatarUrl || undefined;
           } else if (newType === 'patient') {
-            newName = sessionContext.patientName;
-            newUserId = undefined; // Will be auto-linked by API
+            // For patients, auto-select if only one patient, otherwise clear for selection
+            const singlePatient = therapistPatients.length === 1 ? therapistPatients[0] : null;
+            if (singlePatient) {
+              newName = singlePatient.name;
+              newUserId = singlePatient.id;
+              newAvatarUrl = singlePatient.avatarUrl || undefined;
+            } else {
+              // Multiple patients - require selection from dropdown
+              newName = '';
+              newUserId = undefined;
+              newAvatarUrl = undefined;
+            }
           } else if (newType === 'group_member') {
             // Keep existing selection or clear
             newName = '';
             newUserId = undefined;
+            newAvatarUrl = undefined;
           }
 
-          return { ...s, type: newType, name: newName, userId: newUserId };
+          return { ...s, type: newType, name: newName, userId: newUserId, avatarUrl: newAvatarUrl };
         }
         return s;
       }),
@@ -187,6 +227,17 @@ export function SpeakerLabeling({
     setSpeakers(prev =>
       prev.map((s) => {
         if (s.id === speakerId) {
+          // For patients, value is patient.id
+          if (s.type === 'patient') {
+            const patient = therapistPatients.find(p => p.id === value);
+            return {
+              ...s,
+              name: patient?.name || value,
+              userId: value,
+              avatarUrl: patient?.avatarUrl || undefined,
+            };
+          }
+
           // For group members, value is userId
           if (s.type === 'group_member') {
             const member = groupMembers.find(m => m.userId === value);
@@ -194,11 +245,12 @@ export function SpeakerLabeling({
               ...s,
               name: member?.name || value,
               userId: value,
+              avatarUrl: member?.avatarUrl || undefined,
             };
           }
 
-          // For therapist/patient, value is name (userId handled by API)
-          return { ...s, name: value, userId: undefined };
+          // For therapist, value is the name (therapist is auto-set)
+          return { ...s, name: value };
         }
         return s;
       }),
@@ -212,8 +264,9 @@ export function SpeakerLabeling({
       return sessionContext.therapistAvatarUrl || undefined;
     }
 
-    if (speaker.type === 'patient') {
-      return sessionContext.patientAvatarUrl || undefined;
+    if (speaker.type === 'patient' && speaker.userId) {
+      const patient = therapistPatients.find(p => p.id === speaker.userId);
+      return patient?.avatarUrl || undefined;
     }
 
     if (speaker.type === 'group_member' && speaker.userId) {
@@ -237,9 +290,11 @@ export function SpeakerLabeling({
 
   const handlePlayPause = async (speakerId: string, audioUrl?: string) => {
     if (playingId === speakerId) {
-      // Pause current audio
+      // Pause current audio and clean up
       if (audioRef.current) {
         audioRef.current.pause();
+        audioRef.current.src = ''; // Stop loading/buffering
+        audioRef.current = null; // Clear reference
       }
       setPlayingId(null);
       return;
@@ -275,6 +330,8 @@ export function SpeakerLabeling({
     // Stop any currently playing audio
     if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current.src = '';
+      audioRef.current = null;
     }
 
     // Create and play new audio
@@ -618,7 +675,9 @@ export function SpeakerLabeling({
                     <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                       <p className="mb-2 text-xs font-medium text-gray-500">Sample Text:</p>
                       <p className="text-sm leading-relaxed text-gray-700">
-                        "This is a sample utterance from the speaker. In the actual implementation, this would show a real excerpt from the transcript..."
+                        {speaker.sampleText
+                          ? `"${speaker.sampleText}"`
+                          : 'No sample text available'}
                       </p>
                     </div>
 
@@ -645,7 +704,7 @@ export function SpeakerLabeling({
                         {speaker.type
                           ? (
                               <Dropdown
-                                value={speaker.name}
+                                value={speaker.userId || ''}
                                 onChange={value => handleNameChange(speaker.id, value)}
                                 options={getNameOptions(speaker.type)}
                                 placeholder="Select name..."

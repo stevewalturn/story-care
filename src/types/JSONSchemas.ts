@@ -33,7 +33,9 @@ export type JSONSchemaType
     | 'self_compassion_prompts'
     | 'gratitude_prompts'
     | 'homework_assignments'
-    | 'check_in_questions';
+    | 'check_in_questions'
+    // Combined schemas
+    | 'analysis_and_images';
 
 export type BaseJSONSchema = {
   schemaType: JSONSchemaType;
@@ -511,6 +513,29 @@ export type CheckInQuestionsSchema = {
 } & BaseJSONSchema;
 
 // ============================================================================
+// COMBINED SCHEMAS
+// ============================================================================
+
+export type AnalysisAndImagesSchema = {
+  schemaType: 'analysis_and_images';
+  analysis: {
+    therapeutic_context?: string;
+    key_themes?: string[];
+    emotional_landscape?: string;
+    narrative_elements?: string[];
+    [key: string]: any; // Allow additional analysis fields
+  };
+  images: Array<{
+    title: string;
+    prompt: string;
+    style?: string;
+    therapeutic_purpose?: string;
+    source_quote?: string;
+    description?: string;
+  }>;
+} & BaseJSONSchema;
+
+// ============================================================================
 // UNION TYPE FOR ALL SCHEMAS
 // ============================================================================
 
@@ -545,7 +570,9 @@ export type AnyJSONSchema
     | SelfCompassionPromptsSchema
     | GratitudePromptsSchema
     | HomeworkAssignmentsSchema
-    | CheckInQuestionsSchema;
+    | CheckInQuestionsSchema
+    // Combined schemas
+    | AnalysisAndImagesSchema;
 
 // ============================================================================
 // HELPER TYPE GUARDS
@@ -664,4 +691,9 @@ export function isHomeworkAssignmentsSchema(schema: any): schema is HomeworkAssi
 
 export function isCheckInQuestionsSchema(schema: any): schema is CheckInQuestionsSchema {
   return schema?.schemaType === 'check_in_questions';
+}
+
+// Combined schema type guards
+export function isAnalysisAndImagesSchema(schema: any): schema is AnalysisAndImagesSchema {
+  return schema?.schemaType === 'analysis_and_images';
 }

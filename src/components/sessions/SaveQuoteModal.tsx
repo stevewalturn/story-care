@@ -15,7 +15,13 @@ type SaveQuoteModalProps = {
     patientId: string;
     quoteText: string;
     speaker: string;
+    startTimeSeconds?: number;
+    endTimeSeconds?: number;
   }) => Promise<void>;
+  // Optional timestamp props from transcript selection
+  startTimeSeconds?: number;
+  endTimeSeconds?: number;
+  speakerName?: string;
 };
 
 export function SaveQuoteModal({
@@ -24,27 +30,53 @@ export function SaveQuoteModal({
   selectedText,
   patients,
   onSave,
+  startTimeSeconds,
+  endTimeSeconds,
+  speakerName,
 }: SaveQuoteModalProps) {
   const [quoteText, setQuoteText] = useState(selectedText);
-  const [speaker, setSpeaker] = useState('AI Assistant');
+  const [speaker, setSpeaker] = useState(speakerName || 'AI Assistant');
   const [isSaving, setIsSaving] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string>(patients[0]?.id || '');
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
 
-  // Update selected patient when patients prop changes
+  // Update selected patient when patients prop changes or speaker changes
+  // Try to auto-match speaker to a patient for group sessions
   useEffect(() => {
-    if (patients.length > 0 && !selectedPatientId) {
-      const firstPatient = patients[0];
-      if (firstPatient) {
-        setSelectedPatientId(firstPatient.id);
+    if (patients.length > 0) {
+      // If we have a speaker name, try to find a matching patient
+      if (speakerName) {
+        const normalizedSpeaker = speakerName.toLowerCase().trim();
+        const matchingPatient = patients.find(
+          p => p.name.toLowerCase().trim() === normalizedSpeaker,
+        );
+        if (matchingPatient) {
+          setSelectedPatientId(matchingPatient.id);
+          return;
+        }
+      }
+
+      // Default to first patient if no match or no speaker
+      if (!selectedPatientId) {
+        const firstPatient = patients[0];
+        if (firstPatient) {
+          setSelectedPatientId(firstPatient.id);
+        }
       }
     }
-  }, [patients, selectedPatientId]);
+  }, [patients, selectedPatientId, speakerName ?? '']);
 
   // Update quote text when selectedText changes
   useEffect(() => {
     setQuoteText(selectedText);
   }, [selectedText]);
+
+  // Update speaker when speakerName prop changes
+  useEffect(() => {
+    if (speakerName) {
+      setSpeaker(speakerName);
+    }
+  }, [speakerName]);
 
   const selectedPatient = patients.find(p => p.id === selectedPatientId);
 
@@ -65,10 +97,12 @@ export function SaveQuoteModal({
         patientId: selectedPatientId,
         quoteText: quoteText.trim(),
         speaker: speaker.trim() || 'AI Assistant',
+        startTimeSeconds,
+        endTimeSeconds,
       });
       // Reset form
       setQuoteText(selectedText);
-      setSpeaker('AI Assistant');
+      setSpeaker(speakerName || 'AI Assistant');
       onClose();
     } catch (error) {
       console.error('Error saving quote:', error);
@@ -225,10 +259,33 @@ export function SaveQuoteModal({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="text-sm text-purple-900">
-                <p className="font-medium">Extracted from AI Conversation</p>
-                <p className="mt-1 text-purple-700">
-                  This quote is being saved from the AI assistant's response. It will be linked to this session and visible in the Library panel.
-                </p>
+                {startTimeSeconds !== undefined ? (
+                  <>
+                    <p className="font-medium">Extracted from Transcript</p>
+                    <p className="mt-1 text-purple-700">
+                      This quote will be saved with timestamp information (
+                      {Math.floor(startTimeSeconds / 60)}
+                      :
+                      {(startTimeSeconds % 60).toFixed(0).padStart(2, '0')}
+                      {endTimeSeconds !== undefined && (
+                        <>
+                          {' - '}
+                          {Math.floor(endTimeSeconds / 60)}
+                          :
+                          {(endTimeSeconds % 60).toFixed(0).padStart(2, '0')}
+                        </>
+                      )}
+                      ), allowing you to jump to this moment in the recording.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-medium">Extracted from AI Conversation</p>
+                    <p className="mt-1 text-purple-700">
+                      This quote is being saved from the AI assistant's response. It will be linked to this session and visible in the Library panel.
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           </div>

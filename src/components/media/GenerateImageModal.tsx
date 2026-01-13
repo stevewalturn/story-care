@@ -73,14 +73,16 @@ export function GenerateImageModal({
   const [style, setStyle] = useState(initialStyle);
   const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [savingAsReference, setSavingAsReference] = useState(false);
-  const [useReference, setUseReference] = useState(false); // Default to text-to-image
+  // Default to text-to-image when a prompt is provided (so prompt is used), otherwise image-to-image
+  const [useReference, setUseReference] = useState(!initialPrompt);
 
   // Get available models based on useReference toggle - filtered by category
   const imageModels = getFilteredImageModels(useReference);
   const allAvailableModels = Object.values(imageModels).flat();
   const [selectedModel, setSelectedModel] = useState(() => {
-    // Get initial model from first available category
-    return allAvailableModels[0]?.value || 'flux-schnell';
+    // Default to flux-redux-dev if available (best for image-to-image), otherwise first available
+    const preferredModel = allAvailableModels.find(m => m.value === 'flux-redux-dev');
+    return preferredModel?.value || allAvailableModels[0]?.value || 'flux-schnell';
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
@@ -120,6 +122,8 @@ export function GenerateImageModal({
       setDescription(initialDescription);
       setSourceQuote(initialSourceQuote);
       setStyle(initialStyle);
+      // Default to text-to-image when prompt is provided (so the prompt is actually used)
+      setUseReference(!initialPrompt);
     }
   }, [isOpen, initialPrompt, initialTitle, initialDescription, initialSourceQuote, initialStyle]);
 
@@ -127,10 +131,11 @@ export function GenerateImageModal({
   useEffect(() => {
     const filteredModels = getFilteredImageModels(useReference);
     const allModels = Object.values(filteredModels).flat();
-    // If current model is not in new list, switch to first available
+    // If current model is not in new list, switch to preferred or first available
     if (!allModels.find(m => m.value === selectedModel)) {
-      const firstModel = allModels[0];
-      setSelectedModel(firstModel?.value || 'flux-schnell');
+      // Prefer flux-redux-dev for image-to-image, otherwise first available
+      const preferredModel = allModels.find(m => m.value === 'flux-redux-dev');
+      setSelectedModel(preferredModel?.value || allModels[0]?.value || 'flux-schnell');
     }
   }, [useReference, selectedModel]);
 
@@ -546,6 +551,9 @@ export function GenerateImageModal({
       // Wait for all 4 generations to complete (or fail)
       await Promise.all(generatePromises);
 
+      // Ensure generating slots are cleared even if all failed
+      setGeneratingSlots([]);
+
       // DON'T close modal - let user review and save
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to generate images';
@@ -553,6 +561,7 @@ export function GenerateImageModal({
       toast.error(errorMessage);
     } finally {
       setIsGenerating(false);
+      setGeneratingSlots([]); // Ensure slots are cleared on any exit path
     }
   };
 

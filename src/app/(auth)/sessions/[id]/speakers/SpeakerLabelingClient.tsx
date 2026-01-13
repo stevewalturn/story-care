@@ -34,6 +34,12 @@ type GroupMember = {
   avatarUrl?: string;
 };
 
+type TherapistPatient = {
+  id: string;
+  name: string;
+  avatarUrl?: string | null;
+};
+
 type SpeakerLabelingClientProps = {
   sessionId: string;
 };
@@ -54,6 +60,7 @@ export function SpeakerLabelingClient({
     patientAvatarUrl: null,
   });
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
+  const [therapistPatients, setTherapistPatients] = useState<TherapistPatient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -78,6 +85,11 @@ export function SpeakerLabelingClient({
         // Set group members from API response
         if (data.groupMembers) {
           setGroupMembers(data.groupMembers);
+        }
+
+        // Set therapist's patients from API response
+        if (data.therapistPatients) {
+          setTherapistPatients(data.therapistPatients);
         }
 
         // Transform API data to match component interface
@@ -171,6 +183,7 @@ export function SpeakerLabelingClient({
         speakers={speakers}
         sessionContext={sessionContext}
         groupMembers={groupMembers}
+        therapistPatients={therapistPatients}
         onSave={handleSave}
         onCancel={handleCancel}
       />

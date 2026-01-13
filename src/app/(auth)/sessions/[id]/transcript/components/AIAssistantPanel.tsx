@@ -90,9 +90,8 @@ export function AIAssistantPanel({
   onOpenMusicModal,
   onOpenSceneGeneration,
   onLibraryRefresh,
-  analyzeMode: _analyzeMode,
-  onAnalyzeModeChange: _onAnalyzeModeChange,
   onClose: _onClose,
+  onJumpToTimestamp,
 }: AIAssistantPanelProps) {
   // Get dbUser for avatar
   const { dbUser } = useAuth();
@@ -318,6 +317,9 @@ export function AIAssistantPanel({
             speaker: quote.speaker || 'Unknown',
             tags: quote.tags || [],
             notes: quote.context || quote.significance || '',
+            // Pass timestamps if available (from AI extraction)
+            startTimeSeconds: quote.start_time_seconds ?? quote.timestamp?.start,
+            endTimeSeconds: quote.end_time_seconds ?? quote.timestamp?.end,
           });
         }),
       );
@@ -1207,6 +1209,7 @@ ${transcriptContext}`;
                             onOpenModuleSelector={handleOpenModuleSelector}
                             onOpenSaveNoteModal={handleOpenSaveNoteModalFromJSON}
                             onOpenBulkSaveQuotes={handleOpenBulkSaveQuotesModal}
+                            onJumpToTimestamp={onJumpToTimestamp}
                           />
                         ) : (
                           <AssistantMessageContent content={message.content} />

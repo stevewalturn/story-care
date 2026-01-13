@@ -1503,8 +1503,11 @@ export function parseAtlasError(error: string): string {
  * Determine model family for parameter formatting
  */
 type ModelFamily =
-  | 'flux-kontext' // Uses aspect_ratio, safety_tolerance
+  | 'flux-kontext-max-pro' // Max/Pro: ONLY seed, image, prompt, guidance_scale, safety_tolerance
+  | 'flux-kontext-dev' // Dev variants: Extended params (size, num_images, num_inference_steps, etc.)
+  | 'flux-kontext-multi' // Multi variants: Uses images array
   | 'flux-1.1-pro' // Uses aspect_ratio, output_format
+  | 'flux-1.1-pro-ultra' // Uses aspect_ratio, output_format + raw parameter
   | 'flux-standard' // Uses size, num_inference_steps, guidance_scale
   | 'flux-lora' // Uses size, loras array
   | 'imagen' // Uses aspect_ratio, negative_prompt, num_images
@@ -1521,11 +1524,23 @@ type ModelFamily =
   | 'style-transfer'; // Uses image, minimal params
 
 function getModelFamily(model: AtlasImageModel): ModelFamily {
-  // Flux Kontext models
-  if (model.startsWith('flux-kontext')) return 'flux-kontext';
+  // Flux Kontext models - split by specific variant
+  // Max/Pro use minimal params: seed, image, prompt, guidance_scale, safety_tolerance
+  if (model === 'flux-kontext-max' || model === 'flux-kontext-pro') {
+    return 'flux-kontext-max-pro';
+  }
+  // Multi variants use images array
+  if (model.includes('-multi')) {
+    return 'flux-kontext-multi';
+  }
+  // Dev variants use extended params
+  if (model.startsWith('flux-kontext-dev') || model.startsWith('flux-kontext')) {
+    return 'flux-kontext-dev';
+  }
 
-  // Flux 1.1 Pro models
-  if (model === 'flux-1.1-pro' || model === 'flux-1.1-pro-ultra') return 'flux-1.1-pro';
+  // Flux 1.1 Pro models - ultra variant requires `raw` parameter
+  if (model === 'flux-1.1-pro-ultra') return 'flux-1.1-pro-ultra';
+  if (model === 'flux-1.1-pro') return 'flux-1.1-pro';
 
   // Flux LoRA models
   if (model.includes('-lora')) return 'flux-lora';
@@ -1610,18 +1625,52 @@ function buildModelRequestBody(
   };
 
   switch (family) {
-    case 'flux-kontext': {
-      // Flux Kontext: aspect_ratio, safety_tolerance, guidance_scale
-      // NO: size, num_inference_steps, output_format, enable_sync_mode, enable_safety_checker
+    case 'flux-kontext-max-pro': {
+      // Flux Kontext Max/Pro (image-to-image): ONLY basic params
+      // Per IMAGE_TO_IMAGE.md - NO aspect_ratio, NO num_images
       const body: Record<string, unknown> = {
-        ...baseParams,
+        model: modelConfig.atlasName,
+        prompt: options.prompt,
+        enable_base64_output: false,
         seed: options.seed ?? 1,
-        num_images: options.numImages || 1,
-        aspect_ratio: '1:1',
         guidance_scale: options.guidanceScale ?? modelConfig.defaultGuidanceScale,
         safety_tolerance: '2',
       };
       return addReferenceImages(body);
+    }
+
+    case 'flux-kontext-dev': {
+      // Flux Kontext Dev variants: Extended params
+      // Per IMAGE_TO_IMAGE.md - uses size, num_images, num_inference_steps, enable_safety_checker
+      const body: Record<string, unknown> = {
+        ...baseParams,
+        seed: options.seed ?? -1,
+        size: options.size || modelConfig.minSize,
+        num_images: options.numImages || 1,
+        guidance_scale: options.guidanceScale ?? modelConfig.defaultGuidanceScale,
+        num_inference_steps: options.numInferenceSteps ?? modelConfig.defaultSteps,
+        enable_safety_checker: options.enableSafetyChecker ?? true,
+      };
+      return addReferenceImages(body);
+    }
+
+    case 'flux-kontext-multi': {
+      // Flux Kontext Multi variants: Uses images array
+      // Per IMAGE_TO_IMAGE.md - uses images array instead of image
+      const body: Record<string, unknown> = {
+        ...baseParams,
+        seed: options.seed ?? -1,
+        size: options.size || modelConfig.minSize,
+        num_images: options.numImages || 1,
+        guidance_scale: options.guidanceScale ?? modelConfig.defaultGuidanceScale,
+        num_inference_steps: options.numInferenceSteps ?? modelConfig.defaultSteps,
+        enable_safety_checker: options.enableSafetyChecker ?? true,
+      };
+      // Multi models use images array
+      if (options.referenceImages && options.referenceImages.length > 0) {
+        body.images = options.referenceImages;
+      }
+      return body;
     }
 
     case 'flux-1.1-pro': {
@@ -1629,6 +1678,18 @@ function buildModelRequestBody(
       // NO: size, num_inference_steps, guidance_scale, enable_safety_checker
       return {
         ...baseParams,
+        seed: options.seed ?? 1,
+        aspect_ratio: '1:1',
+        output_format: 'jpg',
+      };
+    }
+
+    case 'flux-1.1-pro-ultra': {
+      // Flux 1.1 Pro Ultra: same as 1.1 Pro + REQUIRED raw parameter
+      // Per TEXT_TO_IMAGE.md lines 1469-1477
+      return {
+        ...baseParams,
+        raw: false,
         seed: options.seed ?? 1,
         aspect_ratio: '1:1',
         output_format: 'jpg',
@@ -1743,17 +1804,20 @@ function buildModelRequestBody(
 
     case 'seedream': {
       // ByteDance Seedream: size, enable_prompt_expansion
+      // Per TEXT_TO_IMAGE.md lines 670-677
       const body: Record<string, unknown> = {
         ...baseParams,
         seed: options.seed ?? -1,
         size: options.size || modelConfig.minSize,
         enable_sync_mode: false,
+        enable_prompt_expansion: true,
       };
       return addReferenceImages(body);
     }
 
     case 'wan': {
       // Alibaba Wan/Qwen: size, negative_prompt, enable_prompt_expansion
+      // Per TEXT_TO_IMAGE.md lines 543-552
       const body: Record<string, unknown> = {
         ...baseParams,
         seed: options.seed ?? -1,
@@ -1761,6 +1825,7 @@ function buildModelRequestBody(
         negative_prompt: '',
         enable_prompt_expansion: false,
         enable_sync_mode: false,
+        enable_base64_output: false,
       };
       return addReferenceImages(body);
     }
@@ -1904,6 +1969,253 @@ export async function generateImageWithAtlas(
 }
 
 /**
+ * Video model family for parameter formatting
+ * Different video models require different parameters per IMAGE_TO_VIDEO.md
+ */
+type VideoModelFamily =
+  | 'seedance' // aspect_ratio, camera_fixed, generate_audio, resolution
+  | 'kling-standard' // cfg_scale, negative_prompt, sound
+  | 'kling-o1' // aspect_ratio, last_image
+  | 'kling-multi' // images[], aspect_ratio
+  | 'kling-effects' // effect_scene only
+  | 'veo' // aspect_ratio, generate_audio, negative_prompt, resolution
+  | 'veo-ref' // images[], generate_audio, negative_prompt, resolution
+  | 'sora' // Basic: image, prompt, duration
+  | 'sora-dev' // Basic + size
+  | 'hailuo' // enable_prompt_expansion
+  | 'luma' // size, duration (string)
+  | 'vidu' // images[], movement_amplitude
+  | 'wan-video' // enable_prompt_expansion, negative_prompt, resolution
+  | 'video-effects' // image only
+  | 'ltx' // generate_audio
+  | 'generic'; // Basic params
+
+function getVideoModelFamily(atlasModel: string): VideoModelFamily {
+  // Seedance models
+  if (atlasModel.includes('seedance')) return 'seedance';
+
+  // Kling models - split by type
+  if (atlasModel.includes('kling-effects')) return 'kling-effects';
+  if (atlasModel.includes('kling') && atlasModel.includes('multi')) return 'kling-multi';
+  if (atlasModel.includes('kling-video-o1')) return 'kling-o1';
+  if (atlasModel.includes('kling')) return 'kling-standard';
+
+  // Veo models
+  if (atlasModel.includes('veo') && atlasModel.includes('reference')) return 'veo-ref';
+  if (atlasModel.includes('veo')) return 'veo';
+
+  // Sora models
+  if (atlasModel.includes('sora') && atlasModel.includes('developer')) return 'sora-dev';
+  if (atlasModel.includes('sora')) return 'sora';
+
+  // Hailuo models
+  if (atlasModel.includes('hailuo')) return 'hailuo';
+
+  // Luma models
+  if (atlasModel.includes('luma') || atlasModel.includes('ray-2')) return 'luma';
+
+  // Vidu models
+  if (atlasModel.includes('vidu')) return 'vidu';
+
+  // WAN video models
+  if (atlasModel.includes('wan') && atlasModel.includes('video')) return 'wan-video';
+
+  // LTX models
+  if (atlasModel.includes('ltx')) return 'ltx';
+
+  // Video effects
+  if (atlasModel.includes('video-effects')) return 'video-effects';
+
+  return 'generic';
+}
+
+function buildVideoRequestBody(
+  atlasModel: string,
+  options: AtlasVideoGenerateOptions,
+): Record<string, unknown> {
+  const family = getVideoModelFamily(atlasModel);
+  const baseParams = {
+    model: atlasModel,
+    prompt: options.prompt,
+  };
+
+  switch (family) {
+    case 'seedance': {
+      // Per IMAGE_TO_VIDEO.md: aspect_ratio, camera_fixed, duration, generate_audio, resolution, seed
+      return {
+        ...baseParams,
+        image: options.referenceImage || '',
+        aspect_ratio: '16:9',
+        camera_fixed: false,
+        duration: options.duration || 5,
+        generate_audio: true,
+        resolution: '720p',
+        seed: options.seed ?? -1,
+      };
+    }
+
+    case 'kling-standard': {
+      // Per IMAGE_TO_VIDEO.md: cfg_scale, duration, negative_prompt, sound
+      return {
+        ...baseParams,
+        image: options.referenceImage || '',
+        cfg_scale: 0.5,
+        duration: options.duration || 5,
+        negative_prompt: '',
+        sound: true,
+      };
+    }
+
+    case 'kling-o1': {
+      // Per IMAGE_TO_VIDEO.md: aspect_ratio, duration, last_image
+      return {
+        ...baseParams,
+        image: options.referenceImage || '',
+        aspect_ratio: '16:9',
+        duration: options.duration || 5,
+      };
+    }
+
+    case 'kling-multi': {
+      // Per IMAGE_TO_VIDEO.md: images array, aspect_ratio, duration, negative_prompt
+      return {
+        ...baseParams,
+        images: options.referenceImage ? [options.referenceImage] : [],
+        aspect_ratio: '1:1',
+        duration: options.duration || 5,
+        negative_prompt: '',
+      };
+    }
+
+    case 'kling-effects': {
+      // Per IMAGE_TO_VIDEO.md: image, effect_scene only (no prompt needed)
+      return {
+        model: atlasModel,
+        image: options.referenceImage || '',
+        effect_scene: 'firework_2026',
+      };
+    }
+
+    case 'veo': {
+      // Per IMAGE_TO_VIDEO.md: aspect_ratio, duration, generate_audio, negative_prompt, resolution, seed
+      return {
+        ...baseParams,
+        image: options.referenceImage || '',
+        aspect_ratio: '16:9',
+        duration: options.duration || 8,
+        generate_audio: true,
+        negative_prompt: '',
+        resolution: '1080p',
+        seed: options.seed ?? 1,
+      };
+    }
+
+    case 'veo-ref': {
+      // Per IMAGE_TO_VIDEO.md: images array, generate_audio, negative_prompt, resolution, seed
+      return {
+        ...baseParams,
+        images: options.referenceImage ? [options.referenceImage] : [],
+        generate_audio: true,
+        negative_prompt: '',
+        resolution: '1080p',
+        seed: options.seed ?? 1,
+      };
+    }
+
+    case 'sora': {
+      // Per IMAGE_TO_VIDEO.md: Basic params only (no seed for Sora)
+      return {
+        ...baseParams,
+        image: options.referenceImage || '',
+        duration: options.duration || 8,
+      };
+    }
+
+    case 'sora-dev': {
+      // Per IMAGE_TO_VIDEO.md: Basic params + size
+      return {
+        ...baseParams,
+        image: options.referenceImage || '',
+        duration: options.duration || 10,
+        size: '720*1280',
+      };
+    }
+
+    case 'hailuo': {
+      // Per IMAGE_TO_VIDEO.md: duration, enable_prompt_expansion
+      return {
+        ...baseParams,
+        image: options.referenceImage || '',
+        duration: options.duration || 6,
+        enable_prompt_expansion: false,
+      };
+    }
+
+    case 'luma': {
+      // Per IMAGE_TO_VIDEO.md: size, duration (STRING not number!)
+      return {
+        ...baseParams,
+        image: options.referenceImage || '',
+        size: '1280*720',
+        duration: String(options.duration || 5),
+      };
+    }
+
+    case 'vidu': {
+      // Per IMAGE_TO_VIDEO.md: images array, aspect_ratio, seed, movement_amplitude
+      return {
+        ...baseParams,
+        images: options.referenceImage ? [options.referenceImage] : [],
+        aspect_ratio: '16:9',
+        seed: options.seed ?? 0,
+        movement_amplitude: 'auto',
+      };
+    }
+
+    case 'wan-video': {
+      // Per IMAGE_TO_VIDEO.md: enable_prompt_expansion, negative_prompt, resolution, seed
+      return {
+        ...baseParams,
+        image: options.referenceImage || '',
+        duration: options.duration || 5,
+        enable_prompt_expansion: false,
+        negative_prompt: '',
+        resolution: '720p',
+        seed: options.seed ?? -1,
+      };
+    }
+
+    case 'ltx': {
+      // Per IMAGE_TO_VIDEO.md: duration, generate_audio
+      return {
+        ...baseParams,
+        image: options.referenceImage || '',
+        duration: options.duration || 8,
+        generate_audio: true,
+      };
+    }
+
+    case 'video-effects': {
+      // Video effects only need image (no prompt, no duration)
+      return {
+        model: atlasModel,
+        image: options.referenceImage || '',
+      };
+    }
+
+    default: {
+      // Generic fallback
+      return {
+        ...baseParams,
+        image: options.referenceImage || '',
+        duration: options.duration || 5,
+        seed: options.seed ?? -1,
+      };
+    }
+  }
+}
+
+/**
  * Generate video with Atlas Cloud
  */
 export async function generateVideoWithAtlas(
@@ -1923,29 +2235,18 @@ export async function generateVideoWithAtlas(
   // Get the correct Atlas API model string
   const atlasModel = getAtlasCloudVideoModelId(model);
 
+  // Build model-specific request body
+  const requestBody = buildVideoRequestBody(atlasModel, options);
+
   // Comprehensive logging
   console.log('[AtlasCloud Video] === STARTING VIDEO GENERATION ===');
   console.log('[AtlasCloud Video] Input model from options:', options.model);
   console.log('[AtlasCloud Video] Resolved model (after default):', model);
   console.log('[AtlasCloud Video] Mapped Atlas API model:', atlasModel);
+  console.log('[AtlasCloud Video] Model family:', getVideoModelFamily(atlasModel));
   console.log('[AtlasCloud Video] Prompt:', `${options.prompt?.substring(0, 100)}...`);
   console.log('[AtlasCloud Video] Image (reference):', options.referenceImage ? 'YES (provided)' : 'NO');
   console.log('[AtlasCloud Video] Duration:', options.duration || 5);
-
-  // Base parameters for all models
-  const requestBody: Record<string, any> = {
-    model: atlasModel,
-    prompt: options.prompt,
-    image: options.referenceImage || '',
-    duration: options.duration || 5,
-  };
-
-  // Add seed ONLY for models that support it (NOT Sora models)
-  const isSoraModel = atlasModel.startsWith('openai/sora');
-  if (!isSoraModel) {
-    requestBody.seed = options.seed ?? -1;
-  }
-
   console.log('[AtlasCloud Video] Full request body:', JSON.stringify(requestBody, null, 2));
 
   // Step 1: Start video generation

@@ -14,6 +14,7 @@ type Speaker = {
   userId?: string;
   avatarUrl?: string;
   sampleAudioUrl?: string;
+  sampleText?: string | null;
   utteranceCount: number;
   totalDuration: number;
 };
@@ -34,11 +35,17 @@ type GroupMember = {
   avatarUrl?: string;
 };
 
+type TherapistPatient = {
+  id: string;
+  name: string;
+  avatarUrl?: string | null;
+};
+
 type SpeakerLabelingModalProps = {
   isOpen: boolean;
   onClose: () => void;
   sessionId: string;
-  onSave: () => void;
+  onSave: () => void | Promise<void>;
 };
 
 export function SpeakerLabelingModal({
@@ -59,6 +66,7 @@ export function SpeakerLabelingModal({
     patientAvatarUrl: null,
   });
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
+  const [therapistPatients, setTherapistPatients] = useState<TherapistPatient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -91,6 +99,11 @@ export function SpeakerLabelingModal({
           setGroupMembers(data.groupMembers);
         }
 
+        // Set therapist's patients from API response
+        if (data.therapistPatients) {
+          setTherapistPatients(data.therapistPatients);
+        }
+
         // Transform API data to match component interface
         const transformedSpeakers: Speaker[] = data.speakers.map((speaker: any) => ({
           id: speaker.id,
@@ -102,6 +115,7 @@ export function SpeakerLabelingModal({
           utteranceCount: speaker.totalUtterances || 0,
           totalDuration: speaker.totalDurationSeconds || 0,
           sampleAudioUrl: speaker.sampleAudioUrl,
+          sampleText: speaker.sampleText,
         }));
 
         setSpeakers(transformedSpeakers);
@@ -137,8 +151,8 @@ export function SpeakerLabelingModal({
         throw new Error('Failed to save speakers');
       }
 
-      // Call onSave callback to refresh transcript data
-      onSave();
+      // Call onSave callback to refresh transcript data and wait for it to complete
+      await onSave();
       onClose();
     } catch (err) {
       console.error('Error saving speakers:', err);
@@ -231,6 +245,7 @@ export function SpeakerLabelingModal({
                     speakers={speakers}
                     sessionContext={sessionContext}
                     groupMembers={groupMembers}
+                    therapistPatients={therapistPatients}
                     onSave={handleSave}
                     onCancel={handleCancel}
                   />

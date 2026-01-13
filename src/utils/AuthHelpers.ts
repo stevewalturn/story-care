@@ -165,9 +165,13 @@ export function handleAuthError(error: unknown): NextResponse {
     return NextResponse.json({ error: message }, { status: 403 });
   }
 
-  // Generic error
+  // Log non-auth errors for debugging
+  console.error('[handleAuthError] Non-auth error caught:', error);
+
+  // Return more informative error in development, generic in production
+  const isDevelopment = process.env.NODE_ENV === 'development';
   return NextResponse.json(
-    { error: 'Authentication error' },
+    { error: isDevelopment ? message : 'An error occurred' },
     { status: 500 },
   );
 }

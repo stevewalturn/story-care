@@ -38,6 +38,16 @@ export type SessionPatient = {
   avatarUrl?: string | null;
 };
 
+// Data passed when saving a quote from transcript selection
+export type SaveQuoteData = {
+  selectedText: string;
+  speakerName: string;
+  speakerId: string;
+  speakerType: 'therapist' | 'patient' | 'group_member';
+  startTime: number;
+  endTime: number;
+};
+
 // Props for TranscriptPanel
 export type TranscriptPanelProps = {
   sessionId: string;
@@ -45,6 +55,7 @@ export type TranscriptPanelProps = {
   utterances: Utterance[];
   audioUrl?: string;
   onTextSelection: () => void;
+  onSaveQuote?: (data: SaveQuoteData) => void; // Save quote from floating menu
   user: User | null;
   // Real session data (not hardcoded)
   groupName?: string;
@@ -60,9 +71,8 @@ export type TranscriptPanelProps = {
   // External seek control - when this value changes, seek audio to this timestamp
   seekToTimestamp?: number | null;
   onSeekComplete?: () => void; // Called after seek is performed to reset the value
-  // Analyze mode toggle
-  analyzeMode?: boolean;
-  onAnalyzeModeChange?: (enabled: boolean) => void;
+  // Open analyze modal from floating menu
+  onOpenAnalyzeModal?: () => void;
   // Speaker labeling modal
   onOpenSpeakerLabeling?: () => void;
 };
@@ -104,9 +114,8 @@ export type AIAssistantPanelProps = {
     sceneCard: any; // TherapeuticSceneCard data
   }) => void;
   onLibraryRefresh?: () => void;
-  analyzeMode: boolean;
-  onAnalyzeModeChange: (enabled: boolean) => void;
   onClose?: () => void;
+  onJumpToTimestamp?: (timestamp: number) => void; // Jump to transcript/audio position
 };
 
 // Selected patient info for passing between components
@@ -129,7 +138,8 @@ export type LibraryPanelProps = {
   onSelectedPatientChange?: (patient: SelectedPatientInfo | null) => void;
   onOpenGenerateImage?: () => void;
   onOpenGenerateVideo?: () => void;
-  onOpenGenerateMusic?: () => void;
+  onOpenGenerateMusicLyrical?: () => void;
+  onOpenGenerateMusicInstrumental?: () => void;
 };
 
 // Props for MediaTab

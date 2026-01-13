@@ -7,7 +7,7 @@
  */
 
 import type { LibraryPanelProps } from '../types/transcript.types';
-import { ChevronDown, ChevronLeft, ChevronRight, Image as ImageIcon, Music, Plus, Sparkles, Video } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Clapperboard, Image as ImageIcon, Music, Plus, Sparkles, Video } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { MediaTab } from './MediaTab';
 import { NotesTab } from './NotesTab';
@@ -22,7 +22,9 @@ type ExtendedLibraryPanelProps = LibraryPanelProps & {
   onJumpToTimestamp?: (timestamp: number) => void; // Jump to audio position
   onOpenGenerateImage?: () => void;
   onOpenGenerateVideo?: () => void;
-  onOpenGenerateMusic?: () => void;
+  onOpenGenerateMusicLyrical?: () => void;
+  onOpenGenerateMusicInstrumental?: () => void;
+  onOpenGenerateScene?: () => void;
 };
 
 export function LibraryPanel({
@@ -41,7 +43,9 @@ export function LibraryPanel({
   onJumpToTimestamp,
   onOpenGenerateImage,
   onOpenGenerateVideo,
-  onOpenGenerateMusic,
+  onOpenGenerateMusicLyrical,
+  onOpenGenerateMusicInstrumental,
+  onOpenGenerateScene,
 }: ExtendedLibraryPanelProps) {
   // Main tab state for switching between Media, Quotes, Notes, Profile
   const [activeTab, setActiveTab] = useState<'media' | 'quotes' | 'notes' | 'profile'>('media');
@@ -271,13 +275,33 @@ export function LibraryPanel({
                       </button>
                       <button
                         onClick={() => {
-                          onOpenGenerateMusic?.();
+                          onOpenGenerateMusicLyrical?.();
                           setShowCreateDropdown(false);
                         }}
                         className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-gray-700 transition-colors hover:bg-purple-50 hover:text-purple-700"
                       >
                         <Music className="h-4 w-4" />
-                        Generate Music
+                        Generate Music (Lyrical)
+                      </button>
+                      <button
+                        onClick={() => {
+                          onOpenGenerateMusicInstrumental?.();
+                          setShowCreateDropdown(false);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-gray-700 transition-colors hover:bg-purple-50 hover:text-purple-700"
+                      >
+                        <Music className="h-4 w-4" />
+                        Generate Music (Instrumental)
+                      </button>
+                      <button
+                        onClick={() => {
+                          onOpenGenerateScene?.();
+                          setShowCreateDropdown(false);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-gray-700 transition-colors hover:bg-purple-50 hover:text-purple-700"
+                      >
+                        <Clapperboard className="h-4 w-4" />
+                        Generate Scene
                       </button>
                     </div>
                   )}

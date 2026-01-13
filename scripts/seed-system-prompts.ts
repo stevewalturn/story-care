@@ -564,7 +564,7 @@ Required JSON fields:
   {
     name: 'Extract Meaningful Quotes',
     promptText: '', // DEPRECATED: Use systemPrompt instead
-    systemPrompt: `AI analyzes selection and extracts therapeutically significant quotes.
+    systemPrompt: `AI analyzes selection and extracts therapeutically significant quotes WITH timestamps.
 
 Review the selected transcript segment and identify:
 1. Moments of insight or self-awareness
@@ -577,6 +577,11 @@ Extract 3-5 quotes with context.
 
 For each quote, identify which patient it belongs to or is most relevant to. Use the patient's name if identifiable from the conversation context.
 
+IMPORTANT - TIMESTAMP EXTRACTION:
+The transcript is formatted as: [MM:SS] **Speaker Name** (Role): text
+You MUST extract the timestamp from this format and convert it to seconds.
+Example: [1:23] becomes start_time_seconds: 83 (1*60 + 23 = 83)
+
 CRITICAL: Output ONLY valid JSON. No explanatory text before or after. Start with { and end with }.
 
 IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is required for proper rendering.
@@ -587,13 +592,15 @@ IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is req
       "quote_text": "exact quote",
       "speaker": "speaker name",
       "patient_name": "patient name this quote belongs to",
+      "start_time_seconds": 83,
+      "end_time_seconds": 95,
       "context": "why therapeutically significant",
       "tags": ["tag1", "tag2"]
     }
   ]
 }`,
     userPrompt: null,
-    description: 'Extract therapeutically meaningful quotes with context',
+    description: 'Extract therapeutically meaningful quotes with context and timestamps',
     category: 'extraction',
     icon: 'quote',
     outputType: 'json',
@@ -609,10 +616,12 @@ IMPORTANT: The JSON MUST start with "schemaType" as the FIRST field. This is req
               quote_text: { type: 'string' },
               speaker: { type: 'string' },
               patient_name: { type: 'string' },
+              start_time_seconds: { type: 'number' },
+              end_time_seconds: { type: 'number' },
               context: { type: 'string' },
               tags: { type: 'array', items: { type: 'string' } },
             },
-            required: ['quote_text', 'speaker', 'context'],
+            required: ['quote_text', 'speaker', 'context', 'start_time_seconds'],
           },
         },
       },

@@ -410,6 +410,9 @@ export const SCHEMA_ACTIONS: Record<JSONSchemaType, SchemaAction[]> = {
       handler: 'handleSaveAsNote',
     },
   ],
+
+  // Combined schema actions - no bottom actions, each image card has its own button
+  analysis_and_images: [],
 };
 
 // ============================================================================
@@ -476,6 +479,8 @@ export function getSchemaDisplayName(schemaType: JSONSchemaType): string {
     gratitude_prompts: 'Gratitude Prompts',
     homework_assignments: 'Homework Assignments',
     check_in_questions: 'Check-In Questions',
+    // Combined schemas
+    analysis_and_images: 'Analysis & Images',
   };
   return names[schemaType] || 'JSON Output';
 }
@@ -517,6 +522,8 @@ export function getSchemaDescription(schemaType: JSONSchemaType): string {
     gratitude_prompts: 'Prompts to practice gratitude',
     homework_assignments: 'Therapeutic assignments for between-session work',
     check_in_questions: 'Questions to assess patient progress and wellbeing',
+    // Combined schemas
+    analysis_and_images: 'Therapeutic analysis with image generation suggestions',
   };
   return descriptions[schemaType] || 'AI-generated structured output';
 }

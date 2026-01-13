@@ -6,10 +6,11 @@
  * Matches Figma design with audio player and colored speaker initials
  */
 
-import type { SpeakerInfo, TranscriptPanelProps, Utterance } from '../types/transcript.types';
+import type { SaveQuoteData, SpeakerInfo, TranscriptPanelProps, Utterance } from '../types/transcript.types';
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, Pause, Play, Users } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { SelectionFloatingMenu } from './SelectionFloatingMenu';
 
 // Speaker color mapping for initials - Matching Figma exactly
 const speakerColors: Record<string, { bg: string; text: string }> = {
@@ -38,7 +39,8 @@ export function TranscriptPanel({
   sessionTitle,
   utterances,
   audioUrl,
-  onTextSelection,
+  onTextSelection: _onTextSelection,
+  onSaveQuote,
   user: _user,
   groupName,
   sessionDate,
@@ -49,12 +51,17 @@ export function TranscriptPanel({
   onToggleCollapse,
   seekToTimestamp,
   onSeekComplete,
-  analyzeMode = false,
-  onAnalyzeModeChange,
+  onOpenAnalyzeModal,
   onOpenSpeakerLabeling,
 }: TranscriptPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+
+  // Floating selection menu state
+  const [showSelectionMenu, setShowSelectionMenu] = useState(false);
+  const [selectionMenuPosition, setSelectionMenuPosition] = useState({ x: 0, y: 0 });
+  const [selectedText, setSelectedText] = useState('');
+  const [selectedUtterance, setSelectedUtterance] = useState<Utterance | null>(null);
 
   // Speaker dropdown state
   const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
@@ -215,6 +222,89 @@ export function TranscriptPanel({
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Handle text selection to show floating menu
+  const handleTextSelection = (event: React.MouseEvent) => {
+    const selection = window.getSelection();
+    const text = selection?.toString().trim();
+
+    if (!text || text.length === 0) {
+      setShowSelectionMenu(false);
+      return;
+    }
+
+    // Find which utterance the selection is within
+    // Walk up from the selection's anchor node to find the utterance container
+    let utteranceElement: HTMLElement | null = null;
+    let node = selection?.anchorNode;
+    while (node) {
+      if (node instanceof HTMLElement && node.dataset.utteranceId) {
+        utteranceElement = node;
+        break;
+      }
+      node = node.parentNode;
+    }
+
+    if (!utteranceElement) {
+      // Fallback: try using event target
+      let target = event.target as HTMLElement | null;
+      while (target && !target.dataset.utteranceId) {
+        target = target.parentElement;
+      }
+      utteranceElement = target;
+    }
+
+    if (utteranceElement) {
+      const utteranceId = utteranceElement.dataset.utteranceId;
+      const utterance = utterances.find(u => u.id === utteranceId);
+
+      if (utterance) {
+        setSelectedUtterance(utterance);
+        setSelectedText(text);
+
+        // Position the menu near the selection
+        const range = selection?.getRangeAt(0);
+        if (range) {
+          const rect = range.getBoundingClientRect();
+          setSelectionMenuPosition({
+            x: rect.left + rect.width / 2,
+            y: rect.bottom + 8,
+          });
+          setShowSelectionMenu(true);
+        }
+      }
+    }
+  };
+
+  // Handle floating menu actions
+  const handleSaveQuote = () => {
+    if (selectedUtterance && selectedText && onSaveQuote) {
+      const data: SaveQuoteData = {
+        selectedText,
+        speakerName: selectedUtterance.speakerName,
+        speakerId: selectedUtterance.speakerId,
+        speakerType: selectedUtterance.speakerType,
+        startTime: selectedUtterance.startTime,
+        endTime: selectedUtterance.endTime,
+      };
+      onSaveQuote(data);
+    }
+    setShowSelectionMenu(false);
+  };
+
+  const handleAnalyze = () => {
+    onOpenAnalyzeModal?.();
+    setShowSelectionMenu(false);
+  };
+
+  const handleCopy = () => {
+    // Copy is handled in the SelectionFloatingMenu component
+    // This callback is for any additional logic if needed
+  };
+
+  const handleCloseSelectionMenu = () => {
+    setShowSelectionMenu(false);
   };
 
   // Extract unique speakers from utterances if not provided
@@ -644,33 +734,12 @@ export function TranscriptPanel({
       {/* Instruction Banner - Seamless */}
       <div className="border-b border-purple-100 bg-white px-4 py-2">
         <div className="flex items-center gap-2">
-          {/* Analyze Toggle - Enhanced */}
-          <button
-            onClick={() => onAnalyzeModeChange?.(!analyzeMode)}
-            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 focus:outline-none ${
-              analyzeMode
-                ? 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 hover:shadow'
-                : 'border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-            title={analyzeMode ? 'Click to disable text selection analysis' : 'Click to enable text selection analysis'}
-          >
-            <div className={`h-2 w-2 rounded-full transition-all duration-200 ${analyzeMode ? 'bg-purple-500' : 'bg-gray-400'}`} />
-            Analyze
-            {' '}
-            {analyzeMode ? 'On' : 'Off'}
-          </button>
-
-          {/* Instruction Text - Enhanced */}
-          <div className="flex items-center gap-2">
-            <svg className="h-3.5 w-3.5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-            </svg>
-            <p className="text-xs font-medium text-gray-600">
-              {analyzeMode
-                ? 'Click or drag to select text, then analyze'
-                : 'Select text to analyze or generate content'}
-            </p>
-          </div>
+          <svg className="h-3.5 w-3.5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+          </svg>
+          <p className="text-xs font-medium text-gray-600">
+            Select text to save as quote, analyze, or copy
+          </p>
         </div>
       </div>
 
@@ -678,7 +747,7 @@ export function TranscriptPanel({
       <div
         ref={transcriptContainerRef}
         className="flex-1 space-y-4 overflow-y-auto bg-white p-4"
-        onMouseUp={onTextSelection}
+        onMouseUp={handleTextSelection}
       >
         {utterances.map((utterance: Utterance) => {
           const speakerColor = getSpeakerColor(utterance.speakerName, utterance.speakerType) ?? speakerColors.default;
@@ -691,6 +760,7 @@ export function TranscriptPanel({
           return (
             <div
               key={utterance.id}
+              data-utterance-id={utterance.id}
               ref={(el) => {
                 if (el) utteranceRefs.current.set(utterance.id, el);
               }}
@@ -723,17 +793,17 @@ export function TranscriptPanel({
                   alt={utterance.speakerName}
                   width={24}
                   height={24}
-                  className="h-6 w-6 flex-shrink-0 rounded-full object-cover"
+                  className="h-6 w-6 flex-shrink-0 rounded-full object-cover select-none"
                 />
               ) : (
-                <div className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full ${speakerColor?.bg ?? 'bg-gray-400'}`}>
+                <div className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full select-none ${speakerColor?.bg ?? 'bg-gray-400'}`}>
                   <span className={`text-xs font-semibold ${speakerColor?.text ?? 'text-white'}`}>{initial}</span>
                 </div>
               )}
 
               {/* Message Content */}
               <div className="min-w-0 flex-1">
-                <div className="mb-1 flex items-center gap-2">
+                <div className="mb-1 flex items-center gap-2 select-none">
                   {/* Speaker Name with Dropdown */}
                   <div className="relative" ref={activeDropdownId === utterance.id ? dropdownRef : undefined}>
                     <button
@@ -836,6 +906,17 @@ export function TranscriptPanel({
           );
         })}
       </div>
+
+      {/* Selection Floating Menu */}
+      <SelectionFloatingMenu
+        isVisible={showSelectionMenu}
+        position={selectionMenuPosition}
+        selectedText={selectedText}
+        onSaveQuote={handleSaveQuote}
+        onAnalyze={handleAnalyze}
+        onCopy={handleCopy}
+        onClose={handleCloseSelectionMenu}
+      />
     </div>
   );
 }
