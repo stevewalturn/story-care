@@ -340,7 +340,7 @@ export function LibraryPanel({
           {/* Media Sub-Tabs - Compact */}
           {activeTab === 'media' && (
             <div className="flex border-b border-gray-200">
-              {['All', 'Videos', 'Images', 'Musics'].map((tab) => {
+              {['All', 'Videos', 'Images', 'Music'].map((tab) => {
                 const filterValue = tab.toLowerCase() as 'all' | 'videos' | 'images' | 'musics';
                 const isActive = mediaFilter === filterValue;
                 return (
