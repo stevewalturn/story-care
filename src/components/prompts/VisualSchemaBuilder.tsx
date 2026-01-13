@@ -246,7 +246,11 @@ export function VisualSchemaBuilder({
               <span className={`font-medium ${isEnabled ? 'text-gray-900' : 'text-gray-400'}`}>
                 {field.displayName}
               </span>
-              <span className="text-xs text-gray-400">({field.type})</span>
+              <span className="text-xs text-gray-400">
+                (
+                {field.type}
+                )
+              </span>
               {field.required && (
                 <span className="text-xs font-medium text-red-500">*</span>
               )}
@@ -295,7 +299,10 @@ export function VisualSchemaBuilder({
         </div>
         <ul className="mt-2 space-y-1 text-sm text-red-700">
           {result.errors.map((error, i) => (
-            <li key={i}>• {error}</li>
+            <li key={i}>
+              •
+              {error}
+            </li>
           ))}
         </ul>
       </div>

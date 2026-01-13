@@ -460,9 +460,9 @@ export function AssetsClient() {
     try {
       // Determine extension from URL or media type
       const urlPath = item.mediaUrl.split('?')[0];
-      const extension = urlPath?.split('.').pop()?.toLowerCase() ||
-        (item.mediaType === 'image' ? 'jpg' :
-         item.mediaType === 'audio' ? 'mp3' : 'mp4');
+      const extension = urlPath?.split('.').pop()?.toLowerCase()
+        || (item.mediaType === 'image' ? 'jpg'
+          : item.mediaType === 'audio' ? 'mp3' : 'mp4');
 
       const filename = `${item.title.replace(/[^a-z0-9]/gi, '_')}.${extension}`;
 
@@ -511,7 +511,7 @@ export function AssetsClient() {
 
       // Update local state
       setMedia(prev => prev.map(item =>
-        item.id === editingMedia.id ? { ...item, ...updates } : item
+        item.id === editingMedia.id ? { ...item, ...updates } : item,
       ));
     } catch (error) {
       throw error;
@@ -534,7 +534,7 @@ export function AssetsClient() {
       const response = await fetch(`/api/media/${item.id}/extract-frame`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${idToken}`,
+          Authorization: `Bearer ${idToken}`,
         },
       });
 

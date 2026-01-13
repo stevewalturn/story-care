@@ -5,6 +5,7 @@
  * Main drop zone with sortable blocks and insertion indicators
  */
 
+import type { BlockInstance } from '@/config/PromptBuilderBlocks';
 import { useDroppable } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -13,7 +14,6 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Plus, Trash2 } from 'lucide-react';
-import type { BlockInstance } from '@/config/PromptBuilderBlocks';
 import { getBlockDefinition } from '@/config/PromptBuilderBlocks';
 
 type SortableBlockCardProps = {
@@ -60,7 +60,7 @@ function SortableBlockCard({ block, isSelected, onSelect, onDelete }: SortableBl
       <div
         {...attributes}
         {...listeners}
-        className="absolute top-3 left-2 cursor-grab rounded p-1 opacity-0 transition-opacity hover:bg-gray-100 group-hover:opacity-100 active:cursor-grabbing"
+        className="absolute top-3 left-2 cursor-grab rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-gray-100 active:cursor-grabbing"
       >
         <GripVertical className="h-4 w-4 text-gray-400" />
       </div>
@@ -72,7 +72,7 @@ function SortableBlockCard({ block, isSelected, onSelect, onDelete }: SortableBl
           e.stopPropagation();
           onDelete(block.id);
         }}
-        className="absolute top-2 right-2 rounded p-1 opacity-0 transition-opacity hover:bg-red-100 group-hover:opacity-100"
+        className="absolute top-2 right-2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-100"
       >
         <Trash2 className="h-4 w-4 text-red-500" />
       </button>
@@ -99,7 +99,7 @@ function SortableBlockCard({ block, isSelected, onSelect, onDelete }: SortableBl
             <button
               type="button"
               className="inline-flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700"
-              onClick={(e) => e.stopPropagation()}
+              onClick={e => e.stopPropagation()}
             >
               <Icon className="h-3 w-3" />
               {definition.actionLabel}
@@ -132,7 +132,8 @@ function BlockPreview({ block, definition }: BlockPreviewProps) {
       return (
         <p className={`font-semibold text-gray-900 ${
           block.values.level === 'h1' ? 'text-xl' : block.values.level === 'h2' ? 'text-lg' : 'text-base'
-        }`}>
+        }`}
+        >
           {block.values.text || 'Header text...'}
         </p>
       );
@@ -140,14 +141,16 @@ function BlockPreview({ block, definition }: BlockPreviewProps) {
     case 'button':
       return (
         <div className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">
-          Button: {block.values.label || 'Click me'}
+          Button:
+          {' '}
+          {block.values.label || 'Click me'}
         </div>
       );
 
     case 'image':
       return (
         <div className="flex h-16 items-center justify-center rounded bg-gray-100 text-xs text-gray-500">
-          {block.values.url ? 'Image: ' + block.values.url.substring(0, 30) + '...' : 'No image selected'}
+          {block.values.url ? `Image: ${block.values.url.substring(0, 30)}...` : 'No image selected'}
         </div>
       );
 
@@ -155,23 +158,27 @@ function BlockPreview({ block, definition }: BlockPreviewProps) {
       return (
         <hr className={`my-2 border-gray-300 ${
           block.values.style === 'dashed' ? 'border-dashed' : block.values.style === 'dotted' ? 'border-dotted' : ''
-        }`} />
+        }`}
+        />
       );
 
     case 'spacer':
       return (
         <div className={`bg-gray-50 ${
           block.values.height === 'small' ? 'h-4' : block.values.height === 'large' ? 'h-12' : block.values.height === 'xlarge' ? 'h-16' : 'h-8'
-        }`} />
+        }`}
+        />
       );
 
     case 'quote':
       return (
-        <blockquote className="border-l-2 border-purple-300 pl-3 text-sm italic text-gray-600">
+        <blockquote className="border-l-2 border-purple-300 pl-3 text-sm text-gray-600 italic">
           {block.values.text || 'Quote text...'}
           {block.values.author && (
-            <cite className="mt-1 block text-xs not-italic text-gray-500">
-              — {block.values.author}
+            <cite className="mt-1 block text-xs text-gray-500 not-italic">
+              —
+              {' '}
+              {block.values.author}
             </cite>
           )}
         </blockquote>
@@ -204,7 +211,11 @@ function BlockPreview({ block, definition }: BlockPreviewProps) {
         <div className="space-y-1">
           <p className="text-sm font-medium text-gray-800">{block.values.title || 'Untitled Video'}</p>
           <p className="line-clamp-2 text-xs text-gray-500">{block.values.reference_image_prompt || 'No prompt yet...'}</p>
-          <p className="text-xs text-gray-400">Duration: {block.values.duration || 5}s</p>
+          <p className="text-xs text-gray-400">
+            Duration:
+            {block.values.duration || 5}
+            s
+          </p>
         </div>
       );
 
@@ -212,8 +223,16 @@ function BlockPreview({ block, definition }: BlockPreviewProps) {
       return (
         <div className="space-y-1">
           <p className="text-sm font-medium text-gray-800">{block.values.title || 'Untitled Music'}</p>
-          <p className="text-xs text-gray-500">Type: {block.values.type || 'instrumental'}</p>
-          {block.values.mood && <p className="text-xs text-gray-400">Mood: {block.values.mood}</p>}
+          <p className="text-xs text-gray-500">
+            Type:
+            {block.values.type || 'instrumental'}
+          </p>
+          {block.values.mood && (
+            <p className="text-xs text-gray-400">
+              Mood:
+              {block.values.mood}
+            </p>
+          )}
         </div>
       );
 
@@ -222,8 +241,10 @@ function BlockPreview({ block, definition }: BlockPreviewProps) {
         <div className="space-y-1">
           <p className="text-sm font-medium text-gray-800">{block.values.title || 'Untitled Scene'}</p>
           {block.values.patientQuote && (
-            <blockquote className="border-l-2 border-purple-300 pl-2 text-xs italic text-gray-600">
-              "{block.values.patientQuote.substring(0, 80)}..."
+            <blockquote className="border-l-2 border-purple-300 pl-2 text-xs text-gray-600 italic">
+              "
+              {block.values.patientQuote.substring(0, 80)}
+              ..."
             </blockquote>
           )}
         </div>
@@ -236,7 +257,10 @@ function BlockPreview({ block, definition }: BlockPreviewProps) {
             {block.values.quote_text || 'Quote text...'}
           </p>
           {block.values.speaker && (
-            <p className="text-xs text-gray-500">— {block.values.speaker}</p>
+            <p className="text-xs text-gray-500">
+              —
+              {block.values.speaker}
+            </p>
           )}
         </div>
       );
@@ -341,8 +365,8 @@ export function BuilderCanvas({
         </div>
       ) : (
         <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
-            {blocks.map((block) => (
+          <div className="space-y-3" onClick={e => e.stopPropagation()}>
+            {blocks.map(block => (
               <SortableBlockCard
                 key={block.id}
                 block={block}

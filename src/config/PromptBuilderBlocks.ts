@@ -32,15 +32,15 @@ import {
 
 export type BlockCategory = 'ui' | 'ai';
 
-export type BlockFieldType =
-  | 'text'
-  | 'textarea'
-  | 'select'
-  | 'number'
-  | 'url'
-  | 'boolean'
-  | 'color'
-  | 'image';
+export type BlockFieldType
+  = | 'text'
+    | 'textarea'
+    | 'select'
+    | 'number'
+    | 'url'
+    | 'boolean'
+    | 'color'
+    | 'image';
 
 export type BlockField = {
   id: string;
@@ -476,6 +476,7 @@ Required JSON fields:
             style: { type: 'string' },
             therapeutic_purpose: { type: 'string' },
             source_quote: { type: 'string' },
+            conceptDescription: { type: 'string' },
           },
           required: ['title', 'prompt', 'therapeutic_purpose'],
         },

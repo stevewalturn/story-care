@@ -9,7 +9,7 @@ import { and, eq, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
-import { moduleAiPromptsSchema, usersSchema } from '@/models/Schema';
+import { moduleAiPromptsSchema, userPromptOrderSchema, usersSchema } from '@/models/Schema';
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,9 +56,41 @@ export async function GET(request: NextRequest) {
       )
       .orderBy(moduleAiPromptsSchema.scope, moduleAiPromptsSchema.category, moduleAiPromptsSchema.name);
 
-    console.log(`[Therapist Prompts API] Returning ${prompts.length} prompts for user ${user.email} (role: ${user.role})`);
+    // Fetch user's custom order
+    const orderEntries = await db
+      .select({
+        promptId: userPromptOrderSchema.promptId,
+        sortOrder: userPromptOrderSchema.sortOrder,
+      })
+      .from(userPromptOrderSchema)
+      .where(eq(userPromptOrderSchema.userId, user.id))
+      .orderBy(userPromptOrderSchema.sortOrder);
 
-    return NextResponse.json({ prompts });
+    const hasCustomOrder = orderEntries.length > 0;
+
+    // If user has custom order, sort prompts accordingly
+    let sortedPrompts = prompts;
+    if (hasCustomOrder) {
+      const orderMap = new Map(orderEntries.map(e => [e.promptId, e.sortOrder]));
+
+      // Separate prompts with custom order and new prompts
+      const orderedPrompts = prompts.filter(p => orderMap.has(p.id));
+      const newPrompts = prompts.filter(p => !orderMap.has(p.id));
+
+      // Sort ordered prompts by custom order
+      orderedPrompts.sort((a, b) => {
+        const orderA = orderMap.get(a.id) ?? 0;
+        const orderB = orderMap.get(b.id) ?? 0;
+        return orderA - orderB;
+      });
+
+      // Append new prompts at the end
+      sortedPrompts = [...orderedPrompts, ...newPrompts];
+    }
+
+    console.log(`[Therapist Prompts API] Returning ${prompts.length} prompts for user ${user.email} (role: ${user.role}, customOrder: ${hasCustomOrder})`);
+
+    return NextResponse.json({ prompts: sortedPrompts, hasCustomOrder });
   } catch (error) {
     console.error('Error fetching prompts:', error);
     return NextResponse.json({ error: 'Failed to fetch prompts' }, { status: 500 });

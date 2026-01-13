@@ -2,9 +2,9 @@
 
 import { Copy, Download, Eye } from 'lucide-react';
 import { useState } from 'react';
-import { AssistantMessageContent } from './AssistantMessageContent';
 import { Modal } from '@/components/ui/Modal';
 import { downloadAsTextFile, stripMarkdownForPlainText } from '@/utils/FileDownloadHelpers';
+import { AssistantMessageContent } from './AssistantMessageContent';
 
 type MessagePreviewModalProps = {
   isOpen: boolean;
@@ -46,13 +46,13 @@ export function MessagePreviewModal({
 
   const formattedDate = timestamp
     ? timestamp.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    })
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      })
     : '';
 
   return (

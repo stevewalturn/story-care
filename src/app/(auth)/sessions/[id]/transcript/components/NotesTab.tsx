@@ -10,8 +10,8 @@ import type { PatientOption } from '@/components/sessions/SaveNoteModal';
 import { Check, Copy, Edit2, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SaveNoteModal } from '@/components/sessions/SaveNoteModal';
-import { Modal } from '@/components/ui/Modal';
 import { HTMLContent } from '@/components/ui/HTMLContent';
+import { Modal } from '@/components/ui/Modal';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 
 export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKey, selectedPatient }: NotesTabProps) {
@@ -28,7 +28,7 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
   const handleCopyNote = async (note: any) => {
     try {
       // Convert HTML to plain text while preserving newlines
-      let plainContent = note.content
+      const plainContent = note.content
         .replace(/<br\s*\/?>/gi, '\n') // Convert <br> to newline
         .replace(/<\/p>/gi, '\n\n') // Convert </p> to double newline
         .replace(/<\/div>/gi, '\n') // Convert </div> to newline

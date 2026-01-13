@@ -28,6 +28,7 @@
     "db:seed-modules": "NODE_ENV=development node --env-file=.env.local -r esbuild-register scripts/seed-treatment-modules.ts",
     "db:seed-templates": "NODE_ENV=development node --env-file=.env.local -r esbuild-register scripts/seed-templates.ts",
     "db:seed-prompts": "NODE_ENV=development node --env-file=.env.local -r esbuild-register scripts/seed-system-prompts.ts",
+    "db:seed-therapist-prompts": "NODE_ENV=development node --env-file=.env.local -r esbuild-register scripts/seed-therapist-prompts.ts",
     "storybook": "storybook dev -p 6006",
     "storybook:test": "vitest run --config .storybook/vitest.config.mts",
     "build-storybook": "storybook build"

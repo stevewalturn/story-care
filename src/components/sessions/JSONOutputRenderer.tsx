@@ -1,5 +1,6 @@
 'use client';
 
+import type { JSX } from 'react';
 import type { TherapeuticSceneCard } from '@/components/transcript/TherapeuticSceneCardRenderer';
 import type { SchemaAction } from '@/config/SchemaActions';
 import type { AnyJSONSchema, JSONSchemaType } from '@/types/JSONSchemas';
@@ -20,7 +21,6 @@ import {
   RefreshCw,
   Save,
 } from 'lucide-react';
-import type { JSX } from 'react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -215,22 +215,22 @@ export function JSONOutputRenderer({
             remarkPlugins={[remarkGfm]}
             components={{
               h1: ({ node, ...props }: any) => (
-                <h1 className="text-base font-bold text-gray-900 mt-3 mb-2" {...props} />
+                <h1 className="mt-3 mb-2 text-base font-bold text-gray-900" {...props} />
               ),
               h2: ({ node, ...props }: any) => (
-                <h2 className="text-sm font-semibold text-gray-900 mt-2 mb-1.5" {...props} />
+                <h2 className="mt-2 mb-1.5 text-sm font-semibold text-gray-900" {...props} />
               ),
               h3: ({ node, ...props }: any) => (
-                <h3 className="text-xs font-semibold text-gray-900 mt-2 mb-1" {...props} />
+                <h3 className="mt-2 mb-1 text-xs font-semibold text-gray-900" {...props} />
               ),
               p: ({ node, ...props }: any) => (
-                <p className="text-xs text-gray-600 my-1" {...props} />
+                <p className="my-1 text-xs text-gray-600" {...props} />
               ),
               ul: ({ node, ...props }: any) => (
-                <ul className="list-disc list-inside text-xs text-gray-600 my-1 space-y-0.5" {...props} />
+                <ul className="my-1 list-inside list-disc space-y-0.5 text-xs text-gray-600" {...props} />
               ),
               ol: ({ node, ...props }: any) => (
-                <ol className="list-decimal list-inside text-xs text-gray-600 my-1 space-y-0.5" {...props} />
+                <ol className="my-1 list-inside list-decimal space-y-0.5 text-xs text-gray-600" {...props} />
               ),
               li: ({ node, ...props }: any) => (
                 <li className="text-xs text-gray-600" {...props} />
@@ -239,16 +239,16 @@ export function JSONOutputRenderer({
                 <strong className="font-semibold text-gray-900" {...props} />
               ),
               em: ({ node, ...props }: any) => (
-                <em className="italic text-gray-700" {...props} />
+                <em className="text-gray-700 italic" {...props} />
               ),
               code: ({ node, inline, ...props }: any) =>
                 inline ? (
-                  <code className="bg-gray-100 rounded px-1 py-0.5 text-xs font-mono" {...props} />
+                  <code className="rounded bg-gray-100 px-1 py-0.5 font-mono text-xs" {...props} />
                 ) : (
-                  <code className="block bg-gray-100 rounded p-2 text-xs font-mono my-1" {...props} />
+                  <code className="my-1 block rounded bg-gray-100 p-2 font-mono text-xs" {...props} />
                 ),
               blockquote: ({ node, ...props }: any) => (
-                <blockquote className="border-l-2 border-purple-300 pl-3 italic text-gray-600 my-1" {...props} />
+                <blockquote className="my-1 border-l-2 border-purple-300 pl-3 text-gray-600 italic" {...props} />
               ),
             }}
           >
@@ -268,7 +268,7 @@ export function JSONOutputRenderer({
               }
               setExpandedNotes(newExpanded);
             }}
-            className="flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700 transition-colors"
+            className="flex items-center gap-1 text-xs font-medium text-purple-600 transition-colors hover:text-purple-700"
           >
             {isExpanded ? (
               <>
@@ -1078,8 +1078,7 @@ function renderPreview(
           <p className="font-semibold text-gray-900">{data.note_title}</p>
           {renderMarkdownContent
             ? renderMarkdownContent(data.note_content || '', isExpanded, noteIndex)
-            : <p className="text-xs text-gray-600 whitespace-pre-wrap">{data.note_content}</p>
-          }
+            : <p className="text-xs whitespace-pre-wrap text-gray-600">{data.note_content}</p>}
           {data.tags && data.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {data.tags.map((tag: string, i: number) => (

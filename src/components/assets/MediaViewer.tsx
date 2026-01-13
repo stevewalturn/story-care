@@ -150,10 +150,11 @@ export function MediaViewer({ item, onClose }: MediaViewerProps) {
                 {item.status && (
                   <div className="mb-2">
                     <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
-                      item.status === 'completed' ? 'bg-green-100 text-green-700' :
-                      item.status === 'processing' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
+                      item.status === 'completed' ? 'bg-green-100 text-green-700'
+                        : item.status === 'processing' ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-red-100 text-red-700'
+                    }`}
+                    >
                       {item.status === 'completed' && '✓ '}
                       {item.status === 'processing' && '⏳ '}
                       {item.status === 'failed' && '✗ '}

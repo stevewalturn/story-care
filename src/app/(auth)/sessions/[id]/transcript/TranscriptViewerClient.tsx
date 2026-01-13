@@ -7,12 +7,12 @@ import type { TreatmentModule } from '@/models/Schema';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { GenerateImageModal } from '@/components/media/GenerateImageModal';
 import { GenerateMusicModal } from '@/components/media/GenerateMusicModal';
+import { GenerateVideoModal } from '@/components/media/GenerateVideoModal';
 import { MediaUploadModal } from '@/components/media/MediaUploadModal';
 import { SceneGenerationLayout } from '@/components/scenes-generation/SceneGenerationLayout';
 import { AnalyzeSelectionModal } from '@/components/sessions/AnalyzeSelectionModal';
 import { AssignModuleModal } from '@/components/sessions/AssignModuleModal';
 import { EditQuoteModal } from '@/components/sessions/EditQuoteModal';
-import { GenerateVideoModal } from '@/components/media/GenerateVideoModal';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
 import { SpeakerLabelingModal } from '@/components/sessions/SpeakerLabelingModal';
 import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog';
@@ -63,8 +63,7 @@ export function TranscriptViewerClient({
   const [showSpeakerLabelingModal, setShowSpeakerLabelingModal] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [selectedTextSource, setSelectedTextSource] = useState<'transcript' | 'ai'>('transcript');
-  const [aiPrompt, setAiPrompt] = useState<string | null>(null); // DEPRECATED
-  // New: separate state for system prompt and user text (for Analyze Selection modal)
+  // Separate state for system prompt and user text (for Analyze Selection modal)
   const [aiSystemPrompt, setAiSystemPrompt] = useState<string | null>(null);
   const [aiUserText, setAiUserText] = useState<string | null>(null);
 
@@ -694,12 +693,10 @@ export function TranscriptViewerClient({
               speakers={speakers}
               utterances={utterances}
               assignedModule={assignedModule}
-              triggerPrompt={aiPrompt}
               triggerSystemPrompt={aiSystemPrompt}
               triggerUserText={aiUserText}
               currentSelectedText={selectedText}
               onPromptSent={() => {
-                setAiPrompt(null);
                 setAiSystemPrompt(null);
                 setAiUserText(null);
                 setSelectedText('');

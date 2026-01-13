@@ -741,10 +741,12 @@ export function GenerateImageModal({
                                   : `Select ${Math.min(maxReferenceImages || referenceImages.length, referenceImages.length)}`}
                             </button>
                             <span className="text-xs text-gray-500">
-                              ({selectedRefImageIds.length}
+                              (
+                              {selectedRefImageIds.length}
                               {maxReferenceImages > 0 && ` of ${maxReferenceImages} max`}
                               {maxReferenceImages === 0 && ` of ${referenceImages.length}`}
-                              {' '}selected)
+                              {' '}
+                              selected)
                             </span>
                             {maxReferenceImages === 1 && (
                               <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700">
@@ -766,7 +768,7 @@ export function GenerateImageModal({
                                 className={`relative h-20 w-20 overflow-hidden rounded-lg border-3 transition-all ${
                                   selectedRefImageIds.includes(img.id)
                                     ? 'border-purple-500 shadow-lg shadow-purple-200'
-                                    : 'border-gray-200 opacity-70 hover:opacity-100 hover:border-gray-300'
+                                    : 'border-gray-200 opacity-70 hover:border-gray-300 hover:opacity-100'
                                 }`}
                               >
                                 <img

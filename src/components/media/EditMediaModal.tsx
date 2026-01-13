@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { Save, X } from 'lucide-react';
+import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 
@@ -72,12 +72,14 @@ export function EditMediaModal({ isOpen, onClose, media, onSave }: EditMediaModa
           {/* Title */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Title <span className="text-red-500">*</span>
+              Title
+              {' '}
+              <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={e => setTitle(e.target.value)}
               placeholder="Enter title"
               className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:border-transparent focus:ring-2 focus:ring-purple-500 focus:outline-none"
             />
@@ -90,10 +92,10 @@ export function EditMediaModal({ isOpen, onClose, media, onSave }: EditMediaModa
             </label>
             <textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={e => setDescription(e.target.value)}
               placeholder="Describe this media item"
               rows={3}
-              className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:border-transparent focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none"
+              className="w-full resize-none rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:border-transparent focus:ring-2 focus:ring-purple-500 focus:outline-none"
             />
           </div>
 
@@ -104,10 +106,10 @@ export function EditMediaModal({ isOpen, onClose, media, onSave }: EditMediaModa
             </label>
             <textarea
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={e => setNotes(e.target.value)}
               placeholder="Add private notes about this media"
               rows={3}
-              className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:border-transparent focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none"
+              className="w-full resize-none rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:border-transparent focus:ring-2 focus:ring-purple-500 focus:outline-none"
             />
             <p className="mt-1 text-xs text-gray-500">These notes are only visible to therapists</p>
           </div>
@@ -120,7 +122,7 @@ export function EditMediaModal({ isOpen, onClose, media, onSave }: EditMediaModa
             <input
               type="text"
               value={tags}
-              onChange={(e) => setTags(e.target.value)}
+              onChange={e => setTags(e.target.value)}
               placeholder="therapy, progress, breakthrough (comma-separated)"
               className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:border-transparent focus:ring-2 focus:ring-purple-500 focus:outline-none"
             />

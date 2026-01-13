@@ -11,6 +11,7 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
@@ -904,6 +905,35 @@ export const modulePromptLinksSchema = pgTable('module_prompt_links', {
 });
 
 // ============================================================================
+// USER PROMPT ORDER (Personal prompt library ordering)
+// ============================================================================
+
+// Stores per-user custom ordering of prompts in the prompt library
+export const userPromptOrderSchema = pgTable(
+  'user_prompt_order',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    userId: uuid('user_id')
+      .references(() => usersSchema.id, { onDelete: 'cascade' })
+      .notNull(),
+    promptId: uuid('prompt_id')
+      .references(() => moduleAiPromptsSchema.id, { onDelete: 'cascade' })
+      .notNull(),
+
+    // Display order in user's personal view
+    sortOrder: integer('sort_order').notNull(),
+
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  table => [
+    unique('user_prompt_unique').on(table.userId, table.promptId),
+    index('user_prompt_order_user_idx').on(table.userId),
+  ],
+);
+
+// ============================================================================
 // WORKFLOW EXECUTIONS
 // ============================================================================
 
@@ -1517,6 +1547,7 @@ export const therapeuticPrompts = therapeuticPromptsSchema;
 export const treatmentModules = treatmentModulesSchema;
 export const moduleAiPrompts = moduleAiPromptsSchema;
 export const modulePromptLinks = modulePromptLinksSchema;
+export const userPromptOrder = userPromptOrderSchema;
 export const workflowExecutions = workflowExecutionsSchema;
 export const sessionModules = sessionModulesSchema;
 export const emailNotifications = emailNotificationsSchema;
@@ -1687,6 +1718,9 @@ export type TreatmentModuleWithPrompts = TreatmentModule & {
 
 export type ModulePromptLink = typeof modulePromptLinksSchema.$inferSelect;
 export type NewModulePromptLink = typeof modulePromptLinksSchema.$inferInsert;
+
+export type UserPromptOrder = typeof userPromptOrderSchema.$inferSelect;
+export type NewUserPromptOrder = typeof userPromptOrderSchema.$inferInsert;
 
 export type WorkflowExecutionDb = typeof workflowExecutionsSchema.$inferSelect;
 export type NewWorkflowExecutionDb = typeof workflowExecutionsSchema.$inferInsert;

@@ -293,7 +293,7 @@ export function GenerateVideoModal({
         try {
           const statusResponse = await fetch(`/api/ai/video-task/${taskId}`, {
             headers: {
-              'Authorization': `Bearer ${idToken}`,
+              Authorization: `Bearer ${idToken}`,
             },
           });
           const statusData = await statusResponse.json();
@@ -312,9 +312,9 @@ export function GenerateVideoModal({
                   `/api/media/signed-url?path=${encodeURIComponent(mediaUrl)}`,
                   {
                     headers: {
-                      'Authorization': `Bearer ${idToken}`,
+                      Authorization: `Bearer ${idToken}`,
                     },
-                  }
+                  },
                 );
                 if (signedUrlResponse.ok) {
                   const signedUrlData = await signedUrlResponse.json();
@@ -451,7 +451,7 @@ export function GenerateVideoModal({
                             className={`relative h-20 w-20 overflow-hidden rounded-lg border-3 transition-all ${
                               selectedRefImageId === img.id
                                 ? 'border-purple-500 shadow-lg shadow-purple-200'
-                                : 'border-gray-200 opacity-70 hover:opacity-100 hover:border-gray-300'
+                                : 'border-gray-200 opacity-70 hover:border-gray-300 hover:opacity-100'
                             }`}
                           >
                             <img
@@ -527,10 +527,10 @@ export function GenerateVideoModal({
                 {showModelDropdown && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setShowModelDropdown(false)} />
-                    <div className="absolute top-full left-0 right-0 z-20 mt-1 max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                    <div className="absolute top-full right-0 left-0 z-20 mt-1 max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
                       {Object.entries(VIDEO_GENERATION_MODELS).map(([category, models]) => (
                         <div key={category}>
-                          <div className="sticky top-0 border-b border-gray-100 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          <div className="sticky top-0 border-b border-gray-100 bg-gray-50 px-3 py-1.5 text-xs font-semibold tracking-wide text-gray-500 uppercase">
                             {category}
                           </div>
                           {models.map(model => (
@@ -574,7 +574,11 @@ export function GenerateVideoModal({
               />
               <div className="flex items-center justify-between text-xs text-gray-500">
                 <span>Describe camera movement, motion, lighting changes</span>
-                <span>{prompt.length} / 2000</span>
+                <span>
+                  {prompt.length}
+                  {' '}
+                  / 2000
+                </span>
               </div>
             </div>
 
@@ -661,12 +665,17 @@ export function GenerateVideoModal({
               {isGenerating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating... {progress}%
+                  Generating...
+                  {' '}
+                  {progress}
+                  %
                 </>
               ) : (
                 <>
                   <Film className="mr-2 h-4 w-4" />
-                  Generate Video ({duration}s)
+                  Generate Video (
+                  {duration}
+                  s)
                 </>
               )}
             </Button>
@@ -701,7 +710,10 @@ export function GenerateVideoModal({
                       style={{ width: `${progress}%` }}
                     />
                   </div>
-                  <p className="mt-2 text-xs text-gray-500">{progress}% complete</p>
+                  <p className="mt-2 text-xs text-gray-500">
+                    {progress}
+                    % complete
+                  </p>
                 </div>
               ) : generatedVideo ? (
                 <video

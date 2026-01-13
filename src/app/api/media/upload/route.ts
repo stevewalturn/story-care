@@ -185,8 +185,8 @@ export async function POST(request: NextRequest) {
       // Build notes with upload metadata
       const uploadNotes = JSON.stringify({
         originalFilename: file.name,
-        fileSize: fileSize,
-        contentType: contentType,
+        fileSize,
+        contentType,
         uploadedAt: new Date().toISOString(),
       });
 

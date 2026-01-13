@@ -626,15 +626,17 @@ export function TranscriptPanel({
           {/* Analyze Toggle - Enhanced */}
           <button
             onClick={() => onAnalyzeModeChange?.(!analyzeMode)}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold border shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 ${
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 focus:outline-none ${
               analyzeMode
-                ? 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 hover:shadow'
-                : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+                ? 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 hover:shadow'
+                : 'border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
             title={analyzeMode ? 'Click to disable text selection analysis' : 'Click to enable text selection analysis'}
           >
             <div className={`h-2 w-2 rounded-full transition-all duration-200 ${analyzeMode ? 'bg-purple-500' : 'bg-gray-400'}`} />
-            Analyze {analyzeMode ? 'On' : 'Off'}
+            Analyze
+            {' '}
+            {analyzeMode ? 'On' : 'Off'}
           </button>
 
           {/* Instruction Text - Enhanced */}

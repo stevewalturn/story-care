@@ -36,28 +36,19 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const scopeFilter = searchParams.get('scope');
 
-    let prompts;
+    // Default to system scope - super admin page should only show system prompts
+    const scope = scopeFilter && ['system', 'organization', 'private'].includes(scopeFilter)
+      ? scopeFilter
+      : 'system';
 
-    if (scopeFilter && ['system', 'organization', 'private'].includes(scopeFilter)) {
-      prompts = await db
-        .select()
-        .from(moduleAiPromptsSchema)
-        .where(eq(moduleAiPromptsSchema.scope, scopeFilter as any))
-        .orderBy(
-          moduleAiPromptsSchema.scope,
-          moduleAiPromptsSchema.category,
-          moduleAiPromptsSchema.name,
-        );
-    } else {
-      prompts = await db
-        .select()
-        .from(moduleAiPromptsSchema)
-        .orderBy(
-          moduleAiPromptsSchema.scope,
-          moduleAiPromptsSchema.category,
-          moduleAiPromptsSchema.name,
-        );
-    }
+    const prompts = await db
+      .select()
+      .from(moduleAiPromptsSchema)
+      .where(eq(moduleAiPromptsSchema.scope, scope as any))
+      .orderBy(
+        moduleAiPromptsSchema.category,
+        moduleAiPromptsSchema.name,
+      );
 
     return NextResponse.json({ prompts });
   } catch (error) {

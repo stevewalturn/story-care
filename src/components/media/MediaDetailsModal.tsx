@@ -144,7 +144,7 @@ export function MediaDetailsModal({
       // If it's a GCS path, get signed URL first
       if (!media.mediaUrl.startsWith('http')) {
         const signedUrlResponse = await fetch(
-          `/api/media/signed-url?path=${encodeURIComponent(media.mediaUrl)}`
+          `/api/media/signed-url?path=${encodeURIComponent(media.mediaUrl)}`,
         );
         if (signedUrlResponse.ok) {
           const data = await signedUrlResponse.json();
@@ -275,7 +275,8 @@ export function MediaDetailsModal({
                       : media.status === 'processing'
                         ? 'bg-yellow-100 text-yellow-800'
                         : 'bg-red-100 text-red-800'
-                  }`}>
+                  }`}
+                  >
                     {media.status.charAt(0).toUpperCase() + media.status.slice(1)}
                   </span>
                 </div>
@@ -289,7 +290,8 @@ export function MediaDetailsModal({
                     audioType === 'Instrumental'
                       ? 'bg-purple-100 text-purple-800'
                       : 'bg-blue-100 text-blue-800'
-                  }`}>
+                  }`}
+                  >
                     {audioType}
                   </span>
                 </div>

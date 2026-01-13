@@ -1,15 +1,34 @@
 /**
  * Prompt Library Page (Therapist View)
- * Browse and manage AI prompts
+ * Browse and manage AI prompts with drag-and-drop reordering
  */
 
 'use client';
 
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import type { PromptTemplate } from '@/models/Schema';
-import { Eye, FileText, MessageCircle, Plus, Search, Sparkles, Target, Trash2 } from 'lucide-react';
+import {
+  closestCenter,
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import { arrayMove, rectSortingStrategy, SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import {
+  FileText,
+  MessageCircle,
+  Plus,
+  RotateCcw,
+  Search,
+  Sparkles,
+  Target,
+} from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { ViewEditPromptModal } from '@/components/prompts/ViewEditPromptModal';
+import { useCallback, useEffect, useState } from 'react';
+import { SortablePromptCard } from '@/components/prompts/SortablePromptCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -34,8 +53,19 @@ export default function PromptLibraryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [scopeFilter, setScopeFilter] = useState<string>('all');
-  const [selectedPrompt, setSelectedPrompt] = useState<PromptTemplate | null>(null);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [hasCustomOrder, setHasCustomOrder] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Configure DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
 
   useEffect(() => {
     fetchPrompts();
@@ -49,6 +79,7 @@ export default function PromptLibraryPage() {
       const response = await authenticatedFetch('/api/therapist/prompts', user);
       const data = await response.json();
       setPrompts(data.prompts || []);
+      setHasCustomOrder(data.hasCustomOrder || false);
     } catch (error) {
       console.error('Error fetching prompts:', error);
     } finally {
@@ -56,9 +87,82 @@ export default function PromptLibraryPage() {
     }
   };
 
-  const handleViewDetails = (prompt: PromptTemplate) => {
-    setSelectedPrompt(prompt);
-    setIsViewModalOpen(true);
+  const saveOrder = useCallback(async (promptIds: string[]) => {
+    if (!user) return;
+
+    try {
+      setIsSaving(true);
+      await authenticatedFetch('/api/therapist/prompts/order', user, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ promptIds }),
+      });
+      setHasCustomOrder(true);
+    } catch (error) {
+      console.error('Error saving order:', error);
+      // Revert on error
+      fetchPrompts();
+    } finally {
+      setIsSaving(false);
+    }
+  }, [user]);
+
+  const resetOrder = async () => {
+    if (!user) return;
+
+    try {
+      setIsSaving(true);
+      await authenticatedFetch('/api/therapist/prompts/order', user, {
+        method: 'DELETE',
+      });
+      setHasCustomOrder(false);
+      fetchPrompts();
+    } catch (error) {
+      console.error('Error resetting order:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(String(event.active.id));
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = filteredPrompts.findIndex(p => p.id === active.id);
+    const newIndex = filteredPrompts.findIndex(p => p.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    // Update local state optimistically
+    const newPrompts = arrayMove(filteredPrompts, oldIndex, newIndex);
+
+    // Update the main prompts array
+    const promptMap = new Map(prompts.map(p => [p.id, p]));
+    const reorderedIds = newPrompts.map(p => p.id);
+
+    // Reorder prompts based on the new filtered order
+    const reorderedPrompts = reorderedIds
+      .map(id => promptMap.get(id))
+      .filter((p): p is PromptTemplate => p !== undefined);
+
+    // Add any prompts that weren't in the filtered list
+    const remainingPrompts = prompts.filter(p => !reorderedIds.includes(p.id));
+    const finalPrompts = [...reorderedPrompts, ...remainingPrompts];
+
+    setPrompts(finalPrompts);
+
+    // Save to server
+    saveOrder(finalPrompts.map(p => p.id));
+  };
+
+  const handleDragCancel = () => {
+    setActiveId(null);
   };
 
   const handleDelete = async (prompt: PromptTemplate) => {
@@ -74,23 +178,11 @@ export default function PromptLibraryPage() {
       await authenticatedFetch(`/api/therapist/prompts/${prompt.id}`, user, {
         method: 'DELETE',
       });
-
-      // Refresh prompts list
       fetchPrompts();
     } catch (error) {
       console.error('Error deleting prompt:', error);
       alert('Failed to delete prompt. Please try again.');
     }
-  };
-
-  const handleCloseModal = () => {
-    setIsViewModalOpen(false);
-    setSelectedPrompt(null);
-  };
-
-  const handlePromptUpdated = () => {
-    fetchPrompts();
-    handleCloseModal();
   };
 
   const filteredPrompts = prompts.filter((prompt) => {
@@ -101,11 +193,15 @@ export default function PromptLibraryPage() {
     return matchesSearch && matchesCategory && matchesScope;
   });
 
+  // For grouped view (when no custom order)
   const groupedPrompts = {
     system: filteredPrompts.filter(p => p.scope === 'system'),
     organization: filteredPrompts.filter(p => p.scope === 'organization'),
     private: filteredPrompts.filter(p => p.scope === 'private'),
   };
+
+  // Get the active prompt for drag overlay
+  const activePrompt = activeId ? prompts.find(p => p.id === activeId) : null;
 
   if (loading) {
     return (
@@ -122,15 +218,31 @@ export default function PromptLibraryPage() {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Prompt Library</h1>
-            <p className="text-sm text-gray-600">Browse and manage AI analysis prompts</p>
+            <p className="text-sm text-gray-600">
+              Browse and manage AI analysis prompts
+              {hasCustomOrder && ' • Custom order applied'}
+            </p>
           </div>
-          <Link
-            href="/therapist/prompt-library/create"
-            className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-purple-700"
-          >
-            <Plus className="h-4 w-4" />
-            Create Prompt
-          </Link>
+          <div className="flex items-center gap-3">
+            {hasCustomOrder && (
+              <button
+                type="button"
+                onClick={resetOrder}
+                disabled={isSaving}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Reset Order
+              </button>
+            )}
+            <Link
+              href="/therapist/prompt-library/create"
+              className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-purple-700"
+            >
+              <Plus className="h-4 w-4" />
+              Create Prompt
+            </Link>
+          </div>
         </div>
 
         {/* Filters */}
@@ -173,70 +285,122 @@ export default function PromptLibraryPage() {
           </select>
         </div>
 
-        {/* System Prompts */}
-        {groupedPrompts.system.length > 0 && (
-          <div className="mb-8">
-            <h2 className="mb-4 text-lg font-semibold text-gray-900">
-              📚 System Prompts (
-              {groupedPrompts.system.length}
-              )
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {groupedPrompts.system.map(prompt => (
-                <PromptCard
-                  key={prompt.id}
-                  prompt={prompt}
-                  onUpdate={fetchPrompts}
-                  onView={handleViewDetails}
-                />
-              ))}
-            </div>
-          </div>
+        {/* Drag hint */}
+        {filteredPrompts.length > 1 && (
+          <p className="mb-4 text-xs text-gray-500">
+            Tip: Drag cards to reorder. Your order will be saved automatically.
+          </p>
         )}
 
-        {/* Organization Prompts */}
-        {groupedPrompts.organization.length > 0 && (
-          <div className="mb-8">
-            <h2 className="mb-4 text-lg font-semibold text-gray-900">
-              🏢 Organization Prompts (
-              {groupedPrompts.organization.length}
-              )
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {groupedPrompts.organization.map(prompt => (
-                <PromptCard
-                  key={prompt.id}
-                  prompt={prompt}
-                  onUpdate={fetchPrompts}
-                  onView={handleViewDetails}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+        {/* DnD Context */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
+        >
+          {/* Show flat grid when custom order or when filters are applied */}
+          {(hasCustomOrder || searchQuery || categoryFilter !== 'all' || scopeFilter !== 'all') ? (
+            <SortableContext items={filteredPrompts.map(p => p.id)} strategy={rectSortingStrategy}>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredPrompts.map(prompt => (
+                  <SortablePromptCard
+                    key={prompt.id}
+                    prompt={prompt}
+                    onDelete={prompt.scope === 'private' ? handleDelete : undefined}
+                    editable={prompt.scope === 'private'}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          ) : (
+            /* Show grouped view when no custom order and no filters */
+            <SortableContext items={filteredPrompts.map(p => p.id)} strategy={rectSortingStrategy}>
+              {/* System Prompts */}
+              {groupedPrompts.system.length > 0 && (
+                <div className="mb-8">
+                  <h2 className="mb-4 text-lg font-semibold text-gray-900">
+                    📚 System Prompts (
+                    {groupedPrompts.system.length}
+                    )
+                  </h2>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {groupedPrompts.system.map(prompt => (
+                      <SortablePromptCard
+                        key={prompt.id}
+                        prompt={prompt}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
 
-        {/* Private Prompts */}
-        {groupedPrompts.private.length > 0 && (
-          <div className="mb-8">
-            <h2 className="mb-4 text-lg font-semibold text-gray-900">
-              🔒 My Private Prompts (
-              {groupedPrompts.private.length}
-              )
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {groupedPrompts.private.map(prompt => (
-                <PromptCard
-                  key={prompt.id}
-                  prompt={prompt}
-                  onUpdate={fetchPrompts}
-                  onView={handleViewDetails}
-                  onDelete={handleDelete}
-                  editable
-                />
-              ))}
-            </div>
-          </div>
-        )}
+              {/* Organization Prompts */}
+              {groupedPrompts.organization.length > 0 && (
+                <div className="mb-8">
+                  <h2 className="mb-4 text-lg font-semibold text-gray-900">
+                    🏢 Organization Prompts (
+                    {groupedPrompts.organization.length}
+                    )
+                  </h2>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {groupedPrompts.organization.map(prompt => (
+                      <SortablePromptCard
+                        key={prompt.id}
+                        prompt={prompt}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Private Prompts */}
+              {groupedPrompts.private.length > 0 && (
+                <div className="mb-8">
+                  <h2 className="mb-4 text-lg font-semibold text-gray-900">
+                    🔒 My Private Prompts (
+                    {groupedPrompts.private.length}
+                    )
+                  </h2>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {groupedPrompts.private.map(prompt => (
+                      <SortablePromptCard
+                        key={prompt.id}
+                        prompt={prompt}
+                        onDelete={handleDelete}
+                        editable
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </SortableContext>
+          )}
+
+          {/* Drag Overlay */}
+          <DragOverlay>
+            {activePrompt && (
+              <div className="rounded-lg border border-purple-400 bg-white p-4 opacity-90 shadow-xl">
+                <div className="mb-3 flex items-start justify-between">
+                  <div className={`rounded-lg p-2 ${categoryColors[activePrompt.category as keyof typeof categoryColors]}`}>
+                    {(() => {
+                      const IconComponent = categoryIcons[activePrompt.category as keyof typeof categoryIcons];
+                      return <IconComponent className="h-5 w-5" />;
+                    })()}
+                  </div>
+                  <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 uppercase">
+                    {activePrompt.scope}
+                  </span>
+                </div>
+                <h3 className="mb-2 font-semibold text-gray-900">{activePrompt.name}</h3>
+                <p className="line-clamp-2 text-sm text-gray-600">
+                  {activePrompt.description || 'No description provided'}
+                </p>
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
 
         {/* Empty State */}
         {filteredPrompts.length === 0 && (
@@ -244,98 +408,14 @@ export default function PromptLibraryPage() {
             <p className="text-gray-500">No prompts found matching your criteria.</p>
           </div>
         )}
+
+        {/* Saving indicator */}
+        {isSaving && (
+          <div className="fixed right-4 bottom-4 rounded-lg bg-purple-600 px-4 py-2 text-sm text-white shadow-lg">
+            Saving order...
+          </div>
+        )}
       </div>
-
-      {/* View/Edit Prompt Modal */}
-      {isViewModalOpen && selectedPrompt && (
-        <ViewEditPromptModal
-          prompt={selectedPrompt}
-          canEdit={selectedPrompt.scope === 'private'}
-          canDelete={selectedPrompt.scope === 'private'}
-          apiEndpoint="/api/therapist/prompts"
-          onClose={handleCloseModal}
-          onSaved={handlePromptUpdated}
-          onDeleted={() => {
-            fetchPrompts();
-            handleCloseModal();
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function PromptCard({
-  prompt,
-  onUpdate: _onUpdate,
-  onView,
-  onDelete,
-  editable = false,
-}: {
-  prompt: PromptTemplate;
-  onUpdate: () => void;
-  onView: (prompt: PromptTemplate) => void;
-  onDelete?: (prompt: PromptTemplate) => void;
-  editable?: boolean;
-}) {
-  const IconComponent = categoryIcons[prompt.category as keyof typeof categoryIcons];
-
-  return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
-      <div className="mb-3 flex items-start justify-between">
-        <div className={`rounded-lg p-2 ${categoryColors[prompt.category as keyof typeof categoryColors]}`}>
-          <IconComponent className="h-5 w-5" />
-        </div>
-        <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 uppercase">
-          {prompt.scope}
-        </span>
-      </div>
-
-      <h3 className="mb-2 font-semibold text-gray-900">{prompt.name}</h3>
-      <p className="mb-3 line-clamp-2 text-sm text-gray-600">
-        {prompt.description || 'No description provided'}
-      </p>
-
-      <div className="flex items-center justify-between text-xs text-gray-500">
-        <span className="capitalize">{prompt.category}</span>
-        <span>
-          Used
-          {prompt.useCount}
-          {' '}
-          times
-        </span>
-      </div>
-
-      {/* View Details Button - Always visible */}
-      <div className="mt-4">
-        <button
-          type="button"
-          onClick={() => onView(prompt)}
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-purple-300 bg-purple-50 px-3 py-2 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-100"
-        >
-          <Eye className="h-4 w-4" />
-          View Details
-        </button>
-      </div>
-
-      {/* Edit/Delete Buttons - Only for editable prompts */}
-      {editable && onDelete && (
-        <div className="mt-2 flex gap-2">
-          <Link
-            href={`/therapist/prompt-library/${prompt.id}/edit`}
-            className="flex flex-1 items-center justify-center rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-          >
-            Edit
-          </Link>
-          <button
-            type="button"
-            onClick={() => onDelete(prompt)}
-            className="rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-50"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      )}
     </div>
   );
 }

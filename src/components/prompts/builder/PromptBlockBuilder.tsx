@@ -5,38 +5,22 @@
  * Main orchestrating component for the drag-and-drop prompt builder
  */
 
-import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core';
-import {
-  closestCenter,
-  DndContext,
-  DragOverlay,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { ArrowLeft, Code, Eye, FileText, Save, Settings } from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import type { BlockInstance } from '@/config/PromptBuilderBlocks';
+import type { JSONSchemaType } from '@/types/JSONSchemas';
+import { ChevronDown, ChevronUp, Save } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 import {
-  ALL_BLOCKS,
   createBlockInstance,
   getBlockDefinition,
 } from '@/config/PromptBuilderBlocks';
-import { JSONOutputRenderer } from '@/components/sessions/JSONOutputRenderer';
-import type { JSONSchemaType } from '@/types/JSONSchemas';
+import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { BlockPalette } from './BlockPalette';
-import { BlockPropertyPanel } from './BlockPropertyPanel';
-import { BuilderCanvas } from './BuilderCanvas';
+import { GenericJSONPreview } from './GenericJSONPreview';
 
 type PromptCategory = 'analysis' | 'creative' | 'extraction' | 'reflection';
-type BuilderTab = 'basic' | 'content' | 'preview' | 'json';
 
 type PromptBlockBuilderProps = {
   mode?: 'create' | 'edit';
@@ -45,8 +29,170 @@ type PromptBlockBuilderProps = {
   initialName?: string;
   initialDescription?: string;
   initialCategory?: PromptCategory;
-  initialBlocks?: BlockInstance[];
 };
+
+// ============================================================================
+// Helper Functions for Dynamic Preview Generation
+// ============================================================================
+
+/**
+ * Generate sample value for a custom OutputField
+ */
+function generateSampleValueForField(field: any): any {
+  const { config } = field;
+  const { type, name, label, exampleOutput, arrayItemType, nestedFields, enumValues, children } = config;
+
+  // Use example output if provided
+  if (exampleOutput) {
+    return exampleOutput;
+  }
+
+  // Handle different types
+  switch (type) {
+    case 'string':
+      if (enumValues && enumValues.length > 0) {
+        return enumValues[0];
+      }
+      return `Sample ${label || name}`;
+
+    case 'number':
+    case 'integer':
+      return config.minimum || 1;
+
+    case 'boolean':
+      return true;
+
+    case 'array':
+      if (children && children.length > 0) {
+        // Generate array with items based on children fields (3 sample items)
+        return [
+          generateObjectFromFields(children),
+          generateObjectFromFields(children),
+          generateObjectFromFields(children),
+        ];
+      } else if (arrayItemType === 'string') {
+        return [`Sample ${name} item 1`, `Sample ${name} item 2`];
+      } else if (arrayItemType === 'number') {
+        return [1, 2, 3];
+      } else if (arrayItemType === 'object') {
+        // Generate sample objects even without defined structure
+        if (nestedFields && nestedFields.length > 0) {
+          return [
+            generateObjectFromFields(nestedFields),
+            generateObjectFromFields(nestedFields),
+            generateObjectFromFields(nestedFields),
+          ];
+        } else {
+          // Generic object sample when structure not defined
+          return [
+            { item: `Sample ${label || name} 1`, value: 'Sample value 1' },
+            { item: `Sample ${label || name} 2`, value: 'Sample value 2' },
+            { item: `Sample ${label || name} 3`, value: 'Sample value 3' },
+          ];
+        }
+      }
+      return [];
+
+    case 'object':
+      if (nestedFields && nestedFields.length > 0) {
+        return generateObjectFromFields(nestedFields);
+      }
+      return {};
+
+    default:
+      return null;
+  }
+}
+
+/**
+ * Generate sample value from JSON schema definition
+ */
+function generateSampleValueFromSchema(fieldName: string, fieldSchema: any): any {
+  const fieldType = fieldSchema.type;
+  const displayName = fieldName.replace(/_/g, ' ');
+
+  if (fieldType === 'string') {
+    if (fieldSchema['x-ai-prompt']) {
+      return `Sample ${displayName}`;
+    } else if (fieldSchema.enum) {
+      return fieldSchema.enum[0];
+    } else {
+      return `Sample ${displayName}`;
+    }
+  } else if (fieldType === 'array') {
+    const itemSchema = fieldSchema.items || {};
+    if (itemSchema.type === 'object') {
+      return [generateObjectFromSchema(itemSchema)];
+    } else if (itemSchema.type === 'string') {
+      return [`${displayName} 1`, `${displayName} 2`];
+    }
+    return [];
+  } else if (fieldType === 'object') {
+    return generateObjectFromSchema(fieldSchema);
+  } else if (fieldType === 'number' || fieldType === 'integer') {
+    return fieldSchema.minimum || 1;
+  } else if (fieldType === 'boolean') {
+    return true;
+  }
+
+  return null;
+}
+
+/**
+ * Generate object from array of OutputFields
+ */
+function generateObjectFromFields(fields: any[]): any {
+  const obj: any = {};
+  fields.forEach((field) => {
+    obj[field.config.name] = generateSampleValueForField(field);
+  });
+  return obj;
+}
+
+/**
+ * Generate object from JSON schema
+ */
+function generateObjectFromSchema(objectSchema: any): any {
+  const obj: any = {};
+  const properties = objectSchema.properties || {};
+  Object.keys(properties).forEach((key) => {
+    const propSchema = properties[key];
+    obj[key] = generateSampleValueFromSchema(key, propSchema);
+  });
+  return obj;
+}
+
+/**
+ * Generate dynamic sample output based on block definition's JSON schema
+ * Always uses the predefined schema from BlockDefinition
+ */
+function generateDynamicSampleOutput(block: BlockInstance): { schemaType: JSONSchemaType } & Record<string, any> | null {
+  const definition = getBlockDefinition(block.blockType);
+  if (!definition || !definition.schemaType) return null;
+
+  const baseOutput: any = { schemaType: definition.schemaType };
+
+  // Always use the definition's JSON schema (no custom fields)
+  const jsonSchema = definition.jsonSchema as any;
+  if (!jsonSchema || !jsonSchema.properties) {
+    return null; // No schema available
+  }
+
+  const properties = jsonSchema.properties;
+
+  // Generate sample data from each property in the JSON schema
+  Object.keys(properties).forEach((fieldName) => {
+    if (fieldName === 'schemaType') return; // Skip schemaType
+    const fieldSchema = properties[fieldName];
+    baseOutput[fieldName] = generateSampleValueFromSchema(fieldName, fieldSchema);
+  });
+
+  return baseOutput;
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
 
 export function PromptBlockBuilder({
   mode = 'create',
@@ -55,7 +201,6 @@ export function PromptBlockBuilder({
   initialName = '',
   initialDescription = '',
   initialCategory = 'creative',
-  initialBlocks = [],
 }: PromptBlockBuilderProps) {
   const { user } = useAuth();
   const router = useRouter();
@@ -64,29 +209,20 @@ export function PromptBlockBuilder({
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription);
   const [category, setCategory] = useState<PromptCategory>(initialCategory);
+  const [icon, setIcon] = useState('sparkles');
+  const [outputType, setOutputType] = useState<'text' | 'json'>('json');
+  const [textModeSystemPrompt, setTextModeSystemPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(mode === 'edit');
 
-  // Builder state
-  const [blocks, setBlocks] = useState<BlockInstance[]>(initialBlocks);
-  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<BuilderTab>('content');
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [isOver, setIsOver] = useState(false);
+  // Builder state - Single block selection
+  const [selectedBlockType, setSelectedBlockType] = useState<string | null>(null);
+  const [blockInstance, setBlockInstance] = useState<BlockInstance | null>(null);
+
+  // UI state
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
 
   // Save state
   const [isSaving, setIsSaving] = useState(false);
-
-  // DnD sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
 
   // Load prompt data when editing
   useEffect(() => {
@@ -161,18 +297,36 @@ export function PromptBlockBuilder({
       setName(prompt.name || '');
       setDescription(prompt.description || '');
       setCategory(prompt.category || 'creative');
+      setIcon(prompt.icon || 'sparkles');
+      setOutputType(prompt.outputType || 'json');
 
-      // Convert stored blocks to BlockInstance format
+      // Load system prompt for text mode
+      if (prompt.outputType === 'text' && prompt.systemPrompt) {
+        setTextModeSystemPrompt(prompt.systemPrompt);
+      }
+
+      // Load single block (take first block if multiple exist)
       if (prompt.blocks && Array.isArray(prompt.blocks) && prompt.blocks.length > 0) {
-        // New format - load blocks as-is
-        const loadedBlocks: BlockInstance[] = prompt.blocks.map((block: any, index: number) => ({
-          id: `block-${Date.now()}-${index}`,
-          blockType: block.blockType,
-          values: block.values || {},
-          order: block.order ?? index,
-          customSystemPrompt: block.customSystemPrompt || undefined,
-        }));
-        setBlocks(loadedBlocks);
+        const firstBlock: any = prompt.blocks[0];
+        if (firstBlock) {
+          const loadedBlock: BlockInstance = {
+            id: `block-${Date.now()}`,
+            blockType: firstBlock.blockType,
+            values: firstBlock.values || {},
+            order: 0,
+            customSystemPrompt: firstBlock.customSystemPrompt || undefined,
+          };
+
+          setBlockInstance(loadedBlock);
+          setSelectedBlockType(firstBlock.blockType);
+
+          // Warn if multiple blocks were found
+          if (prompt.blocks.length > 1) {
+            toast('This prompt had multiple blocks. Only the first block was loaded.', {
+              icon: '⚠️',
+            });
+          }
+        }
       } else if (prompt.jsonSchema) {
         // Legacy format - migrate to block structure
         console.log('Migrating legacy prompt to block format');
@@ -182,8 +336,13 @@ export function PromptBlockBuilder({
           toast.error('Failed to migrate legacy prompt. Please contact support.');
           console.error('Migration failed for prompt:', prompt.id, prompt.jsonSchema);
         } else {
-          setBlocks(migratedBlocks);
-          toast.success('Legacy prompt migrated to block format');
+          // Take first migrated block
+          const firstBlock = migratedBlocks[0];
+          if (firstBlock) {
+            setBlockInstance(firstBlock);
+            setSelectedBlockType(firstBlock.blockType);
+            toast.success('Legacy prompt migrated to block format');
+          }
         }
       }
     } catch (error) {
@@ -199,180 +358,46 @@ export function PromptBlockBuilder({
     }
   };
 
-  const selectedBlock = selectedBlockId
-    ? blocks.find(b => b.id === selectedBlockId) || null
-    : null;
-
-  // DnD handlers
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  };
-
-  const handleDragOver = (event: DragOverEvent) => {
-    const { over } = event;
-    setIsOver(over?.id === 'canvas');
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveId(null);
-    setIsOver(false);
-
-    if (!over) return;
-
-    // Check if dragging from palette
-    const isPaletteBlock = (active.id as string).startsWith('palette-');
-
-    if (isPaletteBlock) {
-      // Add new block from palette
-      const blockType = active.data.current?.blockType;
-      if (blockType && over.id === 'canvas') {
-        const newBlock = createBlockInstance(blockType);
-        if (newBlock) {
-          newBlock.order = blocks.length;
-          setBlocks([...blocks, newBlock]);
-          setSelectedBlockId(newBlock.id);
-        }
-      }
-    } else {
-      // Reorder existing blocks
-      const oldIndex = blocks.findIndex(b => b.id === active.id);
-      const newIndex = blocks.findIndex(b => b.id === over.id);
-
-      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-        const newBlocks = arrayMove(blocks, oldIndex, newIndex).map((b, i) => ({
-          ...b,
-          order: i,
-        }));
-        setBlocks(newBlocks);
-      }
-    }
-  };
-
-  // Block handlers
-  const handleDeleteBlock = (blockId: string) => {
-    setBlocks(blocks.filter(b => b.id !== blockId));
-    if (selectedBlockId === blockId) {
-      setSelectedBlockId(null);
-    }
-  };
-
-  const handleUpdateBlock = (blockId: string, values: Record<string, any>) => {
-    setBlocks(blocks.map(b =>
-      b.id === blockId ? { ...b, values } : b,
-    ));
-  };
-
-  const handleUpdateSystemPrompt = (blockId: string, systemPrompt: string) => {
-    setBlocks(blocks.map(b =>
-      b.id === blockId
-        ? {
-            ...b,
-            customSystemPrompt: systemPrompt || undefined,
-          }
-        : b,
-    ));
-  };
-
-  const handleAddBlockClick = () => {
-    // Show palette (could be a modal, for now just select first block type)
-    // For now, let's add a text block by default
-    const newBlock = createBlockInstance('text');
+  // Block selection handler
+  const handleSelectBlock = (blockType: string) => {
+    setSelectedBlockType(blockType);
+    const newBlock = createBlockInstance(blockType);
     if (newBlock) {
-      newBlock.order = blocks.length;
-      setBlocks([...blocks, newBlock]);
-      setSelectedBlockId(newBlock.id);
+      newBlock.order = 0; // Always single block
+      setBlockInstance(newBlock);
     }
   };
 
-  // Generate JSON schema from blocks
-  const generateJSONSchema = () => {
-    const schema: any = {
-      type: 'object',
-      properties: {
-        schemaType: { type: 'string', enum: ['composite_prompt'] },
-        blocks: {
-          type: 'array',
-          items: blocks.map(block => {
-            const definition = getBlockDefinition(block.blockType);
-            if (!definition) return { type: 'object' };
-
-            // Build schema for this block
-            const blockSchema: any = {
-              type: 'object',
-              properties: {
-                blockType: { type: 'string', enum: [block.blockType] },
-              },
-              required: ['blockType'],
-            };
-
-            // Add field schemas
-            for (const field of definition.fields) {
-              let fieldSchema: any = { type: 'string' };
-              if (field.type === 'number') {
-                fieldSchema = { type: 'number' };
-              } else if (field.type === 'boolean') {
-                fieldSchema = { type: 'boolean' };
-              }
-              blockSchema.properties[field.id] = fieldSchema;
-              if (field.required) {
-                blockSchema.required.push(field.id);
-              }
-            }
-
-            return blockSchema;
-          }),
-        },
-      },
-      required: ['schemaType', 'blocks'],
-    };
-
-    return schema;
+  // Block update handlers
+  const handleUpdateSystemPrompt = (systemPrompt: string) => {
+    if (blockInstance) {
+      setBlockInstance({
+        ...blockInstance,
+        customSystemPrompt: systemPrompt || undefined,
+      });
+    }
   };
 
-  // Generate system prompt from all blocks and their field prompts
-  const generateSystemPrompt = () => {
-    if (blocks.length === 0) return '';
+  // Generate JSON schema from single block
+  const generateJSONSchema = (): object => {
+    if (!blockInstance) return {};
 
-    let systemPrompt = `Analyze the therapy transcript and generate structured output for the following sections:\n\n`;
+    const definition = getBlockDefinition(blockInstance.blockType);
+    if (!definition?.jsonSchema) return {};
 
-    for (const block of blocks) {
-      const definition = getBlockDefinition(block.blockType);
-      if (!definition) continue;
+    // Return the predefined schema for this block type
+    return definition.jsonSchema;
+  };
 
-      // Only include AI blocks in system prompt (they have schema types)
-      if (definition.category !== 'ai') continue;
+  // Generate system prompt from single block
+  const generateSystemPrompt = (): string => {
+    if (!blockInstance) return '';
 
-      systemPrompt += `## ${definition.label}\n`;
-      if (definition.description) {
-        systemPrompt += `${definition.description}\n\n`;
-      }
+    const definition = getBlockDefinition(blockInstance.blockType);
+    if (!definition) return '';
 
-      systemPrompt += `Generate the following fields:\n\n`;
-
-      for (const field of definition.fields) {
-        const fieldPrompt = field.fieldPrompt;
-
-        if (fieldPrompt) {
-          systemPrompt += `**${field.label}**${field.required ? ' (Required)' : ''}:\n`;
-          systemPrompt += `${fieldPrompt}\n\n`;
-        } else {
-          // For fields without prompts, just mention them
-          systemPrompt += `**${field.label}**${field.required ? ' (Required)' : ''}\n\n`;
-        }
-      }
-
-      systemPrompt += `---\n\n`;
-    }
-
-    systemPrompt += `CRITICAL INSTRUCTIONS:\n`;
-    systemPrompt += `1. Output ONLY valid JSON matching the schema structure.\n`;
-    systemPrompt += `2. Do NOT include any text before or after the JSON.\n`;
-    systemPrompt += `3. Ensure all required fields are present.\n`;
-    systemPrompt += `4. Base all content on the actual therapy transcript provided.\n`;
-    systemPrompt += `5. Maintain therapeutic sensitivity and professional language.\n`;
-
-    return systemPrompt;
+    // Use custom prompt if provided, otherwise use default
+    return blockInstance.customSystemPrompt || definition.defaultSystemPrompt || '';
   };
 
   // Save prompt
@@ -380,14 +405,20 @@ export function PromptBlockBuilder({
     // Validation
     if (!name.trim()) {
       toast.error('Please enter a prompt name');
-      setActiveTab('basic');
       return;
     }
 
-    if (blocks.length === 0) {
-      toast.error('Please add at least one block');
-      setActiveTab('content');
-      return;
+    // Validate based on output type
+    if (outputType === 'json') {
+      if (!blockInstance) {
+        toast.error('Please select an output type');
+        return;
+      }
+    } else if (outputType === 'text') {
+      if (!textModeSystemPrompt.trim()) {
+        toast.error('Please enter a system prompt');
+        return;
+      }
     }
 
     setIsSaving(true);
@@ -395,24 +426,36 @@ export function PromptBlockBuilder({
     const toastId = toast.loading(isEditing ? 'Updating prompt...' : 'Saving prompt...');
 
     try {
-      const jsonSchema = generateJSONSchema();
-      const systemPrompt = generateSystemPrompt();
-
-      const requestBody = {
+      let requestBody: any = {
         name: name.trim(),
         description: description.trim() || undefined,
         category,
-        icon: 'sparkles',
-        outputType: 'json',
-        jsonSchema,
-        systemPrompt,
-        blocks: blocks.map(b => ({
-          blockType: b.blockType,
-          values: b.values,
-          order: b.order,
-          customSystemPrompt: b.customSystemPrompt,
-        })),
+        icon,
+        outputType,
       };
+
+      if (outputType === 'json') {
+        // JSON mode: use single block
+        requestBody = {
+          ...requestBody,
+          systemPrompt: generateSystemPrompt(),
+          jsonSchema: generateJSONSchema(),
+          blocks: blockInstance ? [{
+            blockType: blockInstance.blockType,
+            values: blockInstance.values,
+            order: blockInstance.order,
+            customSystemPrompt: blockInstance.customSystemPrompt,
+          }] : [],
+        };
+      } else {
+        // Text mode: use custom system prompt
+        requestBody = {
+          ...requestBody,
+          systemPrompt: textModeSystemPrompt.trim(),
+          jsonSchema: null,
+          blocks: [],
+        };
+      }
 
       // Use correct API endpoint based on scope
       const baseEndpoint = scope === 'system'
@@ -453,242 +496,45 @@ export function PromptBlockBuilder({
     }
   };
 
-  // Get drag overlay content
-  const getDragOverlayContent = () => {
-    if (!activeId) return null;
+  const isEditing = mode === 'edit';
 
-    if (activeId.startsWith('palette-')) {
-      const blockType = activeId.replace('palette-', '');
-      const block = ALL_BLOCKS.find(b => b.id === blockType);
-      if (!block) return null;
+  // Memoize preview data - MUST be called before any early returns (React hooks rule)
+  const previewData = useMemo(() => {
+    if (!blockInstance) return null;
 
-      const Icon = block.icon;
-      return (
-        <div className="flex items-center gap-2 rounded-lg border border-purple-300 bg-white px-4 py-2 shadow-lg">
-          <Icon className="h-5 w-5 text-purple-600" />
-          <span className="text-sm font-medium text-gray-900">{block.label}</span>
-        </div>
-      );
-    }
+    const definition = getBlockDefinition(blockInstance.blockType);
+    if (!definition) return null;
 
-    return null;
-  };
+    return {
+      definition,
+      sampleOutput: generateDynamicSampleOutput(blockInstance),
+    };
+  }, [blockInstance]);
 
   // Show loading state
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent mx-auto" />
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
           <p className="text-gray-600">Loading prompt...</p>
         </div>
       </div>
     );
   }
 
-  // Generate sample output for preview based on schema type
-  const generateSampleOutput = (schemaType: string): { schemaType: JSONSchemaType } & Record<string, any> | null => {
-    switch (schemaType) {
-      case 'image_references':
-        return {
-          schemaType: 'image_references',
-          images: [
-            {
-              title: 'Sample Image 1',
-              prompt: 'A serene landscape with rolling hills and a peaceful river, symbolizing the journey of self-discovery',
-              style: 'Watercolor painting style',
-              therapeutic_purpose: 'This image represents the patient\'s journey toward inner peace and self-acceptance',
-              source_quote: 'I feel like I\'m finally starting to understand who I am',
-            },
-            {
-              title: 'Sample Image 2',
-              prompt: 'A bridge connecting two mountains at sunset, representing connection and transition',
-              style: 'Impressionist art style',
-              therapeutic_purpose: 'Visualizes the patient\'s progress in building meaningful connections',
-              source_quote: 'It\'s like I\'m building a bridge to my future self',
-            },
-          ],
-        };
-
-      case 'video_references':
-        return {
-          schemaType: 'video_references',
-          videos: [
-            {
-              title: 'Journey Forward',
-              prompt: 'A path through a forest that gradually opens into a sunlit meadow',
-              duration: 5,
-              style: 'Cinematic nature footage',
-              therapeutic_purpose: 'Represents the patient\'s progress from uncertainty to clarity',
-              source_quote: 'I can finally see where I\'m going',
-              motion_description: 'Slow dolly forward through the trees',
-            },
-            {
-              title: 'Inner Strength',
-              prompt: 'A small plant growing through concrete into the sunlight',
-              duration: 5,
-              style: 'Time-lapse nature footage',
-              therapeutic_purpose: 'Symbolizes resilience and personal growth',
-              source_quote: 'Even when things were hard, something inside me kept growing',
-              motion_description: 'Time-lapse growth with gentle zoom',
-            },
-          ],
-        };
-
-      case 'music_generation':
-        return {
-          schemaType: 'music_generation',
-          instrumental_option: {
-            title: 'Peaceful Journey',
-            mood: 'Hopeful',
-            music_description: 'A gentle piano melody with soft strings, building to an uplifting crescendo',
-            rationale: 'Reflects the patient\'s emotional progression from struggle to hope',
-            genre_tags: ['Ambient', 'Piano', 'Orchestral'],
-            style_prompt: 'Peaceful piano with soft strings, gradual build',
-          },
-          lyrical_option: {
-            title: 'Finding My Way',
-            mood: 'Reflective',
-            music_description: 'A folk-inspired ballad with acoustic guitar and thoughtful lyrics',
-            suggested_lyrics: 'Through the shadows I have walked\nLearning lessons left unspoken\nNow I see the path ahead\nWith each step my spirit\'s woken',
-            rationale: 'Captures the patient\'s journey of self-discovery in their own words',
-            genre_tags: ['Folk', 'Acoustic', 'Singer-Songwriter'],
-          },
-        };
-
-      case 'therapeutic_scene_card':
-        return {
-          schemaType: 'therapeutic_scene_card',
-          scenes: [
-            {
-              scene_title: 'The Garden of Growth',
-              scene_description: 'A therapeutic visualization of personal growth through the metaphor of a nurturing garden',
-              key_quote: 'Every day I\'m planting seeds for my future',
-              sections: {
-                opening: { text: 'Welcome to your garden of growth...' },
-                reflection: { text: 'Take a moment to consider what you\'ve planted...' },
-                closing: { text: 'As you leave this space, carry these insights with you...' },
-              },
-            },
-          ],
-        };
-
-      case 'quote_extraction':
-        return {
-          schemaType: 'quote_extraction',
-          extracted_quotes: [
-            {
-              quote_text: 'I finally feel like I\'m becoming the person I was meant to be',
-              speaker: 'Patient',
-              patient_name: 'Sample Patient',
-              context: 'During discussion of recent personal growth',
-              tags: ['growth', 'identity', 'progress'],
-            },
-            {
-              quote_text: 'The hardest part was learning to be kind to myself',
-              speaker: 'Patient',
-              patient_name: 'Sample Patient',
-              context: 'Reflecting on therapy journey',
-              tags: ['self-compassion', 'learning', 'reflection'],
-            },
-            {
-              quote_text: 'I used to think I had to be perfect, but now I know I just have to be me',
-              speaker: 'Patient',
-              patient_name: 'Sample Patient',
-              context: 'Key insight about perfectionism',
-              tags: ['perfectionism', 'self-acceptance', 'insight'],
-            },
-          ],
-        };
-
-      case 'reflection_questions':
-        return {
-          schemaType: 'reflection_questions',
-          questions: [
-            {
-              question: 'What small step could you take today to move closer to your goal?',
-              rationale: 'Encourages actionable progress while maintaining achievable expectations',
-              placement: 'After video segment',
-            },
-            {
-              question: 'How has your perspective on this challenge changed over time?',
-              rationale: 'Promotes recognition of personal growth and shifting viewpoints',
-              placement: 'Mid-reflection',
-            },
-            {
-              question: 'What strength did you discover in yourself during this experience?',
-              rationale: 'Highlights resilience and personal resources',
-              placement: 'Closing reflection',
-            },
-          ],
-        };
-
-      case 'therapeutic_note':
-        return {
-          schemaType: 'therapeutic_note',
-          note_title: 'Session Summary: Progress in Self-Acceptance',
-          note_content: `## Key Observations
-
-The patient demonstrated significant progress in their journey toward self-acceptance. They shared meaningful insights about:
-
-- **Recognizing negative self-talk patterns** and beginning to challenge them
-- **Building self-compassion** through daily mindfulness practice
-- **Celebrating small victories** rather than focusing solely on goals not yet achieved
-
-## Therapeutic Interventions Used
-
-1. Cognitive restructuring exercises
-2. Guided visualization
-3. Strength-based reflection
-
-## Recommendations for Next Session
-
-Continue exploring the relationship between perfectionism and self-worth. Consider introducing journaling exercises to track progress.`,
-          key_themes: ['self-acceptance', 'growth', 'mindfulness'],
-          tags: ['progress note', 'CBT', 'self-compassion'],
-        };
-
-      default:
-        return null;
-    }
-  };
-
-  const isEditing = mode === 'edit';
-
-  // Determine back link based on scope
-  const backLink = scope === 'system'
-    ? '/super-admin/prompts'
-    : '/therapist/prompt-library';
-
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="flex h-screen flex-col bg-gray-50">
-        {/* Header */}
-        <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
-          <div className="flex items-center gap-4">
-            <Link
-              href={backLink}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
-            >
-              <ArrowLeft className="h-5 w-5" />
-              <span className="text-sm font-medium">Back</span>
-            </Link>
-            <div className="h-6 w-px bg-gray-300" />
-            <div>
-              <h1 className="text-lg font-semibold text-gray-900">
-                {isEditing ? 'Edit Prompt' : 'Create New Prompt'}
-              </h1>
-              <p className="text-sm text-gray-500">
-                {isEditing ? 'Modify your prompt template' : 'Drag blocks to build your prompt template'}
-              </p>
-            </div>
-          </div>
+    <div className="flex h-screen flex-col bg-gray-50">
+      {/* Header */}
+      <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
+        <div>
+          <h1 className="text-lg font-semibold text-gray-900">
+            {isEditing ? 'Edit Prompt' : 'Create New Prompt'}
+          </h1>
+          <p className="text-sm text-gray-500">
+            {isEditing ? 'Modify your prompt template' : 'Configure your AI prompt template'}
+          </p>
+        </div>
           <button
             type="button"
             onClick={handleSave}
@@ -700,63 +546,45 @@ Continue exploring the relationship between perfectionism and self-worth. Consid
           </button>
         </header>
 
-        {/* Tabs */}
-        <div className="border-b border-gray-200 bg-white px-6">
-          <nav className="flex gap-6">
-            {[
-              { id: 'basic' as BuilderTab, label: 'Basic', icon: Settings },
-              { id: 'content' as BuilderTab, label: 'Content', icon: FileText },
-              { id: 'preview' as BuilderTab, label: 'Preview', icon: Eye },
-              { id: 'json' as BuilderTab, label: 'JSON', icon: Code },
-            ].map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-purple-600 text-purple-600'
-                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
         {/* Content */}
-        <div className="flex-1 overflow-hidden">
-          {activeTab === 'basic' && (
-            <div className="h-full overflow-y-auto p-6">
-              <div className="mx-auto max-w-2xl space-y-6">
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="mx-auto max-w-4xl space-y-6">
+
+            {/* SECTION 1: Basic Information */}
+            <div className="rounded-lg border border-gray-200 bg-white p-6">
+              <h2 className="mb-6 text-lg font-semibold text-gray-900">
+                Basic Information
+              </h2>
+              <div className="space-y-6">
+                {/* Prompt Name */}
                 <div>
                   <label htmlFor="promptName" className="mb-2 block text-sm font-medium text-gray-700">
-                    Prompt Name <span className="text-red-500">*</span>
+                    Prompt Name
+                    {' '}
+                    <span className="text-red-500">*</span>
                   </label>
                   <input
                     id="promptName"
                     type="text"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={e => setName(e.target.value)}
                     placeholder="e.g., Generate Therapeutic Imagery"
                     className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
                     maxLength={255}
                   />
                 </div>
 
+                {/* Category */}
                 <div>
                   <label htmlFor="category" className="mb-2 block text-sm font-medium text-gray-700">
-                    Category <span className="text-red-500">*</span>
+                    Category
+                    {' '}
+                    <span className="text-red-500">*</span>
                   </label>
                   <select
                     id="category"
                     value={category}
-                    onChange={(e) => setCategory(e.target.value as PromptCategory)}
+                    onChange={e => setCategory(e.target.value as PromptCategory)}
                     className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
                   >
                     <option value="analysis">Analysis</option>
@@ -766,6 +594,33 @@ Continue exploring the relationship between perfectionism and self-worth. Consid
                   </select>
                 </div>
 
+                {/* Icon Selector */}
+                <div>
+                  <label htmlFor="icon" className="mb-2 block text-sm font-medium text-gray-700">
+                    Icon
+                  </label>
+                  <select
+                    id="icon"
+                    value={icon}
+                    onChange={e => setIcon(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
+                  >
+                    <option value="sparkles">✨ Sparkles</option>
+                    <option value="target">🎯 Target</option>
+                    <option value="lightbulb">💡 Lightbulb</option>
+                    <option value="heart">❤️ Heart</option>
+                    <option value="brain">🧠 Brain</option>
+                    <option value="pencil">✏️ Pencil</option>
+                    <option value="image">🖼️ Image</option>
+                    <option value="video">🎥 Video</option>
+                    <option value="music">🎵 Music</option>
+                    <option value="quote">💬 Quote</option>
+                    <option value="note">📝 Note</option>
+                    <option value="star">⭐ Star</option>
+                  </select>
+                </div>
+
+                {/* Description */}
                 <div>
                   <label htmlFor="description" className="mb-2 block text-sm font-medium text-gray-700">
                     Description
@@ -773,173 +628,217 @@ Continue exploring the relationship between perfectionism and self-worth. Consid
                   <textarea
                     id="description"
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    onChange={e => setDescription(e.target.value)}
                     placeholder="Describe what this prompt does..."
                     rows={3}
                     className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
                     maxLength={500}
                   />
                 </div>
-              </div>
-            </div>
-          )}
 
-          {activeTab === 'content' && (
-            <div className="flex h-full">
-              {/* Left Sidebar - Block Palette */}
-              <div className="w-64 flex-shrink-0 overflow-y-auto border-r border-gray-200 bg-white p-4">
-                <h2 className="mb-4 text-sm font-semibold text-gray-900">Blocks</h2>
-                <BlockPalette />
-              </div>
-
-              {/* Center - Canvas */}
-              <div className="flex-1 overflow-y-auto p-6">
-                <BuilderCanvas
-                  blocks={blocks}
-                  selectedBlockId={selectedBlockId}
-                  onSelectBlock={setSelectedBlockId}
-                  onDeleteBlock={handleDeleteBlock}
-                  onAddBlockClick={handleAddBlockClick}
-                  isOver={isOver}
-                  activeId={activeId}
-                />
-              </div>
-
-              {/* Right Sidebar - Property Panel */}
-              <div className="w-80 flex-shrink-0 overflow-y-auto border-l border-gray-200 bg-white">
-                <BlockPropertyPanel
-                  block={selectedBlock}
-                  onUpdate={handleUpdateBlock}
-                  onUpdateSystemPrompt={handleUpdateSystemPrompt}
-                  onClose={() => setSelectedBlockId(null)}
-                />
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'preview' && (
-            <div className="h-full overflow-y-auto p-6">
-              <div className="mx-auto max-w-3xl">
-                {blocks.length === 0 ? (
-                  <div className="rounded-lg border border-gray-200 bg-white p-6">
-                    <h2 className="mb-4 text-lg font-semibold text-gray-900">Preview</h2>
-                    <p className="text-sm text-gray-500">No blocks to preview. Add some blocks first.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
-                      <h2 className="mb-2 text-lg font-semibold text-purple-900">Output Preview</h2>
-                      <p className="text-sm text-purple-700">
-                        This preview shows how the AI-generated output will appear in the chat.
-                        Sample data is used for demonstration purposes.
-                      </p>
-                    </div>
-
-                    {blocks.map((block) => {
-                      const definition = getBlockDefinition(block.blockType);
-                      if (!definition) return null;
-
-                      // Only render preview for AI blocks with schema types
-                      if (definition.category !== 'ai' || !definition.schemaType) {
-                        return (
-                          <div key={block.id} className="rounded-lg border border-gray-200 bg-white p-4">
-                            <div className="mb-2 flex items-center gap-2">
-                              <definition.icon className="h-4 w-4 text-gray-600" />
-                              <span className="text-sm font-medium text-gray-700">{definition.label}</span>
-                            </div>
-                            <p className="text-xs text-gray-500">
-                              Non-AI block - no preview available
-                            </p>
-                          </div>
-                        );
-                      }
-
-                      const sampleOutput = generateSampleOutput(definition.schemaType);
-                      if (!sampleOutput) {
-                        return (
-                          <div key={block.id} className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                            <div className="mb-2 flex items-center gap-2">
-                              <definition.icon className="h-4 w-4 text-amber-600" />
-                              <span className="text-sm font-medium text-amber-700">{definition.label}</span>
-                            </div>
-                            <p className="text-xs text-amber-600">
-                              Preview not available for schema type: {definition.schemaType}
-                            </p>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div key={block.id} className="space-y-2">
-                          <div className="flex items-center gap-2 px-1">
-                            <definition.icon className="h-4 w-4 text-purple-600" />
-                            <span className="text-sm font-medium text-gray-700">{definition.label}</span>
-                            <span className="rounded bg-purple-100 px-2 py-0.5 text-xs text-purple-700">
-                              {definition.schemaType}
-                            </span>
-                          </div>
-                          <JSONOutputRenderer
-                            jsonData={sampleOutput as any}
-                            previewMode={true}
-                          />
+                {/* Output Type */}
+                <div>
+                  <label className="mb-3 block text-sm font-medium text-gray-700">
+                    Output Type
+                    {' '}
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <div className="space-y-3">
+                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-4 transition-colors hover:border-purple-300 hover:bg-purple-50/50">
+                      <input
+                        type="radio"
+                        name="outputType"
+                        value="json"
+                        checked={outputType === 'json'}
+                        onChange={e => setOutputType(e.target.value as 'text' | 'json')}
+                        className="mt-1 h-4 w-4 text-purple-600 border-gray-300 focus:ring-purple-500"
+                      />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-900">📊 Structured JSON Output</div>
+                        <div className="mt-1 text-xs text-gray-500">
+                          Returns data in JSON format with a defined schema. Best for extracting structured information.
                         </div>
-                      );
-                    })}
+                      </div>
+                    </label>
+                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-4 transition-colors hover:border-purple-300 hover:bg-purple-50/50">
+                      <input
+                        type="radio"
+                        name="outputType"
+                        value="text"
+                        checked={outputType === 'text'}
+                        onChange={e => setOutputType(e.target.value as 'text' | 'json')}
+                        className="mt-1 h-4 w-4 text-purple-600 border-gray-300 focus:ring-purple-500"
+                      />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-900">📝 Plain Text Output</div>
+                        <div className="mt-1 text-xs text-gray-500">
+                          Returns a simple text response without structure. Best for open-ended analysis or creative content.
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION 2A: JSON Configuration (conditional) */}
+            {outputType === 'json' && (
+              <>
+                {/* Block Selector */}
+                <div className="rounded-lg border border-gray-200 bg-white p-6">
+                  <h2 className="mb-4 text-lg font-semibold text-gray-900">
+                    Select Output Type
+                  </h2>
+                  <BlockPalette
+                    selectedBlockType={selectedBlockType}
+                    onSelectBlock={handleSelectBlock}
+                  />
+                </div>
+
+                {/* Block Configuration */}
+                {blockInstance && (
+                  <div className="rounded-lg border border-gray-200 bg-white p-6">
+                    <h2 className="mb-4 text-lg font-semibold text-gray-900">
+                      Configure {getBlockDefinition(blockInstance.blockType)?.label}
+                    </h2>
+
+                    {/* System Prompt Editor */}
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-gray-700">
+                        System Prompt (AI Instructions)
+                      </label>
+                      <p className="mb-2 text-xs text-gray-500">
+                        Customize the AI instructions or leave empty to use the default prompt.
+                      </p>
+                      <textarea
+                        value={blockInstance.customSystemPrompt || ''}
+                        onChange={(e) => handleUpdateSystemPrompt(e.target.value)}
+                        placeholder="Enter custom AI instructions or leave empty for default..."
+                        rows={12}
+                        className="w-full rounded-lg border border-gray-300 p-4 font-mono text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
+                      />
+                    </div>
                   </div>
                 )}
-              </div>
-            </div>
-          )}
 
-          {activeTab === 'json' && (
-            <div className="h-full overflow-y-auto p-6">
-              <div className="mx-auto max-w-4xl space-y-6">
-                {/* Generated System Prompt */}
-                <div className="rounded-lg border border-purple-200 bg-purple-50">
-                  <div className="border-b border-purple-200 px-4 py-3">
-                    <h2 className="text-sm font-medium text-purple-900">Generated System Prompt (AI Instructions)</h2>
-                    <p className="text-xs text-purple-600 mt-1">
-                      This is the compiled prompt that tells the AI how to generate each field
-                    </p>
+                {/* Preview Section */}
+                {blockInstance && previewData && (
+                  <div className="rounded-lg border border-gray-200 bg-white p-6">
+                    <h2 className="mb-4 text-lg font-semibold text-gray-900">
+                      Preview
+                    </h2>
+                    <div className="space-y-4">
+                      <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
+                        <p className="text-xs text-blue-600">
+                          This preview shows the default output structure for this block type.
+                        </p>
+                      </div>
+
+                      {!previewData.sampleOutput ? (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                          <p className="text-sm text-amber-600">
+                            Preview not available for this output type
+                          </p>
+                        </div>
+                      ) : (
+                        <GenericJSONPreview
+                          data={previewData.sampleOutput as any}
+                          fields={[]}
+                          schemaType={previewData.definition.schemaType}
+                        />
+                      )}
+                    </div>
                   </div>
-                  <pre className="overflow-auto p-4 text-xs text-purple-800 whitespace-pre-wrap">
-                    {generateSystemPrompt() || 'Add AI blocks to generate a system prompt'}
-                  </pre>
-                </div>
+                )}
 
-                {/* JSON Schema */}
+                {/* Technical Details (Collapsible) */}
                 <div className="rounded-lg border border-gray-200 bg-white">
-                  <div className="border-b border-gray-200 px-4 py-3">
-                    <h2 className="text-sm font-medium text-gray-900">Generated JSON Schema</h2>
-                    <p className="text-xs text-gray-500 mt-1">
-                      The structure defining the expected output format
-                    </p>
-                  </div>
-                  <pre className="overflow-auto p-4 text-xs text-gray-700">
-                    {JSON.stringify(generateJSONSchema(), null, 2)}
-                  </pre>
-                </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
+                    className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors"
+                  >
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Technical Details
+                    </h2>
+                    {showTechnicalDetails ? (
+                      <ChevronUp className="h-5 w-5 text-gray-500" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-gray-500" />
+                    )}
+                  </button>
+                  {showTechnicalDetails && (
+                    <div className="border-t border-gray-200 p-6 space-y-6">
+                      {/* Generated System Prompt */}
+                      <div className="rounded-lg border border-purple-200 bg-purple-50">
+                        <div className="border-b border-purple-200 px-4 py-3">
+                          <h2 className="text-sm font-medium text-purple-900">Generated System Prompt (AI Instructions)</h2>
+                          <p className="mt-1 text-xs text-purple-600">
+                            This is the compiled prompt that tells the AI how to generate each field
+                          </p>
+                        </div>
+                        <pre className="overflow-auto p-4 text-xs whitespace-pre-wrap text-purple-800">
+                          {generateSystemPrompt() || 'Select a block to generate a system prompt'}
+                        </pre>
+                      </div>
 
-                {/* Block Data */}
-                <div className="rounded-lg border border-gray-200 bg-white">
-                  <div className="border-b border-gray-200 px-4 py-3">
-                    <h2 className="text-sm font-medium text-gray-900">Block Data</h2>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Raw block configuration including custom field prompts
-                    </p>
-                  </div>
-                  <pre className="overflow-auto p-4 text-xs text-gray-700">
-                    {JSON.stringify(blocks, null, 2)}
-                  </pre>
+                      {/* JSON Schema */}
+                      <div className="rounded-lg border border-gray-200 bg-white">
+                        <div className="border-b border-gray-200 px-4 py-3">
+                          <h2 className="text-sm font-medium text-gray-900">Generated JSON Schema</h2>
+                          <p className="mt-1 text-xs text-gray-500">
+                            The structure defining the expected output format
+                          </p>
+                        </div>
+                        <pre className="overflow-auto p-4 text-xs text-gray-700">
+                          {JSON.stringify(generateJSONSchema(), null, 2)}
+                        </pre>
+                      </div>
+
+                      {/* Block Data */}
+                      <div className="rounded-lg border border-gray-200 bg-white">
+                        <div className="border-b border-gray-200 px-4 py-3">
+                          <h2 className="text-sm font-medium text-gray-900">Block Configuration</h2>
+                          <p className="mt-1 text-xs text-gray-500">
+                            Selected block configuration and custom settings
+                          </p>
+                        </div>
+                        <pre className="overflow-auto p-4 text-xs text-gray-700">
+                          {blockInstance ? JSON.stringify(blockInstance, null, 2) : 'No block selected'}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
                 </div>
+              </>
+            )}
+
+            {/* SECTION 2B: Text Configuration (conditional) */}
+            {outputType === 'text' && (
+              <div className="rounded-lg border border-gray-200 bg-white p-6">
+                <h2 className="mb-4 text-lg font-semibold text-gray-900">
+                  System Prompt
+                </h2>
+                <p className="mb-4 text-sm text-gray-600">
+                  This prompt will be sent to the AI as instructions. The AI will return a plain text response without any structured format.
+                </p>
+                <textarea
+                  value={textModeSystemPrompt}
+                  onChange={(e) => setTextModeSystemPrompt(e.target.value)}
+                  placeholder="Enter your system prompt here...
+
+Example:
+Analyze the following therapeutic conversation and provide insights on the patient's progress, emotional state, and key themes discussed. Focus on identifying breakthrough moments and areas that may need further attention."
+                  rows={20}
+                  className="w-full rounded-lg border border-gray-300 p-4 font-mono text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
+                />
+                <p className="mt-2 text-xs text-gray-500">
+                  {textModeSystemPrompt.length} / 5000 characters
+                </p>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Drag Overlay */}
-      <DragOverlay>{getDragOverlayContent()}</DragOverlay>
-    </DndContext>
   );
 }

@@ -627,7 +627,7 @@ export function MediaTab({
           ref={menuRef}
           className="fixed z-[9999] w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
           style={{ top: menuPosition.top, left: menuPosition.left }}
-          onClick={(e) => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
         >
           {(() => {
             const item = media.find(m => m.id === activeMenuId);
@@ -739,7 +739,7 @@ export function MediaTab({
             );
           })()}
         </div>,
-        document.body
+        document.body,
       )}
 
       {/* Media Details Modal */}
@@ -803,7 +803,6 @@ export function MediaTab({
           sessionId={sessionId}
         />
       )}
-
 
       {/* Delete Confirmation Dialog */}
       {deletingMedia && (

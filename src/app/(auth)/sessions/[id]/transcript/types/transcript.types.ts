@@ -76,7 +76,6 @@ export type AIAssistantPanelProps = {
   speakers?: SpeakerInfo[];
   utterances?: Utterance[]; // Full transcript for prompt auto-execute with context
   assignedModule: TreatmentModule | null;
-  triggerPrompt: string | null; // DEPRECATED: Use triggerSystemPrompt + triggerUserText
   triggerSystemPrompt?: string | null; // System prompt from Analyze Selection modal
   triggerUserText?: string | null; // User's selected text from Analyze Selection modal
   currentSelectedText?: string; // Selected text from transcript for prompt context

@@ -7,6 +7,7 @@
 
 import type { AIAssistantPanelProps } from '../types/transcript.types';
 import type { AIPromptOption } from '@/components/sessions/AnalyzeSelectionModal';
+import type { QuoteWithPatient } from '@/components/sessions/BulkSaveQuotesModal';
 import type { PatientOption } from '@/components/sessions/SaveNoteModal';
 import type { ModuleAiPrompt } from '@/models/Schema';
 import { ChevronDown, Download, Eye, FileText, Quote, Settings, Trash2 } from 'lucide-react';
@@ -15,7 +16,7 @@ import { CreatePromptModal } from '@/components/prompts/CreatePromptModal';
 import { EditPromptModal } from '@/components/prompts/EditPromptModal';
 import { PromptLibrary } from '@/components/prompts/PromptLibrary';
 import { AssistantMessageContent } from '@/components/sessions/AssistantMessageContent';
-import { BulkSaveQuotesModal, type QuoteWithPatient } from '@/components/sessions/BulkSaveQuotesModal';
+import { BulkSaveQuotesModal } from '@/components/sessions/BulkSaveQuotesModal';
 import { JSONOutputRenderer } from '@/components/sessions/JSONOutputRenderer';
 import { MessagePreviewModal } from '@/components/sessions/MessagePreviewModal';
 import { ModuleSelectorModal } from '@/components/sessions/ModuleSelectorModal';
@@ -78,7 +79,6 @@ export function AIAssistantPanel({
   speakers,
   utterances,
   assignedModule,
-  triggerPrompt,
   triggerSystemPrompt,
   triggerUserText,
   currentSelectedText,
@@ -176,9 +176,16 @@ export function AIAssistantPanel({
     setShowSaveNoteModal(true);
   };
 
-  // Save Note Modal handler for JSON output (with pre-filled data)
+  /**
+   * Save Note Modal handler for JSON output (with pre-filled data from AI)
+   *
+   * DATA FORMAT: AI returns markdown, but we need HTML for TipTap editor and database
+   * - AI response: markdown (e.g., "**bold**")
+   * - TipTap editor: HTML (e.g., "<strong>bold</strong>")
+   * - Database: HTML (stored in notes.content)
+   */
   const handleOpenSaveNoteModalFromJSON = (data: { title: string; content: string; tags?: string[] }) => {
-    // Convert markdown to HTML before storing
+    // CRITICAL: Convert markdown (from AI) → HTML (for TipTap + database)
     const htmlContent = markdownToHTML(data.content);
     setSelectedTextForNote(htmlContent);
     setNoteTitle(data.title);
@@ -193,6 +200,14 @@ export function AIAssistantPanel({
     setNoteTags([]);
   };
 
+  /**
+   * Saves note to database
+   *
+   * DATA FORMAT: Content is already HTML at this point
+   * - Received from TipTap editor as HTML
+   * - Stored in database as HTML
+   * - No conversion needed here
+   */
   const handleSaveNote = async (noteData: { patientId?: string; title: string; content: string; tags: string[] }) => {
     // patientId comes from the modal's patient selector
     const patientId = noteData.patientId;
@@ -201,17 +216,19 @@ export function AIAssistantPanel({
       throw new Error('Please select a patient to save this note.');
     }
 
-    // Save the note
+    // Save the note (content is already HTML from TipTap editor)
     const response = await authenticatedPost('/api/notes', user, {
       patientId,
       sessionId,
       title: noteData.title,
-      content: noteData.content,
+      content: noteData.content, // HTML format - stored directly
       tags: noteData.tags,
     });
 
     if (!response.ok) {
-      throw new Error('Failed to save note');
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.error || 'Failed to save note. Please try again.';
+      throw new Error(errorMessage);
     }
 
     // Refresh library if callback exists
@@ -496,7 +513,7 @@ export function AIAssistantPanel({
     fetchModules();
   }, [user]);
 
-  // Watch for trigger prompt from analyze modal (NEW: separate system prompt and user text)
+  // Watch for trigger prompt from analyze modal
   useEffect(() => {
     if (triggerSystemPrompt && triggerUserText) {
       // Set state like the chatbox dropdown does, then trigger send
@@ -506,13 +523,9 @@ export function AIAssistantPanel({
       // (state update is async, but handleSendMessage runs immediately)
       handleSendMessage(triggerUserText, triggerSystemPrompt);
       onPromptSent();
-    } else if (triggerPrompt) {
-      // DEPRECATED: fallback for old combined prompt (backward compatibility)
-      handleSendMessage(triggerPrompt);
-      onPromptSent();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [triggerPrompt, triggerSystemPrompt, triggerUserText]);
+  }, [triggerSystemPrompt, triggerUserText]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -571,8 +584,8 @@ export function AIAssistantPanel({
       const participantNote = selectedParticipant === 'all'
         ? 'All Participants'
         : selectedParticipant === 'therapist'
-        ? `Therapist (${dbUser?.name || 'You'})`
-        : speakers?.find(s => s.id === selectedParticipant)?.name || 'Selected Participant';
+          ? `Therapist (${dbUser?.name || 'You'})`
+          : speakers?.find(s => s.id === selectedParticipant)?.name || 'Selected Participant';
 
       fullPrompt = `**Session Transcript** (${participantNote}):
 

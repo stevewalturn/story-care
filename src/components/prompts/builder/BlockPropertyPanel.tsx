@@ -3,12 +3,12 @@
 /**
  * Block Property Panel Component
  * Right sidebar for editing selected block properties
- * Supports editable system prompts and field prompts (AI instructions) for schema building
+ * Supports editable system prompts, visual output schema builder, and field prompts
  */
 
-import { ChevronDown, ChevronRight, Code, FileText, Sparkles, X } from 'lucide-react';
-import { useState } from 'react';
 import type { BlockField, BlockInstance } from '@/config/PromptBuilderBlocks';
+import { ChevronDown, ChevronRight, FileText, Sparkles, X } from 'lucide-react';
+import { useState } from 'react';
 import { getBlockDefinition } from '@/config/PromptBuilderBlocks';
 
 type BlockPropertyPanelProps = {
@@ -18,9 +18,13 @@ type BlockPropertyPanelProps = {
   onClose: () => void;
 };
 
-export function BlockPropertyPanel({ block, onUpdate, onUpdateSystemPrompt, onClose }: BlockPropertyPanelProps) {
+export function BlockPropertyPanel({
+  block,
+  onUpdate,
+  onUpdateSystemPrompt,
+  onClose,
+}: BlockPropertyPanelProps) {
   const [isSystemPromptExpanded, setIsSystemPromptExpanded] = useState(false);
-  const [isSchemaExpanded, setIsSchemaExpanded] = useState(false);
 
   if (!block) {
     return (
@@ -102,7 +106,7 @@ export function BlockPropertyPanel({ block, onUpdate, onUpdateSystemPrompt, onCl
                   </p>
                   <textarea
                     value={getSystemPrompt()}
-                    onChange={(e) => handleSystemPromptChange(e.target.value)}
+                    onChange={e => handleSystemPromptChange(e.target.value)}
                     rows={12}
                     className="w-full rounded-lg border border-purple-300 bg-white px-3 py-2 font-mono text-xs focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
                     placeholder="Enter system prompt..."
@@ -121,44 +125,13 @@ export function BlockPropertyPanel({ block, onUpdate, onUpdateSystemPrompt, onCl
             </div>
           )}
 
-          {/* JSON Schema Preview - Only for AI blocks */}
-          {isAIBlock && definition.jsonSchema && (
-            <div className="rounded-lg border border-gray-200 bg-gray-50">
-              <button
-                type="button"
-                onClick={() => setIsSchemaExpanded(!isSchemaExpanded)}
-                className="flex w-full items-center justify-between px-4 py-3 text-left"
-              >
-                <div className="flex items-center gap-2">
-                  <Code className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">JSON Schema</span>
-                </div>
-                {isSchemaExpanded ? (
-                  <ChevronDown className="h-4 w-4 text-gray-500" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-gray-500" />
-                )}
-              </button>
-
-              {isSchemaExpanded && (
-                <div className="border-t border-gray-200 px-4 py-3">
-                  <p className="mb-2 text-xs text-gray-500">
-                    Expected output structure:
-                  </p>
-                  <pre className="overflow-auto rounded-lg bg-white p-3 font-mono text-xs text-gray-700 border border-gray-200 max-h-64">
-                    {JSON.stringify(definition.jsonSchema, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Divider for AI blocks */}
-          {isAIBlock && (definition.defaultSystemPrompt || definition.jsonSchema) && (
+          {isAIBlock && definition.defaultSystemPrompt && (
             <div className="flex items-center gap-2 py-2">
               <div className="flex-1 border-t border-gray-200" />
               <span className="text-xs text-gray-400">
-                <FileText className="inline h-3 w-3 mr-1" />
+                <FileText className="mr-1 inline h-3 w-3" />
                 Fields
               </span>
               <div className="flex-1 border-t border-gray-200" />
@@ -166,12 +139,12 @@ export function BlockPropertyPanel({ block, onUpdate, onUpdateSystemPrompt, onCl
           )}
 
           {/* Field Editors */}
-          {definition.fields.map((field) => (
+          {definition.fields.map(field => (
             <FieldEditor
               key={field.id}
               field={field}
               value={block.values[field.id]}
-              onChange={(value) => handleFieldChange(field.id, value)}
+              onChange={value => handleFieldChange(field.id, value)}
             />
           ))}
         </div>
@@ -182,7 +155,9 @@ export function BlockPropertyPanel({ block, onUpdate, onUpdateSystemPrompt, onCl
         <p className="text-xs text-gray-500">{definition.description}</p>
         {definition.schemaType && (
           <p className="mt-1 text-xs text-purple-600">
-            Schema: {definition.schemaType}
+            Schema:
+            {' '}
+            {definition.schemaType}
           </p>
         )}
       </div>
@@ -204,7 +179,7 @@ function FieldEditor({ field, value, onChange }: FieldEditorProps) {
           <input
             type="text"
             value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={e => onChange(e.target.value)}
             placeholder={field.placeholder}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
             maxLength={field.validation?.maxLength}
@@ -215,7 +190,7 @@ function FieldEditor({ field, value, onChange }: FieldEditorProps) {
         return (
           <textarea
             value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={e => onChange(e.target.value)}
             placeholder={field.placeholder}
             rows={4}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
@@ -227,10 +202,10 @@ function FieldEditor({ field, value, onChange }: FieldEditorProps) {
         return (
           <select
             value={value || field.defaultValue || ''}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={e => onChange(e.target.value)}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
           >
-            {field.options?.map((option) => (
+            {field.options?.map(option => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -243,7 +218,7 @@ function FieldEditor({ field, value, onChange }: FieldEditorProps) {
           <input
             type="number"
             value={value ?? field.defaultValue ?? ''}
-            onChange={(e) => onChange(e.target.value ? Number(e.target.value) : undefined)}
+            onChange={e => onChange(e.target.value ? Number(e.target.value) : undefined)}
             min={field.validation?.min}
             max={field.validation?.max}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
@@ -255,7 +230,7 @@ function FieldEditor({ field, value, onChange }: FieldEditorProps) {
           <input
             type="url"
             value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={e => onChange(e.target.value)}
             placeholder={field.placeholder || 'https://'}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
           />
@@ -267,7 +242,7 @@ function FieldEditor({ field, value, onChange }: FieldEditorProps) {
             <input
               type="checkbox"
               checked={value || false}
-              onChange={(e) => onChange(e.target.checked)}
+              onChange={e => onChange(e.target.checked)}
               className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
             />
             <span className="text-sm text-gray-700">Enable</span>
@@ -280,13 +255,13 @@ function FieldEditor({ field, value, onChange }: FieldEditorProps) {
             <input
               type="color"
               value={value || field.defaultValue || '#000000'}
-              onChange={(e) => onChange(e.target.value)}
+              onChange={e => onChange(e.target.value)}
               className="h-8 w-12 cursor-pointer rounded border border-gray-300"
             />
             <input
               type="text"
               value={value || field.defaultValue || ''}
-              onChange={(e) => onChange(e.target.value)}
+              onChange={e => onChange(e.target.value)}
               placeholder="#000000"
               className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
             />
@@ -298,7 +273,7 @@ function FieldEditor({ field, value, onChange }: FieldEditorProps) {
           <input
             type="text"
             value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={e => onChange(e.target.value)}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
           />
         );
