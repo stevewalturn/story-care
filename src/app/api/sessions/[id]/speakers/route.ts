@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server';
 import { asc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { sessions, speakers, transcripts, utterances } from '@/models/Schema';
+import { groupMembers, sessions, speakers, transcripts, users, utterances } from '@/models/Schema';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 
 // GET /api/sessions/[id]/speakers - Get all speakers for a session with sample utterances
@@ -37,7 +37,41 @@ export async function GET(
       );
     }
 
-    // 4. GET TRANSCRIPT ID
+    // 4. FETCH THERAPIST INFO
+    const therapist = await db.query.users.findFirst({
+      where: eq(users.id, session.therapistId),
+    });
+
+    // 5. FETCH PATIENT INFO (for individual sessions)
+    let patient = null;
+    if (session.patientId) {
+      patient = await db.query.users.findFirst({
+        where: eq(users.id, session.patientId),
+      });
+    }
+
+    // 6. FETCH GROUP MEMBERS (for group sessions)
+    let groupMembersList: { userId: string; name: string; avatarUrl?: string | null }[] = [];
+    if (session.groupId) {
+      const members = await db
+        .select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          avatarUrl: users.avatarUrl,
+        })
+        .from(groupMembers)
+        .innerJoin(users, eq(groupMembers.patientId, users.id))
+        .where(eq(groupMembers.groupId, session.groupId));
+
+      groupMembersList = members.map(m => ({
+        userId: m.id,
+        name: `${m.firstName || ''} ${m.lastName || ''}`.trim() || 'Unknown',
+        avatarUrl: m.avatarUrl,
+      }));
+    }
+
+    // 7. GET TRANSCRIPT ID
     const transcript = await db.query.transcripts.findFirst({
       where: eq(transcripts.sessionId, sessionId),
     });
@@ -94,6 +128,16 @@ export async function GET(
 
     return NextResponse.json({
       speakers: speakersWithSamples,
+      sessionContext: {
+        sessionType: session.sessionType,
+        therapistName: therapist ? `${therapist.firstName || ''} ${therapist.lastName || ''}`.trim() || 'Therapist' : 'Therapist',
+        patientName: patient ? `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Patient' : 'Patient',
+        therapistId: session.therapistId,
+        patientId: session.patientId,
+        therapistAvatarUrl: therapist?.avatarUrl || null,
+        patientAvatarUrl: patient?.avatarUrl || null,
+      },
+      groupMembers: groupMembersList,
     });
   } catch (error) {
     console.error('Error fetching speakers:', error);

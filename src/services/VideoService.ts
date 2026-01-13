@@ -563,6 +563,51 @@ export class VideoService {
   }
 
   /**
+   * Extract thumbnail from video buffer and upload to GCS
+   * @param videoBuffer - Video file as buffer
+   * @param timestamp - Timestamp in seconds to extract frame from (default: 1)
+   * @returns GCS path of uploaded thumbnail
+   */
+  static async extractThumbnailFromBuffer(
+    videoBuffer: Buffer,
+    timestamp: number = 1,
+  ): Promise<string> {
+    this.ensureTempDir();
+
+    const tempId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const tempVideoPath = path.join(this.tempDir, `temp-video-${tempId}.mp4`);
+    const tempThumbPath = path.join(this.tempDir, `temp-thumb-${tempId}.jpg`);
+
+    try {
+      // Write video buffer to temp file
+      fs.writeFileSync(tempVideoPath, videoBuffer);
+
+      // Extract thumbnail at specified timestamp
+      await this.generateThumbnail(tempVideoPath, tempThumbPath, timestamp);
+
+      // Read thumbnail buffer
+      const thumbBuffer = fs.readFileSync(tempThumbPath);
+
+      // Upload to GCS
+      const uploadResult = await uploadFile(thumbBuffer, `thumb-${tempId}.jpg`, {
+        folder: 'media/thumbnails',
+        contentType: 'image/jpeg',
+        makePublic: false,
+      });
+
+      return uploadResult.path;
+    } finally {
+      // Cleanup temp files
+      try {
+        if (fs.existsSync(tempVideoPath)) fs.unlinkSync(tempVideoPath);
+        if (fs.existsSync(tempThumbPath)) fs.unlinkSync(tempThumbPath);
+      } catch (cleanupError) {
+        console.error('Error cleaning up temp files:', cleanupError);
+      }
+    }
+  }
+
+  /**
    * Upload assembled video and thumbnail to GCS
    */
   static async uploadToGCS(

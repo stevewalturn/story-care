@@ -23,9 +23,311 @@ const pool = new Pool({
 
 const db = drizzle(pool, { schema });
 
-// === ESSENTIAL SYSTEM PROMPTS (7 JSON PROMPTS) ===
-// Only JSON-formatted prompts with implemented renderers
+// === ESSENTIAL SYSTEM PROMPTS ===
+// JSON prompts (structured output) + Text prompts (markdown output)
 const systemPrompts = [
+  // ==========================================
+  // TEXT OUTPUT PROMPTS (7 prompts)
+  // ==========================================
+
+  // 1. SESSION SUMMARY (TEXT)
+  {
+    name: 'Session Summary',
+    promptText: '',
+    systemPrompt: `Create a comprehensive summary of this therapy session.
+
+Analyze the transcript and provide a well-structured summary that includes:
+
+## Session Overview
+- Brief description of the session context and main topic
+
+## Key Themes Discussed
+- List the primary themes and topics covered
+- Note recurring patterns or concerns
+
+## Client Insights
+- Moments of self-awareness or realization
+- Important statements or reflections from the client
+
+## Therapeutic Progress
+- Signs of growth or positive change
+- Areas of challenge or resistance
+
+## Recommended Follow-up
+- Suggested topics for future sessions
+- Interventions or homework to consider
+
+Format your response in clear, readable markdown with appropriate headings and bullet points.`,
+    userPrompt: null,
+    description: 'Generate a comprehensive session summary in markdown format',
+    category: 'analysis',
+    icon: 'file-text',
+    outputType: 'text',
+    jsonSchema: null,
+  },
+
+  // 2. THERAPEUTIC ANALYSIS (TEXT)
+  {
+    name: 'Therapeutic Analysis',
+    promptText: '',
+    systemPrompt: `Provide an in-depth therapeutic analysis of this session content.
+
+Analyze the transcript from a clinical perspective and address:
+
+## Presenting Concerns
+- What issues or challenges is the client discussing?
+- What emotions are being expressed?
+
+## Narrative Patterns
+- What stories is the client telling about themselves?
+- Are there recurring themes or scripts?
+
+## Strengths & Resources
+- What strengths does the client demonstrate?
+- What coping mechanisms or supports are present?
+
+## Clinical Observations
+- Body language cues (if mentioned in transcript)
+- Defense mechanisms observed
+- Attachment patterns
+
+## Therapeutic Opportunities
+- Moments ripe for intervention
+- Alternative narratives to explore
+- Reframing possibilities
+
+Format as clear markdown with professional clinical language while remaining accessible.`,
+    userPrompt: null,
+    description: 'In-depth therapeutic analysis with clinical insights',
+    category: 'analysis',
+    icon: 'brain',
+    outputType: 'text',
+    jsonSchema: null,
+  },
+
+  // 3. NARRATIVE EXPLORATION (TEXT)
+  {
+    name: 'Narrative Exploration',
+    promptText: '',
+    systemPrompt: `Explore the narrative elements in this therapy session.
+
+Analyze the transcript through a narrative therapy lens:
+
+## The Dominant Story
+- What is the main story the client is telling?
+- How does this story shape their identity?
+
+## Problem-Saturated Narratives
+- What limiting beliefs or negative patterns emerge?
+- How is the problem being described?
+
+## Unique Outcomes
+- Moments that contradict the problem story
+- Times when the client showed agency or strength
+
+## Alternative Stories
+- What other ways could this experience be understood?
+- What values and intentions are hidden in the narrative?
+
+## Externalizing Opportunities
+- How can we separate the person from the problem?
+- What metaphors might help externalize the issue?
+
+## Questions to Ask
+- Suggest 3-5 narrative therapy questions to explore further
+
+Write in an engaging, thoughtful style that honors the client's experience.`,
+    userPrompt: null,
+    description: 'Explore narratives and alternative stories from the session',
+    category: 'analysis',
+    icon: 'book-open',
+    outputType: 'text',
+    jsonSchema: null,
+  },
+
+  // 4. PROGRESS NOTES (TEXT)
+  {
+    name: 'Progress Notes',
+    promptText: '',
+    systemPrompt: `Generate clinical progress notes for this therapy session.
+
+Create professional progress notes using a standard format:
+
+## Session Information
+- Date: [Today's date]
+- Session Type: Individual Therapy
+- Duration: [Estimate from transcript]
+
+## Subjective
+- Client's reported symptoms, concerns, and experiences
+- Mood and affect as described
+- Client's own words about their situation
+
+## Objective
+- Observable behaviors noted in the session
+- Mental status observations
+- Engagement level and participation
+
+## Assessment
+- Clinical impressions and formulation
+- Progress toward treatment goals
+- Risk assessment (if applicable)
+
+## Plan
+- Interventions used this session
+- Homework or between-session tasks
+- Plan for next session
+- Any referrals or coordination needed
+
+Use professional clinical language appropriate for medical records.`,
+    userPrompt: null,
+    description: 'Generate SOAP-style clinical progress notes',
+    category: 'analysis',
+    icon: 'clipboard',
+    outputType: 'text',
+    jsonSchema: null,
+  },
+
+  // 5. STRENGTHS INVENTORY (TEXT)
+  {
+    name: 'Strengths Inventory',
+    promptText: '',
+    systemPrompt: `Identify and catalog the client's strengths from this session.
+
+Review the transcript and create a comprehensive strengths inventory:
+
+## Personal Qualities
+- Character strengths demonstrated
+- Positive personality traits
+- Values expressed
+
+## Coping Skills
+- How does the client manage difficult emotions?
+- What healthy coping mechanisms are present?
+- Problem-solving approaches used
+
+## Support Systems
+- Relationships mentioned
+- Community connections
+- Professional supports
+
+## Past Successes
+- Times they've overcome challenges
+- Achievements referenced
+- Evidence of resilience
+
+## Hidden Strengths
+- Strengths the client may not recognize
+- Abilities implied but not stated
+- Potential areas for development
+
+## Therapeutic Applications
+- How can these strengths support therapy goals?
+- Strengths to build upon in future sessions
+
+Focus on what's working and what the client is doing right.`,
+    userPrompt: null,
+    description: 'Identify and catalog client strengths from the session',
+    category: 'analysis',
+    icon: 'star',
+    outputType: 'text',
+    jsonSchema: null,
+  },
+
+  // 6. EMOTION MAPPING (TEXT)
+  {
+    name: 'Emotion Mapping',
+    promptText: '',
+    systemPrompt: `Map the emotional journey of this therapy session.
+
+Analyze the emotional content of the transcript:
+
+## Emotional Landscape
+- Primary emotions expressed throughout the session
+- Intensity levels and fluctuations
+- Emotional triggers identified
+
+## Emotional Patterns
+- How do emotions shift during the conversation?
+- What topics evoke stronger responses?
+- Patterns of emotional avoidance or approach
+
+## Underlying Emotions
+- Emotions beneath the surface
+- Unspoken feelings implied
+- Secondary emotions masking primary ones
+
+## Emotional Needs
+- What needs are being expressed?
+- Unmet emotional needs identified
+- Desire for validation, connection, or understanding
+
+## Regulation Observations
+- How does the client regulate emotions?
+- Moments of dysregulation
+- Successful self-soothing observed
+
+## Therapeutic Implications
+- Emotions to explore further
+- Opportunities for emotional deepening
+- Suggested interventions for emotional processing
+
+Write with empathy and attunement to the emotional experience.`,
+    userPrompt: null,
+    description: 'Map the emotional journey and patterns in the session',
+    category: 'analysis',
+    icon: 'heart',
+    outputType: 'text',
+    jsonSchema: null,
+  },
+
+  // 7. CREATIVE WRITING PROMPT (TEXT)
+  {
+    name: 'Creative Writing Prompt',
+    promptText: '',
+    systemPrompt: `Generate a therapeutic creative writing prompt based on this session.
+
+Create a meaningful writing exercise for the client:
+
+## Writing Prompt
+[Provide a clear, engaging prompt that connects to session themes]
+
+## Purpose
+- What therapeutic goal does this serve?
+- How does it connect to what was discussed?
+
+## Instructions for the Client
+- Clear step-by-step guidance
+- Suggested time or length
+- Tips for getting started
+
+## Example Starter
+- Provide an opening sentence they could use
+- Or a template structure to follow
+
+## Reflection Questions
+After writing, consider:
+1. [Question about the experience]
+2. [Question about insights gained]
+3. [Question about application to life]
+
+## Variations
+- Alternative approaches to the same prompt
+- Ways to adapt if the client feels stuck
+
+Make the prompt inviting and accessible while therapeutically meaningful.`,
+    userPrompt: null,
+    description: 'Generate therapeutic creative writing prompts',
+    category: 'creative',
+    icon: 'pen-tool',
+    outputType: 'text',
+    jsonSchema: null,
+  },
+
+  // ==========================================
+  // JSON OUTPUT PROMPTS (7 prompts)
+  // ==========================================
+
   // === UTILITY PROMPTS (5) ===
 
   // 1. REFLECTION QUESTIONS (JSON)
@@ -607,7 +909,7 @@ async function seedSystemPrompts() {
 
     console.log('');
     console.log('✨ Seed complete!');
-    console.log(`Processed ${systemPrompts.length} system prompts (7 JSON prompts)`);
+    console.log(`Processed ${systemPrompts.length} system prompts (7 text + 7 JSON prompts)`);
 
     await pool.end();
     process.exit(0);

@@ -3,6 +3,7 @@
 import type { PatientReferenceImage } from '@/models/Schema';
 import { Check, ChevronDown, Film, HelpCircle, Loader2, Plus, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { VIDEO_GENERATION_MODELS } from '@/libs/ModelMetadata';
@@ -183,6 +184,7 @@ export function GenerateVideoModal({
 
     if (!file.type.startsWith('image/')) {
       setError('Please upload an image file');
+      toast.error('Please upload an image file');
       return;
     }
 
@@ -219,6 +221,7 @@ export function GenerateVideoModal({
       const errorMessage = err instanceof Error ? err.message : 'Failed to save reference image';
       console.error('Error saving reference image:', errorMessage);
       setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSavingAsReference(false);
     }
@@ -234,11 +237,13 @@ export function GenerateVideoModal({
   const handleGenerate = async () => {
     if (!prompt.trim()) {
       setError('Please enter an animation prompt');
+      toast.error('Please enter an animation prompt');
       return;
     }
 
     if (!selectedImage) {
       setError('Please select a reference image');
+      toast.error('Please select a reference image');
       return;
     }
 
@@ -334,12 +339,16 @@ export function GenerateVideoModal({
           }
         } catch (pollError: any) {
           clearInterval(pollInterval);
-          setError(pollError.message || 'Failed to check video status');
+          const errorMsg = pollError.message || 'Failed to check video status';
+          setError(errorMsg);
+          toast.error(errorMsg);
           setIsGenerating(false);
         }
       }, 5000);
     } catch (err: any) {
-      setError(err.message || 'Failed to generate video');
+      const errorMsg = err.message || 'Failed to generate video';
+      setError(errorMsg);
+      toast.error(errorMsg);
       setIsGenerating(false);
     }
   };

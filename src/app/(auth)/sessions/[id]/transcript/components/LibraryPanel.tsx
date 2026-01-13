@@ -7,7 +7,7 @@
  */
 
 import type { LibraryPanelProps } from '../types/transcript.types';
-import { ChevronDown, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Image as ImageIcon, Music, Plus, Sparkles, Video } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { MediaTab } from './MediaTab';
 import { NotesTab } from './NotesTab';
@@ -20,6 +20,9 @@ type ExtendedLibraryPanelProps = LibraryPanelProps & {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   onJumpToTimestamp?: (timestamp: number) => void; // Jump to audio position
+  onOpenGenerateImage?: () => void;
+  onOpenGenerateVideo?: () => void;
+  onOpenGenerateMusic?: () => void;
 };
 
 export function LibraryPanel({
@@ -36,6 +39,9 @@ export function LibraryPanel({
   isCollapsed = false,
   onToggleCollapse,
   onJumpToTimestamp,
+  onOpenGenerateImage,
+  onOpenGenerateVideo,
+  onOpenGenerateMusic,
 }: ExtendedLibraryPanelProps) {
   // Main tab state for switching between Media, Quotes, Notes, Profile
   const [activeTab, setActiveTab] = useState<'media' | 'quotes' | 'notes' | 'profile'>('media');
@@ -44,6 +50,9 @@ export function LibraryPanel({
   // Patient dropdown state
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
   const patientDropdownRef = useRef<HTMLDivElement>(null);
+  // Create dropdown state
+  const [showCreateDropdown, setShowCreateDropdown] = useState(false);
+  const createDropdownRef = useRef<HTMLDivElement>(null);
 
   // Get patients from sessionData
   // For individual sessions: sessionData.patient (single object)
@@ -80,11 +89,14 @@ export function LibraryPanel({
     }
   }, [selectedPatient, patients, onSelectedPatientChange]);
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (patientDropdownRef.current && !patientDropdownRef.current.contains(event.target as Node)) {
         setShowPatientDropdown(false);
+      }
+      if (createDropdownRef.current && !createDropdownRef.current.contains(event.target as Node)) {
+        setShowCreateDropdown(false);
       }
     };
 
@@ -220,10 +232,56 @@ export function LibraryPanel({
                 <button
                   onClick={onOpenUpload}
                   className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
-                  title="Add media"
+                  title="Upload media"
                 >
                   <Plus className="h-4 w-4" />
                 </button>
+              )}
+              {/* Create/Generate Button - Only show on Media tab */}
+              {activeTab === 'media' && (
+                <div className="relative" ref={createDropdownRef}>
+                  <button
+                    onClick={() => setShowCreateDropdown(!showCreateDropdown)}
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                    title="Create media"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                  </button>
+                  {showCreateDropdown && (
+                    <div className="absolute top-full right-0 z-50 mt-1 w-40 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                      <button
+                        onClick={() => {
+                          onOpenGenerateImage?.();
+                          setShowCreateDropdown(false);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-gray-700 transition-colors hover:bg-purple-50 hover:text-purple-700"
+                      >
+                        <ImageIcon className="h-4 w-4" />
+                        Generate Image
+                      </button>
+                      <button
+                        onClick={() => {
+                          onOpenGenerateVideo?.();
+                          setShowCreateDropdown(false);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-gray-700 transition-colors hover:bg-purple-50 hover:text-purple-700"
+                      >
+                        <Video className="h-4 w-4" />
+                        Generate Video
+                      </button>
+                      <button
+                        onClick={() => {
+                          onOpenGenerateMusic?.();
+                          setShowCreateDropdown(false);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-gray-700 transition-colors hover:bg-purple-50 hover:text-purple-700"
+                      >
+                        <Music className="h-4 w-4" />
+                        Generate Music
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
               {/* Collapse Button */}
               {onToggleCollapse && (

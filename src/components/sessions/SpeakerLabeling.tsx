@@ -443,13 +443,13 @@ export function SpeakerLabeling({
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 p-8">
+    <div className="min-h-screen bg-gray-50 p-8">
       <div className="mx-auto max-w-5xl space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-50">Label Speakers</h2>
-            <p className="mt-1 text-sm text-gray-300">
+            <h2 className="text-2xl font-bold text-gray-900">Label Speakers</h2>
+            <p className="mt-1 text-sm text-gray-600">
               Identify each speaker from the session transcript
             </p>
           </div>
@@ -481,12 +481,12 @@ export function SpeakerLabeling({
         </div>
 
         {/* Info Banner */}
-        <div className="flex items-start gap-3 rounded-lg border border-purple-900/30 bg-purple-900/20 p-4">
-          <svg className="mt-0.5 h-5 w-5 flex-shrink-0 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="flex items-start gap-3 rounded-lg border border-purple-200 bg-purple-50 p-4">
+          <svg className="mt-0.5 h-5 w-5 flex-shrink-0 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
           </svg>
           <div className="flex-1">
-            <p className="text-sm text-purple-300">
+            <p className="text-sm text-purple-700">
               <strong className="font-semibold">Tip:</strong>
               {' '}
               Listen to each speaker's audio sample, then assign their role and name. Use the Previous/Next buttons to navigate between segments.
@@ -504,14 +504,14 @@ export function SpeakerLabeling({
                 className={`rounded-lg border transition-all duration-200 ${
                   mergeMode
                     ? isSelected
-                      ? 'border-purple-500 bg-purple-900/20 shadow-md'
-                      : 'cursor-pointer border-gray-700 bg-gray-800 hover:border-purple-500 hover:shadow-sm'
-                    : 'border-gray-700 bg-gray-800 hover:border-gray-600 hover:shadow-sm'
+                      ? 'border-purple-500 bg-purple-50 shadow-md'
+                      : 'cursor-pointer border-gray-200 bg-white hover:border-purple-500 hover:shadow-sm'
+                    : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
                 }`}
                 onClick={() => mergeMode && toggleMergeSelection(speaker.id)}
               >
                 {/* Card Header with Avatar and Segment Navigation */}
-                <div className="border-b border-gray-700 p-4">
+                <div className="border-b border-gray-200 p-4">
                   <div className="flex items-center justify-between">
                     {/* Left: Avatar + Info */}
                     <div className="flex items-center gap-4">
@@ -543,10 +543,10 @@ export function SpeakerLabeling({
 
                       {/* Speaker Label + Stats */}
                       <div>
-                        <h3 className="text-base font-semibold text-gray-50">
+                        <h3 className="text-base font-semibold text-gray-900">
                           {speaker.label}
                         </h3>
-                        <p className="mt-0.5 text-xs text-gray-400">
+                        <p className="mt-0.5 text-xs text-gray-500">
                           {speaker.utteranceCount}
                           {' '}
                           utterances •
@@ -562,7 +562,7 @@ export function SpeakerLabeling({
                         {/* Previous Button */}
                         <button
                           type="button"
-                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-600 bg-gray-700 text-gray-300 transition-colors hover:bg-gray-600 hover:text-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
                           title="Previous segment"
                           disabled
                         >
@@ -598,7 +598,7 @@ export function SpeakerLabeling({
                         {/* Next Button */}
                         <button
                           type="button"
-                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-600 bg-gray-700 text-gray-300 transition-colors hover:bg-gray-600 hover:text-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
                           title="Next segment"
                           disabled
                         >
@@ -615,9 +615,9 @@ export function SpeakerLabeling({
                 {!mergeMode && (
                   <div className="space-y-4 p-4">
                     {/* Sample Text Preview */}
-                    <div className="rounded-lg border border-gray-700 bg-gray-900/50 p-3">
-                      <p className="mb-2 text-xs font-medium text-gray-400">Sample Text:</p>
-                      <p className="text-sm leading-relaxed text-gray-300">
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                      <p className="mb-2 text-xs font-medium text-gray-500">Sample Text:</p>
+                      <p className="text-sm leading-relaxed text-gray-700">
                         "This is a sample utterance from the speaker. In the actual implementation, this would show a real excerpt from the transcript..."
                       </p>
                     </div>
@@ -626,7 +626,7 @@ export function SpeakerLabeling({
                     <div className="grid grid-cols-2 gap-4">
                       {/* Type Dropdown */}
                       <div>
-                        <label className="mb-2 block text-xs font-medium text-gray-400">
+                        <label className="mb-2 block text-xs font-medium text-gray-500">
                           Type
                         </label>
                         <Dropdown
@@ -639,7 +639,7 @@ export function SpeakerLabeling({
 
                       {/* Name Dropdown/Input */}
                       <div>
-                        <label className="mb-2 block text-xs font-medium text-gray-400">
+                        <label className="mb-2 block text-xs font-medium text-gray-500">
                           Name
                         </label>
                         {speaker.type
@@ -669,7 +669,7 @@ export function SpeakerLabeling({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between border-t border-gray-700 pt-6">
+        <div className="flex items-center justify-between border-t border-gray-200 pt-6">
           <Button variant="ghost" onClick={onCancel}>
             Cancel
           </Button>
@@ -684,7 +684,7 @@ export function SpeakerLabeling({
 
         {/* Progress */}
         {!isComplete && (
-          <p className="text-center text-sm text-gray-400">
+          <p className="text-center text-sm text-gray-500">
             Please label all speakers before continuing
           </p>
         )}

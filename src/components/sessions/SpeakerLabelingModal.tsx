@@ -189,11 +189,11 @@ export function SpeakerLabelingModal({
       />
 
       {/* Modal Content */}
-      <div className="relative z-10 flex max-h-[95vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-gray-900 shadow-2xl">
+      <div className="relative z-10 flex max-h-[95vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-gray-800 text-gray-400 transition-colors hover:bg-gray-700 hover:text-gray-200"
+          className="absolute top-4 right-4 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-700"
           title="Close"
         >
           <X className="h-5 w-5" />
@@ -206,7 +206,7 @@ export function SpeakerLabelingModal({
                 <div className="flex min-h-[400px] items-center justify-center">
                   <div className="text-center">
                     <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
-                    <p className="text-gray-400">Loading speakers...</p>
+                    <p className="text-gray-500">Loading speakers...</p>
                   </div>
                 </div>
               )
@@ -214,11 +214,11 @@ export function SpeakerLabelingModal({
               ? (
                   <div className="flex min-h-[400px] items-center justify-center">
                     <div className="text-center">
-                      <h3 className="mb-2 text-lg font-semibold text-red-400">Error Loading Speakers</h3>
-                      <p className="mb-4 text-gray-400">{error}</p>
+                      <h3 className="mb-2 text-lg font-semibold text-red-600">Error Loading Speakers</h3>
+                      <p className="mb-4 text-gray-500">{error}</p>
                       <button
                         onClick={onClose}
-                        className="text-purple-400 hover:text-purple-300"
+                        className="text-purple-600 hover:text-purple-700"
                       >
                         Close
                       </button>
@@ -239,10 +239,10 @@ export function SpeakerLabelingModal({
 
         {/* Saving overlay */}
         {isSaving && (
-          <div className="absolute inset-0 z-30 flex items-center justify-center bg-gray-900/80">
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/80">
             <div className="text-center">
               <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
-              <p className="text-gray-300">Saving speakers...</p>
+              <p className="text-gray-600">Saving speakers...</p>
             </div>
           </div>
         )}

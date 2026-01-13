@@ -11,6 +11,7 @@ import { MediaViewer } from '@/components/assets/MediaViewer';
 import { EditMediaModal } from '@/components/media/EditMediaModal';
 import { GenerateImageModal } from '@/components/media/GenerateImageModal';
 import { GenerateMusicModal } from '@/components/media/GenerateMusicModal';
+import { GenerateVideoModal } from '@/components/media/GenerateVideoModal';
 import { CreateNoteModal } from '@/components/notes/CreateNoteModal';
 import { EditNoteModal } from '@/components/notes/EditNoteModal';
 import { CreateQuoteModal } from '@/components/quotes/CreateQuoteModal';
@@ -37,6 +38,7 @@ type MediaItem = {
   patientName: string;
   sessionTitle?: string;
   generationPrompt?: string | null;
+  referenceImageUrl?: string | null;
 };
 
 export function AssetsClient() {
@@ -90,6 +92,7 @@ export function AssetsClient() {
   // Media generation state
   const [showGenerateImageModal, setShowGenerateImageModal] = useState(false);
   const [showGenerateMusicModal, setShowGenerateMusicModal] = useState(false);
+  const [showGenerateVideoModal, setShowGenerateVideoModal] = useState(false);
 
   // Menu state
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -101,12 +104,29 @@ export function AssetsClient() {
   const [editingMedia, setEditingMedia] = useState<MediaItem | null>(null);
 
   // Regenerate state (for Generate New Version)
-  const [_regenerateImageData, setRegenerateImageData] = useState<any>(null);
-  const [_regenerateVideoData, setRegenerateVideoData] = useState<any>(null);
-  const [_regenerateMusicData, setRegenerateMusicData] = useState<any>(null);
+  const [regenerateImageData, setRegenerateImageData] = useState<{
+    prompt: string;
+    title: string;
+    description: string;
+    patientId: string | null;
+  } | null>(null);
+  const [regenerateVideoData, setRegenerateVideoData] = useState<{
+    prompt: string;
+    patientId: string | null;
+    referenceImageUrl: string | null;
+  } | null>(null);
+  const [regenerateMusicData, setRegenerateMusicData] = useState<{
+    prompt: string;
+    title: string;
+  } | null>(null);
 
-  // Animate to Video state
-  const [_animateImageData, setAnimateImageData] = useState<any>(null);
+  // Animate to Video state (use image as reference for video)
+  const [animateImageData, setAnimateImageData] = useState<{
+    id: string;
+    url: string;
+    title: string;
+    patientId: string | null;
+  } | null>(null);
 
   // In-progress tasks state
   const [inProgressTasks, setInProgressTasks] = useState<any[]>([]);
@@ -572,9 +592,14 @@ export function AssetsClient() {
       });
       setShowGenerateImageModal(true);
     } else if (item.mediaType === 'video') {
-      setRegenerateVideoData({ prompt: item.generationPrompt });
-      // Note: Video modal not implemented yet
-      toast.error('Video regeneration not yet implemented');
+      // Open video modal with original prompt and reference image for regeneration
+      setRegenerateVideoData({
+        prompt: item.generationPrompt,
+        patientId: item.patientId,
+        referenceImageUrl: item.referenceImageUrl || null,
+      });
+      setAnimateImageData(null); // Clear any animate data
+      setShowGenerateVideoModal(true);
     } else if (item.mediaType === 'audio') {
       setRegenerateMusicData({
         prompt: item.generationPrompt,
@@ -584,19 +609,22 @@ export function AssetsClient() {
     }
   };
 
-  // Animate to Video handler
+  // Animate to Video handler (use image as reference for video generation)
   const handleAnimateToVideo = (item: MediaItem) => {
     if (item.mediaType !== 'image') {
       toast.error('Can only animate images to video');
       return;
     }
 
+    // Set the image as reference for video generation
     setAnimateImageData({
+      id: item.id,
       url: item.mediaUrl,
       title: item.title,
+      patientId: item.patientId,
     });
-    // Note: Video modal not implemented yet
-    toast.error('Animate to video not yet implemented');
+    setRegenerateVideoData(null); // Clear any regenerate data
+    setShowGenerateVideoModal(true);
   };
 
   const handleMediaClick = (item: MediaItem) => {
@@ -1187,11 +1215,21 @@ export function AssetsClient() {
                       {item.mediaType === 'video'
                         ? (
                             <>
-                              <div className="flex h-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-                                <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                </svg>
-                              </div>
+                              {item.thumbnailUrl
+                                ? (
+                                    <img
+                                      src={item.thumbnailUrl}
+                                      alt={item.title}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  )
+                                : (
+                                    <div className="flex h-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                                      <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                      </svg>
+                                    </div>
+                                  )}
                               <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                                 <div className="rounded-full bg-white/90 p-2">
                                   <svg className="h-5 w-5 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
@@ -1214,6 +1252,15 @@ export function AssetsClient() {
                                 <Music className="h-12 w-12 text-purple-400" />
                               </div>
                             )}
+                      {/* Processing status overlay */}
+                      {item.status === 'processing' && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                          <div className="text-center">
+                            <div className="mx-auto mb-1 h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                            <span className="text-xs font-medium text-white">Processing...</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Content */}
@@ -2004,7 +2051,10 @@ export function AssetsClient() {
       {showGenerateImageModal && (
         <GenerateImageModal
           isOpen={showGenerateImageModal}
-          onClose={() => setShowGenerateImageModal(false)}
+          onClose={() => {
+            setShowGenerateImageModal(false);
+            setRegenerateImageData(null);
+          }}
           onGenerate={async (
             prompt,
             model,
@@ -2018,7 +2068,7 @@ export function AssetsClient() {
               model,
               useReference,
               referenceImage,
-              patientId: selectedPatient,
+              patientId: regenerateImageData?.patientId || selectedPatient,
               title: metadata?.title,
               description: metadata?.description,
               sourceQuote: metadata?.sourceQuote,
@@ -2031,9 +2081,14 @@ export function AssetsClient() {
 
             // Refresh the media list
             await loadMedia();
+            setRegenerateImageData(null);
             toast.success('Image generated successfully!');
           }}
           patients={patients}
+          patientId={regenerateImageData?.patientId || selectedPatient || undefined}
+          initialPrompt={regenerateImageData?.prompt || ''}
+          initialTitle={regenerateImageData?.title || ''}
+          initialDescription={regenerateImageData?.description || ''}
         />
       )}
 
@@ -2041,14 +2096,23 @@ export function AssetsClient() {
       {showGenerateMusicModal && (
         <GenerateMusicModal
           isOpen={showGenerateMusicModal}
-          onClose={() => setShowGenerateMusicModal(false)}
+          onClose={() => {
+            setShowGenerateMusicModal(false);
+            setRegenerateMusicData(null);
+          }}
           patientId={selectedPatient}
           user={user}
-          instrumentalOption={{
+          instrumentalOption={regenerateMusicData ? {
+            title: regenerateMusicData.title,
+            music_description: regenerateMusicData.prompt,
+          } : {
             title: 'Therapeutic Music',
             music_description: 'Create therapeutic music for this patient',
           }}
-          lyricalOption={{
+          lyricalOption={regenerateMusicData ? {
+            title: regenerateMusicData.title,
+            music_description: regenerateMusicData.prompt,
+          } : {
             title: 'Lyrical Therapeutic Song',
             music_description: 'Create a song with meaningful lyrics for this patient',
           }}
@@ -2056,7 +2120,37 @@ export function AssetsClient() {
             // Refresh media list and tasks when music generation completes
             loadMedia();
             loadInProgressTasks();
+            setRegenerateMusicData(null);
           }}
+        />
+      )}
+
+      {/* Generate Video Modal (for regeneration and animate image to video) */}
+      {showGenerateVideoModal && (
+        <GenerateVideoModal
+          isOpen={showGenerateVideoModal}
+          onClose={() => {
+            setShowGenerateVideoModal(false);
+            setAnimateImageData(null);
+            setRegenerateVideoData(null);
+          }}
+          onGenerate={async (_videoUrl: string, _prompt: string) => {
+            // Refresh the media list when video is generated
+            await loadMedia();
+            await loadInProgressTasks();
+            toast.success('Video generated successfully!');
+          }}
+          initialPrompt={regenerateVideoData?.prompt || ''}
+          patientId={animateImageData?.patientId || regenerateVideoData?.patientId || selectedPatient || undefined}
+          referenceImage={animateImageData ? {
+            id: animateImageData.id,
+            url: animateImageData.url,
+            title: animateImageData.title,
+          } : regenerateVideoData?.referenceImageUrl ? {
+            id: 'regenerate-ref',
+            url: regenerateVideoData.referenceImageUrl,
+            title: 'Original reference',
+          } : undefined}
         />
       )}
 

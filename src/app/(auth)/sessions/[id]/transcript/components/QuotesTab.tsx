@@ -193,10 +193,10 @@ export function QuotesTab({ sessionId, user, refreshKey, selectedPatient, onEdit
                           <button
                             onClick={() => onJumpToTimestamp(Number(quote.startTimeSeconds))}
                             className="flex items-center gap-1 rounded-md bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 transition-colors hover:bg-purple-200"
-                            title="Jump to this point in the audio"
+                            title="Play this quote in the transcript"
                           >
                             <Play className="h-3 w-3" />
-                            Play
+                            Play in transcript
                           </button>
                         )}
                       </>

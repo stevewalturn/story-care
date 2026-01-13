@@ -71,6 +71,7 @@ export function TranscriptPanel({
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [showSpeedDropdown, setShowSpeedDropdown] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
+  const [highlightedUtteranceId, setHighlightedUtteranceId] = useState<string | null>(null);
 
   // Audio player handlers
   const togglePlay = async () => {
@@ -148,6 +149,26 @@ export function TranscriptPanel({
     if (seekToTimestamp !== null && seekToTimestamp !== undefined && audioRef.current) {
       audioRef.current.currentTime = seekToTimestamp;
       setCurrentTime(seekToTimestamp);
+
+      // Find and scroll to the utterance that contains this timestamp
+      const matchingUtterance = utterances.find(
+        u => u.startTime <= seekToTimestamp && seekToTimestamp < u.endTime
+      );
+      if (matchingUtterance) {
+        // Highlight the utterance temporarily
+        setHighlightedUtteranceId(matchingUtterance.id);
+        setTimeout(() => setHighlightedUtteranceId(null), 3000);
+
+        // Scroll to the utterance
+        const utteranceEl = utteranceRefs.current.get(matchingUtterance.id);
+        if (utteranceEl) {
+          utteranceEl.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          });
+        }
+      }
+
       // Start playing from the new position
       audioRef.current.play().then(() => {
         setIsPlaying(true);
@@ -157,7 +178,7 @@ export function TranscriptPanel({
       // Notify parent that seek is complete
       onSeekComplete?.();
     }
-  }, [seekToTimestamp, onSeekComplete]);
+  }, [seekToTimestamp, onSeekComplete, utterances]);
 
   // Click outside handler for speaker dropdown
   useEffect(() => {
@@ -665,6 +686,7 @@ export function TranscriptPanel({
           const isCurrentUtterance = currentUtteranceId === utterance.id;
           const isCurrentSearchMatch = searchQuery && matchingUtteranceIds[currentMatchIndex] === utterance.id;
           const isSearchMatch = searchQuery && matchingUtteranceIds.includes(utterance.id);
+          const isHighlightedFromSeek = highlightedUtteranceId === utterance.id;
 
           return (
             <div
@@ -683,13 +705,15 @@ export function TranscriptPanel({
                 }
               }}
               className={`-mx-2 flex cursor-pointer gap-3 rounded-lg p-2 transition-colors duration-200 hover:bg-gray-50 ${
-                isCurrentUtterance
-                  ? 'border-l-2 border-purple-500 bg-purple-50'
-                  : isCurrentSearchMatch
-                    ? 'border-l-2 border-yellow-400 bg-yellow-50'
-                    : isSearchMatch
-                      ? 'bg-yellow-50/50'
-                      : ''
+                isHighlightedFromSeek
+                  ? 'ring-2 ring-purple-400 bg-purple-50 border-l-2 border-purple-500'
+                  : isCurrentUtterance
+                    ? 'border-l-2 border-purple-500 bg-purple-50'
+                    : isCurrentSearchMatch
+                      ? 'border-l-2 border-yellow-400 bg-yellow-50'
+                      : isSearchMatch
+                        ? 'bg-yellow-50/50'
+                        : ''
               }`}
             >
               {/* Speaker Avatar - Use actual photo if available, otherwise colored initial */}

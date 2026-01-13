@@ -3,6 +3,7 @@
 import type { PatientReferenceImage } from '@/models/Schema';
 import { Check, Edit2, HelpCircle, Image as ImageIcon, Info, Loader2, Plus, Save, Sparkles, Star, StarOff, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
@@ -209,7 +210,7 @@ export function GenerateImageModal({
       );
     } catch (err) {
       console.error('Error setting primary image:', err);
-      alert(err instanceof Error ? err.message : 'Failed to set primary image');
+      toast.error(err instanceof Error ? err.message : 'Failed to set primary image');
     }
   };
 
@@ -239,7 +240,7 @@ export function GenerateImageModal({
       setReferenceImages(prev => prev.filter(img => img.id !== imageId));
     } catch (err) {
       console.error('Error deleting image:', err);
-      alert(err instanceof Error ? err.message : 'Failed to delete image');
+      toast.error(err instanceof Error ? err.message : 'Failed to delete image');
     }
   };
 
@@ -274,7 +275,7 @@ export function GenerateImageModal({
       setLabelValue('');
     } catch (err) {
       console.error('Error updating label:', err);
-      alert(err instanceof Error ? err.message : 'Failed to update label');
+      toast.error(err instanceof Error ? err.message : 'Failed to update label');
     }
   };
 
@@ -321,6 +322,7 @@ export function GenerateImageModal({
     // Check if it's an image
     if (!file.type.startsWith('image/')) {
       setError('Please upload an image file');
+      toast.error('Please upload an image file');
       return;
     }
 
@@ -369,6 +371,7 @@ export function GenerateImageModal({
       const errorMessage = err instanceof Error ? err.message : 'Failed to save reference image';
       console.error('Error saving reference image:', errorMessage);
       setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSavingAsReference(false);
     }
@@ -444,6 +447,7 @@ export function GenerateImageModal({
       setPrompt(data.optimizedPrompt || prompt);
     } catch (err) {
       console.error('Error optimizing prompt:', err);
+      toast.error('Failed to optimize prompt');
     } finally {
       setIsOptimizing(false);
     }
@@ -452,6 +456,7 @@ export function GenerateImageModal({
   const handleGenerate = async () => {
     if (!prompt.trim()) {
       setError('Please enter a prompt');
+      toast.error('Please enter a prompt');
       return;
     }
 
@@ -503,7 +508,10 @@ export function GenerateImageModal({
           });
 
           if (!result.ok) {
-            throw new Error(`Generation ${index + 1} failed`);
+            const errorData = await result.json().catch(() => ({}));
+            const errorMsg = errorData.error || `Generation ${index + 1} failed`;
+            toast.error(errorMsg);
+            return null;
           }
 
           const data = await result.json();
@@ -528,6 +536,7 @@ export function GenerateImageModal({
           return data;
         } catch (err: any) {
           console.error(`Error generating image ${index + 1}:`, err);
+          toast.error(err.message || `Generation ${index + 1} failed`);
           // Remove this slot from generating list
           setGeneratingSlots(prev => prev.filter(slot => slot !== index));
           return null;
@@ -539,7 +548,9 @@ export function GenerateImageModal({
 
       // DON'T close modal - let user review and save
     } catch (err: any) {
-      setError(err.message || 'Failed to generate images');
+      const errorMessage = err.message || 'Failed to generate images';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsGenerating(false);
     }
@@ -597,7 +608,7 @@ export function GenerateImageModal({
       // The parent component will handle this through onGenerate callback
     } catch (err: any) {
       console.error('Error saving image:', err);
-      alert(err.message || 'Failed to save image');
+      toast.error(err.message || 'Failed to save image');
       // Revert saving state
       setGeneratedImages(prev =>
         prev.map(img =>

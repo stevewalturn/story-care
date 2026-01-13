@@ -368,7 +368,7 @@ export async function handleSaveScenesAsNotes(ctx: ActionContext) {
     const response = await authenticatedPost('/api/notes', user, {
       sessionId,
       title: 'Scene Suggestions',
-      content: noteContent,
+      content: markdownToHTML(noteContent),
       tags: ['ai-generated', 'scene-suggestions'],
     });
 
@@ -660,7 +660,7 @@ export async function handleSaveAsNote(ctx: ActionContext) {
       patientId: session.patientId, // NOW INCLUDED
       sessionId,
       title: 'Reflection Questions',
-      content,
+      content: markdownToHTML(content),
       tags: ['reflection', 'ai-generated'],
     });
 

@@ -127,6 +127,9 @@ export type LibraryPanelProps = {
   onTaskComplete?: () => void;
   onClose?: () => void;
   onSelectedPatientChange?: (patient: SelectedPatientInfo | null) => void;
+  onOpenGenerateImage?: () => void;
+  onOpenGenerateVideo?: () => void;
+  onOpenGenerateMusic?: () => void;
 };
 
 // Props for MediaTab

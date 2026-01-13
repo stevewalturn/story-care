@@ -371,10 +371,10 @@ const MODEL_CONFIGS: Record<AtlasImageModel, ModelConfig> = {
     supportsPrompt: true,
   },
 
-  // Text-to-Image (Seedream/ByteDance)
+  // Text-to-Image (Seedream/ByteDance) - uses 2048*2048 per TEXT_TO_IMAGE.md
   'seedream-4.5-t2i': {
     atlasName: 'bytedance/seedream-v4.5',
-    minSize: '1024*1024',
+    minSize: '2048*2048', // Per TEXT_TO_IMAGE.md
     defaultSteps: 28,
     requiresImage: false,
     imageField: null,
@@ -385,7 +385,7 @@ const MODEL_CONFIGS: Record<AtlasImageModel, ModelConfig> = {
   },
   'seedream-4.5-seq-t2i': {
     atlasName: 'bytedance/seedream-v4.5/sequential',
-    minSize: '1024*1024',
+    minSize: '2048*2048', // Per TEXT_TO_IMAGE.md
     defaultSteps: 28,
     requiresImage: false,
     imageField: null,
@@ -396,7 +396,7 @@ const MODEL_CONFIGS: Record<AtlasImageModel, ModelConfig> = {
   },
   'seedream-4-t2i': {
     atlasName: 'bytedance/seedream-v4',
-    minSize: '1024*1024',
+    minSize: '2048*2048', // Per TEXT_TO_IMAGE.md
     defaultSteps: 28,
     requiresImage: false,
     imageField: null,
@@ -407,7 +407,7 @@ const MODEL_CONFIGS: Record<AtlasImageModel, ModelConfig> = {
   },
   'seedream-4-seq-t2i': {
     atlasName: 'bytedance/seedream-v4/sequential',
-    minSize: '1024*1024',
+    minSize: '2048*2048', // Per TEXT_TO_IMAGE.md
     defaultSteps: 28,
     requiresImage: false,
     imageField: null,
@@ -418,7 +418,7 @@ const MODEL_CONFIGS: Record<AtlasImageModel, ModelConfig> = {
   },
   'seedream-3.1-t2i': {
     atlasName: 'bytedance/seedream-v3.1',
-    minSize: '1024*1024',
+    minSize: '1024*1024', // Per TEXT_TO_IMAGE.md
     defaultSteps: 28,
     requiresImage: false,
     imageField: null,
@@ -429,7 +429,7 @@ const MODEL_CONFIGS: Record<AtlasImageModel, ModelConfig> = {
   },
   'seedream-3-t2i': {
     atlasName: 'bytedance/seedream-v3',
-    minSize: '1024*1024',
+    minSize: '1024*1024', // Per TEXT_TO_IMAGE.md
     defaultSteps: 28,
     requiresImage: false,
     imageField: null,
@@ -700,10 +700,10 @@ const MODEL_CONFIGS: Record<AtlasImageModel, ModelConfig> = {
     supportsPrompt: true,
   },
 
-  // Text-to-Image (Wan/Alibaba)
+  // Text-to-Image (Wan/Alibaba) - uses 1280*1280 per TEXT_TO_IMAGE.md
   'wan-2.6-t2i': {
     atlasName: 'alibaba/wan-2.6/text-to-image',
-    minSize: '1024*1024',
+    minSize: '1280*1280', // Per TEXT_TO_IMAGE.md
     defaultSteps: 28,
     requiresImage: false,
     imageField: null,
@@ -714,7 +714,7 @@ const MODEL_CONFIGS: Record<AtlasImageModel, ModelConfig> = {
   },
   'wan-2.5-t2i': {
     atlasName: 'alibaba/wan-2.5/text-to-image',
-    minSize: '1024*1024',
+    minSize: '1280*1280', // Per TEXT_TO_IMAGE.md
     defaultSteps: 28,
     requiresImage: false,
     imageField: null,
@@ -725,7 +725,7 @@ const MODEL_CONFIGS: Record<AtlasImageModel, ModelConfig> = {
   },
   'wan-2.1-t2i': {
     atlasName: 'alibaba/wan-2.1/text-to-image',
-    minSize: '1024*1024',
+    minSize: '1024*1024', // Per TEXT_TO_IMAGE.md (different from 2.5/2.6)
     defaultSteps: 28,
     requiresImage: false,
     imageField: null,
@@ -1500,6 +1500,316 @@ export function parseAtlasError(error: string): string {
 }
 
 /**
+ * Determine model family for parameter formatting
+ */
+type ModelFamily =
+  | 'flux-kontext' // Uses aspect_ratio, safety_tolerance
+  | 'flux-1.1-pro' // Uses aspect_ratio, output_format
+  | 'flux-standard' // Uses size, num_inference_steps, guidance_scale
+  | 'flux-lora' // Uses size, loras array
+  | 'imagen' // Uses aspect_ratio, negative_prompt, num_images
+  | 'atlascloud-imagen' // Uses aspect_ratio, output_format (no negative_prompt, no num_images)
+  | 'nano-banana' // Uses aspect_ratio, resolution, output_format
+  | 'gemini-image' // Uses aspect_ratio, output_format
+  | 'recraft' // Uses aspect_ratio, style
+  | 'ideogram' // Uses aspect_ratio, style
+  | 'photon' // Minimal params (just prompt)
+  | 'seedream' // Uses size, enable_prompt_expansion
+  | 'wan' // Uses size, negative_prompt
+  | 'atlascloud' // Uses size, enable_safety_checker
+  | 'z-image' // Uses size, loras
+  | 'style-transfer'; // Uses image, minimal params
+
+function getModelFamily(model: AtlasImageModel): ModelFamily {
+  // Flux Kontext models
+  if (model.startsWith('flux-kontext')) return 'flux-kontext';
+
+  // Flux 1.1 Pro models
+  if (model === 'flux-1.1-pro' || model === 'flux-1.1-pro-ultra') return 'flux-1.1-pro';
+
+  // Flux LoRA models
+  if (model.includes('-lora')) return 'flux-lora';
+
+  // Standard Flux models
+  if (model.startsWith('flux-') && !model.includes('kontext') && !model.includes('lora') && !model.includes('1.1-pro')) {
+    return 'flux-standard';
+  }
+
+  // Google Imagen models (but not atlascloud-imagen4 which has different format)
+  if (model.startsWith('imagen')) return 'imagen';
+
+  // AtlasCloud Imagen4 has different params than Google Imagen
+  if (model === 'atlascloud-imagen4') return 'atlascloud-imagen';
+
+  // Google Nano Banana models
+  if (model.includes('nano-banana')) return 'nano-banana';
+
+  // Google Gemini Image models
+  if (model.includes('gemini-2.5-flash-t2i')) return 'gemini-image';
+
+  // Recraft models
+  if (model.startsWith('recraft')) return 'recraft';
+
+  // Ideogram models
+  if (model.startsWith('ideogram')) return 'ideogram';
+
+  // Luma Photon models
+  if (model.startsWith('photon')) return 'photon';
+
+  // ByteDance Seedream models
+  if (model.startsWith('seedream') || model === 'seededit-v3' || model === 'portrait') return 'seedream';
+
+  // Alibaba Wan models (but NOT qwen-t2i which uses atlascloud format)
+  if (model.startsWith('wan-')) return 'wan';
+
+  // Qwen image-edit models use wan format, but qwen-t2i uses atlascloud format
+  if (model.startsWith('qwen-image-edit')) return 'wan';
+
+  // Z-Image models
+  if (model.startsWith('z-image')) return 'z-image';
+
+  // Style transfer models
+  if ([
+    'plastic-bubble-figure', 'my-world', 'micro-landscape-mini-world', 'glass-ball',
+    'felt-keychain', 'felt-3d-polaroid', 'advanced-photography', 'american-comic-style',
+    'ghibli',
+  ].includes(model)) {
+    return 'style-transfer';
+  }
+
+  // AtlasCloud generic models (hidream, hunyuan, neta-lumina, etc.)
+  return 'atlascloud';
+}
+
+/**
+ * Build model-specific request body based on family
+ * Each model family has different required/supported parameters per Atlas Cloud API documentation
+ */
+function buildModelRequestBody(
+  model: AtlasImageModel,
+  modelConfig: ModelConfig,
+  options: AtlasImageGenerateOptions,
+): Record<string, unknown> {
+  const family = getModelFamily(model);
+  const baseParams = {
+    model: modelConfig.atlasName,
+    prompt: options.prompt,
+    enable_base64_output: false,
+  };
+
+  // Helper to add reference images
+  const addReferenceImages = (body: Record<string, unknown>) => {
+    if (options.referenceImages && options.referenceImages.length > 0 && modelConfig.imageField) {
+      if (modelConfig.imageField === 'image') {
+        body.image = options.referenceImages[0];
+      } else if (modelConfig.imageField === 'images') {
+        body.images = options.referenceImages;
+      }
+    }
+    return body;
+  };
+
+  switch (family) {
+    case 'flux-kontext': {
+      // Flux Kontext: aspect_ratio, safety_tolerance, guidance_scale
+      // NO: size, num_inference_steps, output_format, enable_sync_mode, enable_safety_checker
+      const body: Record<string, unknown> = {
+        ...baseParams,
+        seed: options.seed ?? 1,
+        num_images: options.numImages || 1,
+        aspect_ratio: '1:1',
+        guidance_scale: options.guidanceScale ?? modelConfig.defaultGuidanceScale,
+        safety_tolerance: '2',
+      };
+      return addReferenceImages(body);
+    }
+
+    case 'flux-1.1-pro': {
+      // Flux 1.1 Pro: aspect_ratio, output_format
+      // NO: size, num_inference_steps, guidance_scale, enable_safety_checker
+      return {
+        ...baseParams,
+        seed: options.seed ?? 1,
+        aspect_ratio: '1:1',
+        output_format: 'jpg',
+      };
+    }
+
+    case 'flux-standard': {
+      // Standard Flux (dev, schnell, etc.): size, num_inference_steps, guidance_scale, enable_safety_checker
+      const body: Record<string, unknown> = {
+        ...baseParams,
+        seed: options.seed ?? -1,
+        size: options.size || modelConfig.minSize,
+        num_images: options.numImages || 1,
+        guidance_scale: options.guidanceScale ?? modelConfig.defaultGuidanceScale,
+        num_inference_steps: options.numInferenceSteps ?? modelConfig.defaultSteps,
+        enable_sync_mode: false,
+        enable_safety_checker: options.enableSafetyChecker ?? true,
+      };
+      return addReferenceImages(body);
+    }
+
+    case 'flux-lora': {
+      // Flux LoRA models: size, loras array, strength
+      const body: Record<string, unknown> = {
+        ...baseParams,
+        seed: options.seed ?? -1,
+        size: options.size || modelConfig.minSize,
+        loras: [], // Would need to be passed in options if needed
+        strength: 0.8,
+        num_images: options.numImages || 1,
+        guidance_scale: options.guidanceScale ?? modelConfig.defaultGuidanceScale,
+        num_inference_steps: options.numInferenceSteps ?? modelConfig.defaultSteps,
+        enable_safety_checker: options.enableSafetyChecker ?? true,
+      };
+      return addReferenceImages(body);
+    }
+
+    case 'imagen': {
+      // Google Imagen: aspect_ratio, negative_prompt, num_images
+      // NO: size, num_inference_steps, guidance_scale
+      return {
+        ...baseParams,
+        seed: options.seed ?? 1,
+        num_images: options.numImages || 1,
+        aspect_ratio: '1:1',
+        negative_prompt: '',
+      };
+    }
+
+    case 'atlascloud-imagen': {
+      // AtlasCloud Imagen4: aspect_ratio, output_format (NO negative_prompt, NO num_images)
+      return {
+        ...baseParams,
+        seed: options.seed ?? 1,
+        aspect_ratio: '1:1',
+        output_format: 'png',
+      };
+    }
+
+    case 'nano-banana': {
+      // Nano Banana: aspect_ratio, resolution, output_format
+      // NO: size, guidance_scale, num_inference_steps
+      return {
+        ...baseParams,
+        aspect_ratio: '1:1',
+        resolution: '1k',
+        output_format: 'png',
+        enable_sync_mode: false,
+      };
+    }
+
+    case 'gemini-image': {
+      // Gemini Image: aspect_ratio, output_format
+      // NO: size, guidance_scale, num_inference_steps
+      return {
+        ...baseParams,
+        aspect_ratio: '16:9',
+        output_format: 'png',
+        enable_sync_mode: false,
+      };
+    }
+
+    case 'recraft': {
+      // Recraft: aspect_ratio, style
+      // NO: size, guidance_scale, num_inference_steps
+      const body: Record<string, unknown> = {
+        ...baseParams,
+        aspect_ratio: '1:1',
+        style: 'realistic_image',
+      };
+      return addReferenceImages(body);
+    }
+
+    case 'ideogram': {
+      // Ideogram: aspect_ratio, style, optional image/mask_image
+      // NO: size, guidance_scale, num_inference_steps
+      const body: Record<string, unknown> = {
+        ...baseParams,
+        aspect_ratio: '1:1',
+        style: 'Auto',
+      };
+      return addReferenceImages(body);
+    }
+
+    case 'photon': {
+      // Luma Photon: minimal params (just prompt)
+      // NO: size, guidance_scale, num_inference_steps, aspect_ratio
+      return {
+        ...baseParams,
+      };
+    }
+
+    case 'seedream': {
+      // ByteDance Seedream: size, enable_prompt_expansion
+      const body: Record<string, unknown> = {
+        ...baseParams,
+        seed: options.seed ?? -1,
+        size: options.size || modelConfig.minSize,
+        enable_sync_mode: false,
+      };
+      return addReferenceImages(body);
+    }
+
+    case 'wan': {
+      // Alibaba Wan/Qwen: size, negative_prompt, enable_prompt_expansion
+      const body: Record<string, unknown> = {
+        ...baseParams,
+        seed: options.seed ?? -1,
+        size: options.size || modelConfig.minSize,
+        negative_prompt: '',
+        enable_prompt_expansion: false,
+        enable_sync_mode: false,
+      };
+      return addReferenceImages(body);
+    }
+
+    case 'z-image': {
+      // Z-Image: size, optional loras (for turbo-lora variant)
+      const zImageBody: Record<string, unknown> = {
+        ...baseParams,
+        seed: options.seed ?? -1,
+        size: options.size || modelConfig.minSize,
+        enable_sync_mode: false,
+      };
+      // Add loras array for z-image-turbo-lora variant
+      if (model === 'z-image-turbo-lora') {
+        zImageBody.loras = [];
+      }
+      return zImageBody;
+    }
+
+    case 'style-transfer': {
+      // Style transfer: just image input, minimal params (no prompt for most)
+      const body: Record<string, unknown> = {
+        model: modelConfig.atlasName,
+        enable_base64_output: false,
+      };
+      // Add prompt only if model supports it
+      if (modelConfig.supportsPrompt) {
+        body.prompt = options.prompt;
+      }
+      return addReferenceImages(body);
+    }
+
+    case 'atlascloud':
+    default: {
+      // AtlasCloud generic (hidream, hunyuan, neta-lumina, etc.): size, enable_safety_checker
+      const body: Record<string, unknown> = {
+        ...baseParams,
+        seed: options.seed ?? -1,
+        size: options.size || modelConfig.minSize,
+        output_format: 'jpeg',
+        enable_sync_mode: false,
+        enable_safety_checker: options.enableSafetyChecker ?? true,
+      };
+      return addReferenceImages(body);
+    }
+  }
+}
+
+/**
  * Generate image with Atlas Cloud
  */
 export async function generateImageWithAtlas(
@@ -1523,34 +1833,8 @@ export async function generateImageWithAtlas(
     throw new Error(`Model "${model}" requires a reference image. Please provide a patient reference image or portrait.`);
   }
 
-  // Use model-specific size (unless explicitly overridden)
-  const size = options.size || modelConfig.minSize;
-
-  // Build request body - use model-specific guidance scale for better prompt following
-  const requestBody: Record<string, unknown> = {
-    model: modelConfig.atlasName,
-    prompt: options.prompt,
-    seed: options.seed ?? 0,
-    size,
-    num_images: options.numImages || 1,
-    output_format: 'jpeg',
-    guidance_scale: options.guidanceScale ?? modelConfig.defaultGuidanceScale,
-    num_inference_steps: options.numInferenceSteps ?? modelConfig.defaultSteps,
-    enable_sync_mode: false,
-    enable_base64_output: false,
-    enable_safety_checker: options.enableSafetyChecker ?? true,
-  };
-
-  // Add reference images using the correct field name for this model
-  if (options.referenceImages && options.referenceImages.length > 0 && modelConfig.imageField) {
-    if (modelConfig.imageField === 'image') {
-      // Models that use singular 'image' field (flux-redux-dev, recraft-crisp-upscale)
-      requestBody.image = options.referenceImages[0];
-    } else if (modelConfig.imageField === 'images') {
-      // Models that use 'images' array (Seedream, Nano Banana, Qwen, Wan, style)
-      requestBody.images = options.referenceImages;
-    }
-  }
+  // Build request body based on model family (each family has different parameter requirements)
+  const requestBody = buildModelRequestBody(model, modelConfig, options);
 
   // Step 1: Start image generation
   console.log('[AtlasCloud] Starting image generation with request:', {

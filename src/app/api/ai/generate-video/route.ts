@@ -1,9 +1,11 @@
 import type { NextRequest } from 'next/server';
+import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { uploadFile } from '@/libs/GCS';
 import { generateVideo } from '@/libs/VideoGeneration';
 import { mediaLibrary } from '@/models/Schema';
+import { VideoService } from '@/services/VideoService';
 import { VideoTaskService } from '@/services/VideoTaskService';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 
@@ -60,7 +62,28 @@ export async function POST(request: NextRequest) {
     // 4. INITIALIZE TASK
     VideoTaskService.createTask(taskId);
 
-    // 5. START ASYNC VIDEO GENERATION (non-blocking)
+    // 5. CREATE PLACEHOLDER MEDIA RECORD (shows in Library immediately as "processing")
+    const placeholderResult = await db
+      .insert(mediaLibrary)
+      .values({
+        patientId: finalPatientId || null,
+        createdByTherapistId: user.dbUserId,
+        title,
+        mediaType: 'video',
+        mediaUrl: '', // Placeholder - will be updated when complete
+        sourceType: 'generated',
+        sourceSessionId: sessionId || null,
+        generationPrompt: prompt,
+        aiModel: `atlas-${model}`,
+        durationSeconds: duration,
+        status: 'processing', // Key: shows as processing in Library
+        referenceImageUrl: referenceImage || null,
+        tags: ['ai-generated', 'atlas-video'],
+      })
+      .returning();
+    const placeholderMedia = (placeholderResult as any[])[0];
+
+    // 6. START ASYNC VIDEO GENERATION (non-blocking)
     generateVideoAsync({
       taskId,
       prompt,
@@ -72,14 +95,21 @@ export async function POST(request: NextRequest) {
       sessionId,
       title,
       therapistId: user.dbUserId,
+      mediaId: placeholderMedia.id, // Pass placeholder ID to update later
     }).catch((error) => {
       console.error('Video generation async error:', error);
       VideoTaskService.failTask(taskId, error.message);
+      // Mark media as failed
+      db.update(mediaLibrary)
+        .set({ status: 'failed' })
+        .where(eq(mediaLibrary.id, placeholderMedia.id))
+        .catch(console.error);
     });
 
-    // 6. RETURN TASK ID IMMEDIATELY
+    // 7. RETURN TASK ID AND MEDIA ID IMMEDIATELY
     return NextResponse.json({
       taskId,
+      mediaId: placeholderMedia.id,
       status: 'pending',
       message: 'Video generation started. Use the taskId to poll for status.',
     });
@@ -104,10 +134,11 @@ type VideoGenParams = {
   sessionId?: string;
   title: string;
   therapistId: string;
+  mediaId: string; // Placeholder media ID to update
 };
 
 async function generateVideoAsync(params: VideoGenParams) {
-  const { taskId, prompt, model, referenceImage, duration, fps, patientId, sessionId, title, therapistId } = params;
+  const { taskId, prompt, model, referenceImage, duration, fps, mediaId } = params;
 
   try {
     // Update task status to processing
@@ -143,7 +174,7 @@ async function generateVideoAsync(params: VideoGenParams) {
     const videoResponse = await fetch(videoUrl);
     const videoBuffer = Buffer.from(await videoResponse.arrayBuffer());
 
-    VideoTaskService.updateTask(taskId, { progress: 85 });
+    VideoTaskService.updateTask(taskId, { progress: 80 });
 
     const { path: gcsPath } = await uploadFile(
       videoBuffer,
@@ -154,6 +185,18 @@ async function generateVideoAsync(params: VideoGenParams) {
         makePublic: false,
       },
     );
+
+    VideoTaskService.updateTask(taskId, { progress: 90 });
+
+    // Extract thumbnail from video buffer (at 1 second mark)
+    let thumbnailPath: string | null = null;
+    try {
+      thumbnailPath = await VideoService.extractThumbnailFromBuffer(videoBuffer, 1);
+      console.log(`[VIDEO GEN] Thumbnail extracted: ${thumbnailPath}`);
+    } catch (thumbError) {
+      console.error('[VIDEO GEN] Failed to extract thumbnail:', thumbError);
+      // Continue without thumbnail - not critical
+    }
 
     VideoTaskService.updateTask(taskId, { progress: 95 });
 
@@ -166,36 +209,29 @@ async function generateVideoAsync(params: VideoGenParams) {
       generatedAt: new Date().toISOString(),
     };
 
-    // Save to media library (patientId can be null for group sessions)
-    const dbResult = await db
-      .insert(mediaLibrary)
-      .values({
-        patientId: patientId || null, // Null for group sessions
-        createdByTherapistId: therapistId,
-        title,
-        mediaType: 'video',
-        mediaUrl: gcsPath, // Save GCS path
-        sourceType: 'generated',
-        sourceSessionId: sessionId || null,
-        generationPrompt: prompt,
-        aiModel: `atlas-${model}`,
-        durationSeconds: duration,
+    // Update the placeholder media record with actual video data and thumbnail
+    await db
+      .update(mediaLibrary)
+      .set({
+        mediaUrl: gcsPath,
+        thumbnailUrl: thumbnailPath,
         status: 'completed',
-        notes: null, // Keep clean for therapist use
-        generationMetadata, // AI generation parameters
-        referenceImageUrl: referenceImage || null,
-        tags: ['ai-generated', 'atlas-video'],
+        generationMetadata,
       })
-      .returning();
-
-    const media = (dbResult as any[])[0];
+      .where(eq(mediaLibrary.id, mediaId));
 
     // Update task to completed
-    VideoTaskService.completeTask(taskId, media.id);
+    VideoTaskService.completeTask(taskId, mediaId);
 
-    console.log(`[VIDEO GEN] Completed task ${taskId}, media ID: ${media.id}`);
+    console.log(`[VIDEO GEN] Completed task ${taskId}, media ID: ${mediaId}`);
   } catch (error) {
     console.error(`[VIDEO GEN] Failed task ${taskId}:`, error);
     VideoTaskService.failTask(taskId, (error as Error).message);
+    // Mark media as failed
+    await db
+      .update(mediaLibrary)
+      .set({ status: 'failed' })
+      .where(eq(mediaLibrary.id, mediaId))
+      .catch(console.error);
   }
 }

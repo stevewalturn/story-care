@@ -81,6 +81,7 @@ export function GenerateMusicModal({
     // Validation: require either sessionId or patientId
     if (!sessionId && !patientId) {
       setError('Either sessionId or patientId is required to generate music');
+      toast.error('Session or patient is required to generate music');
       return;
     }
 
@@ -128,7 +129,9 @@ export function GenerateMusicModal({
         clearInterval(pollIntervalRef.current);
         pollIntervalRef.current = null;
       }
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      const errorMsg = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(errorMsg);
+      toast.error(errorMsg);
       setIsGenerating(false);
     }
   };

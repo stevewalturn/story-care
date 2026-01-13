@@ -721,6 +721,9 @@ export function TranscriptViewerClient({
           user={user}
           sessionData={sessionData}
           onOpenUpload={() => setShowMediaUploadModal(true)}
+          onOpenGenerateImage={() => setShowImageModal(true)}
+          onOpenGenerateVideo={() => setShowVideoModal(true)}
+          onOpenGenerateMusic={() => setShowMusicModal(true)}
           refreshKey={mediaRefreshKey}
           onTaskComplete={handleTaskComplete}
           onSelectedPatientChange={setSelectedPatientFromLibrary}
