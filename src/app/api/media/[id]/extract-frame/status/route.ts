@@ -90,11 +90,21 @@ export async function GET(
           mediaUrl: signedMediaUrl,
           thumbnailUrl: signedThumbnailUrl,
         };
+      } else if (job.outputUrl) {
+        // Fallback: Use job's outputUrl if media_library record not found
+        const signedUrl = await generatePresignedUrl(job.outputUrl, 1);
+        imageWithSignedUrl = {
+          id: null,
+          mediaUrl: signedUrl,
+          thumbnailUrl: signedUrl,
+          title: 'Extracted Frame',
+        };
       }
 
       console.log('[Extract Frame Status] Job completed:', {
         jobId: job.id,
         extractedFrameId: extractedFrame?.id,
+        hasOutputUrl: !!job.outputUrl,
       });
 
       return NextResponse.json({

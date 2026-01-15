@@ -71,14 +71,21 @@ export function ExtractLastFrameModal({
             );
             const statusData = await statusResponse.json();
 
-            if (statusData.status === 'completed' && statusData.image) {
-              // Job completed successfully
+            if (statusData.status === 'completed') {
+              // Job completed - stop polling
               clearInterval(pollIntervalRef.current!);
               pollIntervalRef.current = null;
-              setExtractedFrame(statusData.image);
               setIsExtracting(false);
-              setStatusMessage('');
-              onFrameExtracted?.(statusData.image);
+
+              if (statusData.image) {
+                // Frame found - show it
+                setExtractedFrame(statusData.image);
+                setStatusMessage('');
+                onFrameExtracted?.(statusData.image);
+              } else {
+                // Job completed but image not found in query - show success message
+                setStatusMessage('Frame extracted successfully! Refresh to see it in your media library.');
+              }
             } else if (statusData.status === 'failed') {
               // Job failed
               clearInterval(pollIntervalRef.current!);
