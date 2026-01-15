@@ -22,6 +22,7 @@ import { MessagePreviewModal } from '@/components/sessions/MessagePreviewModal';
 import { ModuleSelectorModal } from '@/components/sessions/ModuleSelectorModal';
 import { SaveNoteModal } from '@/components/sessions/SaveNoteModal';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
+import { AIQuoteExtractorModal } from '@/components/sessions/AIQuoteExtractorModal';
 import { Modal } from '@/components/ui/Modal';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -120,6 +121,9 @@ export function AIAssistantPanel({
   // Save Quote Modal state
   const [showSaveQuoteModal, setShowSaveQuoteModal] = useState(false);
   const [selectedTextForQuote, setSelectedTextForQuote] = useState('');
+  // AI Quote Extractor Modal state
+  const [showAIQuoteExtractorModal, setShowAIQuoteExtractorModal] = useState(false);
+  const [aiQuoteExtractorContent, setAIQuoteExtractorContent] = useState('');
   // Patients list for modals
   const [sessionPatients, setSessionPatients] = useState<PatientOption[]>([]);
   // Clear Chat confirmation
@@ -245,6 +249,49 @@ export function AIAssistantPanel({
   const handleCloseSaveQuoteModal = () => {
     setShowSaveQuoteModal(false);
     setSelectedTextForQuote('');
+  };
+
+  // AI Quote Extractor Modal handlers
+  const handleOpenAIQuoteExtractor = (content: string) => {
+    setAIQuoteExtractorContent(content);
+    setShowAIQuoteExtractorModal(true);
+  };
+
+  const handleCloseAIQuoteExtractor = () => {
+    setShowAIQuoteExtractorModal(false);
+    setAIQuoteExtractorContent('');
+  };
+
+  const handleSaveExtractedQuotes = async (quotes: Array<{
+    patientId: string;
+    quoteText: string;
+    speaker: string;
+    startTimeSeconds?: number;
+    endTimeSeconds?: number;
+  }>) => {
+    // Save all quotes
+    for (const quoteData of quotes) {
+      const response = await authenticatedPost('/api/quotes', user, {
+        patientId: quoteData.patientId,
+        sessionId,
+        quoteText: quoteData.quoteText,
+        speaker: quoteData.speaker,
+        startTimeSeconds: quoteData.startTimeSeconds,
+        endTimeSeconds: quoteData.endTimeSeconds,
+        source: 'ai_conversation',
+        validateAgainstTranscript: false, // Don't require verbatim match for AI-extracted quotes
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to save quote');
+      }
+    }
+
+    // Refresh library
+    if (onLibraryRefresh) {
+      onLibraryRefresh();
+    }
   };
 
   const handleSaveQuote = async (quoteData: { patientId: string; quoteText: string; speaker: string }) => {
@@ -1212,7 +1259,7 @@ ${transcriptContext}`;
                             onJumpToTimestamp={onJumpToTimestamp}
                           />
                         ) : (
-                          <AssistantMessageContent content={message.content} />
+                          <AssistantMessageContent content={message.content} onJumpToTimestamp={onJumpToTimestamp} />
                         )
                       ) : (
                         <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{message.content}</p>
@@ -1264,8 +1311,8 @@ ${transcriptContext}`;
                         <button
                           type="button"
                           className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
-                          title="Save as Quote"
-                          onClick={() => handleOpenSaveQuoteModal(message.content)}
+                          title="Extract & Save Quotes"
+                          onClick={() => handleOpenAIQuoteExtractor(message.content)}
                         >
                           <Quote className="h-4 w-4" />
                         </button>
@@ -1614,6 +1661,17 @@ ${transcriptContext}`;
         selectedText={selectedTextForQuote}
         patients={sessionPatients}
         onSave={handleSaveQuote}
+      />
+
+      {/* AI Quote Extractor Modal */}
+      <AIQuoteExtractorModal
+        isOpen={showAIQuoteExtractorModal}
+        onClose={handleCloseAIQuoteExtractor}
+        messageContent={aiQuoteExtractorContent}
+        patients={sessionPatients}
+        sessionId={sessionId}
+        onSave={handleSaveExtractedQuotes}
+        onJumpToTimestamp={onJumpToTimestamp}
       />
 
       {/* Clear Chat Confirmation Modal */}

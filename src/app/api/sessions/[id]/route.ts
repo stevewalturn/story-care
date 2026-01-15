@@ -53,6 +53,12 @@ export async function GET(
       );
     }
 
+    // Update lastOpenedAt timestamp when session is viewed
+    await db
+      .update(sessions)
+      .set({ lastOpenedAt: new Date() })
+      .where(eq(sessions.id, id));
+
     // Fetch patient info if individual session
     if (session.patientId) {
       const [patient] = await db

@@ -3,8 +3,11 @@
 /**
  * Assistant Message Content Component
  * Renders markdown with syntax highlighting and custom styling
+ * Includes clickable timestamp detection for quote navigation
  */
 
+import { Play } from 'lucide-react';
+import type { ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -12,9 +15,106 @@ import remarkGfm from 'remark-gfm';
 
 type AssistantMessageContentProps = {
   content: string;
+  onJumpToTimestamp?: (timestamp: number) => void;
 };
 
-export function AssistantMessageContent({ content }: AssistantMessageContentProps) {
+/**
+ * Parses a timestamp string like "20:45" or "1:23:45" to seconds
+ */
+function parseTimestampToSeconds(timestamp: string): number {
+  const parts = timestamp.split(':').map(Number);
+  if (parts.length === 2) {
+    // MM:SS format
+    return parts[0] * 60 + parts[1];
+  } else if (parts.length === 3) {
+    // HH:MM:SS format
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  }
+  return 0;
+}
+
+/**
+ * Detects timestamp patterns in text and makes them clickable
+ * Supports formats: [20:45], [1:23], [1:23:45]
+ */
+function renderTextWithTimestamps(
+  text: string,
+  onJumpToTimestamp?: (timestamp: number) => void,
+): ReactNode {
+  if (!onJumpToTimestamp || !text) {
+    return text;
+  }
+
+  // Pattern to match timestamps like [20:45], [1:23], [01:23:45]
+  const timestampPattern = /\[(\d{1,2}:\d{2}(?::\d{2})?)\]/g;
+
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+  let keyCounter = 0;
+
+  while ((match = timestampPattern.exec(text)) !== null) {
+    // Add text before the match
+    if (match.index > lastIndex) {
+      parts.push(<span key={`text-${keyCounter++}`}>{text.slice(lastIndex, match.index)}</span>);
+    }
+
+    // Add clickable timestamp button
+    const timestamp = match[1];
+    const seconds = parseTimestampToSeconds(timestamp);
+
+    parts.push(
+      <button
+        key={`ts-${keyCounter++}-${timestamp}`}
+        type="button"
+        onClick={() => onJumpToTimestamp(seconds)}
+        className="mx-0.5 inline-flex items-center gap-1 rounded-md bg-purple-100 px-2 py-0.5 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-200"
+        title={`Jump to ${timestamp} in transcript`}
+      >
+        <Play className="h-3 w-3" />
+        {timestamp}
+      </button>,
+    );
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    parts.push(<span key={`text-${keyCounter++}`}>{text.slice(lastIndex)}</span>);
+  }
+
+  return parts.length > 0 ? <>{parts}</> : text;
+}
+
+/**
+ * Recursively processes React children to find and transform timestamp patterns
+ */
+function processChildren(
+  children: ReactNode,
+  onJumpToTimestamp?: (timestamp: number) => void,
+): ReactNode {
+  if (!onJumpToTimestamp) {
+    return children;
+  }
+
+  if (typeof children === 'string') {
+    return renderTextWithTimestamps(children, onJumpToTimestamp);
+  }
+
+  if (Array.isArray(children)) {
+    return children.map((child, index) => {
+      if (typeof child === 'string') {
+        return <span key={index}>{renderTextWithTimestamps(child, onJumpToTimestamp)}</span>;
+      }
+      return child;
+    });
+  }
+
+  return children;
+}
+
+export function AssistantMessageContent({ content, onJumpToTimestamp }: AssistantMessageContentProps) {
   return (
     <div className="prose prose-sm max-w-none">
       <ReactMarkdown
@@ -83,13 +183,35 @@ export function AssistantMessageContent({ content }: AssistantMessageContentProp
           h2: ({ node, ...props }: any) => <h2 className="mt-5 mb-3 text-lg font-bold text-gray-900" {...props} />,
           h3: ({ node, ...props }: any) => <h3 className="mt-4 mb-2 text-base font-semibold text-gray-900" {...props} />,
 
-          // Custom paragraph styles
-          p: ({ node, ...props }: any) => <p className="mb-3 text-[15px] leading-relaxed text-gray-700" {...props} />,
+          // Custom paragraph styles with timestamp detection
+          p: ({ node, children, ...props }: any) => (
+            <p className="mb-3 text-[15px] leading-relaxed text-gray-700" {...props}>
+              {processChildren(children, onJumpToTimestamp)}
+            </p>
+          ),
 
-          // Custom list styles
+          // Custom list styles with timestamp detection
           ul: ({ node, ...props }: any) => <ul className="mb-3 ml-4 list-disc space-y-1.5 text-gray-700" {...props} />,
           ol: ({ node, ...props }: any) => <ol className="mb-3 ml-4 list-decimal space-y-1.5 text-gray-700" {...props} />,
-          li: ({ node, ...props }: any) => <li className="text-[15px] leading-relaxed" {...props} />,
+          li: ({ node, children, ...props }: any) => (
+            <li className="text-[15px] leading-relaxed" {...props}>
+              {processChildren(children, onJumpToTimestamp)}
+            </li>
+          ),
+
+          // Custom strong (bold) text with timestamp detection
+          strong: ({ node, children, ...props }: any) => (
+            <strong {...props}>
+              {processChildren(children, onJumpToTimestamp)}
+            </strong>
+          ),
+
+          // Custom emphasis (italic) text with timestamp detection
+          em: ({ node, children, ...props }: any) => (
+            <em {...props}>
+              {processChildren(children, onJumpToTimestamp)}
+            </em>
+          ),
 
           // Custom link styles
           a: ({ node, ...props }: any) => (

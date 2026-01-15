@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { and, desc, eq, gte, inArray, isNull, lte, or } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { logPHIAccess } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-        orderBy: [desc(sessions.createdAt)],
+        orderBy: [desc(sql`COALESCE(${sessions.lastOpenedAt}, ${sessions.updatedAt})`)],
       });
 
       console.log('=== SESSIONS FETCHED ===');
@@ -207,6 +207,7 @@ export async function GET(request: NextRequest) {
         groupId: session.groupId,
         createdAt: session.createdAt,
         updatedAt: session.updatedAt,
+        lastOpenedAt: session.lastOpenedAt,
         patient,
         group: group ? {
           id: group.id,

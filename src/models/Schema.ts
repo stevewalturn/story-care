@@ -408,6 +408,9 @@ export const sessionsSchema = pgTable('sessions', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 
+  // Tracking when session was last viewed
+  lastOpenedAt: timestamp('last_opened_at'),
+
   // Soft delete for HIPAA compliance (PHI data)
   deletedAt: timestamp('deleted_at'),
 });

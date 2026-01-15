@@ -106,7 +106,11 @@ export default function SessionsPage() {
         const formattedSessions = data.sessions.map((session: any) => ({
           id: session.id,
           title: session.title,
-          date: session.updatedAt ? new Date(session.updatedAt).toISOString() : new Date(session.sessionDate).toLocaleDateString(),
+          date: session.lastOpenedAt
+            ? new Date(session.lastOpenedAt).toISOString()
+            : (session.updatedAt
+                ? new Date(session.updatedAt).toISOString()
+                : new Date(session.sessionDate).toLocaleDateString()),
           sessionDate: session.sessionDate,
           type: session.sessionType,
           patientId: session.patientId,

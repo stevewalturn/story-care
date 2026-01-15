@@ -66,6 +66,11 @@ export function GenerateImageModal({
   void onGenerate;
   void patients;
   const { user } = useAuth();
+
+  // Refs for request cancellation and generation tracking
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const generationIdRef = useRef<number>(0);
+
   const [prompt, setPrompt] = useState(initialPrompt);
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
@@ -184,6 +189,15 @@ export function GenerateImageModal({
       setSelectedRefImageIds(prev => prev.slice(0, maxReferenceImages));
     }
   }, [maxReferenceImages, selectedRefImageIds.length]);
+
+  // Cleanup on unmount - cancel any in-flight requests
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   // Handle setting primary reference
   const handleSetPrimary = async (imageId: string) => {
@@ -458,12 +472,47 @@ export function GenerateImageModal({
     }
   };
 
+  // Fetch with timeout wrapper to prevent infinite hanging requests
+  const fetchWithTimeout = async (
+    url: string,
+    options: RequestInit,
+    timeout = 120000,
+  ): Promise<Response> => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      // Combine the timeout abort with any existing signal
+      const existingSignal = options.signal;
+      if (existingSignal) {
+        existingSignal.addEventListener('abort', () => controller.abort());
+      }
+
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      return response;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+
   const handleGenerate = async () => {
     if (!prompt.trim()) {
       setError('Please enter a prompt');
       toast.error('Please enter a prompt');
       return;
     }
+
+    // Cancel any existing in-flight requests
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    // Track this generation batch to prevent stale updates
+    const currentGenerationId = ++generationIdRef.current;
 
     setIsGenerating(true);
     setError(null);
@@ -485,65 +534,100 @@ export function GenerateImageModal({
         selectedReferenceImages.push(patientReferenceImage);
       }
 
+      // Get token once before parallel requests
+      const idToken = await user?.getIdToken();
+
       // Generate 4 variations in parallel with different seeds for variety
       const generatePromises = Array.from({ length: 4 }, async (_, index) => {
         try {
           // Use different random seeds for each variation to ensure variety
           const randomSeed = Math.floor(Math.random() * 1000000);
 
-          // Call the parent's generate function which handles API call
-          const result = await fetch('/api/ai/generate-image', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${await user?.getIdToken()}`,
+          // Call the API with timeout and abort signal
+          const result = await fetchWithTimeout(
+            '/api/ai/generate-image',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`,
+              },
+              body: JSON.stringify({
+                prompt,
+                model: selectedModel,
+                useReference,
+                referenceImages: selectedReferenceImages.length > 0 ? selectedReferenceImages : undefined,
+                title: title.trim() || undefined,
+                description: description.trim() || undefined,
+                sourceQuote: sourceQuote.trim() || undefined,
+                style: style.trim() || undefined,
+                seed: randomSeed, // Different seed for each variation
+                skipSave: true, // Don't auto-save, we'll save individually
+              }),
+              signal: abortControllerRef.current?.signal,
             },
-            body: JSON.stringify({
-              prompt,
-              model: selectedModel,
-              useReference,
-              referenceImages: selectedReferenceImages.length > 0 ? selectedReferenceImages : undefined,
-              title: title.trim() || undefined,
-              description: description.trim() || undefined,
-              sourceQuote: sourceQuote.trim() || undefined,
-              style: style.trim() || undefined,
-              seed: randomSeed, // Different seed for each variation
-              skipSave: true, // Don't auto-save, we'll save individually
-            }),
-          });
+            120000, // 2 minute timeout per image
+          );
+
+          // Check if this generation was superseded by a new one
+          if (currentGenerationId !== generationIdRef.current) {
+            return null;
+          }
 
           if (!result.ok) {
             const errorData = await result.json().catch(() => ({}));
             const errorMsg = errorData.error || `Generation ${index + 1} failed`;
             toast.error(errorMsg);
+            // Remove this slot from generating list
+            if (currentGenerationId === generationIdRef.current) {
+              setGeneratingSlots(prev => prev.filter(slot => slot !== index));
+            }
             return null;
           }
 
           const data = await result.json();
 
-          // Update this slot's result
-          setGeneratedImages((prev) => {
-            const newImages = [...prev];
-            newImages[index] = {
-              url: data.imageUrl,
-              prompt,
-              model: selectedModel,
-              index,
-              saved: false,
-              saving: false,
-            };
-            return newImages;
-          });
+          // Only update state if this is still the active generation
+          if (currentGenerationId === generationIdRef.current) {
+            // Update this slot's result
+            setGeneratedImages((prev) => {
+              const newImages = [...prev];
+              newImages[index] = {
+                url: data.imageUrl,
+                prompt,
+                model: selectedModel,
+                index,
+                saved: false,
+                saving: false,
+              };
+              return newImages;
+            });
 
-          // Remove this slot from generating list
-          setGeneratingSlots(prev => prev.filter(slot => slot !== index));
+            // Remove this slot from generating list
+            setGeneratingSlots(prev => prev.filter(slot => slot !== index));
+          }
 
           return data;
         } catch (err: any) {
-          console.error(`Error generating image ${index + 1}:`, err);
-          toast.error(err.message || `Generation ${index + 1} failed`);
-          // Remove this slot from generating list
-          setGeneratingSlots(prev => prev.filter(slot => slot !== index));
+          // Don't show errors for aborted requests (user-initiated cancel)
+          if (err.name === 'AbortError') {
+            return null;
+          }
+
+          // Only update state if this is still the active generation
+          if (currentGenerationId === generationIdRef.current) {
+            // Check for timeout (abort from timeout controller)
+            const isTimeout = err.name === 'AbortError' || err.message?.includes('abort');
+            const errorMsg = isTimeout
+              ? `Image ${index + 1} timed out`
+              : (err.message || `Generation ${index + 1} failed`);
+
+            console.error(`Error generating image ${index + 1}:`, err);
+            toast.error(errorMsg);
+
+            // Remove this slot from generating list
+            setGeneratingSlots(prev => prev.filter(slot => slot !== index));
+          }
           return null;
         }
       });
@@ -551,17 +635,29 @@ export function GenerateImageModal({
       // Wait for all 4 generations to complete (or fail)
       await Promise.all(generatePromises);
 
-      // Ensure generating slots are cleared even if all failed
-      setGeneratingSlots([]);
+      // Only clear state if this is still the active generation
+      if (currentGenerationId === generationIdRef.current) {
+        setGeneratingSlots([]);
+      }
 
       // DON'T close modal - let user review and save
     } catch (err: any) {
-      const errorMessage = err.message || 'Failed to generate images';
-      setError(errorMessage);
-      toast.error(errorMessage);
+      // Don't show errors for aborted requests
+      if (err.name === 'AbortError') {
+        return;
+      }
+
+      if (currentGenerationId === generationIdRef.current) {
+        const errorMessage = err.message || 'Failed to generate images';
+        setError(errorMessage);
+        toast.error(errorMessage);
+      }
     } finally {
-      setIsGenerating(false);
-      setGeneratingSlots([]); // Ensure slots are cleared on any exit path
+      // Only clear state if this is still the active generation
+      if (currentGenerationId === generationIdRef.current) {
+        setIsGenerating(false);
+        setGeneratingSlots([]); // Ensure slots are cleared on any exit path
+      }
     }
   };
 
@@ -628,6 +724,12 @@ export function GenerateImageModal({
   };
 
   const handleClose = () => {
+    // Cancel any in-flight requests to prevent state updates after close
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
     setPrompt('');
     setTitle('');
     setDescription('');
@@ -635,6 +737,7 @@ export function GenerateImageModal({
     setStyle('');
     setUseReference(true);
     setError(null);
+    setIsGenerating(false);
     setGeneratedImages([]);
     setGeneratingSlots([]);
     setShowModelDropdown(false);
