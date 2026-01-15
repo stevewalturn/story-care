@@ -682,7 +682,7 @@ export function MediaTab({
                           alt={item.title}
                           className="h-full w-full object-cover"
                         />
-                      ) : (
+                      ) : item.mediaUrl ? (
                         /* Fallback: use video element to show first frame when no thumbnail */
                         <video
                           src={getMediaUrl(item.mediaUrl)}
@@ -691,6 +691,11 @@ export function MediaTab({
                           muted
                           playsInline
                         />
+                      ) : (
+                        /* Processing state: show placeholder */
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+                          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+                        </div>
                       )}
                       <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 shadow-lg">
