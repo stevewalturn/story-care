@@ -29,7 +29,7 @@ export function AIQuoteExtractorModal({
   onClose,
   messageContent,
   patients,
-  sessionId,
+  sessionId: _sessionId,
   onSave,
   onJumpToTimestamp,
 }: AIQuoteExtractorModalProps) {
@@ -137,7 +137,7 @@ export function AIQuoteExtractorModal({
   const handleSave = async () => {
     const selectedQuotes = extractedQuotes
       .filter((_, index) => selectedIndices.has(index))
-      .map((quote, originalIndex) => {
+      .map((quote) => {
         // Find the actual index in extractedQuotes for patient selection lookup
         const actualIndex = extractedQuotes.indexOf(quote);
         return {

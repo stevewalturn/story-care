@@ -241,11 +241,6 @@ export function AIAssistantPanel({
   };
 
   // Save Quote Modal handlers
-  const handleOpenSaveQuoteModal = (content: string) => {
-    setSelectedTextForQuote(content);
-    setShowSaveQuoteModal(true);
-  };
-
   const handleCloseSaveQuoteModal = () => {
     setShowSaveQuoteModal(false);
     setSelectedTextForQuote('');

@@ -25,10 +25,15 @@ function parseTimestampToSeconds(timestamp: string): number {
   const parts = timestamp.split(':').map(Number);
   if (parts.length === 2) {
     // MM:SS format
-    return parts[0] * 60 + parts[1];
+    const minutes = parts[0] ?? 0;
+    const seconds = parts[1] ?? 0;
+    return minutes * 60 + seconds;
   } else if (parts.length === 3) {
     // HH:MM:SS format
-    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    const hours = parts[0] ?? 0;
+    const minutes = parts[1] ?? 0;
+    const seconds = parts[2] ?? 0;
+    return hours * 3600 + minutes * 60 + seconds;
   }
   return 0;
 }
@@ -61,6 +66,7 @@ function renderTextWithTimestamps(
 
     // Add clickable timestamp button
     const timestamp = match[1];
+    if (!timestamp) continue;
     const seconds = parseTimestampToSeconds(timestamp);
 
     parts.push(
