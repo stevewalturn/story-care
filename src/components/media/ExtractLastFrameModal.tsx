@@ -3,10 +3,11 @@
 /**
  * Extract Last Frame Modal
  * Allows users to extract the last frame from a video as an image
+ * Uses async Cloud Run Jobs for FFmpeg processing
  */
 
 import { CheckCircle, Image, Loader2, Video, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ui/Button';
 
 type ExtractLastFrameModalProps = {
@@ -32,6 +33,17 @@ export function ExtractLastFrameModal({
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractedFrame, setExtractedFrame] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string>('');
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, []);
 
   const handleExtract = async () => {
     if (!video) return;
@@ -39,22 +51,93 @@ export function ExtractLastFrameModal({
     try {
       setIsExtracting(true);
       setError(null);
+      setStatusMessage('Starting extraction...');
+
+      // Start the extraction job
       const result = await onExtract();
 
-      if (result?.media) {
+      // Check if this is the new async response with jobId
+      if (result?.jobId && result?.status === 'processing') {
+        // Async flow - poll for completion
+        setStatusMessage('Processing video...');
+
+        const { jobId, outputFilename, sourceVideoTitle, patientId, tags, mediaId } = result;
+
+        // Build query params for status endpoint
+        const queryParams = new URLSearchParams({
+          jobId,
+          outputFilename,
+          ...(sourceVideoTitle && { sourceVideoTitle }),
+          ...(patientId && { patientId }),
+          ...(tags && { tags: JSON.stringify(tags) }),
+        });
+
+        // Poll for job completion
+        pollIntervalRef.current = setInterval(async () => {
+          try {
+            const statusResponse = await fetch(
+              `/api/media/${mediaId}/extract-frame/status?${queryParams}`,
+            );
+            const statusData = await statusResponse.json();
+
+            if (statusData.status === 'completed' && statusData.image) {
+              // Job completed successfully
+              clearInterval(pollIntervalRef.current!);
+              pollIntervalRef.current = null;
+              setExtractedFrame(statusData.image);
+              setIsExtracting(false);
+              setStatusMessage('');
+              onFrameExtracted?.(statusData.image);
+            } else if (statusData.status === 'failed') {
+              // Job failed
+              clearInterval(pollIntervalRef.current!);
+              pollIntervalRef.current = null;
+              setError(statusData.error || 'Frame extraction failed');
+              setIsExtracting(false);
+              setStatusMessage('');
+            } else {
+              // Still processing
+              setStatusMessage(statusData.message || 'Extracting frame...');
+            }
+          } catch (pollError) {
+            console.error('Error polling for status:', pollError);
+            // Continue polling on network errors
+          }
+        }, 3000); // Poll every 3 seconds
+      } else if (result?.image) {
+        // Legacy sync response (fallback)
+        setExtractedFrame(result.image);
+        onFrameExtracted?.(result.image);
+        setIsExtracting(false);
+      } else if (result?.media) {
+        // Alternative response format
         setExtractedFrame(result.media);
         onFrameExtracted?.(result.media);
+        setIsExtracting(false);
+      } else {
+        throw new Error('Unexpected response from extraction');
       }
     } catch (err) {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
       setError(err instanceof Error ? err.message : 'Failed to extract frame');
-    } finally {
       setIsExtracting(false);
+      setStatusMessage('');
     }
   };
 
   const handleClose = () => {
+    // Clean up polling if active
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
     setExtractedFrame(null);
     setError(null);
+    setIsExtracting(false);
+    setStatusMessage('');
     onClose();
   };
 
@@ -123,8 +206,21 @@ export function ExtractLastFrameModal({
             </div>
           )}
 
+          {/* Processing State */}
+          {isExtracting && statusMessage && (
+            <div className="rounded-lg bg-purple-50 px-4 py-3">
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-5 w-5 animate-spin text-purple-600" />
+                <div>
+                  <p className="text-sm font-medium text-purple-700">{statusMessage}</p>
+                  <p className="text-xs text-purple-600">This may take a moment...</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Description */}
-          {!extractedFrame && !error && (
+          {!extractedFrame && !error && !isExtracting && (
             <div className="rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-700">
               <p>
                 This will extract the last frame from the video and save it as a new image in your media library.

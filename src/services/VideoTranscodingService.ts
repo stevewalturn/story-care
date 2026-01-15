@@ -27,7 +27,14 @@ export type TranscodingJobStatus = {
   executionName: string;
   status: 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'PENDING';
   outputUrl?: string;
+  outputFilename?: string;
   error?: string;
+};
+
+export type FrameExtractionOptions = {
+  inputPath: string; // GCS path or filename in preprocessing bucket
+  outputFilename: string; // Filename for output image (e.g., 'frame-123.jpg')
+  timestamp?: number | 'last'; // Timestamp in seconds or 'last' for last frame
 };
 
 /**
@@ -354,6 +361,141 @@ export class VideoTranscodingService {
         }
       }
     }
+  }
+
+  /**
+   * Upload video from URL to preprocessing bucket for processing
+   */
+  static async uploadFromUrl(
+    videoUrl: string,
+    filename: string,
+  ): Promise<string> {
+    try {
+      // Fetch the video from URL
+      const response = await fetch(videoUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch video: ${response.statusText}`);
+      }
+
+      const buffer = Buffer.from(await response.arrayBuffer());
+
+      // Upload to preprocessing bucket
+      const bucket = this.storage.bucket(this.preprocessingBucket);
+      const file = bucket.file(filename);
+
+      await file.save(buffer, {
+        contentType: 'video/mp4',
+        metadata: {
+          cacheControl: 'no-cache',
+        },
+      });
+
+      console.log(`Uploaded video to preprocessing bucket: ${filename}`);
+      return filename;
+    } catch (error: any) {
+      throw new Error(
+        `Failed to upload video from URL: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Start frame extraction job
+   * Extracts a single frame from a video and saves as image
+   */
+  static async startFrameExtractionJob(
+    options: FrameExtractionOptions,
+  ): Promise<TranscodingJobStatus> {
+    const {
+      inputPath,
+      outputFilename,
+      timestamp = 'last',
+    } = options;
+
+    // Build FFmpeg arguments for frame extraction
+    // For 'last' frame, use -sseof -1 to seek to 1 second before end
+    // For specific timestamp, use -ss {seconds}
+    const args: string[] = [inputPath, outputFilename];
+
+    if (timestamp === 'last') {
+      // Seek to near end of video and extract frame
+      args.push('-sseof', '-1');
+    } else {
+      // Seek to specific timestamp
+      args.push('-ss', timestamp.toString());
+    }
+
+    // Extract single frame as high-quality JPEG
+    args.push('-vframes', '1');
+    args.push('-q:v', '2'); // High quality (1-31, lower is better)
+
+    try {
+      // Execute Cloud Run Job
+      const parent = `projects/${Env.GCS_PROJECT_ID}/locations/${this.region}`;
+      const jobPath = `${parent}/jobs/${this.jobName}`;
+
+      console.log('Starting frame extraction job:', {
+        job: this.jobName,
+        args,
+        inputPath,
+        outputFilename,
+        timestamp,
+      });
+
+      // Run the Cloud Run Job with arguments
+      const [operation] = await this.runClient.runJob({
+        name: jobPath,
+        overrides: {
+          containerOverrides: [{
+            args,
+          }],
+        },
+      });
+
+      // Get execution name from operation metadata
+      const executionName = operation.name || `${this.jobName}-${Date.now()}`;
+
+      console.log('Frame extraction job started:', {
+        execution: executionName,
+        operation: operation.name,
+      });
+
+      return {
+        jobName: this.jobName,
+        executionName,
+        status: 'PENDING',
+        outputFilename,
+      };
+    } catch (error: any) {
+      console.error('Failed to start frame extraction job:', error);
+      throw new Error(`Failed to start frame extraction job: ${error.message || error}`);
+    }
+  }
+
+  /**
+   * Get signed URL for extracted frame from output bucket
+   */
+  static async getExtractedFrameUrl(filename: string): Promise<string> {
+    const bucket = this.storage.bucket(this.transcodedBucket);
+    const file = bucket.file(filename);
+
+    const [url] = await file.getSignedUrl({
+      version: 'v4',
+      action: 'read',
+      expires: Date.now() + 60 * 60 * 1000, // 1 hour
+    });
+
+    return url;
+  }
+
+  /**
+   * Check if file exists in transcoded bucket
+   */
+  static async fileExistsInTranscodedBucket(filename: string): Promise<boolean> {
+    const bucket = this.storage.bucket(this.transcodedBucket);
+    const file = bucket.file(filename);
+    const [exists] = await file.exists();
+    return exists;
   }
 }
 

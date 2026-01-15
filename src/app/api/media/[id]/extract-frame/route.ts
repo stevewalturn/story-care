@@ -5,10 +5,11 @@ import { db } from '@/libs/DB';
 import { generatePresignedUrl } from '@/libs/GCS';
 import { requireMediaAccess } from '@/middleware/RBACMiddleware';
 import { mediaLibrary } from '@/models/Schema';
-import { VideoService } from '@/services/VideoService';
+import { VideoTranscodingService } from '@/services/VideoTranscodingService';
 import { handleAuthError } from '@/utils/AuthHelpers';
 
 // POST /api/media/[id]/extract-frame
+// Starts an async frame extraction job via Cloud Run Jobs
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -49,57 +50,53 @@ export async function POST(
       );
     }
 
-    // Extract last frame using VideoService
-    const { imagePath } = await VideoService.extractLastFrameFromUrl(
-      videoUrl,
-      id,
-    );
+    // Generate unique filenames for the job
+    const timestamp = Date.now();
+    const inputFilename = `frame-extract-input-${id}-${timestamp}.mp4`;
+    const outputFilename = `frame-extract-${id}-${timestamp}.jpg`;
 
-    // Build extraction metadata (separate from therapist notes)
-    const generationMetadata = {
-      extractedFrom: id,
-      sourceVideoTitle: media.title,
-      extractedAt: new Date().toISOString(),
-      frameType: 'last',
-    };
+    console.log('[Extract Frame] Starting async job:', {
+      mediaId: id,
+      inputFilename,
+      outputFilename,
+    });
 
-    // Create new media library entry for the extracted frame
-    const newImages = await db.insert(mediaLibrary).values({
-      title: `${media.title} - Last Frame`,
-      description: `Extracted from video: ${media.title}`,
-      mediaType: 'image',
-      mediaUrl: imagePath, // Store GCS path, not presigned URL
-      thumbnailUrl: imagePath, // Same as media URL for images
-      sourceType: 'extracted',
-      sourceMediaId: id, // Reference to source video
-      patientId: media.patientId,
-      createdByTherapistId: user.dbUserId,
-      tags: media.tags ? [...media.tags, 'extracted-frame'] : ['extracted-frame'],
-      status: 'completed',
-      notes: null, // Keep clean for therapist use
-      generationMetadata, // Extraction metadata
-    }).returning();
+    // Upload video to preprocessing bucket for Cloud Run Job
+    await VideoTranscodingService.uploadFromUrl(videoUrl, inputFilename);
 
-    const newImage = (newImages as any[])[0];
+    // Start frame extraction job via Cloud Run Jobs (has FFmpeg installed)
+    const job = await VideoTranscodingService.startFrameExtractionJob({
+      inputPath: inputFilename,
+      outputFilename,
+      timestamp: 'last',
+    });
 
-    // Generate presigned URL for response
-    const signedImageUrl = await generatePresignedUrl(newImage!.mediaUrl, 1);
+    console.log('[Extract Frame] Job started:', {
+      mediaId: id,
+      executionName: job.executionName,
+      outputFilename,
+    });
 
+    // Return job info for polling
+    // The client will poll /api/media/[id]/extract-frame/status for completion
     return NextResponse.json({
       success: true,
-      image: {
-        ...newImage,
-        mediaUrl: signedImageUrl,
-        thumbnailUrl: signedImageUrl,
-      },
+      status: 'processing',
+      jobId: job.executionName,
+      outputFilename,
+      mediaId: id,
+      sourceVideoTitle: media.title,
+      patientId: media.patientId,
+      therapistId: user.dbUserId,
+      tags: media.tags,
     });
   } catch (error) {
     if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('Forbidden'))) {
       return handleAuthError(error);
     }
-    console.error('Error extracting last frame:', error);
+    console.error('[Extract Frame] Error starting extraction job:', error);
     return NextResponse.json(
-      { error: 'Failed to extract last frame' },
+      { error: 'Failed to start frame extraction' },
       { status: 500 },
     );
   }
