@@ -831,12 +831,12 @@ export function GenerateImageModal({
             {/* Reference Images Section - Always visible when toggle is ON */}
             {useReference && (
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                {patientId && patientName ? (
+                {patientId ? (
                   <>
                     <div className="mb-2 flex items-center gap-2">
                       <span className="text-sm font-medium text-gray-700">Active Patient Reference</span>
                       <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
-                        {patientName}
+                        {patientName || 'Patient'}
                       </span>
                     </div>
                     <p className="mb-3 text-xs text-gray-500">
