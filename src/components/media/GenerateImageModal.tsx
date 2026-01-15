@@ -85,8 +85,10 @@ export function GenerateImageModal({
   const imageModels = getFilteredImageModels(useReference);
   const allAvailableModels = Object.values(imageModels).flat();
   const [selectedModel, setSelectedModel] = useState(() => {
-    // Default to flux-redux-dev if available (best for image-to-image), otherwise first available
-    const preferredModel = allAvailableModels.find(m => m.value === 'flux-redux-dev');
+    // Default based on mode: flux-schnell for text-to-image, flux-redux-dev for image-to-image
+    const preferredModel = useReference
+      ? allAvailableModels.find(m => m.value === 'flux-redux-dev')
+      : allAvailableModels.find(m => m.value === 'flux-schnell');
     return preferredModel?.value || allAvailableModels[0]?.value || 'flux-schnell';
   });
   const [isGenerating, setIsGenerating] = useState(false);
@@ -138,8 +140,10 @@ export function GenerateImageModal({
     const allModels = Object.values(filteredModels).flat();
     // If current model is not in new list, switch to preferred or first available
     if (!allModels.find(m => m.value === selectedModel)) {
-      // Prefer flux-redux-dev for image-to-image, otherwise first available
-      const preferredModel = allModels.find(m => m.value === 'flux-redux-dev');
+      // Prefer appropriate model based on mode
+      const preferredModel = useReference
+        ? allModels.find(m => m.value === 'flux-redux-dev')
+        : allModels.find(m => m.value === 'flux-schnell');
       setSelectedModel(preferredModel?.value || allModels[0]?.value || 'flux-schnell');
     }
   }, [useReference, selectedModel]);
