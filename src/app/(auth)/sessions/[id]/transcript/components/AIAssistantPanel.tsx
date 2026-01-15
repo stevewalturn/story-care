@@ -10,7 +10,7 @@ import type { AIPromptOption } from '@/components/sessions/AnalyzeSelectionModal
 import type { QuoteWithPatient } from '@/components/sessions/BulkSaveQuotesModal';
 import type { PatientOption } from '@/components/sessions/SaveNoteModal';
 import type { ModuleAiPrompt } from '@/models/Schema';
-import { ChevronDown, Download, Eye, FileText, Quote, Settings, Trash2 } from 'lucide-react';
+import { AlertCircle, ChevronDown, Download, Eye, FileText, Quote, RefreshCw, Settings, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { CreatePromptModal } from '@/components/prompts/CreatePromptModal';
 import { EditPromptModal } from '@/components/prompts/EditPromptModal';
@@ -28,7 +28,7 @@ import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 import { downloadAsTextFile, stripMarkdownForPlainText } from '@/utils/FileDownloadHelpers';
-import { detectAndExtractJSON, shouldRetryForMalformedJSON } from '@/utils/JSONSchemaDetector';
+import { detectAndExtractJSON, looksLikeBrokenJSON, shouldRetryForMalformedJSON } from '@/utils/JSONSchemaDetector';
 import { markdownToHTML } from '@/utils/MarkdownToHTML';
 import { formatTranscriptForAI, truncateTranscript } from '@/utils/TranscriptFormatter';
 
@@ -1253,6 +1253,20 @@ ${transcriptContext}`;
                             onOpenBulkSaveQuotes={handleOpenBulkSaveQuotesModal}
                             onJumpToTimestamp={onJumpToTimestamp}
                           />
+                        ) : looksLikeBrokenJSON(message.content) ? (
+                          // Show friendly error for broken JSON output
+                          <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                            <AlertCircle className="h-5 w-5 flex-shrink-0 text-amber-600" />
+                            <span className="text-sm text-amber-700">Output couldn&apos;t be processed correctly.</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRetry(actualMessageIndex)}
+                              className="ml-auto flex items-center gap-1.5 rounded-md bg-amber-100 px-3 py-1.5 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-200"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                              Retry
+                            </button>
+                          </div>
                         ) : (
                           <AssistantMessageContent content={message.content} onJumpToTimestamp={onJumpToTimestamp} />
                         )
@@ -1262,7 +1276,7 @@ ${transcriptContext}`;
                     </div>
 
                     {/* Action Buttons (Non-JSON messages only - Preview, Copy, Download, Save to Notes/Quotes) */}
-                    {message.role === 'assistant' && !jsonData && (
+                    {message.role === 'assistant' && !jsonData && !looksLikeBrokenJSON(message.content) && (
                       <div className="mt-2 flex items-center gap-1 px-1 opacity-0 transition-opacity group-hover:opacity-100">
                         {/* Preview button */}
                         <button

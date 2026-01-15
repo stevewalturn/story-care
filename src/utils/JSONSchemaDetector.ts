@@ -478,6 +478,26 @@ export function shouldRetryForMalformedJSON(content: string): boolean {
 }
 
 /**
+ * Check if content looks like it should be JSON but failed to parse
+ * Used to display friendly "broken output" message instead of raw JSON
+ * @param content - Content to check
+ * @returns true if content appears to be malformed JSON
+ */
+export function looksLikeBrokenJSON(content: string): boolean {
+  // Check if content has JSON code block markers
+  const hasJSONCodeBlock = /```json/i.test(content) || /```\s*\n\s*\{/.test(content);
+
+  // Check if content has common schema structure (even without code blocks)
+  const hasJSONStructure = /["']schemaType["']\s*:/.test(content)
+    || /["']note_title["']\s*:/.test(content)
+    || /["']key_themes["']\s*:/.test(content)
+    || /["']image_prompt["']\s*:/.test(content)
+    || /["']video_prompt["']\s*:/.test(content);
+
+  return hasJSONCodeBlock || hasJSONStructure;
+}
+
+/**
  * Try to detect and extract JSON from various formats
  * @param content - Raw content (may include markdown, plain text, etc.)
  * @returns Detected JSON schema or null
