@@ -337,27 +337,24 @@ export function MediaTab({
     setEditingMedia(item);
   };
 
-  // Handle download
-  const handleDownload = async (item: any) => {
+  // Handle download - uses server-side proxy to bypass CORS
+  const handleDownload = (item: any) => {
     setActiveMenuId(null);
-    try {
-      const mediaUrl = getMediaUrl(item.mediaUrl);
-      const response = await fetch(mediaUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+    const extension = item.mediaType === 'image' ? 'png' : item.mediaType === 'video' ? 'mp4' : 'mp3';
+    const filename = `${item.title?.replace(/[^a-z0-9]/gi, '_') || 'media'}.${extension}`;
+
+    if (!item.mediaUrl?.startsWith('http')) {
+      // Use download proxy for GCS paths
+      window.location.href = `/api/media/download?path=${encodeURIComponent(item.mediaUrl)}&filename=${encodeURIComponent(filename)}`;
+    } else {
+      // For external URLs, try direct download
       const a = document.createElement('a');
-      a.href = url;
-      const extension = item.mediaType === 'image' ? 'png' : item.mediaType === 'video' ? 'mp4' : 'mp3';
-      a.download = `${item.title?.replace(/[^a-z0-9]/gi, '_') || 'media'}.${extension}`;
+      a.href = item.mediaUrl;
+      a.download = filename;
+      a.target = '_blank';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Download failed:', error);
-      // Fallback: open in new tab
-      const mediaUrl = getMediaUrl(item.mediaUrl);
-      window.open(mediaUrl, '_blank');
     }
   };
 
