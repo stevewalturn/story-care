@@ -68,8 +68,13 @@ export function MediaTab({
   const [inProgressTasks, setInProgressTasks] = useState<any[]>([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
 
+  // Video generation polling state
+  const [inProgressVideoTasks, setInProgressVideoTasks] = useState<any[]>([]);
+  const [isLoadingVideoTasks, setIsLoadingVideoTasks] = useState(false);
+
   // Track previous tasks to detect completion
   const prevTasksRef = useRef<any[]>([]);
+  const prevVideoTasksRef = useRef<any[]>([]);
 
   // Delete state
   const [deletingMedia, setDeletingMedia] = useState<any | null>(null);
@@ -86,6 +91,7 @@ export function MediaTab({
 
   // Regenerate media state (for "Generate New Version")
   const [regeneratingMedia, setRegeneratingMedia] = useState<any | null>(null);
+  const [regeneratingVideo, setRegeneratingVideo] = useState<any | null>(null);
 
   // Context menu state
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -196,6 +202,69 @@ export function MediaTab({
 
     return () => clearInterval(interval);
   }, [inProgressTasks.length, sessionId, user]);
+
+  // Load in-progress video tasks
+  const loadInProgressVideoTasks = async () => {
+    if (!user || !selectedPatient || selectedPatient === 'all') return;
+
+    try {
+      setIsLoadingVideoTasks(true);
+
+      // Fetch in-progress video tasks for this patient
+      const params = new URLSearchParams({
+        patientId: selectedPatient,
+        status: 'processing',
+      });
+
+      const response = await authenticatedFetch(`/api/ai/video-tasks?${params.toString()}`, user);
+      if (response.ok) {
+        const data = await response.json();
+        const currentTasks = data.tasks || [];
+
+        // Detect if any tasks completed
+        if (onTaskComplete && prevVideoTasksRef.current.length > 0) {
+          const currentTaskIds = new Set(currentTasks.map((t: any) => t.id));
+          const completedTasks = prevVideoTasksRef.current.filter(
+            (prevTask: any) => !currentTaskIds.has(prevTask.id),
+          );
+
+          // If tasks disappeared (completed), refresh media
+          if (completedTasks.length > 0) {
+            console.log(`[MediaTab] ${completedTasks.length} video task(s) completed, refreshing media...`);
+            onTaskComplete();
+          }
+        }
+
+        // Update state and ref
+        prevVideoTasksRef.current = currentTasks;
+        setInProgressVideoTasks(currentTasks);
+      }
+    } catch (error) {
+      console.error('Error loading in-progress video tasks:', error);
+    } finally {
+      setIsLoadingVideoTasks(false);
+    }
+  };
+
+  // Poll for in-progress video tasks
+  useEffect(() => {
+    // Initial load to check for any in-progress video tasks
+    loadInProgressVideoTasks();
+  }, [selectedPatient, user, refreshKey]);
+
+  // Set up polling for video tasks when there are active tasks
+  useEffect(() => {
+    // Only poll if we have active video tasks
+    if (inProgressVideoTasks.length === 0) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      loadInProgressVideoTasks();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [inProgressVideoTasks.length, selectedPatient, user]);
 
   // Helper function to calculate time elapsed for tasks
   const getTimeElapsed = (createdAt: string) => {
@@ -343,7 +412,11 @@ export function MediaTab({
       alert('No generation prompt available for this media.');
       return;
     }
-    setRegeneratingMedia(item);
+    if (item.mediaType === 'video') {
+      setRegeneratingVideo(item);
+    } else {
+      setRegeneratingMedia(item);
+    }
   };
 
   // Handle image regeneration complete
@@ -490,6 +563,90 @@ export function MediaTab({
         </>
       )}
 
+      {/* In-Progress Video Tasks */}
+      {inProgressVideoTasks.length > 0 && (
+        <>
+          {/* Subtle Header */}
+          <div className="mb-3 flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <Film className="h-3.5 w-3.5 text-blue-500" />
+              <span className="text-xs font-medium text-gray-600">
+                Generating video
+              </span>
+            </div>
+            <button
+              onClick={loadInProgressVideoTasks}
+              disabled={isLoadingVideoTasks}
+              className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3 w-3 ${isLoadingVideoTasks ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+
+          {/* Gradient Progress Cards */}
+          <div className="mb-6 space-y-4">
+            {inProgressVideoTasks.map(task => (
+              <div
+                key={task.id}
+                className="relative animate-pulse-subtle overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-50 p-4 shadow-md shadow-blue-100 transition-all duration-500"
+              >
+                {/* Shimmer overlay when processing */}
+                <div className="animate-shimmer absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+
+                <div className="relative z-10">
+                  {/* Title with circular icon */}
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                        <Film className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <h4 className="text-lg font-semibold text-gray-900">
+                        {task.title || 'Generating Video'}
+                      </h4>
+                    </div>
+
+                    {/* Glass morphism badge */}
+                    <span className="flex-shrink-0 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-200 backdrop-blur-sm">
+                      Processing
+                    </span>
+                  </div>
+
+                  {/* Large progress bar with % inside */}
+                  <div className="relative mb-3">
+                    <div className="h-3 w-full overflow-hidden rounded-full bg-blue-100">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-1000 ease-out"
+                        style={{ width: `${task.progress || 50}%` }}
+                      />
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-end pr-2">
+                      <span className="text-xs font-bold text-gray-700">
+                        {task.progress || 50}
+                        %
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Time with clock icon */}
+                  <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>
+                      Started
+                      {' '}
+                      {getTimeElapsed(task.createdAt)}
+                      {' '}
+                      ago
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
       {/* Media Grid - 2-column layout matching Figma */}
       <div className="flex-1 overflow-y-auto bg-white p-4">
         {isLoading ? (
@@ -526,7 +683,14 @@ export function MediaTab({
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <div className="h-full w-full bg-gradient-to-br from-purple-100 to-purple-200" />
+                        /* Fallback: use video element to show first frame when no thumbnail */
+                        <video
+                          src={getMediaUrl(item.mediaUrl)}
+                          className="h-full w-full object-cover"
+                          preload="metadata"
+                          muted
+                          playsInline
+                        />
                       )}
                       <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 shadow-lg">
@@ -615,6 +779,16 @@ export function MediaTab({
                     </button>
                   )}
                 </div>
+
+                {/* Generating overlay - shows when regenerating this specific media */}
+                {(regeneratingMedia?.id === item.id || regeneratingVideo?.id === item.id) && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-sm">
+                    <div className="text-center">
+                      <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
+                      <p className="mt-2 text-xs font-medium text-gray-600">Generating...</p>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -705,8 +879,8 @@ export function MediaTab({
                   </button>
                 )}
 
-                {/* Generate New Version - images only */}
-                {item.mediaType === 'image' && item.generationPrompt && (
+                {/* Generate New Version - images and videos with generation prompt */}
+                {(item.mediaType === 'image' || item.mediaType === 'video') && item.generationPrompt && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -796,11 +970,41 @@ export function MediaTab({
       {regeneratingMedia?.mediaType === 'image' && (
         <GenerateImageModal
           isOpen={true}
-          onClose={() => setRegeneratingMedia(null)}
+          onClose={() => {
+            setRegeneratingMedia(null);
+            // Refresh library after modal closes (user may have generated new image)
+            if (onTaskComplete) {
+              onTaskComplete();
+            }
+          }}
           onGenerate={handleImageRegenerated}
           initialPrompt={regeneratingMedia.generationPrompt || ''}
           patientId={selectedPatient !== 'all' ? selectedPatient : undefined}
           sessionId={sessionId}
+        />
+      )}
+
+      {/* Generate Video Modal (for regenerating videos) */}
+      {regeneratingVideo && (
+        <GenerateVideoModal
+          isOpen={true}
+          onClose={() => {
+            setRegeneratingVideo(null);
+            // Refresh library after modal closes (user may have generated new video)
+            if (onTaskComplete) {
+              onTaskComplete();
+            }
+          }}
+          onGenerate={() => {
+            // Video was generated, refresh library
+            if (onTaskComplete) {
+              onTaskComplete();
+            }
+            setRegeneratingVideo(null);
+          }}
+          initialPrompt={regeneratingVideo.generationPrompt || ''}
+          sessionId={sessionId}
+          patientId={selectedPatient !== 'all' ? selectedPatient : undefined}
         />
       )}
 

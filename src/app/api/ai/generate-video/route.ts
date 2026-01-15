@@ -195,7 +195,11 @@ async function generateVideoAsync(params: VideoGenParams) {
       console.log(`[VIDEO GEN] Thumbnail extracted: ${thumbnailPath}`);
     } catch (thumbError) {
       console.error('[VIDEO GEN] Failed to extract thumbnail:', thumbError);
-      // Continue without thumbnail - not critical
+      // Fallback: Use reference image as thumbnail if available
+      if (referenceImage) {
+        thumbnailPath = referenceImage;
+        console.log(`[VIDEO GEN] Using reference image as thumbnail fallback: ${thumbnailPath}`);
+      }
     }
 
     VideoTaskService.updateTask(taskId, { progress: 95 });

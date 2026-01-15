@@ -1378,18 +1378,20 @@ export function AssetsClient() {
                                   </button>
                                 )}
 
-                                {/* Generate New Version */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setOpenMenuId(null);
-                                    handleGenerateNewVersion(item);
-                                  }}
-                                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                  <Sparkles className="h-4 w-4" />
-                                  Generate New Version
-                                </button>
+                                {/* Generate New Version - only show if generation prompt exists */}
+                                {(item.mediaType === 'image' || item.mediaType === 'video' || item.mediaType === 'audio') && item.generationPrompt && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenMenuId(null);
+                                      handleGenerateNewVersion(item);
+                                    }}
+                                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                                  >
+                                    <Sparkles className="h-4 w-4" />
+                                    Generate New Version
+                                  </button>
+                                )}
 
                                 {/* Animate to Video - Image only */}
                                 {item.mediaType === 'image' && (
