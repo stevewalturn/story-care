@@ -58,25 +58,16 @@ export function ExtractLastFrameModal({
 
       // Check if this is the new async response with jobId
       if (result?.jobId && result?.status === 'processing') {
-        // Async flow - poll for completion
-        setStatusMessage('Processing video...');
+        // Async flow - poll for completion using video_processing_jobs
+        setStatusMessage(result.message || 'Processing video...');
 
-        const { jobId, outputFilename, sourceVideoTitle, patientId, tags, mediaId } = result;
+        const { jobId, mediaId } = result;
 
-        // Build query params for status endpoint
-        const queryParams = new URLSearchParams({
-          jobId,
-          outputFilename,
-          ...(sourceVideoTitle && { sourceVideoTitle }),
-          ...(patientId && { patientId }),
-          ...(tags && { tags: JSON.stringify(tags) }),
-        });
-
-        // Poll for job completion
+        // Poll for job completion (simplified - just need jobId)
         pollIntervalRef.current = setInterval(async () => {
           try {
             const statusResponse = await fetch(
-              `/api/media/${mediaId}/extract-frame/status?${queryParams}`,
+              `/api/media/${mediaId}/extract-frame/status?jobId=${jobId}`,
             );
             const statusData = await statusResponse.json();
 
@@ -96,8 +87,10 @@ export function ExtractLastFrameModal({
               setIsExtracting(false);
               setStatusMessage('');
             } else {
-              // Still processing
-              setStatusMessage(statusData.message || 'Extracting frame...');
+              // Still processing - show progress if available
+              const progressMsg = statusData.currentStep || statusData.message || 'Extracting frame...';
+              const progressPct = statusData.progress ? ` (${statusData.progress}%)` : '';
+              setStatusMessage(`${progressMsg}${progressPct}`);
             }
           } catch (pollError) {
             console.error('Error polling for status:', pollError);

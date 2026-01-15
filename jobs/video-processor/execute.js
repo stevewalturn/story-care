@@ -1,11 +1,14 @@
 /**
  * Video Processing Job Executor
- * Cloud Run Job that processes a single video assembly task
+ * Cloud Run Job that processes video assembly and frame extraction tasks
  *
  * Environment Variables Required:
  * - JOB_ID: UUID of the video_processing_jobs record
- * - SCENE_ID: UUID of the scene being assembled
- * - INPUT_DATA: JSON string with clips, audio tracks, settings
+ * - JOB_TYPE: Type of job - 'scene_assembly' (default) or 'extract_frame'
+ * - SCENE_ID: UUID of the scene being assembled (for scene_assembly)
+ * - INPUT_DATA: JSON string with clips, audio tracks, settings (for scene_assembly)
+ * - INPUT_URL: Presigned URL for video (for extract_frame)
+ * - MEDIA_ID: UUID of the media record (for extract_frame)
  * - DATABASE_URL: PostgreSQL connection string
  * - GCS_PROJECT_ID, GCS_CLIENT_EMAIL, GCS_PRIVATE_KEY: For GCS uploads
  * - GCS_BUCKET_NAME: Bucket for storing assembled videos
@@ -26,7 +29,9 @@ const { Pool } = require('pg');
 
 console.log('🎬 Video Processing Job Executor Starting...');
 console.log(`📋 Job ID: ${process.env.JOB_ID}`);
-console.log(`📋 Scene ID: ${process.env.SCENE_ID}`);
+console.log(`📋 Job Type: ${process.env.JOB_TYPE || 'scene_assembly'}`);
+console.log(`📋 Scene ID: ${process.env.SCENE_ID || 'N/A'}`);
+console.log(`📋 Media ID: ${process.env.MEDIA_ID || 'N/A'}`);
 
 // Validate required environment variables
 const requiredEnvVars = [
@@ -217,6 +222,155 @@ function generateThumbnail(videoPath, thumbnailPath) {
 }
 
 /**
+ * Extract last frame from video using FFmpeg
+ * Uses -sseof -1 to seek to 1 second before end
+ */
+function extractLastFrame(videoPath, outputPath) {
+  execFileSync('ffmpeg', [
+    '-sseof', '-1',          // Seek to 1 second before end
+    '-i', videoPath,
+    '-vframes', '1',         // Extract single frame
+    '-q:v', '2',             // High quality JPEG
+    '-y',                    // Overwrite output
+    outputPath,
+  ], { stdio: 'pipe' });
+}
+
+/**
+ * Execute frame extraction job
+ */
+async function executeFrameExtractionJob() {
+  const jobId = process.env.JOB_ID;
+  const mediaId = process.env.MEDIA_ID;
+  const inputUrl = process.env.INPUT_URL;
+  const sourceVideoTitle = process.env.SOURCE_VIDEO_TITLE || 'Video';
+  const patientId = process.env.PATIENT_ID || null;
+  const therapistId = process.env.THERAPIST_ID || null;
+  const tags = process.env.TAGS ? JSON.parse(process.env.TAGS) : [];
+  const tempDir = '/tmp/frame-extraction';
+
+  // Ensure temp directory exists
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+
+  try {
+    console.log(`🖼️ Starting frame extraction for media ${mediaId}`);
+
+    // Update status: processing
+    await updateJobStatus('processing', 0, 'Initializing frame extraction');
+
+    if (!inputUrl) {
+      throw new Error('No input URL provided for frame extraction');
+    }
+
+    // Step 1: Download video (0-40%)
+    await updateJobStatus('processing', 10, 'Downloading video');
+
+    const videoPath = path.join(tempDir, `video-${mediaId}.mp4`);
+    await downloadFile(inputUrl, videoPath);
+
+    await updateJobStatus('processing', 40, 'Video downloaded');
+
+    // Step 2: Extract last frame (40-70%)
+    await updateJobStatus('processing', 50, 'Extracting last frame with FFmpeg');
+
+    const framePath = path.join(tempDir, `frame-${mediaId}.jpg`);
+    extractLastFrame(videoPath, framePath);
+
+    await updateJobStatus('processing', 70, 'Frame extracted');
+
+    // Step 3: Upload to GCS (70-90%)
+    await updateJobStatus('processing', 75, 'Uploading frame to GCS');
+
+    const gcsPath = `media/images/extracted-${mediaId}-${Date.now()}.jpg`;
+    const frameUrl = await uploadToGCS(framePath, gcsPath);
+
+    await updateJobStatus('processing', 90, 'Frame uploaded');
+
+    // Step 4: Create media library entry (90-100%)
+    await updateJobStatus('processing', 95, 'Creating media record');
+
+    // Build tags array
+    const allTags = [...tags, 'extracted-frame'];
+
+    // Build generation metadata
+    const generationMetadata = JSON.stringify({
+      extractedFrom: mediaId,
+      sourceVideoTitle,
+      extractedAt: new Date().toISOString(),
+      frameType: 'last',
+      jobId,
+    });
+
+    // Insert new media record
+    const insertResult = await pool.query(
+      `INSERT INTO media_library (
+        title, description, media_type, media_url, thumbnail_url,
+        source_type, source_media_id, patient_id, created_by_therapist_id,
+        tags, status, generation_metadata, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+      RETURNING *`,
+      [
+        `${sourceVideoTitle} - Last Frame`,                    // title
+        `Extracted from video: ${sourceVideoTitle}`,           // description
+        'image',                                               // media_type
+        gcsPath,                                               // media_url (GCS path)
+        gcsPath,                                               // thumbnail_url
+        'extracted',                                           // source_type
+        mediaId,                                               // source_media_id
+        patientId,                                             // patient_id
+        therapistId,                                           // created_by_therapist_id
+        allTags,                                               // tags
+        'completed',                                           // status
+        generationMetadata,                                    // generation_metadata
+      ],
+    );
+
+    const newImage = insertResult.rows[0];
+    console.log(`✅ Created media record: ${newImage.id}`);
+
+    // Update job with output info
+    await pool.query(
+      `UPDATE video_processing_jobs
+       SET output_url = $1, thumbnail_url = $2, completed_at = NOW(), updated_at = NOW()
+       WHERE id = $3`,
+      [gcsPath, gcsPath, jobId],
+    );
+
+    // Update status: completed
+    await updateJobStatus('completed', 100, 'Frame extraction completed', gcsPath, gcsPath);
+
+    console.log(`✅ Job ${jobId} completed successfully`);
+    console.log(`🖼️ Frame: ${frameUrl}`);
+    console.log(`📦 New media ID: ${newImage.id}`);
+
+    // Cleanup temp files
+    console.log('🧹 Cleaning up temp files...');
+    fs.readdirSync(tempDir).forEach((file) => {
+      fs.unlinkSync(path.join(tempDir, file));
+    });
+
+    // Close database connection
+    await pool.end();
+
+    // Exit successfully
+    process.exit(0);
+  }
+  catch (error) {
+    console.error(`❌ Job ${jobId} failed:`, error);
+
+    await updateJobStatus('failed', 0, 'Frame extraction failed', null, null, error.message);
+
+    // Close database connection
+    await pool.end();
+
+    // Exit with error
+    process.exit(1);
+  }
+}
+
+/**
  * Main execution function
  */
 async function executeJob() {
@@ -404,8 +558,19 @@ async function executeJob() {
   }
 }
 
-// Execute the job
-executeJob().catch((error) => {
-  console.error('Fatal error:', error);
-  process.exit(1);
-});
+// Execute the job based on JOB_TYPE
+const jobType = process.env.JOB_TYPE || 'scene_assembly';
+
+if (jobType === 'extract_frame') {
+  executeFrameExtractionJob().catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });
+}
+else {
+  // Default to scene assembly
+  executeJob().catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });
+}

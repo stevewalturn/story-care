@@ -1,179 +1,133 @@
 import type { NextRequest } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { generatePresignedUrl, uploadFile } from '@/libs/GCS';
+import { generatePresignedUrl } from '@/libs/GCS';
 import { requireMediaAccess } from '@/middleware/RBACMiddleware';
-import { mediaLibrary } from '@/models/Schema';
-import { VideoTranscodingService } from '@/services/VideoTranscodingService';
+import { mediaLibrary, videoProcessingJobs } from '@/models/Schema';
 import { handleAuthError } from '@/utils/AuthHelpers';
 
 // GET /api/media/[id]/extract-frame/status
 // Poll for frame extraction job status
+// Uses same pattern as scene assembly polling
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = await params;
+    const { id: mediaId } = await params;
 
     // Verify user has access to this media
-    const user = await requireMediaAccess(request, id);
+    await requireMediaAccess(request, mediaId);
 
-    // Get query parameters
+    // Get job ID from query params (optional - if not provided, get latest job)
     const jobId = request.nextUrl.searchParams.get('jobId');
-    const outputFilename = request.nextUrl.searchParams.get('outputFilename');
-    const sourceVideoTitle = request.nextUrl.searchParams.get('sourceVideoTitle');
-    const patientId = request.nextUrl.searchParams.get('patientId');
-    const tags = request.nextUrl.searchParams.get('tags');
 
-    if (!jobId) {
-      return NextResponse.json(
-        { error: 'Missing jobId parameter' },
-        { status: 400 },
-      );
+    // Get the job (latest for this media if no jobId provided)
+    let job;
+    if (jobId) {
+      [job] = await db
+        .select()
+        .from(videoProcessingJobs)
+        .where(
+          and(
+            eq(videoProcessingJobs.id, jobId),
+            eq(videoProcessingJobs.jobType, 'extract_frame'),
+          ),
+        )
+        .limit(1);
+    } else {
+      // Get latest extract_frame job that references this media
+      const jobs = await db
+        .select()
+        .from(videoProcessingJobs)
+        .where(eq(videoProcessingJobs.jobType, 'extract_frame'))
+        .orderBy(desc(videoProcessingJobs.createdAt))
+        .limit(10);
+
+      // Find job for this media
+      job = jobs.find((j) => {
+        const inputData = j.inputData as any;
+        return inputData?.mediaId === mediaId;
+      });
     }
 
-    if (!outputFilename) {
+    if (!job) {
       return NextResponse.json(
-        { error: 'Missing outputFilename parameter' },
-        { status: 400 },
+        { error: 'No frame extraction job found' },
+        { status: 404 },
       );
     }
 
     console.log('[Extract Frame Status] Checking job:', {
-      mediaId: id,
-      jobId,
-      outputFilename,
+      jobId: job.id,
+      mediaId,
+      status: job.status,
     });
 
-    // Check job status via Cloud Run
-    const jobStatus = await VideoTranscodingService.getJobStatus(jobId);
-
-    console.log('[Extract Frame Status] Job status:', {
-      mediaId: id,
-      status: jobStatus.status,
-    });
-
-    if (jobStatus.status === 'SUCCEEDED') {
-      // Check if output file exists in transcoded bucket
-      const fileExists = await VideoTranscodingService.fileExistsInTranscodedBucket(outputFilename);
-
-      if (!fileExists) {
-        // Job completed but file not found - might still be uploading
-        console.log('[Extract Frame Status] Job succeeded but file not found yet');
-        return NextResponse.json({
-          success: true,
-          status: 'processing',
-          message: 'Job completed, waiting for file...',
-        });
-      }
-
-      // Get the extracted frame from transcoded bucket
-      const frameUrl = await VideoTranscodingService.getExtractedFrameUrl(outputFilename);
-
-      // Download the frame and upload to main media bucket
-      const frameResponse = await fetch(frameUrl);
-      const frameBuffer = Buffer.from(await frameResponse.arrayBuffer());
-
-      // Upload to main GCS bucket
-      const { path: mediaPath } = await uploadFile(
-        frameBuffer,
-        `extracted-${id}.jpg`,
-        { folder: 'media/images', contentType: 'image/jpeg' },
-      );
-
-      // Get source video for metadata
-      const [sourceMedia] = await db
+    // Build response based on job status
+    if (job.status === 'completed') {
+      // Find the extracted frame in media library
+      const [extractedFrame] = await db
         .select()
         .from(mediaLibrary)
-        .where(eq(mediaLibrary.id, id))
+        .where(
+          and(
+            eq(mediaLibrary.sourceMediaId, mediaId),
+            eq(mediaLibrary.sourceType, 'extracted'),
+          ),
+        )
+        .orderBy(desc(mediaLibrary.createdAt))
         .limit(1);
 
-      // Build extraction metadata
-      const generationMetadata = {
-        extractedFrom: id,
-        sourceVideoTitle: sourceVideoTitle || sourceMedia?.title || 'Unknown',
-        extractedAt: new Date().toISOString(),
-        frameType: 'last',
-        jobId,
-      };
+      let imageWithSignedUrl = null;
+      if (extractedFrame) {
+        const signedMediaUrl = await generatePresignedUrl(extractedFrame.mediaUrl, 1);
+        const signedThumbnailUrl = await generatePresignedUrl(extractedFrame.thumbnailUrl || extractedFrame.mediaUrl, 1);
 
-      // Parse tags if provided
-      let parsedTags: string[] = ['extracted-frame'];
-      if (tags) {
-        try {
-          const tagArray = JSON.parse(tags);
-          if (Array.isArray(tagArray)) {
-            parsedTags = [...tagArray, 'extracted-frame'];
-          }
-        } catch {
-          // Use default tags
-        }
+        imageWithSignedUrl = {
+          ...extractedFrame,
+          mediaUrl: signedMediaUrl,
+          thumbnailUrl: signedThumbnailUrl,
+        };
       }
 
-      // Create new media library entry for the extracted frame
-      const newImages = await db.insert(mediaLibrary).values({
-        title: `${sourceVideoTitle || sourceMedia?.title || 'Video'} - Last Frame`,
-        description: `Extracted from video: ${sourceVideoTitle || sourceMedia?.title || 'Unknown'}`,
-        mediaType: 'image',
-        mediaUrl: mediaPath,
-        thumbnailUrl: mediaPath,
-        sourceType: 'extracted',
-        sourceMediaId: id,
-        patientId: patientId || sourceMedia?.patientId || null,
-        createdByTherapistId: user.dbUserId,
-        tags: parsedTags,
-        status: 'completed',
-        notes: null,
-        generationMetadata,
-      }).returning();
-
-      const newImage = (newImages as any[])[0];
-
-      // Generate presigned URL for response
-      const signedImageUrl = await generatePresignedUrl(newImage!.mediaUrl, 1);
-
-      // Clean up preprocessing files
-      try {
-        const inputFilename = `frame-extract-input-${id}-${outputFilename.split('-').pop()?.replace('.jpg', '')}.mp4`;
-        await VideoTranscodingService.deletePreprocessingVideo(inputFilename);
-        await VideoTranscodingService.deleteTranscodedVideo(outputFilename);
-      } catch (cleanupError) {
-        console.warn('[Extract Frame Status] Cleanup warning:', cleanupError);
-      }
-
-      console.log('[Extract Frame Status] Frame extracted successfully:', {
-        mediaId: id,
-        newImageId: newImage.id,
+      console.log('[Extract Frame Status] Job completed:', {
+        jobId: job.id,
+        extractedFrameId: extractedFrame?.id,
       });
 
       return NextResponse.json({
         success: true,
         status: 'completed',
-        image: {
-          ...newImage,
-          mediaUrl: signedImageUrl,
-          thumbnailUrl: signedImageUrl,
-        },
+        jobId: job.id,
+        image: imageWithSignedUrl,
+        progress: 100,
+        currentStep: job.currentStep,
       });
-    } else if (jobStatus.status === 'FAILED') {
+    } else if (job.status === 'failed') {
       console.error('[Extract Frame Status] Job failed:', {
-        mediaId: id,
-        error: jobStatus.error,
+        jobId: job.id,
+        error: job.errorMessage,
       });
 
       return NextResponse.json({
         success: false,
         status: 'failed',
-        error: jobStatus.error || 'Frame extraction failed',
+        jobId: job.id,
+        error: job.errorMessage || 'Frame extraction failed',
+        progress: job.progress,
+        currentStep: job.currentStep,
       });
     } else {
-      // Still running or pending
+      // Still processing or pending
       return NextResponse.json({
         success: true,
-        status: 'processing',
-        jobStatus: jobStatus.status,
+        status: job.status,
+        jobId: job.id,
+        progress: job.progress,
+        currentStep: job.currentStep,
+        message: job.currentStep || 'Processing...',
       });
     }
   } catch (error) {

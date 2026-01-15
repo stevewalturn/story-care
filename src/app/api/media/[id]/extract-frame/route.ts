@@ -2,14 +2,15 @@ import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
+import { Env } from '@/libs/Env';
 import { generatePresignedUrl } from '@/libs/GCS';
 import { requireMediaAccess } from '@/middleware/RBACMiddleware';
-import { mediaLibrary } from '@/models/Schema';
-import { VideoTranscodingService } from '@/services/VideoTranscodingService';
+import { mediaLibrary, videoProcessingJobs } from '@/models/Schema';
 import { handleAuthError } from '@/utils/AuthHelpers';
 
 // POST /api/media/[id]/extract-frame
 // Starts an async frame extraction job via Cloud Run Jobs
+// Uses same pattern as scene assembly - presigned URLs via environment variables
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -41,55 +42,130 @@ export async function POST(
       );
     }
 
-    // Generate presigned URL for the video (1 hour expiry)
-    const videoUrl = await generatePresignedUrl(media.mediaUrl, 1);
-    if (!videoUrl) {
+    // Generate presigned URL for the video (24 hour expiry for Cloud Run processing)
+    const videoPresignedUrl = await generatePresignedUrl(media.mediaUrl, 24);
+    if (!videoPresignedUrl) {
       return NextResponse.json(
         { error: 'Failed to access video' },
         { status: 500 },
       );
     }
 
-    // Generate unique filenames for the job
-    const timestamp = Date.now();
-    const inputFilename = `frame-extract-input-${id}-${timestamp}.mp4`;
-    const outputFilename = `frame-extract-${id}-${timestamp}.jpg`;
-
     console.log('[Extract Frame] Starting async job:', {
       mediaId: id,
-      inputFilename,
-      outputFilename,
+      videoTitle: media.title,
     });
 
-    // Upload video to preprocessing bucket for Cloud Run Job
-    await VideoTranscodingService.uploadFromUrl(videoUrl, inputFilename);
+    // Create video processing job in database (same pattern as scene assembly)
+    const jobResult = await db
+      .insert(videoProcessingJobs)
+      .values({
+        jobType: 'extract_frame',
+        status: 'pending',
+        progress: 0,
+        inputData: {
+          mediaId: id,
+          videoUrl: videoPresignedUrl,
+          sourceVideoTitle: media.title,
+          patientId: media.patientId,
+          therapistId: user.dbUserId,
+          tags: media.tags,
+        },
+        currentStep: 'Initializing',
+        createdByUserId: user.dbUserId,
+      })
+      .returning();
 
-    // Start frame extraction job via Cloud Run Jobs (has FFmpeg installed)
-    const job = await VideoTranscodingService.startFrameExtractionJob({
-      inputPath: inputFilename,
-      outputFilename,
-      timestamp: 'last',
-    });
+    const job = jobResult[0];
+    if (!job) {
+      return NextResponse.json(
+        { error: 'Failed to create video processing job' },
+        { status: 500 },
+      );
+    }
 
-    console.log('[Extract Frame] Job started:', {
-      mediaId: id,
-      executionName: job.executionName,
-      outputFilename,
-    });
+    console.log(`🖼️ Created frame extraction job ${job.id} for media ${id}`);
 
-    // Return job info for polling
-    // The client will poll /api/media/[id]/extract-frame/status for completion
-    return NextResponse.json({
-      success: true,
-      status: 'processing',
-      jobId: job.executionName,
-      outputFilename,
-      mediaId: id,
-      sourceVideoTitle: media.title,
-      patientId: media.patientId,
-      therapistId: user.dbUserId,
-      tags: media.tags,
-    });
+    // Trigger Cloud Run Job using Google Cloud Run API (same as scene assembly)
+    const projectId = Env.GCS_PROJECT_ID || 'storycare-478114';
+    const region = Env.CLOUD_RUN_REGION || 'us-central1';
+    const jobName = 'storycare-video-processor';
+
+    try {
+      // Import Google Cloud Run client
+      const { JobsClient } = await import('@google-cloud/run');
+
+      const client = new JobsClient();
+      const parent = `projects/${projectId}/locations/${region}`;
+      const jobPath = `${parent}/jobs/${jobName}`;
+
+      console.log(`🖼️ Triggering Cloud Run Job: ${jobPath}`);
+
+      // Execute the job with environment variables (same pattern as scene assembly)
+      const [operation] = await client.runJob({
+        name: jobPath,
+        overrides: {
+          containerOverrides: [{
+            env: [
+              { name: 'JOB_ID', value: job.id },
+              { name: 'JOB_TYPE', value: 'extract_frame' },
+              { name: 'MEDIA_ID', value: id },
+              { name: 'INPUT_URL', value: videoPresignedUrl },
+              { name: 'SOURCE_VIDEO_TITLE', value: media.title || 'Video' },
+              { name: 'PATIENT_ID', value: media.patientId || '' },
+              { name: 'THERAPIST_ID', value: user.dbUserId || '' },
+              { name: 'TAGS', value: JSON.stringify(media.tags || []) },
+            ],
+          }],
+        },
+      });
+
+      // Get execution name from operation
+      const executionName = operation.name;
+      console.log(`✅ Job ${job.id} execution started: ${executionName}`);
+
+      // Update job with Cloud Run execution info
+      await db
+        .update(videoProcessingJobs)
+        .set({
+          status: 'processing',
+          cloudRunJobId: executionName || null,
+          startedAt: new Date(),
+        })
+        .where(eq(videoProcessingJobs.id, job.id));
+
+      return NextResponse.json(
+        {
+          success: true,
+          jobId: job.id,
+          mediaId: id,
+          executionName,
+          status: 'processing',
+          message: 'Frame extraction job created and triggered',
+        },
+        { status: 202 },
+      );
+    } catch (cloudRunError: any) {
+      console.error(`❌ Failed to trigger Cloud Run Job for ${job.id}:`, cloudRunError);
+
+      // Mark job as failed
+      await db
+        .update(videoProcessingJobs)
+        .set({
+          status: 'failed',
+          errorMessage: `Failed to trigger Cloud Run Job: ${cloudRunError.message}`,
+        })
+        .where(eq(videoProcessingJobs.id, job.id));
+
+      return NextResponse.json(
+        {
+          error: 'Failed to trigger frame extraction',
+          jobId: job.id,
+          details: cloudRunError.message,
+        },
+        { status: 500 },
+      );
+    }
   } catch (error) {
     if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('Forbidden'))) {
       return handleAuthError(error);

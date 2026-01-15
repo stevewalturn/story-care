@@ -101,6 +101,7 @@ export const jobTypeEnum = pgEnum('job_type', [
   'scene_assembly',
   'video_generation',
   'transcoding',
+  'extract_frame',
 ]);
 export const blockTypeEnum = pgEnum('block_type', [
   'video',
