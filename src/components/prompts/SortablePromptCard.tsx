@@ -93,15 +93,8 @@ export function SortablePromptCard({
           {prompt.description || 'No description provided'}
         </p>
 
-        <div className="flex items-center justify-between text-xs text-gray-500">
+        <div className="text-xs text-gray-500">
           <span className="capitalize">{prompt.category}</span>
-          <span>
-            Used
-            {' '}
-            {prompt.useCount}
-            {' '}
-            times
-          </span>
         </div>
 
         {/* Edit Button - Always shown */}

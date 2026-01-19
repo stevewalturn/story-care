@@ -110,9 +110,10 @@ export default async function middleware(request: NextRequest) {
   );
 
   // Permissions Policy - Restrict browser features
+  // Note: microphone=(self) is required for voice recording feature
   response.headers.set(
     'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+    'camera=(), microphone=(self), geolocation=(), interest-cohort=()',
   );
 
   // Referrer Policy - Control referrer information

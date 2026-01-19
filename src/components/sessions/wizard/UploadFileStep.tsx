@@ -1,24 +1,37 @@
 'use client';
 
+import type { AudioInputMode } from './AudioInputSelector';
+import type { SessionFormData } from './types';
 import { Cloud, Upload, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-// Button import removed - not currently used
+import { VoiceRecorder } from '@/components/sessions/VoiceRecorder';
 import { useAuth } from '@/contexts/AuthContext';
+import { AudioInputSelector } from './AudioInputSelector';
+import { RecordingLinkGenerator } from './RecordingLinkGenerator';
 
 type UploadFileStepProps = {
-  onNext: (file: File, url: string, path: string) => void;
+  onNext: (file: File | null, url: string, path: string, recordingId?: string) => void;
   onBack: () => void;
   setStepReady: (ready: boolean) => void;
   stepProceedRef: { current: (() => void) | null };
+  formData?: SessionFormData;
 };
 
-export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProceedRef }: UploadFileStepProps) {
+export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProceedRef, formData }: UploadFileStepProps) {
   const { user } = useAuth();
+  const [inputMode, setInputMode] = useState<AudioInputMode>('upload');
   const [dragActive, setDragActive] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadedUrl, setUploadedUrl] = useState<string>(''); // Presigned URL for preview
   const [uploadedPath, setUploadedPath] = useState<string>(''); // Permanent GCS path to save in DB
   const [uploading, setUploading] = useState(false);
+
+  // Recording state
+  const [recordingId, setRecordingId] = useState<string | null>(null);
+  const [recordingComplete, setRecordingComplete] = useState(false);
+
+  // Link state
+  const [linkCreated, setLinkCreated] = useState(false);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -235,18 +248,54 @@ export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProc
     setUploadedPath('');
   };
 
+  const handleRecordingComplete = (id: string) => {
+    setRecordingId(id);
+    setRecordingComplete(true);
+  };
+
+  const handleLinkCreated = (_linkId: string, _token: string) => {
+    setLinkCreated(true);
+  };
+
   const handleNext = () => {
-    if (uploadedFile && uploadedUrl && uploadedPath) {
+    if (inputMode === 'upload' && uploadedFile && uploadedUrl && uploadedPath) {
       onNext(uploadedFile, uploadedUrl, uploadedPath);
+    } else if (inputMode === 'record' && recordingId && recordingComplete) {
+      // For recordings, we pass the recording ID and fetch the audio URL later
+      onNext(null, '', '', recordingId);
     }
+    // Link mode doesn't proceed to next step - user goes to recordings list later
   };
 
   // Update parent's proceed ref and ready state
   useEffect(() => {
     stepProceedRef.current = handleNext;
-    setStepReady(!!uploadedFile && !!uploadedUrl && !!uploadedPath);
+
+    let isReady = false;
+    if (inputMode === 'upload') {
+      isReady = !!uploadedFile && !!uploadedUrl && !!uploadedPath;
+    } else if (inputMode === 'record') {
+      isReady = !!recordingId && recordingComplete;
+    }
+    // Link mode is never "ready" in the traditional sense
+
+    setStepReady(isReady);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uploadedFile, uploadedUrl, uploadedPath]);
+  }, [uploadedFile, uploadedUrl, uploadedPath, recordingId, recordingComplete, inputMode]);
+
+  // Reset state when mode changes
+  useEffect(() => {
+    if (inputMode !== 'upload') {
+      handleRemoveFile();
+    }
+    if (inputMode !== 'record') {
+      setRecordingId(null);
+      setRecordingComplete(false);
+    }
+    if (inputMode !== 'link') {
+      setLinkCreated(false);
+    }
+  }, [inputMode]);
 
   const getFileExtension = (filename: string) => {
     const parts = filename.split('.');
@@ -257,129 +306,176 @@ export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProc
   return (
     <div>
       <div className="mb-8 text-center">
-        <h2 className="text-2xl font-bold text-gray-900">Upload Session File</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Add Session Audio</h2>
         <p className="mt-2 text-sm text-gray-500">
-          upload an audio or video file to start the transcription
+          Upload a file, record directly, or generate a link for mobile recording
         </p>
       </div>
 
       <div className="mx-auto max-w-2xl">
-        {/* Upload Area */}
-        <div
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-          className={`
-            relative rounded-2xl border-2 border-dashed transition-all
-            ${dragActive ? 'border-purple-600 bg-purple-100' : 'border-purple-200 bg-purple-50'}
-            ${uploading ? 'pointer-events-none opacity-75' : ''}
-          `}
-          style={{ minHeight: '320px' }}
-        >
-          <input
-            type="file"
-            accept="audio/*,.m4a"
-            onChange={handleFileChange}
-            disabled={uploading || !!uploadedFile}
-            className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
-          />
+        {/* Audio Input Mode Selector */}
+        <AudioInputSelector
+          selectedMode={inputMode}
+          onModeChange={setInputMode}
+          disabled={uploading}
+        />
 
-          {uploading
-            ? (
-                <div className="flex flex-col items-center justify-center py-20">
-                  <div className="mb-6 h-16 w-16 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
-                  <p className="text-base font-medium text-gray-900">Uploading...</p>
-                </div>
-              )
-            : uploadedFile
+        {/* Upload Mode */}
+        {inputMode === 'upload' && (
+          <div
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            className={`
+              relative rounded-2xl border-2 border-dashed transition-all
+              ${dragActive ? 'border-purple-600 bg-purple-100' : 'border-purple-200 bg-purple-50'}
+              ${uploading ? 'pointer-events-none opacity-75' : ''}
+            `}
+            style={{ minHeight: '320px' }}
+          >
+            <input
+              type="file"
+              accept="audio/*,.m4a"
+              onChange={handleFileChange}
+              disabled={uploading || !!uploadedFile}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+            />
+
+            {uploading
               ? (
-                  <>
-                    {/* Cloud Icon with Illustration - Centered */}
-                    <div className="flex h-full flex-col items-center justify-center py-12">
-                      <div className="relative">
-                        <Cloud className="h-32 w-32 text-purple-300" strokeWidth={1.5} />
-                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-600">
-                            <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
+                  <div className="flex flex-col items-center justify-center py-20">
+                    <div className="mb-6 h-16 w-16 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
+                    <p className="text-base font-medium text-gray-900">Uploading...</p>
+                  </div>
+                )
+              : uploadedFile
+                ? (
+                    <>
+                      {/* Cloud Icon with Illustration - Centered */}
+                      <div className="flex h-full flex-col items-center justify-center py-12">
+                        <div className="relative">
+                          <Cloud className="h-32 w-32 text-purple-300" strokeWidth={1.5} />
+                          <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-600">
+                              <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Centered File Info Card */}
-                    <div className="flex items-center justify-center px-8 py-6">
-                      <div className="flex w-full max-w-md items-center gap-4 rounded-xl border border-purple-200 bg-white px-6 py-4 shadow-sm">
-                        {/* Icon - Left */}
-                        <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-lg bg-purple-600">
-                          <svg className="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z" />
-                          </svg>
-                        </div>
+                      {/* Centered File Info Card */}
+                      <div className="flex items-center justify-center px-8 py-6">
+                        <div className="flex w-full max-w-md items-center gap-4 rounded-xl border border-purple-200 bg-white px-6 py-4 shadow-sm">
+                          {/* Icon - Left */}
+                          <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-lg bg-purple-600">
+                            <svg className="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z" />
+                            </svg>
+                          </div>
 
-                        {/* File Info - Center */}
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-gray-900">
-                            {uploadedFile.name}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {getFileExtension(uploadedFile.name).toUpperCase()}
-                            {' '}
-                            •
-                            {(uploadedFile.size / (1024 * 1024)).toFixed(1)}
-                            {' '}
-                            MB
-                          </p>
-                        </div>
+                          {/* File Info - Center */}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-gray-900">
+                              {uploadedFile.name}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {getFileExtension(uploadedFile.name).toUpperCase()}
+                              {' '}
+                              •
+                              {(uploadedFile.size / (1024 * 1024)).toFixed(1)}
+                              {' '}
+                              MB
+                            </p>
+                          </div>
 
-                        {/* Remove Button - Right */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveFile();
-                          }}
-                          className="flex-shrink-0 text-gray-400 transition-colors hover:text-gray-600"
-                          aria-label="Remove file"
-                        >
-                          <X className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )
-              : (
-                  <div className="flex flex-col items-center justify-center py-16">
-                    {/* Cloud Upload Illustration */}
-                    <div className="relative mb-6">
-                      <Cloud className="h-32 w-32 text-purple-300" strokeWidth={1.5} />
-                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
-                          <Upload className="h-6 w-6 text-purple-600" />
+                          {/* Remove Button - Right */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveFile();
+                            }}
+                            className="flex-shrink-0 text-gray-400 transition-colors hover:text-gray-600"
+                            aria-label="Remove file"
+                          >
+                            <X className="h-5 w-5" />
+                          </button>
                         </div>
                       </div>
+                    </>
+                  )
+                : (
+                    <div className="flex flex-col items-center justify-center py-16">
+                      {/* Cloud Upload Illustration */}
+                      <div className="relative mb-6">
+                        <Cloud className="h-32 w-32 text-purple-300" strokeWidth={1.5} />
+                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
+                            <Upload className="h-6 w-6 text-purple-600" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Text and Button */}
+                      <p className="mb-4 text-base font-medium text-purple-600">
+                        Drag and drop to upload
+                      </p>
+
+                      <button
+                        type="button"
+                        className="mb-4 rounded-lg border-2 border-purple-600 bg-white px-6 py-2.5 text-sm font-semibold text-purple-600 transition-all hover:bg-purple-50"
+                      >
+                        Browse File
+                      </button>
+
+                      <p className="text-sm text-purple-400">
+                        MP3, WAV, AAC, and M4A supported
+                      </p>
                     </div>
+                  )}
+          </div>
+        )}
 
-                    {/* Text and Button */}
-                    <p className="mb-4 text-base font-medium text-purple-600">
-                      Drag and drop to upload
-                    </p>
+        {/* Record Mode */}
+        {inputMode === 'record' && (
+          <div className="rounded-2xl border-2 border-purple-200 bg-purple-50" style={{ minHeight: '320px' }}>
+            <VoiceRecorder
+              onRecordingComplete={handleRecordingComplete}
+              onError={error => alert(error.message)}
+            />
+          </div>
+        )}
 
-                    <button
-                      type="button"
-                      className="mb-4 rounded-lg border-2 border-purple-600 bg-white px-6 py-2.5 text-sm font-semibold text-purple-600 transition-all hover:bg-purple-50"
-                    >
-                      Browse File
-                    </button>
+        {/* Link Mode */}
+        {inputMode === 'link' && (
+          <div className="rounded-2xl border-2 border-purple-200 bg-purple-50" style={{ minHeight: '320px' }}>
+            <RecordingLinkGenerator
+              formData={formData || { title: '', sessionDate: '', description: '', patientIds: [], audioFile: null }}
+              onLinkCreated={handleLinkCreated}
+              onError={error => alert(error.message)}
+            />
+          </div>
+        )}
 
-                    <p className="text-sm text-purple-400">
-                      MP3, WAV, AAC, and M4A supported
-                    </p>
-                  </div>
-                )}
-        </div>
+        {/* Info text for link mode */}
+        {inputMode === 'link' && linkCreated && (
+          <div className="mt-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-700">
+            <p>
+              <strong>Note:</strong>
+              {' '}
+              After the recording is submitted via the link, you can find it in
+              {' '}
+              <a href="/sessions/recordings" className="font-medium underline">
+                Sessions → Recordings
+              </a>
+              {' '}
+              and create a session from there.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

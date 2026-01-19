@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { and, count, eq } from 'drizzle-orm';
+import { and, count, eq, gte, lte } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { getClientInfo, logAudit } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
@@ -19,6 +19,16 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const therapistFirebaseUid = searchParams.get('therapistId');
+    const startDateParam = searchParams.get('startDate');
+    const endDateParam = searchParams.get('endDate');
+
+    // Parse date filters
+    const startDate = startDateParam ? new Date(startDateParam) : null;
+    const endDate = endDateParam ? new Date(endDateParam) : null;
+    // Set end date to end of day for inclusive filtering
+    if (endDate) {
+      endDate.setHours(23, 59, 59, 999);
+    }
 
     // Convert Firebase UID to database UUID if provided
     let therapistDbId: string | null = null;
@@ -55,22 +65,34 @@ export async function GET(request: NextRequest) {
 
     const activePatients = activePatientsResult[0]?.count || 0;
 
-    // Count published pages
+    // Count published pages with date filtering
+    const publishedPagesConditions = [eq(storyPagesSchema.status, 'published')];
+    if (therapistDbId) {
+      publishedPagesConditions.push(eq(storyPagesSchema.createdByTherapistId, therapistDbId));
+    }
+    if (startDate) {
+      publishedPagesConditions.push(gte(storyPagesSchema.publishedAt, startDate));
+    }
+    if (endDate) {
+      publishedPagesConditions.push(lte(storyPagesSchema.publishedAt, endDate));
+    }
+
     const publishedPagesResult = await db
       .select({ count: count() })
       .from(storyPagesSchema)
-      .where(
-        therapistDbId
-          ? and(
-              eq(storyPagesSchema.status, 'published'),
-              eq(storyPagesSchema.createdByTherapistId, therapistDbId),
-            )
-          : eq(storyPagesSchema.status, 'published'),
-      );
+      .where(and(...publishedPagesConditions));
 
     const publishedPages = publishedPagesResult[0]?.count || 0;
 
-    // Count survey responses (for patients of this therapist)
+    // Count survey responses (for patients of this therapist) with date filtering
+    const surveyDateConditions: ReturnType<typeof eq>[] = [];
+    if (startDate) {
+      surveyDateConditions.push(gte(surveyResponsesSchema.createdAt, startDate));
+    }
+    if (endDate) {
+      surveyDateConditions.push(lte(surveyResponsesSchema.createdAt, endDate));
+    }
+
     let surveyResponses = 0;
     if (therapistDbId) {
       // Get patient IDs for this therapist
@@ -85,19 +107,29 @@ export async function GET(request: NextRequest) {
         // Count survey responses from these patients
         const surveyResponsesResult = await db
           .select({ count: count() })
-          .from(surveyResponsesSchema);
+          .from(surveyResponsesSchema)
+          .where(surveyDateConditions.length > 0 ? and(...surveyDateConditions) : undefined);
 
         surveyResponses = surveyResponsesResult[0]?.count || 0;
       }
     } else {
       const surveyResponsesResult = await db
         .select({ count: count() })
-        .from(surveyResponsesSchema);
+        .from(surveyResponsesSchema)
+        .where(surveyDateConditions.length > 0 ? and(...surveyDateConditions) : undefined);
 
       surveyResponses = surveyResponsesResult[0]?.count || 0;
     }
 
-    // Count reflection responses (written reflections for patients of this therapist)
+    // Count reflection responses (written reflections for patients of this therapist) with date filtering
+    const reflectionDateConditions: ReturnType<typeof eq>[] = [];
+    if (startDate) {
+      reflectionDateConditions.push(gte(reflectionResponsesSchema.createdAt, startDate));
+    }
+    if (endDate) {
+      reflectionDateConditions.push(lte(reflectionResponsesSchema.createdAt, endDate));
+    }
+
     let writtenReflections = 0;
     if (therapistDbId) {
       // Get patient IDs for this therapist
@@ -112,14 +144,16 @@ export async function GET(request: NextRequest) {
         // Count reflection responses from these patients
         const reflectionResponsesResult = await db
           .select({ count: count() })
-          .from(reflectionResponsesSchema);
+          .from(reflectionResponsesSchema)
+          .where(reflectionDateConditions.length > 0 ? and(...reflectionDateConditions) : undefined);
 
         writtenReflections = reflectionResponsesResult[0]?.count || 0;
       }
     } else {
       const reflectionResponsesResult = await db
         .select({ count: count() })
-        .from(reflectionResponsesSchema);
+        .from(reflectionResponsesSchema)
+        .where(reflectionDateConditions.length > 0 ? and(...reflectionDateConditions) : undefined);
 
       writtenReflections = reflectionResponsesResult[0]?.count || 0;
     }

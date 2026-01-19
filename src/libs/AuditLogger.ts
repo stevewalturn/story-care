@@ -49,7 +49,9 @@ export type ResourceType
     | 'reflection_response'
     | 'survey_response'
     | 'group'
-    | 'auth';
+    | 'auth'
+    | 'recording'
+    | 'recording_link';
 
 /**
  * Data structure for audit log entries

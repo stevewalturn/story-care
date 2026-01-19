@@ -231,15 +231,6 @@ export function PromptLibrary({
                   </div>
                 )}
 
-                {/* Use Count */}
-                <div className="mb-3 text-xs text-gray-500">
-                  Used
-                  {' '}
-                  {prompt.useCount || 0}
-                  {' '}
-                  times
-                </div>
-
                 {/* Actions */}
                 <div className="flex items-center gap-2 border-t border-gray-200 pt-3">
                   {onSelectPrompt && (

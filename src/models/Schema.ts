@@ -194,6 +194,26 @@ export const generationSourceEnum = pgEnum('generation_source', [
   'ai_suggested',
 ]);
 
+// Recording System Enums
+export const recordingSourceEnum = pgEnum('recording_source', [
+  'direct', // Recorded directly in browser by therapist
+  'share_link', // Recorded via shareable link
+]);
+export const uploadedRecordingStatusEnum = pgEnum('uploaded_recording_status', [
+  'recording', // Currently being recorded
+  'uploading', // Chunks being uploaded
+  'completed', // Recording finished and all chunks uploaded
+  'failed', // Recording or upload failed
+  'used', // Session created from this recording
+]);
+export const recordingLinkStatusEnum = pgEnum('recording_link_status', [
+  'pending', // Link created, waiting for recording
+  'recording', // Recording in progress
+  'completed', // Recording submitted
+  'expired', // Link expired
+  'revoked', // Link manually revoked
+]);
+
 // ============================================================================
 // ORGANIZATIONS
 // ============================================================================
@@ -1499,6 +1519,95 @@ export const videoProcessingJobsSchema = pgTable('video_processing_jobs', {
 });
 
 // ============================================================================
+// RECORDING LINKS (Shareable links for mobile recording)
+// ============================================================================
+
+export const recordingLinksSchema = pgTable('recording_links', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  // URL-safe token for /record/[token]
+  token: varchar('token', { length: 64 }).unique().notNull(),
+
+  // Pre-filled session info (optional)
+  sessionTitle: varchar('session_title', { length: 255 }),
+  sessionDate: timestamp('session_date'),
+  patientIds: uuid('patient_ids').array(),
+  notes: text('notes'), // Instructions for recorder
+
+  // Ownership
+  therapistId: uuid('therapist_id')
+    .references(() => usersSchema.id)
+    .notNull(),
+  organizationId: uuid('organization_id')
+    .references(() => organizationsSchema.id)
+    .notNull(),
+
+  // Link status
+  status: recordingLinkStatusEnum('status').default('pending').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  expiryDurationMinutes: integer('expiry_duration_minutes').notNull(),
+
+  // Access tracking
+  accessCount: integer('access_count').default(0).notNull(),
+  lastAccessedAt: timestamp('last_accessed_at'),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================================================
+// UPLOADED RECORDINGS (Stores all recordings - direct + via link)
+// ============================================================================
+
+export const uploadedRecordingsSchema = pgTable('uploaded_recordings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  // Source tracking
+  source: recordingSourceEnum('source').notNull(),
+  recordingLinkId: uuid('recording_link_id').references(() => recordingLinksSchema.id, {
+    onDelete: 'set null',
+  }),
+
+  // Ownership
+  therapistId: uuid('therapist_id')
+    .references(() => usersSchema.id)
+    .notNull(),
+  organizationId: uuid('organization_id')
+    .references(() => organizationsSchema.id)
+    .notNull(),
+
+  // Recording metadata
+  title: varchar('title', { length: 255 }),
+  recordedAt: timestamp('recorded_at'), // When recording started
+
+  // Audio storage (supports chunked uploads)
+  // Array of {chunkIndex, gcsPath, durationSeconds, sizeBytes, uploadedAt}
+  audioChunks: jsonb('audio_chunks').default([]),
+  finalAudioUrl: text('final_audio_url'), // Merged audio GCS path (after finalization)
+  totalDurationSeconds: integer('total_duration_seconds'),
+  totalFileSizeBytes: bigint('total_file_size_bytes', { mode: 'number' }),
+
+  // Status
+  status: uploadedRecordingStatusEnum('status').default('recording').notNull(),
+
+  // Session reference (set when session created from this recording)
+  sessionId: uuid('session_id').references(() => sessionsSchema.id, {
+    onDelete: 'set null',
+  }),
+
+  // Device info
+  deviceInfo: jsonb('device_info'), // {userAgent, platform, browser}
+
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, table => ({
+  therapistIdIdx: index('uploaded_recordings_therapist_id_idx').on(table.therapistId),
+  statusIdx: index('uploaded_recordings_status_idx').on(table.status),
+  recordingLinkIdIdx: index('uploaded_recordings_recording_link_id_idx').on(table.recordingLinkId),
+}));
+
+// ============================================================================
 // ENGAGEMENT TRACKING
 // ============================================================================
 
@@ -1570,6 +1679,8 @@ export const videoTranscodingJobs = videoTranscodingJobsSchema;
 export const videoProcessingJobs = videoProcessingJobsSchema;
 export const auditLogs = auditLogsSchema;
 export const platformSettings = platformSettingsSchema;
+export const recordingLinks = recordingLinksSchema;
+export const uploadedRecordings = uploadedRecordingsSchema;
 
 // ============================================================================
 // DRIZZLE RELATIONS (Required for .with() query syntax)
@@ -1773,3 +1884,25 @@ export type NewAuditLog = typeof auditLogsSchema.$inferInsert;
 
 export type PlatformSettings = typeof platformSettingsSchema.$inferSelect;
 export type NewPlatformSettings = typeof platformSettingsSchema.$inferInsert;
+
+export type RecordingLink = typeof recordingLinksSchema.$inferSelect;
+export type NewRecordingLink = typeof recordingLinksSchema.$inferInsert;
+
+export type UploadedRecording = typeof uploadedRecordingsSchema.$inferSelect;
+export type NewUploadedRecording = typeof uploadedRecordingsSchema.$inferInsert;
+
+// Audio chunk type for uploadedRecordings.audioChunks
+export type AudioChunk = {
+  chunkIndex: number;
+  gcsPath: string;
+  durationSeconds: number;
+  sizeBytes: number;
+  uploadedAt: string;
+};
+
+// Device info type for uploadedRecordings.deviceInfo
+export type RecordingDeviceInfo = {
+  userAgent?: string;
+  platform?: string;
+  browser?: string;
+};

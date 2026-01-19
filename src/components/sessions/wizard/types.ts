@@ -19,4 +19,8 @@ export type SessionFormData = {
     speakerType: string | null;
     speakerName: string | null;
   }>;
+  // Voice recording fields
+  recordingId?: string;
+  recordingLinkId?: string;
+  recordingLinkToken?: string;
 };

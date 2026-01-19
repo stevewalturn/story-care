@@ -79,10 +79,14 @@ export default function NewSessionPage() {
     handleNext();
   };
 
-  const handleUploadComplete = (file: File, url: string, path: string) => {
-    // url: presigned URL for preview (expires in 1 hour)
-    // path: permanent GCS path to save in database
-    setFormData({ ...formData, audioFile: file, audioUrl: url, audioPath: path });
+  const handleUploadComplete = (file: File | null, url: string, path: string, recordingId?: string) => {
+    // For file uploads: url is presigned URL for preview, path is permanent GCS path
+    // For recordings: file is null, recordingId contains the recording ID
+    if (recordingId) {
+      setFormData({ ...formData, audioFile: null, recordingId });
+    } else {
+      setFormData({ ...formData, audioFile: file, audioUrl: url, audioPath: path });
+    }
     handleNext();
   };
 
@@ -181,6 +185,7 @@ export default function NewSessionPage() {
               onBack={handleBack}
               setStepReady={setStepReady}
               stepProceedRef={stepProceedRef}
+              formData={formData}
             />
           )}
 

@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, gte, lte } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import {
@@ -16,9 +16,37 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const limit = Number.parseInt(searchParams.get('limit') || '10', 10);
+    const startDateParam = searchParams.get('startDate');
+    const endDateParam = searchParams.get('endDate');
+
+    // Parse date filters
+    const startDate = startDateParam ? new Date(startDateParam) : null;
+    const endDate = endDateParam ? new Date(endDateParam) : null;
+    // Set end date to end of day for inclusive filtering
+    if (endDate) {
+      endDate.setHours(23, 59, 59, 999);
+    }
+
+    // Build date conditions for reflection responses
+    const reflectionDateConditions: ReturnType<typeof eq>[] = [];
+    if (startDate) {
+      reflectionDateConditions.push(gte(reflectionResponsesSchema.createdAt, startDate));
+    }
+    if (endDate) {
+      reflectionDateConditions.push(lte(reflectionResponsesSchema.createdAt, endDate));
+    }
+
+    // Build date conditions for survey responses
+    const surveyDateConditions: ReturnType<typeof eq>[] = [];
+    if (startDate) {
+      surveyDateConditions.push(gte(surveyResponsesSchema.createdAt, startDate));
+    }
+    if (endDate) {
+      surveyDateConditions.push(lte(surveyResponsesSchema.createdAt, endDate));
+    }
 
     // Fetch recent reflection responses
-    const recentReflections = await db
+    const reflectionQuery = db
       .select({
         id: reflectionResponsesSchema.id,
         patientId: reflectionResponsesSchema.patientId,
@@ -36,12 +64,20 @@ export async function GET(request: NextRequest) {
         reflectionQuestionsSchema,
         eq(reflectionResponsesSchema.questionId, reflectionQuestionsSchema.id),
       )
-      .leftJoin(storyPagesSchema, eq(reflectionResponsesSchema.pageId, storyPagesSchema.id))
-      .orderBy(desc(reflectionResponsesSchema.createdAt))
-      .limit(limit);
+      .leftJoin(storyPagesSchema, eq(reflectionResponsesSchema.pageId, storyPagesSchema.id));
+
+    // Apply date filtering if conditions exist
+    const recentReflections = reflectionDateConditions.length > 0
+      ? await reflectionQuery
+          .where(and(...reflectionDateConditions))
+          .orderBy(desc(reflectionResponsesSchema.createdAt))
+          .limit(limit)
+      : await reflectionQuery
+          .orderBy(desc(reflectionResponsesSchema.createdAt))
+          .limit(limit);
 
     // Fetch recent survey responses
-    const recentSurveys = await db
+    const surveyQuery = db
       .select({
         id: surveyResponsesSchema.id,
         patientId: surveyResponsesSchema.patientId,
@@ -57,9 +93,17 @@ export async function GET(request: NextRequest) {
       .from(surveyResponsesSchema)
       .leftJoin(users, eq(surveyResponsesSchema.patientId, users.id))
       .leftJoin(surveyQuestionsSchema, eq(surveyResponsesSchema.questionId, surveyQuestionsSchema.id))
-      .leftJoin(storyPagesSchema, eq(surveyResponsesSchema.pageId, storyPagesSchema.id))
-      .orderBy(desc(surveyResponsesSchema.createdAt))
-      .limit(limit);
+      .leftJoin(storyPagesSchema, eq(surveyResponsesSchema.pageId, storyPagesSchema.id));
+
+    // Apply date filtering if conditions exist
+    const recentSurveys = surveyDateConditions.length > 0
+      ? await surveyQuery
+          .where(and(...surveyDateConditions))
+          .orderBy(desc(surveyResponsesSchema.createdAt))
+          .limit(limit)
+      : await surveyQuery
+          .orderBy(desc(surveyResponsesSchema.createdAt))
+          .limit(limit);
 
     return NextResponse.json({
       reflections: recentReflections,

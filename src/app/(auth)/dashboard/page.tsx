@@ -93,14 +93,14 @@ export default function DashboardPage() {
     }
   }, [dbUser, authLoading, router]);
 
-  // Fetch dashboard stats when user is available
+  // Fetch dashboard stats when user is available or dates change
   useEffect(() => {
     if (user?.uid) {
       fetchStats();
       fetchRecentResponses();
       fetchRecentSessions();
     }
-  }, [user]);
+  }, [user, startDate, endDate]);
 
   // Calculate position for date pickers when they open
   useEffect(() => {
@@ -149,7 +149,9 @@ export default function DashboardPage() {
 
     try {
       setLoading(true);
-      const response = await authenticatedFetch(`/api/dashboard/stats?therapistId=${user.uid}`, user);
+      const dateParams = buildDateParams();
+      const url = `/api/dashboard/stats?therapistId=${user.uid}${dateParams ? `&${dateParams}` : ''}`;
+      const response = await authenticatedFetch(url, user);
       if (response.ok) {
         const data = await response.json();
         setStats(data);
@@ -170,7 +172,9 @@ export default function DashboardPage() {
 
     try {
       setResponsesLoading(true);
-      const response = await authenticatedFetch('/api/dashboard/recent-responses?limit=3', user);
+      const dateParams = buildDateParams();
+      const url = `/api/dashboard/recent-responses?limit=3${dateParams ? `&${dateParams}` : ''}`;
+      const response = await authenticatedFetch(url, user);
       if (response.ok) {
         const data = await response.json();
 
@@ -219,7 +223,9 @@ export default function DashboardPage() {
 
     try {
       setSessionsLoading(true);
-      const response = await authenticatedFetch('/api/sessions?limit=3&sort=updatedAt', user);
+      const dateParams = buildDateParams();
+      const url = `/api/sessions?limit=3&sort=updatedAt${dateParams ? `&${dateParams}` : ''}`;
+      const response = await authenticatedFetch(url, user);
       if (response.ok) {
         const data = await response.json();
 
@@ -256,6 +262,20 @@ export default function DashboardPage() {
   const toggleEndDatePicker = () => {
     setShowStartDatePicker(false);
     setShowEndDatePicker(!showEndDatePicker);
+  };
+
+  // Build date query params helper
+  const buildDateParams = (): string => {
+    const params = new URLSearchParams();
+    if (startDate) {
+      const dateStr = startDate.toISOString().split('T')[0];
+      if (dateStr) params.set('startDate', dateStr);
+    }
+    if (endDate) {
+      const dateStr = endDate.toISOString().split('T')[0];
+      if (dateStr) params.set('endDate', dateStr);
+    }
+    return params.toString();
   };
 
   // Helper functions

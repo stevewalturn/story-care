@@ -65,6 +65,8 @@ export async function GET(
         category: moduleAiPromptsSchema.category,
         icon: moduleAiPromptsSchema.icon,
         isActive: moduleAiPromptsSchema.isActive,
+        outputType: moduleAiPromptsSchema.outputType,
+        jsonSchema: moduleAiPromptsSchema.jsonSchema,
         sortOrder: modulePromptLinksSchema.sortOrder,
       })
       .from(modulePromptLinksSchema)
