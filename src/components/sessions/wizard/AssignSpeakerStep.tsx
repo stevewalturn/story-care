@@ -70,6 +70,7 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
   const [utteranceCache, setUtteranceCache] = useState<UtteranceCache>(new Map());
   const [loadingUtterances, setLoadingUtterances] = useState<Set<string>>(new Set());
   const [audioCache, setAudioCache] = useState<Map<string, string>>(new Map()); // Cache audio URLs per utterance
+  const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null); // Track current playing audio URL for inline player
   const [errorModalOpen, setErrorModalOpen] = useState(false);
   const [errorDetails, setErrorDetails] = useState<ErrorDetails | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -84,7 +85,8 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
       return;
     }
 
-    if (!user?.uid || !formData.audioPath) return;
+    // Check for either audioPath (upload flow) OR recordingId (select recording flow)
+    if (!user?.uid || (!formData.audioPath && !formData.recordingId)) return;
 
     // Mark as started BEFORE async operation to prevent race conditions
     hasCreatedSession.current = true;
@@ -92,37 +94,66 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
     const createSessionAndTranscribe = async () => {
       try {
         const idToken = await user.getIdToken();
+        let createdSessionId: string;
 
-        // Create session
-        // IMPORTANT: Use audioPath (permanent GCS path) for database storage, not audioUrl (presigned)
-        const sessionData = {
-          therapistId: user.uid,
-          title: formData.title,
-          sessionDate: formData.sessionDate,
-          patientIds: formData.patientIds,
-          audioUrl: formData.audioPath, // Save permanent path to database
-        };
+        // If using existing recording, use the create-session-from-recording endpoint
+        if (formData.recordingId) {
+          console.log('[AssignSpeakerStep] Creating session from recording:', formData.recordingId);
+          const sessionResponse = await fetch(`/api/recordings/${formData.recordingId}/create-session`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({
+              title: formData.title,
+              sessionDate: formData.sessionDate,
+              patientIds: formData.patientIds,
+            }),
+          });
 
-        const sessionResponse = await fetch('/api/sessions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`,
-          },
-          body: JSON.stringify(sessionData),
-        });
+          if (!sessionResponse.ok) {
+            const errorData = await sessionResponse.json();
+            throw new Error(errorData.error || 'Failed to create session from recording');
+          }
 
-        if (!sessionResponse.ok) {
-          const errorData = await sessionResponse.json();
-          throw new Error(errorData.error || 'Failed to create session');
+          const { session } = await sessionResponse.json();
+          console.log('[AssignSpeakerStep] Created session from recording:', session.id);
+          createdSessionId = session.id;
+        } else {
+          // Create session from uploaded file
+          // IMPORTANT: Use audioPath (permanent GCS path) for database storage, not audioUrl (presigned)
+          const sessionData = {
+            therapistId: user.uid,
+            title: formData.title,
+            sessionDate: formData.sessionDate,
+            patientIds: formData.patientIds,
+            audioUrl: formData.audioPath, // Save permanent path to database
+          };
+
+          const sessionResponse = await fetch('/api/sessions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}`,
+            },
+            body: JSON.stringify(sessionData),
+          });
+
+          if (!sessionResponse.ok) {
+            const errorData = await sessionResponse.json();
+            throw new Error(errorData.error || 'Failed to create session');
+          }
+
+          const { session } = await sessionResponse.json();
+          console.log('[AssignSpeakerStep] Created session:', session.id);
+          createdSessionId = session.id;
         }
 
-        const { session } = await sessionResponse.json();
-        console.log('[AssignSpeakerStep] Created session:', session.id);
-        setSessionId(session.id);
+        setSessionId(createdSessionId);
 
         // Start transcription
-        const transcribeResponse = await fetch(`/api/sessions/${session.id}/transcribe`, {
+        const transcribeResponse = await fetch(`/api/sessions/${createdSessionId}/transcribe`, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${idToken}`,
@@ -184,7 +215,7 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
     createSessionAndTranscribe();
   // Use stable primitive values to prevent unnecessary re-runs
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid, formData.audioPath, dbUser?.id]);
+  }, [user?.uid, formData.audioPath, formData.recordingId, dbUser?.id]);
 
   // Cleanup audio on unmount
   useEffect(() => {
@@ -374,6 +405,7 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
         audioRef.current.pause();
       }
       setPlayingId(null);
+      setCurrentAudioUrl(null);
       return;
     }
 
@@ -433,6 +465,7 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
 
     audio.addEventListener('ended', () => {
       setPlayingId(null);
+      setCurrentAudioUrl(null);
     });
 
     audio.addEventListener('error', (e) => {
@@ -440,6 +473,7 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
       console.error('Audio URL:', audioUrl);
       console.error('Audio error details:', audio.error);
       setPlayingId(null);
+      setCurrentAudioUrl(null);
       setLoadingAudio(null); // Ensure loading state is cleared
       toast.error('Failed to play audio sample');
     });
@@ -448,6 +482,7 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
     audio.addEventListener('playing', () => {
       setLoadingAudio(null); // Clear loading only when audio actually starts playing
       setPlayingId(speakerId); // Set playing state
+      setCurrentAudioUrl(audioUrl as string); // Set the current audio URL for the inline player
     });
 
     try {
@@ -457,6 +492,7 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
       console.error('Error playing audio:', error);
       setLoadingAudio(null);
       setPlayingId(null);
+      setCurrentAudioUrl(null);
       toast.error('Failed to play audio sample');
     }
   };
@@ -1001,7 +1037,7 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
 
             {/* Sample Quote with Audio Controls */}
             <div className="rounded-lg bg-gray-50 p-4">
-              {/* Quote Text / Waveform */}
+              {/* Quote Text */}
               {loadingUtterances.has(speaker.id) ? (
                 <div className="mb-4 flex items-center justify-center py-2">
                   <svg className="h-4 w-4 animate-spin text-purple-600" fill="none" viewBox="0 0 24 24">
@@ -1009,22 +1045,28 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
                 </div>
-              ) : playingId === speaker.id ? (
-                <div className="mb-4 flex items-center justify-center gap-1.5 py-2">
-                  {[...Array.from({ length: 12 })].map((_, i) => (
-                    <div
-                      key={i}
-                      className={`animate-waveform-${(i % 5) + 1} w-1 rounded-full bg-purple-500`}
-                      style={{ height: '16px' }}
-                    />
-                  ))}
-                </div>
               ) : (
                 <p className="mb-4 text-sm text-gray-600">
                   "
                   {speaker.sampleText}
                   "
                 </p>
+              )}
+
+              {/* Inline Audio Player - shows when this speaker's audio is playing */}
+              {playingId === speaker.id && currentAudioUrl && (
+                <div className="mb-4 rounded-lg bg-white p-2 shadow-sm">
+                  <audio
+                    ref={audioRef}
+                    controls
+                    src={currentAudioUrl}
+                    className="h-8 w-full"
+                    onEnded={() => {
+                      setPlayingId(null);
+                      setCurrentAudioUrl(null);
+                    }}
+                  />
+                </div>
               )}
 
               {/* Counter and Controls */}
