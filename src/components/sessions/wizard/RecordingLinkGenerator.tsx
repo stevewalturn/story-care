@@ -1,7 +1,8 @@
 'use client';
 
 import type { SessionFormData } from '@/components/sessions/wizard/types';
-import { Check, Clock, Copy, ExternalLink, Link2, Loader2, QrCode } from 'lucide-react';
+import { Check, Clock, Copy, ExternalLink, Link2, Loader2 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -147,12 +148,17 @@ export function RecordingLinkGenerator({
           </span>
         </div>
 
-        {/* QR Code placeholder */}
+        {/* QR Code */}
         <div className="mt-6 flex flex-col items-center">
-          <div className="flex h-32 w-32 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50">
-            <QrCode className="h-12 w-12 text-gray-400" />
+          <div className="rounded-lg border border-gray-200 bg-white p-3">
+            <QRCodeSVG
+              value={generatedLink}
+              size={128}
+              level="M"
+              includeMargin={false}
+            />
           </div>
-          <p className="mt-2 text-xs text-gray-400">QR code for mobile scanning</p>
+          <p className="mt-2 text-xs text-gray-500">Scan to open on mobile</p>
         </div>
       </div>
     );

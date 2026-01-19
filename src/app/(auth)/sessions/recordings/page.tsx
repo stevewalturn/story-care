@@ -44,6 +44,7 @@ export default function RecordingsPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'recordings' | 'links'>('recordings');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [playingRecordingId, setPlayingRecordingId] = useState<string | null>(null);
 
   // Fetch recordings and links
   useEffect(() => {
@@ -349,6 +350,19 @@ export default function RecordingsPage() {
                             </div>
                           </div>
                         </div>
+
+                        {/* Inline Audio Player */}
+                        {playingRecordingId === recording.id && recording.audioUrl && (
+                          <div className="mt-3 rounded-lg bg-gray-50 p-3">
+                            <audio
+                              controls
+                              autoPlay
+                              src={recording.audioUrl}
+                              className="w-full"
+                              onEnded={() => setPlayingRecordingId(null)}
+                            />
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-3">
@@ -360,9 +374,12 @@ export default function RecordingsPage() {
                           <>
                             {recording.audioUrl && (
                               <button
-                                onClick={() => window.open(recording.audioUrl!, '_blank')}
+                                type="button"
+                                onClick={() => setPlayingRecordingId(
+                                  playingRecordingId === recording.id ? null : recording.id,
+                                )}
                                 className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-                                title="Play"
+                                title={playingRecordingId === recording.id ? 'Hide Player' : 'Play'}
                               >
                                 <Play className="h-4 w-4" />
                               </button>

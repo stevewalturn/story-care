@@ -15,6 +15,29 @@ export function Sidebar() {
   // Get navigation items based on user role
   const navItems = dbUser?.role ? getNavigationForRole(dbUser.role) : [];
 
+  // Check if a nav item is active - prefer exact match or longest matching path
+  const isItemActive = (itemHref: string): boolean => {
+    if (!pathname) return false;
+
+    // Exact match is always active
+    if (pathname === itemHref) return true;
+
+    // Check if current path starts with this href
+    if (!pathname.startsWith(itemHref)) return false;
+
+    // If it starts with this href, check if there's a more specific nav item that matches
+    // (i.e., a longer href that also matches the current path)
+    const hasMoreSpecificMatch = navItems.some(
+      otherItem =>
+        otherItem.href !== itemHref
+        && otherItem.href.startsWith(itemHref)
+        && pathname.startsWith(otherItem.href),
+    );
+
+    // Only mark as active if there's no more specific match
+    return !hasMoreSpecificMatch;
+  };
+
   // Get role display name
   const getRoleDisplay = (role: string) => {
     const roleMap = {
@@ -63,7 +86,7 @@ export function Sidebar() {
       <nav className={`flex-1 space-y-1 py-4 ${isCollapsed ? 'px-3' : 'px-3'}`}>
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname?.startsWith(item.href);
+          const isActive = isItemActive(item.href);
           return (
             <Link
               key={item.href}

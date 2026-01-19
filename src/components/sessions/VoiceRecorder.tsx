@@ -2,6 +2,7 @@
 
 import { AlertCircle, CheckCircle2, Cloud, Mic, Pause, Play, Square, Upload } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AudioVisualizer } from '@/components/ui/AudioVisualizer';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -58,6 +59,7 @@ export function VoiceRecorder({
 
   // Audio visualization
   const [audioLevel, setAudioLevel] = useState(0);
+  const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
 
   // Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -266,6 +268,9 @@ export function VoiceRecorder({
     source.connect(analyserRef.current);
     analyserRef.current.fftSize = 256;
 
+    // Set state for the AudioVisualizer component
+    setAnalyserNode(analyserRef.current);
+
     const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
 
     const updateLevel = () => {
@@ -291,6 +296,7 @@ export function VoiceRecorder({
       audioContextRef.current = null;
     }
     setAudioLevel(0);
+    setAnalyserNode(null);
   };
 
   // Start recording
@@ -605,6 +611,15 @@ export function VoiceRecorder({
               <div className="h-4 w-4 animate-pulse rounded-full bg-red-500" />
             </div>
           )}
+        </div>
+
+        {/* Audio visualization */}
+        <div className="mb-4 h-16 w-64">
+          <AudioVisualizer
+            analyser={analyserNode}
+            isActive={recordingState === 'recording'}
+            variant="light"
+          />
         </div>
 
         {/* Timer */}

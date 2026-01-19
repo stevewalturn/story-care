@@ -3,6 +3,7 @@
 import { AlertCircle, CheckCircle2, Clock, Cloud, Loader2, Mic, Pause, Play, Square } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AudioVisualizer } from '@/components/ui/AudioVisualizer';
 
 type LinkData = {
   valid: boolean;
@@ -51,6 +52,7 @@ export default function PublicRecordingPage() {
   const [savedSeconds, setSavedSeconds] = useState(0);
   const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
 
   // Preview state
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -189,6 +191,9 @@ export default function PublicRecordingPage() {
     source.connect(analyserRef.current);
     analyserRef.current.fftSize = 256;
 
+    // Set state for the AudioVisualizer component
+    setAnalyserNode(analyserRef.current);
+
     const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
 
     const updateLevel = () => {
@@ -214,6 +219,7 @@ export default function PublicRecordingPage() {
       audioContextRef.current = null;
     }
     setAudioLevel(0);
+    setAnalyserNode(null);
   };
 
   // Start recording
@@ -525,6 +531,15 @@ export default function PublicRecordingPage() {
               <div className="h-6 w-6 animate-pulse rounded-full bg-red-500" />
             </div>
           )}
+        </div>
+
+        {/* Audio visualization */}
+        <div className="mb-6 h-20 w-72">
+          <AudioVisualizer
+            analyser={analyserNode}
+            isActive={recordingState === 'recording'}
+            variant="dark"
+          />
         </div>
 
         {/* Timer */}

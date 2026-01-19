@@ -3,11 +3,10 @@
 import type { AudioInputMode } from './AudioInputSelector';
 import type { SessionFormData } from './types';
 import { Calendar, Check, Clock, Cloud, Loader2, Mic, Music, Upload, X } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { VoiceRecorder } from '@/components/sessions/VoiceRecorder';
 import { useAuth } from '@/contexts/AuthContext';
 import { AudioInputSelector } from './AudioInputSelector';
-import { RecordingLinkGenerator } from './RecordingLinkGenerator';
 
 type ExistingRecording = {
   id: string;
@@ -27,7 +26,7 @@ type UploadFileStepProps = {
   formData?: SessionFormData;
 };
 
-export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProceedRef, formData }: UploadFileStepProps) {
+export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProceedRef, formData: _formData }: UploadFileStepProps) {
   const { user } = useAuth();
   const [inputMode, setInputMode] = useState<AudioInputMode>('upload');
   const [dragActive, setDragActive] = useState(false);
@@ -35,13 +34,6 @@ export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProc
   const [uploadedUrl, setUploadedUrl] = useState<string>(''); // Presigned URL for preview
   const [uploadedPath, setUploadedPath] = useState<string>(''); // Permanent GCS path to save in DB
   const [uploading, setUploading] = useState(false);
-
-  // Recording state
-  const [recordingId, setRecordingId] = useState<string | null>(null);
-  const [recordingComplete, setRecordingComplete] = useState(false);
-
-  // Link state
-  const [linkCreated, setLinkCreated] = useState(false);
 
   // Select recording state
   const [existingRecordings, setExistingRecordings] = useState<ExistingRecording[]>([]);
@@ -263,15 +255,6 @@ export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProc
     setUploadedPath('');
   };
 
-  const handleRecordingComplete = (id: string) => {
-    setRecordingId(id);
-    setRecordingComplete(true);
-  };
-
-  const handleLinkCreated = (_linkId: string, _token: string) => {
-    setLinkCreated(true);
-  };
-
   // Fetch existing recordings for select mode
   const fetchExistingRecordings = async () => {
     if (!user) return;
@@ -326,14 +309,10 @@ export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProc
   const handleNext = () => {
     if (inputMode === 'upload' && uploadedFile && uploadedUrl && uploadedPath) {
       onNext(uploadedFile, uploadedUrl, uploadedPath);
-    } else if (inputMode === 'record' && recordingId && recordingComplete) {
-      // For recordings, we pass the recording ID and fetch the audio URL later
-      onNext(null, '', '', recordingId);
     } else if (inputMode === 'select' && selectedRecordingId) {
       // For selecting existing recordings, pass the recording ID
       onNext(null, '', '', selectedRecordingId);
     }
-    // Link mode doesn't proceed to next step - user goes to recordings list later
   };
 
   // Update parent's proceed ref and ready state
@@ -343,28 +322,18 @@ export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProc
     let isReady = false;
     if (inputMode === 'upload') {
       isReady = !!uploadedFile && !!uploadedUrl && !!uploadedPath;
-    } else if (inputMode === 'record') {
-      isReady = !!recordingId && recordingComplete;
     } else if (inputMode === 'select') {
       isReady = !!selectedRecordingId;
     }
-    // Link mode is never "ready" in the traditional sense
 
     setStepReady(isReady);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uploadedFile, uploadedUrl, uploadedPath, recordingId, recordingComplete, selectedRecordingId, inputMode]);
+  }, [uploadedFile, uploadedUrl, uploadedPath, selectedRecordingId, inputMode]);
 
   // Reset state when mode changes
   useEffect(() => {
     if (inputMode !== 'upload') {
       handleRemoveFile();
-    }
-    if (inputMode !== 'record') {
-      setRecordingId(null);
-      setRecordingComplete(false);
-    }
-    if (inputMode !== 'link') {
-      setLinkCreated(false);
     }
     if (inputMode !== 'select') {
       setSelectedRecordingId(null);
@@ -386,7 +355,7 @@ export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProc
       <div className="mb-8 text-center">
         <h2 className="text-2xl font-bold text-gray-900">Add Session Audio</h2>
         <p className="mt-2 text-sm text-gray-500">
-          Upload a file, record directly, or generate a link for mobile recording
+          Upload an audio file or select from your existing recordings
         </p>
       </div>
 
@@ -517,16 +486,6 @@ export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProc
           </div>
         )}
 
-        {/* Record Mode */}
-        {inputMode === 'record' && (
-          <div className="rounded-2xl border-2 border-purple-200 bg-purple-50" style={{ minHeight: '320px' }}>
-            <VoiceRecorder
-              onRecordingComplete={handleRecordingComplete}
-              onError={error => alert(error.message)}
-            />
-          </div>
-        )}
-
         {/* Select Recording Mode */}
         {inputMode === 'select' && (
           <div className="rounded-2xl border-2 border-purple-200 bg-purple-50 p-6" style={{ minHeight: '320px' }}>
@@ -540,8 +499,14 @@ export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProc
                 <Mic className="mb-4 h-12 w-12 text-gray-400" />
                 <p className="text-gray-500">No recordings available</p>
                 <p className="mt-1 text-sm text-gray-400">
-                  Record audio first using the "Record" tab or create a shareable link
+                  Create a recording first, then come back to select it
                 </p>
+                <Link
+                  href="/sessions/recordings"
+                  className="mt-4 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+                >
+                  Go to Recordings
+                </Link>
               </div>
             ) : (
               <div className="space-y-3">
@@ -591,36 +556,16 @@ export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProc
                     </button>
                   ))}
                 </div>
+                <div className="mt-4 text-center">
+                  <Link
+                    href="/sessions/recordings"
+                    className="text-sm text-purple-600 hover:underline"
+                  >
+                    + Create New Recording
+                  </Link>
+                </div>
               </div>
             )}
-          </div>
-        )}
-
-        {/* Link Mode */}
-        {inputMode === 'link' && (
-          <div className="rounded-2xl border-2 border-purple-200 bg-purple-50" style={{ minHeight: '320px' }}>
-            <RecordingLinkGenerator
-              formData={formData || { title: '', sessionDate: '', description: '', patientIds: [], audioFile: null }}
-              onLinkCreated={handleLinkCreated}
-              onError={error => alert(error.message)}
-            />
-          </div>
-        )}
-
-        {/* Info text for link mode */}
-        {inputMode === 'link' && linkCreated && (
-          <div className="mt-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-700">
-            <p>
-              <strong>Note:</strong>
-              {' '}
-              After the recording is submitted via the link, you can find it in
-              {' '}
-              <a href="/sessions/recordings" className="font-medium underline">
-                Sessions → Recordings
-              </a>
-              {' '}
-              and create a session from there.
-            </p>
           </div>
         )}
       </div>

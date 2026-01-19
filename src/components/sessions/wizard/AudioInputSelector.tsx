@@ -1,8 +1,8 @@
 'use client';
 
-import { FolderOpen, Link2, Mic, Upload } from 'lucide-react';
+import { FolderOpen, Upload } from 'lucide-react';
 
-export type AudioInputMode = 'upload' | 'record' | 'select' | 'link';
+export type AudioInputMode = 'upload' | 'select';
 
 type AudioInputSelectorProps = {
   selectedMode: AudioInputMode;
@@ -13,27 +13,15 @@ type AudioInputSelectorProps = {
 const MODES = [
   {
     id: 'upload' as const,
-    label: 'Upload',
+    label: 'Upload Recording',
     icon: Upload,
     description: 'Upload an existing audio file',
-  },
-  {
-    id: 'record' as const,
-    label: 'Record',
-    icon: Mic,
-    description: 'Record directly in browser',
   },
   {
     id: 'select' as const,
     label: 'Select Recording',
     icon: FolderOpen,
     description: 'Choose from existing recordings',
-  },
-  {
-    id: 'link' as const,
-    label: 'Share Link',
-    icon: Link2,
-    description: 'Generate a link for mobile recording',
   },
 ];
 
