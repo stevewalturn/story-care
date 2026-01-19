@@ -1,6 +1,6 @@
 'use client';
 
-import { Calendar, Clock, ExternalLink, Filter, Link2, Loader2, Mic, Music, Play, Plus, Trash2 } from 'lucide-react';
+import { Calendar, Clock, ExternalLink, Filter, Link2, Loader2, Mic, Music, Play, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
@@ -226,9 +226,9 @@ export default function RecordingsPage() {
             Manage voice recordings and shareable recording links
           </p>
         </div>
-        <Button variant="primary" onClick={() => router.push('/sessions/new')}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Session
+        <Button variant="primary" onClick={() => router.push('/sessions/recordings/new')}>
+          <Mic className="mr-2 h-4 w-4" />
+          New Recording
         </Button>
       </div>
 
@@ -276,7 +276,7 @@ export default function RecordingsPage() {
         <select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
-          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
         >
           <option value="all">All Statuses</option>
           {activeTab === 'recordings'
@@ -310,7 +310,7 @@ export default function RecordingsPage() {
                   <Mic className="mx-auto mb-4 h-12 w-12 text-gray-400" />
                   <p className="text-gray-500">No recordings found</p>
                   <p className="mt-1 text-sm text-gray-400">
-                    Create a new session to start recording
+                    Click "New Recording" to start recording
                   </p>
                 </div>
               )
@@ -466,7 +466,7 @@ export default function RecordingsPage() {
 
                         {/* Show recording info if completed */}
                         {link.recording && (
-                          <div className="ml-13 mt-2 rounded-lg bg-gray-50 p-2 text-sm">
+                          <div className="mt-2 ml-13 rounded-lg bg-gray-50 p-2 text-sm">
                             <span className="text-gray-500">Recording: </span>
                             <span className="font-medium">
                               {formatDuration(link.recording.totalDurationSeconds)}

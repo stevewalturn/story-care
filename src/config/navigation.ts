@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   Library,
   MessageSquare,
+  Mic,
   Settings,
   Sparkles,
   Users,
@@ -166,6 +167,12 @@ export const navigationConfig: NavigationConfig = {
       href: '/sessions',
       icon: Folder,
       description: 'Session recordings and transcripts',
+    },
+    {
+      name: 'Recordings',
+      href: '/sessions/recordings',
+      icon: Mic,
+      description: 'Manage voice recordings and shareable links',
     },
     {
       name: 'Assets',

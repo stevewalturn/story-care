@@ -1,7 +1,7 @@
 'use client';
 
 import type { TherapeuticDomain } from '@/models/Schema';
-import { Check, ChevronDown, MessageCircle, Plus, Search, SlidersHorizontal, Users } from 'lucide-react';
+import { Check, ChevronDown, MessageCircle, Mic, Plus, Search, SlidersHorizontal, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { GroupDetailView } from '@/components/sessions/GroupDetailView';
@@ -423,13 +423,22 @@ export default function SessionsPage() {
               Review therapy sessions with transcripts, notes, and audio uploads.
             </p>
           </div>
-          <Button
-            variant="primary"
-            onClick={() => handleNewSession()}
-          >
-            <Plus className="mr-2 h-5 w-5" />
-            New Session
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => router.push('/sessions/recordings/new')}
+            >
+              <Mic className="mr-2 h-5 w-5" />
+              Record
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => handleNewSession()}
+            >
+              <Plus className="mr-2 h-5 w-5" />
+              New Session
+            </Button>
+          </div>
         </div>
 
         {/* Recent Sessions Section */}

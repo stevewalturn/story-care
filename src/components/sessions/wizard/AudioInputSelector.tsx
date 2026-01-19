@@ -1,8 +1,8 @@
 'use client';
 
-import { Link2, Mic, Upload } from 'lucide-react';
+import { FolderOpen, Link2, Mic, Upload } from 'lucide-react';
 
-export type AudioInputMode = 'upload' | 'record' | 'link';
+export type AudioInputMode = 'upload' | 'record' | 'select' | 'link';
 
 type AudioInputSelectorProps = {
   selectedMode: AudioInputMode;
@@ -13,7 +13,7 @@ type AudioInputSelectorProps = {
 const MODES = [
   {
     id: 'upload' as const,
-    label: 'Upload File',
+    label: 'Upload',
     icon: Upload,
     description: 'Upload an existing audio file',
   },
@@ -22,6 +22,12 @@ const MODES = [
     label: 'Record',
     icon: Mic,
     description: 'Record directly in browser',
+  },
+  {
+    id: 'select' as const,
+    label: 'Select Recording',
+    icon: FolderOpen,
+    description: 'Choose from existing recordings',
   },
   {
     id: 'link' as const,
@@ -52,10 +58,10 @@ export function AudioInputSelector({
               className={`
                 flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition-all
                 ${
-                  isSelected
-                    ? 'bg-white text-purple-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }
+            isSelected
+              ? 'bg-white text-purple-700 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+            }
                 ${disabled ? 'cursor-not-allowed opacity-50' : ''}
               `}
             >

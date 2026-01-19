@@ -2,12 +2,22 @@
 
 import type { AudioInputMode } from './AudioInputSelector';
 import type { SessionFormData } from './types';
-import { Cloud, Upload, X } from 'lucide-react';
+import { Calendar, Check, Clock, Cloud, Loader2, Mic, Music, Upload, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { VoiceRecorder } from '@/components/sessions/VoiceRecorder';
 import { useAuth } from '@/contexts/AuthContext';
 import { AudioInputSelector } from './AudioInputSelector';
 import { RecordingLinkGenerator } from './RecordingLinkGenerator';
+
+type ExistingRecording = {
+  id: string;
+  title: string | null;
+  recordedAt: string | null;
+  totalDurationSeconds: number | null;
+  totalFileSizeBytes: number | null;
+  status: 'recording' | 'uploading' | 'completed' | 'failed' | 'used';
+  createdAt: string;
+};
 
 type UploadFileStepProps = {
   onNext: (file: File | null, url: string, path: string, recordingId?: string) => void;
@@ -32,6 +42,11 @@ export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProc
 
   // Link state
   const [linkCreated, setLinkCreated] = useState(false);
+
+  // Select recording state
+  const [existingRecordings, setExistingRecordings] = useState<ExistingRecording[]>([]);
+  const [loadingRecordings, setLoadingRecordings] = useState(false);
+  const [selectedRecordingId, setSelectedRecordingId] = useState<string | null>(null);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -257,12 +272,66 @@ export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProc
     setLinkCreated(true);
   };
 
+  // Fetch existing recordings for select mode
+  const fetchExistingRecordings = async () => {
+    if (!user) return;
+
+    setLoadingRecordings(true);
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/recordings?status=completed', {
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Filter to only show completed recordings that haven't been used
+        const available = data.recordings.filter(
+          (r: ExistingRecording) => r.status === 'completed',
+        );
+        setExistingRecordings(available);
+      }
+    } catch (error) {
+      console.error('Failed to fetch recordings:', error);
+    } finally {
+      setLoadingRecordings(false);
+    }
+  };
+
+  // Format duration
+  const formatDuration = (seconds: number | null): string => {
+    if (!seconds) return '--:--';
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Format date
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  };
+
   const handleNext = () => {
     if (inputMode === 'upload' && uploadedFile && uploadedUrl && uploadedPath) {
       onNext(uploadedFile, uploadedUrl, uploadedPath);
     } else if (inputMode === 'record' && recordingId && recordingComplete) {
       // For recordings, we pass the recording ID and fetch the audio URL later
       onNext(null, '', '', recordingId);
+    } else if (inputMode === 'select' && selectedRecordingId) {
+      // For selecting existing recordings, pass the recording ID
+      onNext(null, '', '', selectedRecordingId);
     }
     // Link mode doesn't proceed to next step - user goes to recordings list later
   };
@@ -276,12 +345,14 @@ export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProc
       isReady = !!uploadedFile && !!uploadedUrl && !!uploadedPath;
     } else if (inputMode === 'record') {
       isReady = !!recordingId && recordingComplete;
+    } else if (inputMode === 'select') {
+      isReady = !!selectedRecordingId;
     }
     // Link mode is never "ready" in the traditional sense
 
     setStepReady(isReady);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uploadedFile, uploadedUrl, uploadedPath, recordingId, recordingComplete, inputMode]);
+  }, [uploadedFile, uploadedUrl, uploadedPath, recordingId, recordingComplete, selectedRecordingId, inputMode]);
 
   // Reset state when mode changes
   useEffect(() => {
@@ -294,6 +365,13 @@ export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProc
     }
     if (inputMode !== 'link') {
       setLinkCreated(false);
+    }
+    if (inputMode !== 'select') {
+      setSelectedRecordingId(null);
+    }
+    // Fetch recordings when select mode is activated
+    if (inputMode === 'select') {
+      fetchExistingRecordings();
     }
   }, [inputMode]);
 
@@ -446,6 +524,75 @@ export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProc
               onRecordingComplete={handleRecordingComplete}
               onError={error => alert(error.message)}
             />
+          </div>
+        )}
+
+        {/* Select Recording Mode */}
+        {inputMode === 'select' && (
+          <div className="rounded-2xl border-2 border-purple-200 bg-purple-50 p-6" style={{ minHeight: '320px' }}>
+            {loadingRecordings ? (
+              <div className="flex h-full flex-col items-center justify-center py-12">
+                <Loader2 className="mb-4 h-8 w-8 animate-spin text-purple-600" />
+                <p className="text-gray-500">Loading recordings...</p>
+              </div>
+            ) : existingRecordings.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center py-12">
+                <Mic className="mb-4 h-12 w-12 text-gray-400" />
+                <p className="text-gray-500">No recordings available</p>
+                <p className="mt-1 text-sm text-gray-400">
+                  Record audio first using the "Record" tab or create a shareable link
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="mb-4 text-sm text-gray-600">
+                  Select a recording to use for this session:
+                </p>
+                <div className="max-h-64 space-y-2 overflow-y-auto">
+                  {existingRecordings.map(recording => (
+                    <button
+                      key={recording.id}
+                      type="button"
+                      onClick={() => setSelectedRecordingId(recording.id)}
+                      className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-all ${
+                        selectedRecordingId === recording.id
+                          ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200'
+                          : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50'
+                      }`}
+                    >
+                      {/* Icon */}
+                      <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${
+                        selectedRecordingId === recording.id ? 'bg-purple-600' : 'bg-purple-100'
+                      }`}
+                      >
+                        {selectedRecordingId === recording.id ? (
+                          <Check className="h-5 w-5 text-white" />
+                        ) : (
+                          <Music className="h-5 w-5 text-purple-600" />
+                        )}
+                      </div>
+
+                      {/* Recording info */}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-gray-900">
+                          {recording.title || 'Untitled Recording'}
+                        </p>
+                        <div className="flex items-center gap-3 text-sm text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3.5 w-3.5" />
+                            {formatDuration(recording.totalDurationSeconds)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {formatDate(recording.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
