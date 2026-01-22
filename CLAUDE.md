@@ -16,7 +16,7 @@ This document provides guidance for AI assistants (like Claude) working on this 
 - **Session Management**: Upload therapy session audio, transcribe with Deepgram
 - **Speaker Diarization**: Automatically identify and label speakers
 - **AI-Powered Analysis**: GPT-4 assistant for therapeutic insights
-- **Media Generation**: Create images (DALL-E, Stability AI, Flux, Vertex AI), videos, and music (Suno AI)
+- **Media Generation**: Create images (Vertex AI Imagen), videos, and music (Suno AI)
 - **Story Pages**: Build interactive patient-facing content with reflections and surveys
 - **Dashboard**: Track patient engagement and therapeutic outcomes
 - **Treatment Modules**: Pre-built therapeutic modules and templates
@@ -51,14 +51,15 @@ This document provides guidance for AI assistants (like Claude) working on this 
   - Presigned URLs for secure file access
 
 ### Authentication
-- **Auth Provider**: Firebase Authentication (Google Identity Platform)
+- **Auth Provider**: Google Identity Platform (upgraded Firebase Auth)
   - Supports passwordless authentication, magic links, MFA
   - Social auth: Google, Facebook, Twitter, GitHub, Apple
   - Email/Password, Phone authentication
   - User management via Firebase Admin SDK
   - Session management with JWT tokens (24-hour expiration)
   - HIPAA-compliant with proper BAA (Business Associate Agreement)
-- **Implementation**: Firebase JS SDK + Next.js
+  - Enterprise features: SAML/OIDC SSO, multi-tenancy support, audit logging
+- **Implementation**: Firebase JS SDK + Next.js (Identity Platform compatible)
   - Client-side: Firebase JS SDK (`firebase/auth`)
   - Server-side: Firebase Admin SDK (`firebase-admin/auth`)
   - **Custom user role system**: Roles stored in database, NOT Firebase claims
@@ -75,7 +76,7 @@ This document provides guidance for AI assistants (like Claude) working on this 
   - Pre-recorded audio processing with speaker diarization
 - **AI Models**: Multi-provider abstraction layer
   - **Text Generation**: OpenAI (GPT-4, GPT-3.5), Google Gemini
-  - **Image Generation**: OpenAI (DALL-E), Stability AI (SD 3.5, SDXL), FAL.AI (Flux Pro, Flux Dev), Google Vertex AI (Imagen 3, Imagen 2), Replicate
+  - **Image Generation**: Google Vertex AI (Imagen 3, Imagen 2)
   - **Music Generation**: Suno AI
   - **Video Processing**: Cloud Run jobs for FFmpeg operations
   - Provider abstraction in `src/libs/providers/`
@@ -125,10 +126,6 @@ When implementing features, consider these scaling targets:
 - **Code Coverage**: Codecov
 
 ### Monitoring & Observability
-- **Error Tracking**: Sentry (with Spotlight for local dev)
-- **Logging**: LogTape + Better Stack
-- **Analytics**: PostHog
-- **Monitoring**: Checkly (synthetic monitoring)
 - **Security**: Arcjet Shield WAF
 - **Audit Logging**: Custom HIPAA audit trail in `src/services/AuditService.ts`
 
@@ -237,10 +234,7 @@ src/
 │   └── providers/          # AI provider implementations
 │       ├── OpenAIProvider.ts
 │       ├── GeminiProvider.ts
-│       ├── StabilityProvider.ts
-│       ├── FALProvider.ts
-│       ├── VertexProvider.ts
-│       └── ReplicateProvider.ts
+│       └── VertexProvider.ts
 ├── models/                  # Database schemas (DrizzleORM)
 │   └── Schema.ts           # All tables in ONE file (58KB, 25+ enums)
 │                           # Tables: users, organizations, sessions, transcripts,
@@ -460,36 +454,12 @@ NEXT_PUBLIC_APP_NAME=StoryCare
 
 ### Production Only
 ```bash
-# Sentry Error Monitoring
-NEXT_PUBLIC_SENTRY_DSN=https://...
-SENTRY_ORGANIZATION=...
-SENTRY_PROJECT=...
-SENTRY_AUTH_TOKEN=...
-
-# Logging
-NEXT_PUBLIC_BETTER_STACK_SOURCE_TOKEN=...
-NEXT_PUBLIC_BETTER_STACK_INGESTING_HOST=...
-
-# Analytics
-NEXT_PUBLIC_POSTHOG_KEY=...
-NEXT_PUBLIC_POSTHOG_HOST=...
-
-# Code Coverage
-CODECOV_TOKEN=...
-
-# Monitoring
-CHECKLY_API_KEY=...
-CHECKLY_ACCOUNT_ID=...
-
 # AI Services
 DEEPGRAM_API_KEY=...
 OPENAI_API_KEY=...
 
-# Image Generation APIs
-STABILITY_API_KEY=...           # Stability AI (SD 3.5, SDXL)
-FAL_API_KEY=...                 # FAL.AI (Flux Pro, Flux Dev, SDXL)
+# Image Generation
 VERTEX_API_KEY=...              # Google Vertex AI (Imagen 3, Imagen 2)
-REPLICATE_API_KEY=...           # Replicate
 
 # Music Generation
 SUNO_API_KEY=...                # Suno AI for music generation
@@ -663,14 +633,13 @@ Located in `src/libs/Arcjet.ts`:
 5. Standalone Docker output for Cloud Run compatibility
 
 ### Required Environment Variables in Vercel
-- All variables from `.env.production` (see .env.example for full list - 77 vars)
 - `DATABASE_URL` pointing to Neon PostgreSQL
-- Firebase Authentication variables (both client and server)
+- Google Identity Platform variables (both client and server)
 - `FIREBASE_SERVICE_ACCOUNT_KEY` for Firebase Admin SDK
-- `SENTRY_AUTH_TOKEN` for error monitoring
 - `ARCJET_KEY` for security
 - `DEEPGRAM_API_KEY` for transcription
 - `OPENAI_API_KEY` for AI features
+- `VERTEX_API_KEY` for image generation
 - `GCS_*` variables for media storage
 - `PAUBOX_*` variables for HIPAA-compliant email
 
@@ -680,13 +649,12 @@ Located in `src/libs/Arcjet.ts`:
 - [ ] No linting errors
 - [ ] Environment variables configured in Vercel
 - [ ] Database migrations ready
-- [ ] Firebase project created and configured
+- [ ] Google Identity Platform project created and configured
 - [ ] Firebase Admin SDK credentials set
-- [ ] Sentry project created
 - [ ] Arcjet configured
-- [ ] PostHog analytics set up
 - [ ] Deepgram API key configured
 - [ ] OpenAI API key configured
+- [ ] Vertex AI API key configured
 - [ ] Google Cloud Storage bucket created
 - [ ] Paubox account created for HIPAA-compliant email
 - [ ] Business Associate Agreements (BAA) signed for HIPAA compliance
@@ -700,8 +668,8 @@ Located in `src/libs/Arcjet.ts`:
 - Connection pooling: Max 5 (dev), 10 (prod), 30s idle timeout
 
 ### Authentication Issues
-- Verify Firebase configuration in `.env.local` or Vercel dashboard
-- Check Firebase Console for project status and authentication settings
+- Verify Identity Platform configuration in `.env.local` or Vercel dashboard
+- Check Google Cloud Console → Identity Platform for project status
 - Ensure Firebase Admin SDK credentials are valid (service account JSON)
 - Review middleware configuration in `src/middleware.ts`
 - **Custom roles**: Verify user role is correctly set in database
@@ -709,22 +677,20 @@ Located in `src/libs/Arcjet.ts`:
 - Verify automatic user activation is working for invited users
 - Check browser console for Firebase SDK errors
 - Ensure auth domain is properly configured (`your-project.firebaseapp.com`)
-- For production: Verify custom domain is added to Firebase Auth authorized domains
+- For production: Verify custom domain is added to Identity Platform authorized domains
 
 ### Build Failures
 - Run `npm run build-local` to test locally
 - Check TypeScript errors: `npm run check:types`
-- Review Sentry for runtime errors
 - Verify all environment variables are set
 
 ### Performance Issues
 - Use Next.js bundle analyzer: `npm run build-stats`
 - Check database query performance in Drizzle Studio
-- Review PostHog analytics for slow pages
 - Consider edge caching strategies
 - Monitor connection pool usage
 
-## Firebase Authentication Implementation
+## Google Identity Platform Implementation
 
 ### Client-Side Authentication (Browser)
 ```typescript
@@ -902,11 +868,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export const useAuth = () => useContext(AuthContext);
 ```
 
-### HIPAA Compliance with Firebase
+### HIPAA Compliance with Identity Platform
 
 **Important Considerations:**
 1. **Sign BAA with Google**: Required for HIPAA compliance
-   - Available for Firebase projects on Blaze (pay-as-you-go) plan
+   - Identity Platform is HIPAA-eligible with signed BAA
    - Must be requested through Google Cloud sales
 
 2. **Data Storage**:
@@ -946,11 +912,11 @@ const result = await generateText({
   prompt: 'Your prompt here',
 });
 
-// Image generation (supports OpenAI, Stability, FAL, Vertex, Replicate)
+// Image generation (Vertex AI)
 const imageUrl = await generateImage({
-  provider: 'stability', // or 'openai', 'fal', 'vertex', 'replicate'
+  provider: 'vertex',
   prompt: 'Your image prompt',
-  model: 'sd-3.5-large',
+  model: 'imagen-3',
 });
 ```
 
@@ -1000,12 +966,9 @@ export async function POST(request: Request) {
 - Use rate limiting with Arcjet
 - Store results in database to avoid re-processing (transcripts, media)
 - Consider tiered models (GPT-3.5 vs GPT-4)
-- Monitor usage with PostHog events
-- Use provider abstraction to easily switch to cheaper providers
 
 ### Error Handling
 - Wrap AI calls in try-catch
-- Log errors to Sentry with context
 - Implement retry logic for transient failures
 - Provide meaningful error messages to users
 
@@ -1015,22 +978,18 @@ export async function POST(request: Request) {
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Tailwind CSS](https://tailwindcss.com/docs)
 - [DrizzleORM](https://orm.drizzle.team/docs/overview)
-- [Firebase Authentication](https://firebase.google.com/docs/auth)
+- [Google Identity Platform](https://cloud.google.com/identity-platform/docs)
 - [Firebase Admin SDK](https://firebase.google.com/docs/admin/setup)
 - [Arcjet Security](https://docs.arcjet.com/)
 
 ### Monitoring & Tools
 - [Vercel Dashboard](https://vercel.com/dashboard)
-- [Firebase Console](https://console.firebase.google.com/)
-- [Sentry Dashboard](https://sentry.io/)
-- [PostHog Analytics](https://posthog.com/)
+- [Google Cloud Console](https://console.cloud.google.com/) (Identity Platform, GCS, Cloud Run)
 - [Neon Console](https://console.neon.tech/)
-- [Google Cloud Console](https://console.cloud.google.com/) (for GCS and Cloud Run)
 
 ### AI Services
 - [Deepgram Docs](https://developers.deepgram.com/)
 - [OpenAI API Reference](https://platform.openai.com/docs/api-reference)
-- [Stability AI Docs](https://platform.stability.ai/docs)
 - [Google Vertex AI](https://cloud.google.com/vertex-ai/docs)
 - [Suno AI Docs](https://suno.ai/docs)
 
@@ -1065,15 +1024,11 @@ export async function POST(request: Request) {
 ### Regular Tasks
 - Update dependencies monthly (automated with Dependabot)
 - Review and merge CodeRabbit suggestions
-- Monitor Sentry for new errors
-- Check Checkly for uptime issues
-- Review PostHog analytics for usage patterns
 - Review HIPAA audit logs
+- Monitor Cloud Run jobs for video processing
 
 ### Scaling Considerations
 - Monitor database performance (queries, connections)
-- Track API response times with Better Stack
-- Set up alerts for error rates in Sentry
 - Review Vercel analytics for traffic patterns
 - Plan for connection pooling at scale (already configured)
 - Monitor Cloud Run jobs for video processing
@@ -1095,11 +1050,9 @@ export async function POST(request: Request) {
 ### HIPAA Compliance Checklist
 - [ ] Sign Business Associate Agreement (BAA) with all third-party services:
   - [ ] Neon (database)
-  - [ ] Google Cloud Platform (storage and Cloud Run)
-  - [ ] Firebase/Google (authentication)
+  - [ ] Google Cloud Platform (Identity Platform, GCS, Cloud Run)
   - [ ] Deepgram (transcription)
   - [ ] Vercel (hosting)
-  - [ ] Sentry (error tracking)
   - [ ] Paubox (email)
 - [ ] Enable audit logging for all PHI access (already implemented in `audit_logs`)
 - [ ] Implement automatic session timeout (24 hours - configured)
@@ -1117,8 +1070,6 @@ export async function POST(request: Request) {
 - Optimize image sizes before uploading to GCS
 - Use Next.js Image component for automatic optimization
 - Implement edge caching for public story pages
-- Monitor PostHog events to track feature usage and costs
-- Use provider abstraction to switch to cheaper AI providers when appropriate
 
 ### Video Processing with Cloud Run
 - Video transcoding jobs run on Google Cloud Run
@@ -1130,7 +1081,7 @@ export async function POST(request: Request) {
 
 ---
 
-**Last Updated**: 2025-12-28
+**Last Updated**: 2026-01-22
 **Maintained By**: Development Team
 **Product**: StoryCare Digital Therapeutic Platform
 **Questions?**: Refer to README.md for setup guides
