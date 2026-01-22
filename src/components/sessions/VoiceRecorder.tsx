@@ -524,9 +524,25 @@ export function VoiceRecorder({
     // Stop visualization
     stopVisualization();
 
-    // Stop MediaRecorder
+    // Wait for MediaRecorder to stop and collect final data
+    // This fixes a race condition where stop() triggers ondataavailable asynchronously,
+    // but uploadCurrentChunk was being called before the data was available
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
+      // Request any buffered data before stopping
+      mediaRecorderRef.current.requestData();
+
+      // Wait for the onstop event to fire (which means ondataavailable has completed)
+      await new Promise<void>((resolve) => {
+        const recorder = mediaRecorderRef.current!;
+        const originalOnStop = recorder.onstop;
+        recorder.onstop = (event) => {
+          if (originalOnStop) {
+            originalOnStop.call(recorder, event);
+          }
+          resolve();
+        };
+        recorder.stop();
+      });
     }
 
     // Stop all tracks
@@ -537,7 +553,7 @@ export function VoiceRecorder({
     setRecordingState('uploading');
 
     try {
-      // Upload final chunk
+      // Upload final chunk (now chunksRef.current has data from ondataavailable)
       await uploadCurrentChunk(true);
 
       // Finalize recording
