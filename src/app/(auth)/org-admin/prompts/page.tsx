@@ -6,9 +6,8 @@
  */
 
 import type { PromptTemplate } from '@/models/Schema';
-import { AlertCircle, Edit, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
+import { AlertCircle, Edit, Search, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { CreatePromptModal } from '@/components/prompts/CreatePromptModal';
 import { EditPromptModal } from '@/components/prompts/EditPromptModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
@@ -29,7 +28,6 @@ export default function OrgAdminPromptsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingPromptId, setEditingPromptId] = useState<string | null>(null);
 
@@ -59,12 +57,18 @@ export default function OrgAdminPromptsPage() {
     fetchPrompts();
   }, [activeTab, user]);
 
-  // Filter prompts
+  // Filter prompts by scope (based on active tab) and search/category
   const filteredPrompts = prompts.filter((prompt) => {
+    // Filter by scope based on active tab
+    const matchesScope = activeTab === 'usage'
+      ? true // Usage tab shows all prompts
+      : prompt.scope === activeTab;
+
     const matchesSearch = prompt.name.toLowerCase().includes(searchQuery.toLowerCase())
-      || prompt.promptText.toLowerCase().includes(searchQuery.toLowerCase());
+      || (prompt.promptText?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
     const matchesCategory = selectedCategory === 'all' || prompt.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+
+    return matchesScope && matchesSearch && matchesCategory;
   });
 
   // Get unique categories
@@ -73,25 +77,6 @@ export default function OrgAdminPromptsPage() {
   function handleEditPrompt(promptId: string) {
     setEditingPromptId(promptId);
     setShowEditModal(true);
-  }
-
-  async function handleDeletePrompt(promptId: string) {
-    if (!confirm('Are you sure you want to delete this prompt?')) return;
-
-    try {
-      const response = await authenticatedFetch(`/api/org-admin/prompts/${promptId}`, user, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete prompt');
-      }
-
-      // Remove from local state
-      setPrompts(prev => prev.filter(p => p.id !== promptId));
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete prompt');
-    }
   }
 
   return (
@@ -174,17 +159,6 @@ export default function OrgAdminPromptsPage() {
             ))}
           </select>
 
-          {/* Create Button (only for organization tab) */}
-          {activeTab === 'organization' && (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
-              type="button"
-            >
-              <Plus className="h-4 w-4" />
-              Create Prompt
-            </button>
-          )}
         </div>
 
         {/* Content */}
@@ -206,9 +180,7 @@ export default function OrgAdminPromptsPage() {
             <p className="text-sm text-gray-600">
               {searchQuery || selectedCategory !== 'all'
                 ? 'Try adjusting your filters'
-                : activeTab === 'organization'
-                  ? 'Create your first organization prompt'
-                  : 'No prompts available'}
+                : 'No prompts available'}
             </p>
           </div>
         ) : (
@@ -219,24 +191,11 @@ export default function OrgAdminPromptsPage() {
                 prompt={prompt}
                 activeTab={activeTab}
                 onEdit={handleEditPrompt}
-                onDelete={handleDeletePrompt}
               />
             ))}
           </div>
         )}
       </div>
-
-      {/* Create Prompt Modal */}
-      {showCreateModal && (
-        <CreatePromptModal
-          scope="organization"
-          onClose={() => setShowCreateModal(false)}
-          onCreated={() => {
-            setShowCreateModal(false);
-            fetchPrompts();
-          }}
-        />
-      )}
 
       {/* Edit Prompt Modal */}
       {showEditModal && editingPromptId && (
@@ -264,10 +223,9 @@ type PromptCardProps = {
   prompt: PromptWithUsage;
   activeTab: TabType;
   onEdit?: (id: string) => void;
-  onDelete: (id: string) => void;
 };
 
-function PromptCard({ prompt, activeTab, onEdit, onDelete }: PromptCardProps) {
+function PromptCard({ prompt, activeTab, onEdit }: PromptCardProps) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
       {/* Header */}
@@ -317,23 +275,14 @@ function PromptCard({ prompt, activeTab, onEdit, onDelete }: PromptCardProps) {
       {/* Actions */}
       <div className="flex gap-2">
         {activeTab === 'organization' && (
-          <>
-            <button
-              onClick={() => onEdit?.(prompt.id)}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-              type="button"
-            >
-              <Edit className="h-3.5 w-3.5" />
-              Edit
-            </button>
-            <button
-              onClick={() => onDelete(prompt.id)}
-              className="flex items-center justify-center gap-1.5 rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
-              type="button"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </>
+          <button
+            onClick={() => onEdit?.(prompt.id)}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+            type="button"
+          >
+            <Edit className="h-3.5 w-3.5" />
+            Edit
+          </button>
         )}
 
         {activeTab === 'usage' && (

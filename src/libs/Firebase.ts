@@ -2,14 +2,13 @@ import type { FirebaseApp } from 'firebase/app';
 import type { Auth, User } from 'firebase/auth';
 import { getApps, initializeApp } from 'firebase/app';
 import {
-
   createUserWithEmailAndPassword,
   getAuth,
   onAuthStateChanged,
   sendEmailVerification,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
-
 } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -84,6 +83,15 @@ export const logOut = async () => {
 
 export const onAuthChange = (callback: (user: User | null) => void) => {
   return onAuthStateChanged(auth, callback);
+};
+
+export const resetPassword = async (email: string) => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+    return { error: null };
+  } catch (error: any) {
+    return { error: error.code || error.message };
+  }
 };
 
 export { auth };

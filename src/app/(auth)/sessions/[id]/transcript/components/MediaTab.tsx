@@ -948,6 +948,7 @@ export function MediaTab({
         onClose={() => setExtractingMedia(null)}
         video={extractingMedia}
         onExtract={performExtractFrame}
+        user={user}
         onFrameExtracted={(newMedia) => {
           // Add the new media to the list
           setMedia(prev => [newMedia, ...prev]);

@@ -6,8 +6,10 @@
  * Uses async Cloud Run Jobs for FFmpeg processing
  */
 
+import type { User } from 'firebase/auth';
 import { CheckCircle, Image, Loader2, Video, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { Button } from '../ui/Button';
 
 type ExtractLastFrameModalProps = {
@@ -21,7 +23,24 @@ type ExtractLastFrameModalProps = {
   } | null;
   onExtract: () => Promise<any>;
   onFrameExtracted?: (newMedia: any) => void;
+  user: User | null;
 };
+
+// Map backend step descriptions to human-friendly labels
+function getHumanReadableStep(step: string): string {
+  const stepMap: Record<string, string> = {
+    'Initializing frame extraction': 'Starting...',
+    'Downloading video': 'Downloading video...',
+    'Video downloaded': 'Processing video...',
+    'Extracting last frame with FFmpeg': 'Extracting frame...',
+    'Frame extracted': 'Frame extracted...',
+    'Uploading frame to GCS': 'Uploading...',
+    'Frame uploaded': 'Saving to library...',
+    'Creating media record': 'Almost done...',
+    'Frame extraction completed': 'Complete!',
+  };
+  return stepMap[step] || step || 'Processing...';
+}
 
 export function ExtractLastFrameModal({
   isOpen,
@@ -29,11 +48,14 @@ export function ExtractLastFrameModal({
   video,
   onExtract,
   onFrameExtracted,
+  user,
 }: ExtractLastFrameModalProps) {
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractedFrame, setExtractedFrame] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string>('');
+  const [progress, setProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState('');
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup polling on unmount
@@ -63,18 +85,27 @@ export function ExtractLastFrameModal({
 
         const { jobId, mediaId } = result;
 
-        // Poll for job completion (simplified - just need jobId)
+        // Poll for job completion using authenticated fetch
         pollIntervalRef.current = setInterval(async () => {
           try {
-            const statusResponse = await fetch(
+            const statusResponse = await authenticatedFetch(
               `/api/media/${mediaId}/extract-frame/status?jobId=${jobId}`,
+              user,
             );
             const statusData = await statusResponse.json();
+
+            // Update progress tracking
+            const progressValue = statusData.progress || 0;
+            setProgress(progressValue);
+            const stepDescription = getHumanReadableStep(statusData.currentStep || '');
+            setCurrentStep(stepDescription);
 
             if (statusData.status === 'completed') {
               // Job completed - stop polling
               clearInterval(pollIntervalRef.current!);
               pollIntervalRef.current = null;
+              setProgress(100);
+              setCurrentStep('Complete!');
               setIsExtracting(false);
 
               if (statusData.image) {
@@ -93,11 +124,11 @@ export function ExtractLastFrameModal({
               setError(statusData.error || 'Frame extraction failed');
               setIsExtracting(false);
               setStatusMessage('');
+              setProgress(0);
+              setCurrentStep('');
             } else {
-              // Still processing - show progress if available
-              const progressMsg = statusData.currentStep || statusData.message || 'Extracting frame...';
-              const progressPct = statusData.progress ? ` (${statusData.progress}%)` : '';
-              setStatusMessage(`${progressMsg}${progressPct}`);
+              // Still processing - update status message
+              setStatusMessage(stepDescription);
             }
           } catch (pollError) {
             console.error('Error polling for status:', pollError);
@@ -138,6 +169,8 @@ export function ExtractLastFrameModal({
     setError(null);
     setIsExtracting(false);
     setStatusMessage('');
+    setProgress(0);
+    setCurrentStep('');
     onClose();
   };
 
@@ -207,14 +240,30 @@ export function ExtractLastFrameModal({
           )}
 
           {/* Processing State */}
-          {isExtracting && statusMessage && (
+          {isExtracting && (
             <div className="rounded-lg bg-purple-50 px-4 py-3">
               <div className="flex items-center gap-3">
                 <Loader2 className="h-5 w-5 animate-spin text-purple-600" />
-                <div>
-                  <p className="text-sm font-medium text-purple-700">{statusMessage}</p>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-purple-700">
+                    {currentStep || statusMessage || 'Processing...'}
+                  </p>
                   <p className="text-xs text-purple-600">This may take a moment...</p>
                 </div>
+              </div>
+              {/* Progress bar */}
+              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-purple-200">
+                <div
+                  className="h-full bg-purple-600 transition-all duration-300 ease-out"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <div className="mt-2 flex justify-between text-xs text-purple-600">
+                <span>{currentStep || 'Starting...'}</span>
+                <span>
+                  {progress}
+                  %
+                </span>
               </div>
             </div>
           )}

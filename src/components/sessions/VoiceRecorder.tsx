@@ -19,6 +19,17 @@ type VoiceRecorderProps = {
 
 type RecordingState = 'idle' | 'recording' | 'paused' | 'uploading' | 'completed' | 'error';
 
+// Type for persisted recording state (for resume functionality)
+type PersistedRecordingState = {
+  recordingId: string;
+  userId: string;
+  startedAt: string;
+  savedSeconds: number;
+  currentChunkIndex: number;
+};
+
+const RECORDING_STATE_KEY = 'storycare_recording_state';
+
 // Get supported MIME type for the browser
 function getSupportedMimeType(): string {
   const types = [
@@ -41,7 +52,7 @@ function getExtensionForMimeType(mimeType: string): string {
 export function VoiceRecorder({
   onRecordingComplete,
   onChunkUploaded,
-  chunkIntervalMinutes = 10,
+  chunkIntervalMinutes = 5,
   maxDurationSeconds = 10800, // 3 hours
   onError,
   disabled = false,
@@ -56,6 +67,10 @@ export function VoiceRecorder({
   const [savedSeconds, setSavedSeconds] = useState(0);
   const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Resume state (for authenticated recordings)
+  const [pendingResume, setPendingResume] = useState<PersistedRecordingState | null>(null);
+  const [isCheckingResume, setIsCheckingResume] = useState(false);
 
   // Audio visualization
   const [audioLevel, setAudioLevel] = useState(0);
@@ -260,6 +275,48 @@ export function VoiceRecorder({
     return 'Unknown';
   };
 
+  // Save recording state to localStorage (for resume functionality)
+  const saveRecordingState = useCallback((id: string, saved: number, chunkIdx: number) => {
+    if (user && !recordingLinkToken) {
+      try {
+        localStorage.setItem(RECORDING_STATE_KEY, JSON.stringify({
+          recordingId: id,
+          userId: user.uid,
+          startedAt: new Date().toISOString(),
+          savedSeconds: saved,
+          currentChunkIndex: chunkIdx,
+        }));
+      } catch (e) {
+        console.error('Failed to save recording state:', e);
+      }
+    }
+  }, [user, recordingLinkToken]);
+
+  // Clear recording state from localStorage
+  const clearRecordingState = useCallback(() => {
+    try {
+      localStorage.removeItem(RECORDING_STATE_KEY);
+    } catch (e) {
+      console.error('Failed to clear recording state:', e);
+    }
+  }, []);
+
+  // Verify if a recording exists and is resumable
+  const verifyRecording = useCallback(async (id: string): Promise<boolean> => {
+    if (!user) return false;
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch(`/api/recordings/${id}`, {
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      if (!response.ok) return false;
+      const data = await response.json();
+      return data.recording?.status === 'recording';
+    } catch {
+      return false;
+    }
+  }, [user]);
+
   // Start audio visualization
   const startVisualization = (stream: MediaStream) => {
     audioContextRef.current = new AudioContext();
@@ -299,8 +356,8 @@ export function VoiceRecorder({
     setAnalyserNode(null);
   };
 
-  // Start recording
-  const startRecording = async () => {
+  // Start recording (or resume if resumeState is provided)
+  const startRecording = async (resumeState?: PersistedRecordingState) => {
     try {
       setErrorMessage(null);
       setRecordingState('idle');
@@ -316,8 +373,21 @@ export function VoiceRecorder({
 
       streamRef.current = stream;
 
-      // Create recording entry
-      const id = await createRecordingEntry();
+      let id: string;
+      let initialSavedSeconds = 0;
+      let initialChunkIndex = 0;
+
+      if (resumeState) {
+        // Resume mode: use existing recording
+        id = resumeState.recordingId;
+        initialSavedSeconds = resumeState.savedSeconds;
+        initialChunkIndex = resumeState.currentChunkIndex;
+      } else {
+        // New recording: create entry in database
+        id = await createRecordingEntry();
+        // Save initial state to localStorage
+        saveRecordingState(id, 0, 0);
+      }
       setRecordingId(id);
 
       // Determine supported MIME type
@@ -347,10 +417,10 @@ export function VoiceRecorder({
       // Start recording with timeslice for chunking
       mediaRecorder.start(1000); // Collect data every second
 
-      // Start timer
-      setElapsedSeconds(0);
-      setSavedSeconds(0);
-      setCurrentChunkIndex(0);
+      // Start timer (from saved position if resuming)
+      setElapsedSeconds(initialSavedSeconds);
+      setSavedSeconds(initialSavedSeconds);
+      setCurrentChunkIndex(initialChunkIndex);
       timerRef.current = setInterval(() => {
         setElapsedSeconds((prev) => {
           if (prev >= maxDurationSeconds) {
@@ -393,7 +463,13 @@ export function VoiceRecorder({
 
       // Clear chunks and increment index
       chunksRef.current = [];
-      setCurrentChunkIndex(prev => prev + 1);
+      const newChunkIndex = currentChunkIndex + 1;
+      setCurrentChunkIndex(newChunkIndex);
+
+      // Save state to localStorage after successful upload (for resume functionality)
+      if (recordingId && !isFinal) {
+        saveRecordingState(recordingId, elapsedSeconds, newChunkIndex);
+      }
     } catch (error) {
       console.error('Failed to upload chunk:', error);
       // Don't stop recording on chunk upload failure - will retry
@@ -467,6 +543,9 @@ export function VoiceRecorder({
       // Finalize recording
       await finalizeRecording();
 
+      // Clear localStorage state on successful completion
+      clearRecordingState();
+
       setRecordingState('completed');
 
       if (recordingId) {
@@ -479,7 +558,7 @@ export function VoiceRecorder({
       setRecordingState('error');
       onError?.(err);
     }
-  }, [recordingId, elapsedSeconds]);
+  }, [recordingId, elapsedSeconds, clearRecordingState]);
 
   // Toggle playback
   const togglePlayback = () => {
@@ -515,6 +594,49 @@ export function VoiceRecorder({
     }
     setIsPlaying(false);
   };
+
+  // Handle resume incomplete recording
+  const handleResume = async () => {
+    if (!pendingResume) return;
+    setPendingResume(null);
+    await startRecording(pendingResume);
+  };
+
+  // Handle discard incomplete recording
+  const handleDiscard = () => {
+    if (!pendingResume) return;
+    clearRecordingState();
+    setPendingResume(null);
+  };
+
+  // Check for incomplete recording on mount (for resume functionality)
+  useEffect(() => {
+    if (user && !recordingLinkToken && recordingState === 'idle') {
+      setIsCheckingResume(true);
+      try {
+        const saved = localStorage.getItem(RECORDING_STATE_KEY);
+        if (saved) {
+          const state = JSON.parse(saved) as PersistedRecordingState;
+          // Only show resume if it's the same user
+          if (state.userId === user.uid) {
+            // Verify recording still exists and is resumable
+            verifyRecording(state.recordingId).then((isValid) => {
+              if (isValid) {
+                setPendingResume(state);
+              } else {
+                clearRecordingState();
+              }
+              setIsCheckingResume(false);
+            });
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to check for incomplete recording:', e);
+      }
+      setIsCheckingResume(false);
+    }
+  }, [user, recordingLinkToken, recordingState, verifyRecording, clearRecordingState]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -683,11 +805,38 @@ export function VoiceRecorder({
   // Idle state - ready to record
   return (
     <div className="flex flex-col items-center justify-center py-12">
+      {/* Resume prompt for incomplete recording */}
+      {pendingResume && (
+        <div className="mb-6 w-full max-w-sm rounded-lg border border-yellow-300 bg-yellow-50 p-4">
+          <p className="mb-1 text-sm font-medium text-yellow-800">
+            You have an incomplete recording
+          </p>
+          <p className="mb-3 text-xs text-yellow-700">
+            {formatTime(pendingResume.savedSeconds)} saved to cloud
+          </p>
+          <div className="flex gap-2">
+            <Button size="sm" variant="primary" onClick={handleResume}>
+              Resume
+            </Button>
+            <Button size="sm" variant="secondary" onClick={handleDiscard}>
+              Discard
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Loading state while checking for resume */}
+      {isCheckingResume && (
+        <div className="mb-6 text-sm text-gray-500">
+          Checking for incomplete recordings...
+        </div>
+      )}
+
       <button
-        onClick={startRecording}
-        disabled={disabled}
+        onClick={() => startRecording()}
+        disabled={disabled || isCheckingResume || !!pendingResume}
         className={`mb-6 flex h-32 w-32 items-center justify-center rounded-full transition-all ${
-          disabled
+          disabled || isCheckingResume || pendingResume
             ? 'cursor-not-allowed bg-gray-200'
             : 'bg-purple-100 hover:bg-purple-200 hover:scale-105'
         }`}
@@ -695,7 +844,7 @@ export function VoiceRecorder({
       >
         <div
           className={`flex h-24 w-24 items-center justify-center rounded-full ${
-            disabled ? 'bg-gray-400' : 'bg-purple-600'
+            disabled || isCheckingResume || pendingResume ? 'bg-gray-400' : 'bg-purple-600'
           }`}
         >
           <Mic className="h-10 w-10 text-white" />
@@ -703,7 +852,7 @@ export function VoiceRecorder({
       </button>
 
       <p className="mb-2 text-lg font-medium text-gray-900">
-        {disabled ? 'Recording Disabled' : 'Tap to Start Recording'}
+        {disabled ? 'Recording Disabled' : pendingResume ? 'Resume or start new' : 'Tap to Start Recording'}
       </p>
       <p className="text-sm text-gray-500">
         Maximum duration:
