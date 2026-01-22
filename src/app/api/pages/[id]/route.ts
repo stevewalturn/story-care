@@ -167,7 +167,42 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     // Update blocks if provided
     if (blocks && Array.isArray(blocks)) {
-      // Delete existing blocks (cascade deletes reflection questions)
+      // Get existing block IDs to delete associated responses first
+      const existingBlocks = await db
+        .select({ id: pageBlocks.id })
+        .from(pageBlocks)
+        .where(eq(pageBlocks.pageId, id));
+
+      const existingBlockIds = existingBlocks.map(b => b.id);
+
+      // Delete in correct order to avoid foreign key constraint violations:
+      if (existingBlockIds.length > 0) {
+        // 1. Delete reflection responses (references reflection_questions)
+        for (const blockId of existingBlockIds) {
+          const refQuestions = await db
+            .select({ id: reflectionQuestions.id })
+            .from(reflectionQuestions)
+            .where(eq(reflectionQuestions.blockId, blockId));
+
+          for (const question of refQuestions) {
+            await db.delete(reflectionResponses).where(eq(reflectionResponses.questionId, question.id));
+          }
+        }
+
+        // 2. Delete survey responses (references survey_questions)
+        for (const blockId of existingBlockIds) {
+          const survQuestions = await db
+            .select({ id: surveyQuestions.id })
+            .from(surveyQuestions)
+            .where(eq(surveyQuestions.blockId, blockId));
+
+          for (const question of survQuestions) {
+            await db.delete(surveyResponses).where(eq(surveyResponses.questionId, question.id));
+          }
+        }
+      }
+
+      // 3. Delete existing blocks (cascade deletes reflection_questions and survey_questions)
       await db.delete(pageBlocks).where(eq(pageBlocks.pageId, id));
 
       // Create new blocks

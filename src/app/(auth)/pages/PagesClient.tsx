@@ -9,6 +9,7 @@ import {
   FileText,
   Link2,
   Plus,
+  QrCode,
   Search,
   Share2,
   Trash2,
@@ -16,6 +17,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
@@ -75,6 +77,7 @@ export function PagesClient() {
   const [loadingShare, setLoadingShare] = useState(false);
   const [expiryMinutes, setExpiryMinutes] = useState(60);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
+  const [showQrCode, setShowQrCode] = useState<string | null>(null);
 
   const fetchPages = useCallback(async () => {
     if (!user) return;
@@ -955,17 +958,26 @@ export function PagesClient() {
                             </div>
                             <div className="flex items-center gap-1">
                               {!isExpired && (
-                                <button
-                                  onClick={() => handleCopyLink(link.shareUrl, link.id)}
-                                  className="rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-purple-600"
-                                  title="Copy link"
-                                >
-                                  {copiedLink === link.id ? (
-                                    <CheckCircle className="h-4 w-4 text-green-600" />
-                                  ) : (
-                                    <Copy className="h-4 w-4" />
-                                  )}
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => setShowQrCode(showQrCode === link.id ? null : link.id)}
+                                    className={`rounded-lg p-2 transition-colors ${showQrCode === link.id ? 'bg-purple-100 text-purple-600' : 'text-gray-600 hover:bg-gray-100 hover:text-purple-600'}`}
+                                    title="Show QR Code"
+                                  >
+                                    <QrCode className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleCopyLink(link.shareUrl, link.id)}
+                                    className="rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-purple-600"
+                                    title="Copy link"
+                                  >
+                                    {copiedLink === link.id ? (
+                                      <CheckCircle className="h-4 w-4 text-green-600" />
+                                    ) : (
+                                      <Copy className="h-4 w-4" />
+                                    )}
+                                  </button>
+                                </>
                               )}
                               <button
                                 onClick={() => handleRevokeShareLink(link.id)}
@@ -976,6 +988,24 @@ export function PagesClient() {
                               </button>
                             </div>
                           </div>
+
+                          {/* QR Code Section */}
+                          {showQrCode === link.id && !isExpired && (
+                            <div className="mb-3 flex flex-col items-center rounded-lg border border-purple-200 bg-purple-50 p-4">
+                              <div className="rounded-lg bg-white p-3 shadow-sm">
+                                <QRCodeSVG
+                                  value={link.shareUrl}
+                                  size={180}
+                                  level="H"
+                                  includeMargin
+                                />
+                              </div>
+                              <p className="mt-3 text-center text-sm text-purple-700">
+                                Scan to open story page on mobile
+                              </p>
+                            </div>
+                          )}
+
                           <div className="group relative">
                             <input
                               type="text"

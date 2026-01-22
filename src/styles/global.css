@@ -217,3 +217,28 @@
 .animate-typing-dot {
   animation: typing-dot 1.4s infinite ease-in-out;
 }
+
+/* Landing page animations */
+@keyframes gradient-shift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes draw-line {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-gradient-shift {
+  animation: gradient-shift 3s ease infinite;
+}
+
+.animate-draw-line {
+  animation: draw-line 1.5s ease-out 0.8s forwards;
+}

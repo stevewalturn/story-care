@@ -236,18 +236,18 @@ export default function PublicSharePage({ params }: Props) {
       )}
 
       {/* Page Content */}
-      <div className="mx-auto max-w-4xl px-4 py-8">
-        <div className="mb-10">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-purple-100/80 px-4 py-2 backdrop-blur-sm">
-            <span className="text-sm font-medium text-purple-700">
+      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mb-8 sm:mb-10">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-purple-100/80 px-3 py-1.5 backdrop-blur-sm sm:mb-4 sm:px-4 sm:py-2">
+            <span className="text-xs font-medium text-purple-700 sm:text-sm">
               Personalized for
               {' '}
               {pageData.page.patientName}
             </span>
           </div>
-          <h1 className="mb-3 text-4xl font-bold text-gray-900">{pageData.page.title}</h1>
+          <h1 className="mb-2 text-2xl font-bold text-gray-900 sm:mb-3 sm:text-3xl md:text-4xl">{pageData.page.title}</h1>
           {pageData.page.description && (
-            <p className="text-lg text-gray-600">{pageData.page.description}</p>
+            <p className="text-base text-gray-600 sm:text-lg">{pageData.page.description}</p>
           )}
         </div>
 
@@ -262,7 +262,7 @@ export default function PublicSharePage({ params }: Props) {
             );
 
             return (
-              <div key={block.id || index} className="rounded-xl border border-gray-100 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+              <div key={block.id || index} className="rounded-xl border border-gray-100 bg-white/80 p-4 shadow-sm backdrop-blur-sm sm:p-6">
                 {block.blockType === 'text' && block.textContent && (
                   <div className="prose prose-lg max-w-none">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -336,7 +336,7 @@ export default function PublicSharePage({ params }: Props) {
                 )}
 
                 {block.blockType === 'reflection' && blockQuestions.length > 0 && (
-                  <div className="rounded-xl border border-purple-200/60 bg-purple-50/50 p-5">
+                  <div className="rounded-xl border border-purple-200/60 bg-purple-50/50 p-4 sm:p-5">
                     <div className="mb-3 flex items-center gap-2">
                       <MessageCircle className="h-5 w-5 text-purple-600" />
                       <p className="font-medium text-purple-900">Reflection Questions</p>
@@ -365,14 +365,14 @@ export default function PublicSharePage({ params }: Props) {
                 )}
 
                 {block.blockType === 'survey' && blockSurveyQuestions.length > 0 && (
-                  <div className="rounded-xl border border-green-200/60 bg-green-50/50 p-5">
+                  <div className="rounded-xl border border-green-200/60 bg-green-50/50 p-4 sm:p-5">
                     <div className="mb-3 flex items-center gap-2">
                       <FileText className="h-5 w-5 text-green-600" />
                       <p className="font-medium text-green-900">Survey Questions</p>
                     </div>
                     <div className="space-y-6">
                       {blockSurveyQuestions.map((q: any, i: number) => (
-                        <div key={q.id} className="rounded-lg bg-white p-4">
+                        <div key={q.id} className="rounded-lg bg-white p-3 sm:p-4">
                           <p className="mb-3 text-sm font-medium text-gray-900">
                             {i + 1}
                             .
@@ -400,8 +400,8 @@ export default function PublicSharePage({ params }: Props) {
                                 <span>{q.scaleMaxLabel || `${q.scaleMax || 5} (High)`}</span>
                               </div>
 
-                              {/* Interactive scale buttons */}
-                              <div className="flex gap-2">
+                              {/* Interactive scale buttons - mobile friendly with wrap */}
+                              <div className="flex flex-wrap justify-center gap-2 sm:flex-nowrap sm:justify-start">
                                 {Array.from({ length: (q.scaleMax || 5) - (q.scaleMin || 1) + 1 }, (_, index) => {
                                   const value = (q.scaleMin || 1) + index;
                                   const isSelected = surveyAnswers[q.id] === value;
@@ -411,7 +411,7 @@ export default function PublicSharePage({ params }: Props) {
                                       type="button"
                                       onClick={() => setSurveyAnswers({ ...surveyAnswers, [q.id]: value })}
                                       disabled={submitSuccess}
-                                      className={`flex-1 rounded-lg border-2 py-3 text-center text-lg font-semibold transition-all ${
+                                      className={`min-h-[48px] min-w-[48px] flex-1 rounded-lg border-2 py-3 text-center text-lg font-semibold transition-all sm:min-h-0 sm:min-w-0 ${
                                         isSelected
                                           ? 'border-green-600 bg-green-600 text-white shadow-lg'
                                           : 'border-gray-300 bg-white text-gray-700 hover:border-green-400 hover:bg-green-50'
@@ -439,13 +439,13 @@ export default function PublicSharePage({ params }: Props) {
                             </div>
                           )}
 
-                          {/* Multiple Choice */}
+                          {/* Multiple Choice - mobile optimized with larger tap targets */}
                           {q.questionType === 'multiple_choice' && q.options && (
                             <div className="space-y-2">
                               {q.options.map((option: string, optIndex: number) => (
                                 <label
                                   key={optIndex}
-                                  className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 p-3 transition-all ${
+                                  className={`flex min-h-[48px] cursor-pointer items-center gap-3 rounded-lg border-2 px-3 py-3 transition-all sm:px-4 ${
                                     surveyAnswers[q.id] === option
                                       ? 'border-green-600 bg-green-50'
                                       : 'border-gray-300 bg-white hover:border-green-400'
@@ -458,17 +458,17 @@ export default function PublicSharePage({ params }: Props) {
                                     checked={surveyAnswers[q.id] === option}
                                     onChange={e => setSurveyAnswers({ ...surveyAnswers, [q.id]: e.target.value })}
                                     disabled={submitSuccess}
-                                    className="h-4 w-4 text-green-600 focus:ring-green-500"
+                                    className="h-5 w-5 text-green-600 focus:ring-green-500"
                                   />
-                                  <span className="text-sm text-gray-700">{option}</span>
+                                  <span className="text-sm text-gray-700 sm:text-base">{option}</span>
                                 </label>
                               ))}
                             </div>
                           )}
 
-                          {/* Emotion Picker */}
+                          {/* Emotion Picker - mobile optimized with larger touch targets */}
                           {q.questionType === 'emotion' && (
-                            <div className="grid grid-cols-5 gap-3">
+                            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 sm:gap-3">
                               {[
                                 { emoji: '😢', label: 'Very Sad', value: 1 },
                                 { emoji: '😕', label: 'Sad', value: 2 },
@@ -481,14 +481,14 @@ export default function PublicSharePage({ params }: Props) {
                                   type="button"
                                   onClick={() => setSurveyAnswers({ ...surveyAnswers, [q.id]: emotion.value })}
                                   disabled={submitSuccess}
-                                  className={`flex flex-col items-center gap-2 rounded-lg border-2 p-3 transition-all ${
+                                  className={`flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-lg border-2 p-2 transition-all sm:min-h-0 sm:gap-2 sm:p-3 ${
                                     surveyAnswers[q.id] === emotion.value
                                       ? 'border-green-600 bg-green-50'
                                       : 'border-gray-300 bg-white hover:border-green-400 hover:bg-green-50'
                                   } ${submitSuccess ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                                 >
-                                  <span className="text-3xl">{emotion.emoji}</span>
-                                  <span className="text-xs font-medium text-gray-600">{emotion.label}</span>
+                                  <span className="text-2xl sm:text-3xl">{emotion.emoji}</span>
+                                  <span className="text-[10px] font-medium leading-tight text-gray-600 sm:text-xs">{emotion.label}</span>
                                 </button>
                               ))}
                             </div>
@@ -503,13 +503,13 @@ export default function PublicSharePage({ params }: Props) {
           })}
         </div>
 
-        {/* Submit Button */}
+        {/* Submit Button - full width on mobile */}
         {(pageData.reflectionQuestions.length > 0 || pageData.surveyQuestions.length > 0) && !submitSuccess && (
-          <div className="mt-10 flex justify-center">
+          <div className="mt-8 sm:mt-10 sm:flex sm:justify-center">
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-10 py-4 font-medium text-white shadow-lg transition-all hover:from-purple-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-8 py-4 text-base font-medium text-white shadow-lg transition-all hover:from-purple-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-10"
               type="button"
             >
               {isSubmitting ? (

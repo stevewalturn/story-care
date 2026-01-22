@@ -262,8 +262,8 @@ export default function PatientStoryPage({ params }: Props) {
         </div>
       )}
 
-      {/* Hero Header */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 px-8 py-16">
+      {/* Hero Header - mobile optimized */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 px-4 py-10 sm:px-8 sm:py-16">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute -top-4 -left-4 h-24 w-24 rounded-full bg-white" />
@@ -276,32 +276,32 @@ export default function PatientStoryPage({ params }: Props) {
           {/* Back Button */}
           <button
             onClick={() => router.push('/patient/story')}
-            className="mb-8 inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm transition-all hover:bg-white/30"
+            className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1.5 text-sm font-medium text-white backdrop-blur-sm transition-all hover:bg-white/30 sm:mb-8 sm:px-4 sm:py-2"
             type="button"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Stories
           </button>
 
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm text-white backdrop-blur-sm">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1.5 text-xs text-white backdrop-blur-sm sm:mb-4 sm:px-4 sm:py-2 sm:text-sm">
             <Sparkles className="h-4 w-4" />
             Your personal story
           </div>
 
-          <h1 className="mb-4 text-3xl font-bold text-white md:text-4xl">
+          <h1 className="mb-3 text-2xl font-bold text-white sm:mb-4 sm:text-3xl md:text-4xl">
             {pageData.page.title}
           </h1>
           {pageData.page.description && (
-            <p className="max-w-2xl text-lg text-purple-100">
+            <p className="max-w-2xl text-base text-purple-100 sm:text-lg">
               {pageData.page.description}
             </p>
           )}
         </div>
       </div>
 
-      {/* Content */}
-      <div className="mx-auto max-w-4xl px-4 py-12">
-        <div className="space-y-8">
+      {/* Content - mobile optimized */}
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
+        <div className="space-y-6 sm:space-y-8">
           {pageData.blocks.map((block, index) => {
             const blockQuestions = pageData.reflectionQuestions.filter(
               (q: any) => q.blockId === block.id,
@@ -317,8 +317,8 @@ export default function PatientStoryPage({ params }: Props) {
               >
                 {/* Text Block */}
                 {block.blockType === 'text' && block.textContent && (
-                  <div className="p-8">
-                    <div className="prose prose-lg max-w-none">
+                  <div className="p-5 sm:p-8">
+                    <div className="prose prose-base max-w-none sm:prose-lg">
                       <p className="leading-relaxed text-gray-700">{block.textContent}</p>
                     </div>
                   </div>
@@ -353,10 +353,10 @@ export default function PatientStoryPage({ params }: Props) {
 
                 {/* Quote Block */}
                 {block.blockType === 'quote' && block.textContent && (
-                  <div className="border-l-4 border-purple-500 bg-gradient-to-r from-purple-50 to-white p-8">
-                    <div className="flex items-start gap-4">
-                      <Quote className="h-8 w-8 flex-shrink-0 text-purple-400" />
-                      <blockquote className="text-xl text-gray-700 italic">
+                  <div className="border-l-4 border-purple-500 bg-gradient-to-r from-purple-50 to-white p-5 sm:p-8">
+                    <div className="flex items-start gap-3 sm:gap-4">
+                      <Quote className="h-6 w-6 flex-shrink-0 text-purple-400 sm:h-8 sm:w-8" />
+                      <blockquote className="text-lg text-gray-700 italic sm:text-xl">
                         "
                         {block.textContent}
                         "
@@ -368,15 +368,15 @@ export default function PatientStoryPage({ params }: Props) {
                 {/* Scene Block */}
                 {block.blockType === 'scene' && block.sceneId && (
                   <div className="overflow-hidden">
-                    <div className="flex items-center gap-3 border-b border-purple-100 bg-gradient-to-r from-purple-50 to-indigo-50 px-6 py-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100">
-                        <Clapperboard className="h-5 w-5 text-purple-600" />
+                    <div className="flex items-center gap-3 border-b border-purple-100 bg-gradient-to-r from-purple-50 to-indigo-50 px-4 py-3 sm:px-6 sm:py-4">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-100 sm:h-10 sm:w-10">
+                        <Clapperboard className="h-4 w-4 text-purple-600 sm:h-5 sm:w-5" />
                       </div>
                       <div>
-                        <p className="font-semibold text-purple-900">
+                        <p className="text-sm font-semibold text-purple-900 sm:text-base">
                           {block.settings?.sceneTitle || 'Your Scene'}
                         </p>
-                        <p className="text-sm text-purple-600">Created just for you</p>
+                        <p className="text-xs text-purple-600 sm:text-sm">Created just for you</p>
                       </div>
                     </div>
                     {(block.settings?.videoUrl || block.settings?.mediaUrl) && (
@@ -400,18 +400,18 @@ export default function PatientStoryPage({ params }: Props) {
                 {/* Reflection Block */}
                 {block.blockType === 'reflection' && blockQuestions.length > 0 && (
                   <div className="overflow-hidden">
-                    <div className="flex items-center gap-3 border-b border-purple-100 bg-gradient-to-r from-purple-50 to-indigo-50 px-6 py-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100">
-                        <MessageCircle className="h-5 w-5 text-purple-600" />
+                    <div className="flex items-center gap-3 border-b border-purple-100 bg-gradient-to-r from-purple-50 to-indigo-50 px-4 py-3 sm:px-6 sm:py-4">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-100 sm:h-10 sm:w-10">
+                        <MessageCircle className="h-4 w-4 text-purple-600 sm:h-5 sm:w-5" />
                       </div>
                       <div>
-                        <p className="font-semibold text-purple-900">Reflection Time</p>
-                        <p className="text-sm text-purple-600">Take a moment to share your thoughts</p>
+                        <p className="text-sm font-semibold text-purple-900 sm:text-base">Reflection Time</p>
+                        <p className="text-xs text-purple-600 sm:text-sm">Take a moment to share your thoughts</p>
                       </div>
                     </div>
-                    <div className="space-y-6 p-6">
+                    <div className="space-y-4 p-4 sm:space-y-6 sm:p-6">
                       {blockQuestions.map((q: any, i: number) => (
-                        <div key={q.id} className="rounded-xl border border-gray-100 bg-gray-50 p-5">
+                        <div key={q.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4 sm:p-5">
                           <p className="mb-3 font-medium text-gray-900">
                             <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 text-sm text-purple-600">
                               {i + 1}
@@ -436,18 +436,18 @@ export default function PatientStoryPage({ params }: Props) {
                 {/* Survey Block */}
                 {block.blockType === 'survey' && blockSurveyQuestions.length > 0 && (
                   <div className="overflow-hidden">
-                    <div className="flex items-center gap-3 border-b border-green-100 bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100">
-                        <FileText className="h-5 w-5 text-green-600" />
+                    <div className="flex items-center gap-3 border-b border-green-100 bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3 sm:px-6 sm:py-4">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-100 sm:h-10 sm:w-10">
+                        <FileText className="h-4 w-4 text-green-600 sm:h-5 sm:w-5" />
                       </div>
                       <div>
-                        <p className="font-semibold text-green-900">Quick Survey</p>
-                        <p className="text-sm text-green-600">Help us understand how you're feeling</p>
+                        <p className="text-sm font-semibold text-green-900 sm:text-base">Quick Survey</p>
+                        <p className="text-xs text-green-600 sm:text-sm">Help us understand how you're feeling</p>
                       </div>
                     </div>
-                    <div className="space-y-6 p-6">
+                    <div className="space-y-4 p-4 sm:space-y-6 sm:p-6">
                       {blockSurveyQuestions.map((q: any, i: number) => (
-                        <div key={q.id} className="rounded-xl border border-gray-100 bg-gray-50 p-5">
+                        <div key={q.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4 sm:p-5">
                           <p className="mb-4 font-medium text-gray-900">
                             <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-sm text-green-600">
                               {i + 1}
@@ -468,15 +468,15 @@ export default function PatientStoryPage({ params }: Props) {
                             />
                           )}
 
-                          {/* Scale/Rating */}
+                          {/* Scale/Rating - mobile optimized */}
                           {q.questionType === 'scale' && (
-                            <div className="space-y-4">
-                              <div className="flex items-center justify-between text-sm text-gray-600">
-                                <span className="rounded-full bg-gray-100 px-3 py-1">{q.scaleMinLabel || `${q.scaleMin || 1}`}</span>
-                                <span className="rounded-full bg-gray-100 px-3 py-1">{q.scaleMaxLabel || `${q.scaleMax || 5}`}</span>
+                            <div className="space-y-3 sm:space-y-4">
+                              <div className="flex items-center justify-between text-xs text-gray-600 sm:text-sm">
+                                <span className="rounded-full bg-gray-100 px-2 py-1 sm:px-3">{q.scaleMinLabel || `${q.scaleMin || 1}`}</span>
+                                <span className="rounded-full bg-gray-100 px-2 py-1 sm:px-3">{q.scaleMaxLabel || `${q.scaleMax || 5}`}</span>
                               </div>
 
-                              <div className="flex gap-2">
+                              <div className="flex flex-wrap justify-center gap-2 sm:flex-nowrap sm:justify-start">
                                 {Array.from({ length: (q.scaleMax || 5) - (q.scaleMin || 1) + 1 }, (_, index) => {
                                   const value = (q.scaleMin || 1) + index;
                                   const isSelected = surveyAnswers[q.id] === value;
@@ -486,7 +486,7 @@ export default function PatientStoryPage({ params }: Props) {
                                       type="button"
                                       onClick={() => setSurveyAnswers({ ...surveyAnswers, [q.id]: value })}
                                       disabled={submitSuccess}
-                                      className={`flex-1 rounded-xl border-2 py-4 text-center text-lg font-semibold transition-all ${
+                                      className={`min-h-[48px] min-w-[48px] flex-1 rounded-xl border-2 py-3 text-center text-base font-semibold transition-all sm:min-h-0 sm:min-w-0 sm:py-4 sm:text-lg ${
                                         isSelected
                                           ? 'border-green-500 bg-green-500 text-white shadow-lg'
                                           : 'border-gray-200 bg-white text-gray-700 hover:border-green-300 hover:bg-green-50'
@@ -511,26 +511,26 @@ export default function PatientStoryPage({ params }: Props) {
                             </div>
                           )}
 
-                          {/* Multiple Choice */}
+                          {/* Multiple Choice - mobile optimized */}
                           {q.questionType === 'multiple_choice' && q.options && (
-                            <div className="space-y-3">
+                            <div className="space-y-2 sm:space-y-3">
                               {q.options.map((option: string, optIndex: number) => (
                                 <label
                                   key={optIndex}
-                                  className={`flex cursor-pointer items-center gap-4 rounded-xl border-2 p-4 transition-all ${
+                                  className={`flex min-h-[48px] cursor-pointer items-center gap-3 rounded-xl border-2 p-3 transition-all sm:gap-4 sm:p-4 ${
                                     surveyAnswers[q.id] === option
                                       ? 'border-green-500 bg-green-50'
                                       : 'border-gray-200 bg-white hover:border-green-300'
                                   } ${submitSuccess ? 'cursor-not-allowed opacity-50' : ''}`}
                                 >
-                                  <div className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${
+                                  <div className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 sm:h-6 sm:w-6 ${
                                     surveyAnswers[q.id] === option
                                       ? 'border-green-500 bg-green-500'
                                       : 'border-gray-300'
                                   }`}
                                   >
                                     {surveyAnswers[q.id] === option && (
-                                      <CheckCircle2 className="h-4 w-4 text-white" />
+                                      <CheckCircle2 className="h-3 w-3 text-white sm:h-4 sm:w-4" />
                                     )}
                                   </div>
                                   <input
@@ -542,15 +542,15 @@ export default function PatientStoryPage({ params }: Props) {
                                     disabled={submitSuccess}
                                     className="sr-only"
                                   />
-                                  <span className="font-medium text-gray-700">{option}</span>
+                                  <span className="text-sm font-medium text-gray-700 sm:text-base">{option}</span>
                                 </label>
                               ))}
                             </div>
                           )}
 
-                          {/* Emotion Picker */}
+                          {/* Emotion Picker - mobile optimized */}
                           {q.questionType === 'emotion' && (
-                            <div className="grid grid-cols-5 gap-3">
+                            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 sm:gap-3">
                               {[
                                 { emoji: '😢', label: 'Very Sad', value: 1 },
                                 { emoji: '😕', label: 'Sad', value: 2 },
@@ -563,14 +563,14 @@ export default function PatientStoryPage({ params }: Props) {
                                   type="button"
                                   onClick={() => setSurveyAnswers({ ...surveyAnswers, [q.id]: emotion.value })}
                                   disabled={submitSuccess}
-                                  className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
+                                  className={`flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border-2 p-2 transition-all sm:min-h-0 sm:gap-2 sm:p-4 ${
                                     surveyAnswers[q.id] === emotion.value
                                       ? 'border-green-500 bg-green-50 shadow-lg'
                                       : 'border-gray-200 bg-white hover:border-green-300 hover:bg-green-50'
                                   } ${submitSuccess ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                                 >
-                                  <span className="text-4xl">{emotion.emoji}</span>
-                                  <span className="text-xs font-medium text-gray-600">{emotion.label}</span>
+                                  <span className="text-2xl sm:text-4xl">{emotion.emoji}</span>
+                                  <span className="text-[10px] font-medium leading-tight text-gray-600 sm:text-xs">{emotion.label}</span>
                                 </button>
                               ))}
                             </div>
@@ -585,13 +585,13 @@ export default function PatientStoryPage({ params }: Props) {
           })}
         </div>
 
-        {/* Submit Button */}
+        {/* Submit Button - full width on mobile */}
         {(pageData.reflectionQuestions.length > 0 || pageData.surveyQuestions.length > 0) && !submitSuccess && (
-          <div className="mt-12 flex justify-center">
+          <div className="mt-8 sm:mt-12 sm:flex sm:justify-center">
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 px-10 py-4 text-lg font-medium text-white shadow-lg transition-all hover:from-purple-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 px-8 py-4 text-base font-medium text-white shadow-lg transition-all hover:from-purple-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:gap-3 sm:px-10 sm:text-lg"
               type="button"
             >
               {isSubmitting ? (
@@ -609,19 +609,19 @@ export default function PatientStoryPage({ params }: Props) {
           </div>
         )}
 
-        {/* Success Message */}
+        {/* Success Message - mobile optimized */}
         {submitSuccess && (
-          <div className="mt-12 overflow-hidden rounded-2xl bg-gradient-to-r from-green-500 to-emerald-500 p-8 text-center text-white shadow-xl">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/20">
-              <CheckCircle2 className="h-8 w-8" />
+          <div className="mt-8 overflow-hidden rounded-2xl bg-gradient-to-r from-green-500 to-emerald-500 p-6 text-center text-white shadow-xl sm:mt-12 sm:p-8">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-white/20 sm:mb-4 sm:h-16 sm:w-16">
+              <CheckCircle2 className="h-7 w-7 sm:h-8 sm:w-8" />
             </div>
-            <h3 className="mb-2 text-2xl font-bold">Responses Submitted!</h3>
-            <p className="text-green-100">
+            <h3 className="mb-2 text-xl font-bold sm:text-2xl">Responses Submitted!</h3>
+            <p className="text-sm text-green-100 sm:text-base">
               Thank you for sharing your thoughts. Your therapist will review your responses.
             </p>
             <button
               onClick={() => router.push('/patient/story')}
-              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 font-medium text-green-600 transition-all hover:bg-green-50"
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 font-medium text-green-600 transition-all hover:bg-green-50 sm:mt-6 sm:w-auto"
               type="button"
             >
               <ArrowLeft className="h-4 w-4" />

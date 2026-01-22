@@ -102,8 +102,8 @@ export default function PatientStoryPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
-      {/* Hero Header */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 px-8 py-16">
+      {/* Hero Header - mobile optimized */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 px-4 py-10 sm:px-8 sm:py-16">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute -top-4 -left-4 h-24 w-24 rounded-full bg-white" />
@@ -113,48 +113,48 @@ export default function PatientStoryPage() {
         </div>
 
         <div className="relative mx-auto max-w-4xl text-center">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm text-white backdrop-blur-sm">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1.5 text-xs text-white backdrop-blur-sm sm:mb-6 sm:px-4 sm:py-2 sm:text-sm">
             <Sparkles className="h-4 w-4" />
             Your personal journey
           </div>
-          <h1 className="mb-4 text-4xl font-bold text-white md:text-5xl">
+          <h1 className="mb-3 text-2xl font-bold text-white sm:mb-4 sm:text-3xl md:text-4xl lg:text-5xl">
             Welcome back,
             {' '}
             {userName}
           </h1>
-          <p className="mx-auto max-w-2xl text-lg text-purple-100">
+          <p className="mx-auto max-w-2xl text-sm text-purple-100 sm:text-base lg:text-lg">
             Your personalized stories are here to help you reflect, grow, and visualize your therapeutic journey.
           </p>
         </div>
       </div>
 
-      <div className="mx-auto max-w-6xl px-8 py-12">
-        {/* Stats Cards */}
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-8 sm:py-12">
+        {/* Stats Cards - mobile optimized */}
         {storyPages.length > 0 && (
-          <div className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="group rounded-2xl border border-purple-100 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100 transition-colors group-hover:bg-purple-200">
-                <BookOpen className="h-6 w-6 text-purple-600" />
+          <div className="mb-8 grid grid-cols-3 gap-2 sm:mb-12 sm:gap-4">
+            <div className="group rounded-xl border border-purple-100 bg-white p-3 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg sm:rounded-2xl sm:p-6">
+              <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-purple-100 transition-colors group-hover:bg-purple-200 sm:mb-3 sm:h-12 sm:w-12 sm:rounded-xl">
+                <BookOpen className="h-4 w-4 text-purple-600 sm:h-6 sm:w-6" />
               </div>
-              <div className="text-3xl font-bold text-gray-900">{storyPages.length}</div>
-              <div className="text-sm text-gray-500">Stories Available</div>
+              <div className="text-xl font-bold text-gray-900 sm:text-3xl">{storyPages.length}</div>
+              <div className="text-xs text-gray-500 sm:text-sm">Stories</div>
             </div>
 
-            <div className="group rounded-2xl border border-pink-100 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-pink-100 transition-colors group-hover:bg-pink-200">
-                <Heart className="h-6 w-6 text-pink-600" />
+            <div className="group rounded-xl border border-pink-100 bg-white p-3 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg sm:rounded-2xl sm:p-6">
+              <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-pink-100 transition-colors group-hover:bg-pink-200 sm:mb-3 sm:h-12 sm:w-12 sm:rounded-xl">
+                <Heart className="h-4 w-4 text-pink-600 sm:h-6 sm:w-6" />
               </div>
-              <div className="text-3xl font-bold text-gray-900">
+              <div className="text-xl font-bold text-gray-900 sm:text-3xl">
                 {storyPages.reduce((acc, p) => acc + p.blockCount, 0)}
               </div>
-              <div className="text-sm text-gray-500">Total Sections</div>
+              <div className="text-xs text-gray-500 sm:text-sm">Sections</div>
             </div>
 
-            <div className="group rounded-2xl border border-indigo-100 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 transition-colors group-hover:bg-indigo-200">
-                <Star className="h-6 w-6 text-indigo-600" />
+            <div className="group rounded-xl border border-indigo-100 bg-white p-3 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg sm:rounded-2xl sm:p-6">
+              <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-100 transition-colors group-hover:bg-indigo-200 sm:mb-3 sm:h-12 sm:w-12 sm:rounded-xl">
+                <Star className="h-4 w-4 text-indigo-600 sm:h-6 sm:w-6" />
               </div>
-              <div className="text-3xl font-bold text-gray-900">
+              <div className="text-xl font-bold text-gray-900 sm:text-3xl">
                 {storyPages.filter((p) => {
                   const daysSince = Math.floor(
                     (Date.now() - new Date(p.publishedAt).getTime()) / (1000 * 60 * 60 * 24),
@@ -162,37 +162,37 @@ export default function PatientStoryPage() {
                   return daysSince < 7;
                 }).length}
               </div>
-              <div className="text-sm text-gray-500">New This Week</div>
+              <div className="text-xs text-gray-500 sm:text-sm">New</div>
             </div>
           </div>
         )}
 
-        {/* Story Pages Grid */}
+        {/* Story Pages Grid - mobile optimized */}
         {storyPages.length === 0 ? (
-          <div className="overflow-hidden rounded-3xl border-2 border-dashed border-purple-200 bg-white p-16 text-center">
-            <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-purple-100">
-              <BookOpen className="h-12 w-12 text-purple-600" />
+          <div className="overflow-hidden rounded-2xl border-2 border-dashed border-purple-200 bg-white p-8 text-center sm:rounded-3xl sm:p-16">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 sm:mb-6 sm:h-24 sm:w-24">
+              <BookOpen className="h-8 w-8 text-purple-600 sm:h-12 sm:w-12" />
             </div>
-            <h3 className="mb-2 text-xl font-semibold text-gray-900">
+            <h3 className="mb-2 text-lg font-semibold text-gray-900 sm:text-xl">
               Your Story Space
             </h3>
-            <p className="mx-auto mb-6 max-w-md text-gray-600">
+            <p className="mx-auto mb-4 max-w-md text-sm text-gray-600 sm:mb-6 sm:text-base">
               Your therapist is crafting personalized story pages just for you.
               They'll appear here when ready.
             </p>
-            <div className="inline-flex items-center gap-2 rounded-full bg-purple-50 px-4 py-2 text-sm text-purple-600">
+            <div className="inline-flex items-center gap-2 rounded-full bg-purple-50 px-3 py-1.5 text-xs text-purple-600 sm:px-4 sm:py-2 sm:text-sm">
               <Clock className="h-4 w-4" />
               Check back soon
             </div>
           </div>
         ) : (
-          <div className="space-y-6">
-            <h2 className="flex items-center gap-3 text-xl font-semibold text-gray-900">
-              <BookOpen className="h-6 w-6 text-purple-600" />
+          <div className="space-y-4 sm:space-y-6">
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900 sm:gap-3 sm:text-xl">
+              <BookOpen className="h-5 w-5 text-purple-600 sm:h-6 sm:w-6" />
               Your Stories
             </h2>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
               {storyPages.map((page, index) => (
                 <Link
                   key={page.id}
@@ -233,13 +233,13 @@ export default function PatientStoryPage() {
                     )}
                   </div>
 
-                  {/* Content */}
-                  <div className="p-6">
-                    <h3 className="mb-2 text-lg font-semibold text-gray-900 transition-colors group-hover:text-purple-600">
+                  {/* Content - mobile optimized */}
+                  <div className="p-4 sm:p-6">
+                    <h3 className="mb-1 text-base font-semibold text-gray-900 transition-colors group-hover:text-purple-600 sm:mb-2 sm:text-lg">
                       {page.title}
                     </h3>
                     {page.description && (
-                      <p className="mb-4 line-clamp-2 text-sm text-gray-600">
+                      <p className="mb-3 line-clamp-2 text-xs text-gray-600 sm:mb-4 sm:text-sm">
                         {page.description}
                       </p>
                     )}
@@ -250,26 +250,27 @@ export default function PatientStoryPage() {
                         <Clock className="h-3.5 w-3.5" />
                         {formatDate(page.publishedAt)}
                       </div>
-                      <div className="flex items-center gap-2 rounded-full bg-gray-100 px-2.5 py-1">
+                      <div className="flex items-center gap-2 rounded-full bg-gray-100 px-2 py-0.5 sm:px-2.5 sm:py-1">
                         {page.blockCount}
                         {' '}
-                        sections
+                        <span className="hidden sm:inline">sections</span>
+                        <span className="sm:hidden">sec</span>
                       </div>
                     </div>
 
-                    {/* Content indicators */}
-                    <div className="mt-4 flex items-center gap-3 border-t border-gray-100 pt-4">
-                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <PlayCircle className="h-4 w-4 text-purple-500" />
-                        <span>Videos</span>
+                    {/* Content indicators - simplified on mobile */}
+                    <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3 sm:mt-4 sm:gap-3 sm:pt-4">
+                      <div className="flex items-center gap-1 text-xs text-gray-500 sm:gap-1.5">
+                        <PlayCircle className="h-3.5 w-3.5 text-purple-500 sm:h-4 sm:w-4" />
+                        <span className="hidden sm:inline">Videos</span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <ImageIcon className="h-4 w-4 text-blue-500" />
-                        <span>Images</span>
+                      <div className="flex items-center gap-1 text-xs text-gray-500 sm:gap-1.5">
+                        <ImageIcon className="h-3.5 w-3.5 text-blue-500 sm:h-4 sm:w-4" />
+                        <span className="hidden sm:inline">Images</span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <MessageSquare className="h-4 w-4 text-green-500" />
-                        <span>Reflect</span>
+                      <div className="flex items-center gap-1 text-xs text-gray-500 sm:gap-1.5">
+                        <MessageSquare className="h-3.5 w-3.5 text-green-500 sm:h-4 sm:w-4" />
+                        <span className="hidden sm:inline">Reflect</span>
                       </div>
                     </div>
                   </div>
@@ -279,17 +280,17 @@ export default function PatientStoryPage() {
           </div>
         )}
 
-        {/* Welcome Message */}
-        <div className="mt-12 overflow-hidden rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 p-8 text-white shadow-xl">
-          <div className="flex items-start gap-6">
-            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
-              <Heart className="h-7 w-7 text-white" />
+        {/* Welcome Message - mobile optimized */}
+        <div className="mt-8 overflow-hidden rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 p-5 text-white shadow-xl sm:mt-12 sm:rounded-2xl sm:p-8">
+          <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:gap-6 sm:text-left">
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm sm:h-14 sm:w-14 sm:rounded-2xl">
+              <Heart className="h-6 w-6 text-white sm:h-7 sm:w-7" />
             </div>
             <div>
-              <h3 className="mb-2 text-xl font-semibold">
+              <h3 className="mb-1 text-lg font-semibold sm:mb-2 sm:text-xl">
                 Your Story Matters
               </h3>
-              <p className="text-purple-100">
+              <p className="text-sm text-purple-100 sm:text-base">
                 Each story page is thoughtfully created by your therapist to help you visualize and
                 reflect on your therapeutic journey. Take your time with each one - there's no rush.
                 Your thoughts and reflections are valuable parts of your growth.
