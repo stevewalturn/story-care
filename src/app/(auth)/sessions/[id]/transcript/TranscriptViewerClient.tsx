@@ -752,6 +752,7 @@ export function TranscriptViewerClient({
             onToggleCollapse={() => setIsTranscriptCollapsed(!isTranscriptCollapsed)}
             seekToTimestamp={seekToTimestamp}
             onSeekComplete={() => setSeekToTimestamp(null)}
+            audioDurationSeconds={sessionData?.audioDurationSeconds}
             onOpenAnalyzeModal={handleOpenAnalyzeModal}
             onOpenSpeakerLabeling={() => setShowSpeakerLabelingModal(true)}
           />

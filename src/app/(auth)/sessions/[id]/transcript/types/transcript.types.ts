@@ -71,6 +71,8 @@ export type TranscriptPanelProps = {
   // External seek control - when this value changes, seek audio to this timestamp
   seekToTimestamp?: number | null;
   onSeekComplete?: () => void; // Called after seek is performed to reset the value
+  // Pre-loaded audio duration from database (fallback when browser events fail)
+  audioDurationSeconds?: number;
   // Open analyze modal from floating menu
   onOpenAnalyzeModal?: () => void;
   // Speaker labeling modal

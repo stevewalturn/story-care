@@ -53,6 +53,7 @@ export function TranscriptPanel({
   onSeekComplete,
   onOpenAnalyzeModal,
   onOpenSpeakerLabeling,
+  audioDurationSeconds,
 }: TranscriptPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
@@ -74,7 +75,7 @@ export function TranscriptPanel({
   const utteranceRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [duration, setDuration] = useState(audioDurationSeconds || 0);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [showSpeedDropdown, setShowSpeedDropdown] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
@@ -217,7 +218,7 @@ export function TranscriptPanel({
   };
 
   const formatAudioTime = (seconds: number) => {
-    if (!seconds || isNaN(seconds)) return '00:00:00';
+    if (!seconds || isNaN(seconds) || !isFinite(seconds)) return '00:00:00';
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
