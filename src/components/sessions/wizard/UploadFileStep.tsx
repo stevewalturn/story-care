@@ -2,7 +2,7 @@
 
 import type { AudioInputMode } from './AudioInputSelector';
 import type { SessionFormData } from './types';
-import { Calendar, Check, Clock, Cloud, Loader2, Mic, Music, Upload, X } from 'lucide-react';
+import { Calendar, Check, Clock, Cloud, Loader2, Mic, Music, X } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -353,9 +353,9 @@ export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProc
   return (
     <div>
       <div className="mb-8 text-center">
-        <h2 className="text-2xl font-bold text-gray-900">Add Session Audio</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Upload Session File</h2>
         <p className="mt-2 text-sm text-gray-500">
-          Upload an audio file or select from your existing recordings
+          upload an audio or video file to start the transcription
         </p>
       </div>
 
@@ -456,14 +456,13 @@ export function UploadFileStep({ onNext, onBack: _onBack, setStepReady, stepProc
                   )
                 : (
                     <div className="flex flex-col items-center justify-center py-16">
-                      {/* Cloud Upload Illustration */}
-                      <div className="relative mb-6">
-                        <Cloud className="h-32 w-32 text-purple-300" strokeWidth={1.5} />
-                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
-                            <Upload className="h-6 w-6 text-purple-600" />
-                          </div>
-                        </div>
+                      {/* Custom Upload Illustration */}
+                      <div className="mb-6">
+                        <img
+                          src="/images/upload-illustration.png"
+                          alt="Upload illustration"
+                          className="h-32 w-auto"
+                        />
                       </div>
 
                       {/* Text and Button */}

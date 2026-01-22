@@ -6,6 +6,7 @@
 'use client';
 
 import { ArrowLeft, ArrowRight, Building2, Check, Mail, User } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -190,12 +191,13 @@ export default function SignUpPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="mb-8 text-center">
-          <Link href="/" className="inline-block">
-            <h1 className="mb-2 bg-gradient-to-r from-purple-600 to-purple-600 bg-clip-text text-4xl font-bold text-transparent">
+          <Link href="/" className="inline-flex flex-col items-center gap-2">
+            <Image src="/logo.png" alt="StoryCare" width={48} height={48} />
+            <h1 className="text-4xl font-bold text-purple-600">
               StoryCare
             </h1>
           </Link>
-          <p className="text-gray-600">Create Your Organization</p>
+          <p className="mt-2 text-gray-600">Create Your Organization</p>
         </div>
 
         {/* Sign Up Form */}

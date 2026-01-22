@@ -1088,12 +1088,9 @@ ${transcriptContext}`;
                   borderRadius: '10.542px',
                   border: '1.318px solid #f0f0f3',
                   boxShadow: '0px 3px 6px 0px rgba(148, 148, 148, 0.03)',
-                  padding: '10.542px',
                 }}
               >
-                <svg className="h-10 w-10 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2L9.19 8.63L2 9.24L7.46 13.97L5.82 21L12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.63L12 2Z" />
-                </svg>
+                <img src="/assets/icons/stars-02.png" alt="AI Assistant" className="h-12 w-12 object-contain" />
               </div>
 
               <h3 className="mb-2 text-lg font-semibold text-gray-900">Therapeutic Chat Assistant</h3>
@@ -1111,9 +1108,7 @@ ${transcriptContext}`;
                     boxShadow: '0px 3px 5px 0px rgba(0, 0, 0, 0.05)',
                   }}
                 >
-                  <svg className="h-4 w-4 flex-shrink-0 text-purple-600" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M8 0l1.5 4.5L14 6l-4.5 1.5L8 12l-1.5-4.5L2 6l4.5-1.5L8 0z" />
-                  </svg>
+                  <img src="/assets/icons/star-04.png" alt="" className="h-4 w-4 flex-shrink-0" />
                   <span>What are the key themes?</span>
                 </button>
                 <button
@@ -1124,9 +1119,7 @@ ${transcriptContext}`;
                     boxShadow: '0px 3px 5px 0px rgba(0, 0, 0, 0.05)',
                   }}
                 >
-                  <svg className="h-4 w-4 flex-shrink-0 text-purple-600" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M8 0l1.5 4.5L14 6l-4.5 1.5L8 12l-1.5-4.5L2 6l4.5-1.5L8 0z" />
-                  </svg>
+                  <img src="/assets/icons/star-04.png" alt="" className="h-4 w-4 flex-shrink-0" />
                   <span>How is the patient progressing?</span>
                 </button>
                 <button
@@ -1137,9 +1130,7 @@ ${transcriptContext}`;
                     boxShadow: '0px 3px 5px 0px rgba(0, 0, 0, 0.05)',
                   }}
                 >
-                  <svg className="h-4 w-4 flex-shrink-0 text-purple-600" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M8 0l1.5 4.5L14 6l-4.5 1.5L8 12l-1.5-4.5L2 6l4.5-1.5L8 0z" />
-                  </svg>
+                  <img src="/assets/icons/star-04.png" alt="" className="h-4 w-4 flex-shrink-0" />
                   <span>Visualize the patient's metaphor</span>
                 </button>
               </div>

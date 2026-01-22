@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
@@ -57,10 +58,8 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className={`flex h-16 items-center border-b border-gray-200 ${isCollapsed ? 'justify-center px-[18px]' : 'px-6'}`}>
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-purple-600">
-          <span className="text-lg font-bold text-white">S</span>
-        </div>
-        {!isCollapsed && <span className="ml-3 text-lg font-semibold text-gray-900">StoryCare</span>}
+        <Image src="/logo.png" alt="StoryCare" width={32} height={32} className="flex-shrink-0" />
+        {!isCollapsed && <span className="ml-3 text-lg font-semibold text-purple-600">StoryCare</span>}
       </div>
 
       {/* Collapse toggle button */}
