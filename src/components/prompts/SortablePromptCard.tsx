@@ -97,26 +97,27 @@ export function SortablePromptCard({
           <span className="capitalize">{prompt.category}</span>
         </div>
 
-        {/* Edit Button - Always shown */}
-        <div className="mt-4 flex gap-2">
-          <Link
-            href={`/therapist/prompt-library/${prompt.id}/edit`}
-            className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-purple-300 bg-purple-50 px-3 py-2 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-100"
-          >
-            <Edit className="h-4 w-4" />
-            Edit
-          </Link>
-          {/* Delete Button - Only for editable prompts */}
-          {editable && onDelete && (
-            <button
-              type="button"
-              onClick={() => onDelete(prompt)}
-              className="rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50"
+        {/* Action Buttons - Edit/Delete only for editable prompts */}
+        {editable && (
+          <div className="mt-4 flex gap-2">
+            <Link
+              href={`/therapist/prompt-library/${prompt.id}/edit`}
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-purple-300 bg-purple-50 px-3 py-2 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-100"
             >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          )}
-        </div>
+              <Edit className="h-4 w-4" />
+              Edit
+            </Link>
+            {onDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(prompt)}
+                className="rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

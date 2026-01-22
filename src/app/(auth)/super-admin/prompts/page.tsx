@@ -6,9 +6,10 @@
  */
 
 import type { PromptTemplate } from '@/models/Schema';
-import { AlertCircle, Edit, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
+import { AlertCircle, Edit, Eye, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { ViewEditPromptModal } from '@/components/prompts/ViewEditPromptModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -21,6 +22,7 @@ export default function SuperAdminPromptsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPrompt, setSelectedPrompt] = useState<PromptTemplate | null>(null);
 
   // Fetch prompts
   const fetchPrompts = async () => {
@@ -185,12 +187,32 @@ export default function SuperAdminPromptsPage() {
               <SystemPromptCard
                 key={prompt.id}
                 prompt={prompt}
+                onView={() => setSelectedPrompt(prompt)}
                 onDelete={handleDeletePrompt}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* View/Edit Modal */}
+      {selectedPrompt && (
+        <ViewEditPromptModal
+          prompt={selectedPrompt}
+          onClose={() => setSelectedPrompt(null)}
+          onSaved={() => {
+            setSelectedPrompt(null);
+            fetchPrompts();
+          }}
+          onDeleted={() => {
+            setSelectedPrompt(null);
+            fetchPrompts();
+          }}
+          apiEndpoint="/api/super-admin/prompts"
+          canEdit={true}
+          canDelete={true}
+        />
+      )}
     </div>
   );
 }
@@ -200,10 +222,11 @@ export default function SuperAdminPromptsPage() {
  */
 type SystemPromptCardProps = {
   prompt: PromptTemplate;
+  onView: () => void;
   onDelete: (id: string) => void;
 };
 
-function SystemPromptCard({ prompt, onDelete }: SystemPromptCardProps) {
+function SystemPromptCard({ prompt, onView, onDelete }: SystemPromptCardProps) {
   // Extract schema type from jsonSchema
   const getSchemaType = (): string | null => {
     if (!prompt.jsonSchema) return null;
@@ -287,6 +310,14 @@ function SystemPromptCard({ prompt, onDelete }: SystemPromptCardProps) {
 
       {/* Actions */}
       <div className="flex gap-2">
+        <button
+          onClick={onView}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+          type="button"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          View
+        </button>
         <Link
           href={`/super-admin/prompts/${prompt.id}/edit`}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-purple-300 bg-purple-50 px-3 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100"

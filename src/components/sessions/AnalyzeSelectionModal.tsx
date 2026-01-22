@@ -29,6 +29,7 @@ export type AIPromptOption = {
   sortOrder?: number;
   outputType?: 'text' | 'json'; // Output type for filtering
   schemaType?: string; // JSON schema type if applicable
+  jsonSchema?: Record<string, unknown> | null; // JSON schema for structured output validation
 };
 
 type AnalyzeSelectionModalProps = {
@@ -130,6 +131,41 @@ export function AnalyzeSelectionModal({
     if (isModulePrompt && moduleAiPromptText) {
       // Prepend module's inline prompt for module-linked prompts
       finalPromptText = `${moduleAiPromptText}\n\n---\n\n${systemPrompt}`;
+    }
+
+    // Append JSON instructions for JSON output prompts with a schema
+    if (prompt.outputType === 'json' && prompt.jsonSchema) {
+      const schema = prompt.jsonSchema;
+
+      // Extract schemaType from jsonSchema if available
+      const schemaType = (schema as Record<string, unknown>)?.schemaType as string
+        || ((schema as Record<string, unknown>)?.properties as Record<string, unknown>)?.schemaType
+          && (((schema as Record<string, unknown>)?.properties as Record<string, unknown>)?.schemaType as Record<string, unknown>)?.enum
+          && ((((schema as Record<string, unknown>)?.properties as Record<string, unknown>)?.schemaType as Record<string, unknown>)?.enum as string[])?.[0]
+        || 'structured_output';
+
+      // Build JSON instruction block
+      const jsonInstructions = `
+
+---
+
+**CRITICAL JSON OUTPUT REQUIREMENTS:**
+
+You MUST output ONLY valid JSON. Follow these rules exactly:
+1. Start your response with { and end with }
+2. No explanatory text, markdown, or commentary before or after the JSON
+3. The JSON MUST start with "schemaType" as the FIRST field
+4. Use this exact schema structure:
+
+\`\`\`json
+${JSON.stringify(schema, null, 2)}
+\`\`\`
+
+Example first line: { "schemaType": "${schemaType}", ...
+
+Remember: ONLY output the JSON object. Nothing else.`;
+
+      finalPromptText = finalPromptText + jsonInstructions;
     }
 
     onAnalyze(promptId, finalPromptText, selectedText);

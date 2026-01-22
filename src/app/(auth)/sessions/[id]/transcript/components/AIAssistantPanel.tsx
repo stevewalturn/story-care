@@ -908,13 +908,49 @@ ${userText}`;
     }
 
     // Build the full system prompt with transcript context
-    const fullSystemPrompt = `${finalSystemPrompt}
+    let fullSystemPrompt = `${finalSystemPrompt}
 
 ---
 
 **Session Transcript** (${participantNote}):
 
 ${transcriptContext}`;
+
+    // Append JSON instructions for JSON output prompts with a schema
+    if ('outputType' in promptData && promptData.outputType === 'json' &&
+        'jsonSchema' in promptData && promptData.jsonSchema) {
+      const schema = promptData.jsonSchema as Record<string, unknown>;
+
+      // Extract schemaType from jsonSchema if available
+      const schemaType = (schema as Record<string, unknown>)?.schemaType as string
+        || ((schema as Record<string, unknown>)?.properties as Record<string, unknown>)?.schemaType
+          && (((schema as Record<string, unknown>)?.properties as Record<string, unknown>)?.schemaType as Record<string, unknown>)?.enum
+          && ((((schema as Record<string, unknown>)?.properties as Record<string, unknown>)?.schemaType as Record<string, unknown>)?.enum as string[])?.[0]
+        || 'structured_output';
+
+      // Build JSON instruction block
+      const jsonInstructions = `
+
+---
+
+**CRITICAL JSON OUTPUT REQUIREMENTS:**
+
+You MUST output ONLY valid JSON. Follow these rules exactly:
+1. Start your response with { and end with }
+2. No explanatory text, markdown, or commentary before or after the JSON
+3. The JSON MUST start with "schemaType" as the FIRST field
+4. Use this exact schema structure:
+
+\`\`\`json
+${JSON.stringify(schema, null, 2)}
+\`\`\`
+
+Example first line: { "schemaType": "${schemaType}", ...
+
+Remember: ONLY output the JSON object. Nothing else.`;
+
+      fullSystemPrompt = fullSystemPrompt + jsonInstructions;
+    }
 
     // Store the prompt for manual Send - user can optionally add text before clicking Send
     setSelectedPromptId(promptId);
@@ -1724,6 +1760,7 @@ ${transcriptContext}`;
               category: prompt.category || 'analysis',
               icon: prompt.icon || 'sparkles',
               outputType: prompt.outputType as 'text' | 'json',
+              jsonSchema: prompt.jsonSchema as Record<string, unknown> | null,
             });
           }}
           onAddClick={() => {

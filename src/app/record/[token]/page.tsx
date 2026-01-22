@@ -138,14 +138,24 @@ export default function PublicRecordingPage() {
     const { uploadUrl, gcsPath } = await metaResponse.json();
 
     // Upload to GCS
-    const uploadResponse = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': mimeTypeRef.current },
-      body: blob,
-    });
+    let uploadResponse: Response;
+    try {
+      uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': mimeTypeRef.current },
+        body: blob,
+      });
+    } catch (error) {
+      // CORS errors manifest as TypeError: Failed to fetch
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        throw new Error('Upload blocked - CORS may not be configured on the storage bucket. Please contact support.');
+      }
+      throw error;
+    }
 
     if (!uploadResponse.ok) {
-      throw new Error('Failed to upload chunk');
+      const errorText = await uploadResponse.text().catch(() => 'Unknown error');
+      throw new Error(`Failed to upload chunk: ${uploadResponse.status} - ${errorText}`);
     }
 
     // Confirm upload
