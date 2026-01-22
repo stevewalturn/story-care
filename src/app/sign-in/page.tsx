@@ -179,45 +179,47 @@ function SignInForm() {
             </div>
           )}
 
-          {/* Mock Test Accounts */}
-          <div className="mb-6 rounded-lg border-2 border-dashed border-yellow-300 bg-yellow-50 p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <svg
-                className="h-5 w-5 text-yellow-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <span className="text-sm font-semibold text-yellow-800">
-                Test Accounts (Demo Only)
-              </span>
-            </div>
-            <p className="mb-3 text-xs text-yellow-700">
-              Click any account below to auto-fill credentials:
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {mockAccounts.map(account => (
-                <button
-                  key={`${account.email}-${account.role}`}
-                  type="button"
-                  onClick={() => handleMockAccountClick(account.email, account.password)}
-                  className={`rounded-lg border-2 ${account.color} px-3 py-2 text-left transition-all hover:shadow-md active:scale-95`}
+          {/* Mock Test Accounts - Only shown in development */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mb-6 rounded-lg border-2 border-dashed border-yellow-300 bg-yellow-50 p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <svg
+                  className="h-5 w-5 text-yellow-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
-                  <div className="text-xs font-semibold">{account.role}</div>
-                  <div className="mt-1 truncate text-xs opacity-75">
-                    {account.email.split('@')[0]}
-                  </div>
-                </button>
-              ))}
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span className="text-sm font-semibold text-yellow-800">
+                  Test Accounts (Demo Only)
+                </span>
+              </div>
+              <p className="mb-3 text-xs text-yellow-700">
+                Click any account below to auto-fill credentials:
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {mockAccounts.map(account => (
+                  <button
+                    key={`${account.email}-${account.role}`}
+                    type="button"
+                    onClick={() => handleMockAccountClick(account.email, account.password)}
+                    className={`rounded-lg border-2 ${account.color} px-3 py-2 text-left transition-all hover:shadow-md active:scale-95`}
+                  >
+                    <div className="text-xs font-semibold">{account.role}</div>
+                    <div className="mt-1 truncate text-xs opacity-75">
+                      {account.email.split('@')[0]}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
