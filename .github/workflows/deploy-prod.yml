@@ -61,20 +61,24 @@ jobs:
           ${{ secrets.ENV_FILE_PROD }}
           EOF
 
+      - name: Set build timestamp
+        id: timestamp
+        run: echo "BUILD_TAG=prod-$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+
       - name: Build Docker image
         run: |
           docker build \
             --build-arg ENV_FILE="$(cat .env.build)" \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
             -t gcr.io/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.SERVICE_NAME }}:latest \
-            -t gcr.io/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.SERVICE_NAME }}:prod-$(date +%Y%m%d-%H%M%S) \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.SERVICE_NAME }}:${{ steps.timestamp.outputs.BUILD_TAG }} \
             .
 
       - name: Push Docker image to GCR
         run: |
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.SERVICE_NAME }}:latest
-          docker push gcr.io/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.SERVICE_NAME }}:prod-$(date +%Y%m%d-%H%M%S)
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID_PROD }}/${{ env.SERVICE_NAME }}:${{ steps.timestamp.outputs.BUILD_TAG }}
 
       - name: Deploy to Cloud Run (Production)
         run: |
