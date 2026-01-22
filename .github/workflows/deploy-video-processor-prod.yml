@@ -3,7 +3,7 @@ name: Deploy Video Processor to Cloud Run (Production)
 on:
   push:
     branches:
-      - production
+      - main
     paths:
       - 'jobs/video-processor/**'
       - src/services/VideoService.ts
