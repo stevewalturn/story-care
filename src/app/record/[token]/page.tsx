@@ -292,8 +292,8 @@ export default function PublicRecordingPage() {
         setElapsedSeconds(prev => prev + 1);
       }, 1000);
 
-      // Set up chunk upload timer (every 10 minutes)
-      const chunkIntervalMs = 10 * 60 * 1000;
+      // Set up chunk upload timer (every 5 minutes)
+      const chunkIntervalMs = 5 * 60 * 1000;
       chunkTimerRef.current = setInterval(async () => {
         await uploadCurrentChunk(false);
       }, chunkIntervalMs);
