@@ -118,16 +118,21 @@ export function TranscriptPanel({
     if (!audio) return;
 
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const handleDurationChange = () => setDuration(audio.duration || 0);
+    const handleDurationChange = () => {
+      // Only update if we have a valid, finite duration
+      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
+        setDuration(audio.duration);
+      }
+    };
     const handleLoadedMetadata = () => {
-      if (audio.duration && !isNaN(audio.duration)) {
+      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
         setDuration(audio.duration);
       }
     };
     const handleEnded = () => setIsPlaying(false);
     const handleCanPlayThrough = () => {
       // Audio is ready to play through without buffering
-      if (audio.duration && !isNaN(audio.duration)) {
+      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
         setDuration(audio.duration);
       }
     };
@@ -139,7 +144,7 @@ export function TranscriptPanel({
     audio.addEventListener('ended', handleEnded);
 
     // Try to get duration if already loaded
-    if (audio.duration && !isNaN(audio.duration)) {
+    if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
       setDuration(audio.duration);
     }
 
@@ -591,7 +596,11 @@ export function TranscriptPanel({
             preload="metadata"
             onLoadedMetadata={() => {
               if (audioRef.current) {
-                setDuration(audioRef.current.duration);
+                const dur = audioRef.current.duration;
+                // Only update if we have a valid, finite duration
+                if (dur && !isNaN(dur) && isFinite(dur)) {
+                  setDuration(dur);
+                }
                 setAudioError(null); // Clear any previous error on successful load
               }
             }}
