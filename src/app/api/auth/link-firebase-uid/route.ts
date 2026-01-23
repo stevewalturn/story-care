@@ -10,24 +10,27 @@ import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
 import { users } from '@/models/Schema';
+import { isTokenExpired } from '@/utils/InvitationTokens';
 
 /**
  * POST /api/auth/link-firebase-uid
  *
  * Request Body:
- * - email: User email (required)
- * - firebaseUid: Firebase UID from newly created account (required)
+ * - email: User email (required, but can be provided via token lookup)
+ * - token: Invitation token (optional, but preferred for security)
  *
  * Flow:
  * 1. Verify Firebase ID token to ensure authenticity
- * 2. Find invited user with matching email and null firebaseUid
- * 3. Update user: set firebaseUid, change status from 'invited' to 'active'
- * 4. Return success
+ * 2. Find invited user using token OR email
+ * 3. Validate token hasn't expired (if using token)
+ * 4. Update user: set firebaseUid, change status from 'invited' to 'active', clear token
+ * 5. Return success
  *
  * Security:
  * - Requires valid Firebase ID token (user must be authenticated)
+ * - Token-based lookup is preferred for security (prevents email guessing)
  * - Only links UIDs to users with status='invited' and firebaseUid=null
- * - Ensures email matches between Firebase user and invited user
+ * - Clears invitation token after successful activation
  */
 export async function POST(request: NextRequest) {
   try {
@@ -55,19 +58,52 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { email } = body;
+    const { email, token } = body;
 
-    if (!email) {
+    // Must have either email or token
+    if (!email && !token) {
       return NextResponse.json(
-        { error: 'Email is required' },
+        { error: 'Email or token is required' },
         { status: 400 },
       );
     }
 
-    // Security: Ensure the email in the request matches the Firebase user's email
-    if (firebaseUser.email?.toLowerCase() !== email.toLowerCase()) {
+    // If token is provided, use it for lookup (more secure)
+    let lookupEmail = email;
+
+    if (token) {
+      // Find user by token first to get their email
+      const [userByToken] = await db
+        .select({
+          email: users.email,
+          invitationTokenExpiresAt: users.invitationTokenExpiresAt,
+        })
+        .from(users)
+        .where(eq(users.invitationToken, token))
+        .limit(1);
+
+      if (!userByToken) {
+        return NextResponse.json(
+          { error: 'Invalid or expired invitation token' },
+          { status: 404 },
+        );
+      }
+
+      // Check token expiry
+      if (isTokenExpired(userByToken.invitationTokenExpiresAt)) {
+        return NextResponse.json(
+          { error: 'Invitation token has expired. Please request a new invitation.' },
+          { status: 410 },
+        );
+      }
+
+      lookupEmail = userByToken.email;
+    }
+
+    // Security: Ensure the email matches the Firebase user's email
+    if (firebaseUser.email?.toLowerCase() !== lookupEmail.toLowerCase()) {
       console.error('Email mismatch:', {
-        requestEmail: email,
+        requestEmail: lookupEmail,
         firebaseEmail: firebaseUser.email,
       });
       return NextResponse.json(
@@ -89,7 +125,7 @@ export async function POST(request: NextRequest) {
       .from(users)
       .where(
         and(
-          eq(users.email, email.toLowerCase()),
+          eq(users.email, lookupEmail.toLowerCase()),
           eq(users.firebaseUid, firebaseUser.uid),
         ),
       )
@@ -129,7 +165,7 @@ export async function POST(request: NextRequest) {
       .from(users)
       .where(
         and(
-          eq(users.email, email.toLowerCase()),
+          eq(users.email, lookupEmail.toLowerCase()),
           eq(users.status, 'invited'),
           isNull(users.firebaseUid),
         ),
@@ -146,7 +182,7 @@ export async function POST(request: NextRequest) {
           firebaseUid: users.firebaseUid,
         })
         .from(users)
-        .where(eq(users.email, email.toLowerCase()))
+        .where(eq(users.email, lookupEmail.toLowerCase()))
         .limit(1);
 
       if (anyUser && anyUser.firebaseUid && anyUser.firebaseUid !== firebaseUser.uid) {
@@ -177,12 +213,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Link Firebase UID and activate account
+    // Link Firebase UID, activate account, and clear invitation token
     const [updatedUser] = await db
       .update(users)
       .set({
         firebaseUid: firebaseUser.uid,
         status: 'active',
+        invitationToken: null, // Clear token after successful activation
+        invitationTokenExpiresAt: null,
         updatedAt: new Date(),
       })
       .where(eq(users.id, invitedUser.id))

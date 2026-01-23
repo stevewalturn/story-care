@@ -245,12 +245,14 @@ export async function sendTherapistInvitationEmail(params: {
   inviterName: string;
   organizationName: string;
   setupAccountUrl: string;
+  expiresAt?: Date;
 }) {
   const { subject, bodyText, bodyHtml } = generateTherapistInvitationEmailContent({
     therapistName: params.therapistName,
     inviterName: params.inviterName,
     organizationName: params.organizationName,
     setupAccountUrl: params.setupAccountUrl,
+    expiresAt: params.expiresAt,
   });
 
   const [notification] = await db
@@ -352,6 +354,7 @@ export async function sendPatientInvitationEmail(params: {
   therapistAvatarUrl?: string;
   setupAccountUrl: string;
   welcomeMessage?: string;
+  expiresAt?: Date;
 }) {
   const { subject, bodyText, bodyHtml } = generatePatientInvitationEmailContent({
     patientName: params.patientName,
@@ -359,6 +362,7 @@ export async function sendPatientInvitationEmail(params: {
     therapistAvatarUrl: params.therapistAvatarUrl,
     setupAccountUrl: params.setupAccountUrl,
     welcomeMessage: params.welcomeMessage,
+    expiresAt: params.expiresAt,
   });
 
   const [notification] = await db
@@ -458,12 +462,14 @@ export async function sendOrgAdminInvitationEmail(params: {
   inviterName: string;
   organizationName: string;
   setupAccountUrl: string;
+  expiresAt?: Date;
 }) {
   const { subject, bodyText, bodyHtml } = generateOrgAdminInvitationEmailContent({
     orgAdminName: params.orgAdminName,
     inviterName: params.inviterName,
     organizationName: params.organizationName,
     setupAccountUrl: params.setupAccountUrl,
+    expiresAt: params.expiresAt,
   });
 
   const [notification] = await db
@@ -1022,8 +1028,13 @@ function generateTherapistInvitationEmailContent(params: {
   inviterName: string;
   organizationName: string;
   setupAccountUrl: string;
+  expiresAt?: Date;
 }) {
   const subject = `You're invited to join ${params.organizationName} on StoryCare`;
+
+  const expiryText = params.expiresAt
+    ? `\nThis invitation link will expire on ${params.expiresAt.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.\nIf it expires, please contact your administrator for a new invitation.\n`
+    : '';
 
   const bodyText = `
 Hi ${params.therapistName},
@@ -1032,7 +1043,7 @@ ${params.inviterName} has invited you to join ${params.organizationName} on Stor
 
 To get started, please set up your account:
 ${params.setupAccountUrl}
-
+${expiryText}
 Once your account is set up, you'll be able to:
 - Upload and manage therapy sessions
 - Analyze transcripts with AI assistance
@@ -1073,6 +1084,8 @@ The StoryCare Team
       </a>
     </div>
 
+    ${params.expiresAt ? `<p style="font-size: 14px; color: #EF4444; margin-bottom: 20px; text-align: center;"><strong>This invitation link will expire on ${params.expiresAt.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.</strong><br>If it expires, please contact your administrator for a new invitation.</p>` : ''}
+
     <p style="font-size: 16px; margin-bottom: 10px;"><strong>Once your account is set up, you'll be able to:</strong></p>
     <ul style="font-size: 16px; color: #4B5563; line-height: 1.8;">
       <li>Upload and manage therapy sessions</li>
@@ -1111,8 +1124,13 @@ function generatePatientInvitationEmailContent(params: {
   therapistAvatarUrl?: string;
   setupAccountUrl: string;
   welcomeMessage?: string;
+  expiresAt?: Date;
 }) {
   const subject = `Welcome to StoryCare - ${params.therapistName} has invited you`;
+
+  const expiryText = params.expiresAt
+    ? `\nThis invitation link will expire on ${params.expiresAt.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.\nIf it expires, please contact your therapist for a new invitation.\n`
+    : '';
 
   const bodyText = `
 Hi ${params.patientName},
@@ -1122,7 +1140,7 @@ ${params.therapistName} has invited you to join StoryCare, a digital therapeutic
 ${params.welcomeMessage ? `${params.welcomeMessage}\n\n` : ''}
 To get started, please set up your account:
 ${params.setupAccountUrl}
-
+${expiryText}
 Once your account is set up, you'll be able to:
 - View personalized story pages created by your therapist
 - Watch videos and explore visual content
@@ -1173,6 +1191,8 @@ The StoryCare Team
       </a>
     </div>
 
+    ${params.expiresAt ? `<p style="font-size: 14px; color: #EF4444; margin-bottom: 20px; text-align: center;"><strong>This invitation link will expire on ${params.expiresAt.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.</strong><br>If it expires, please contact your therapist for a new invitation.</p>` : ''}
+
     <p style="font-size: 16px; margin-bottom: 10px;"><strong>Once your account is set up, you'll be able to:</strong></p>
     <ul style="font-size: 16px; color: #4B5563; line-height: 1.8;">
       <li>View personalized story pages created by your therapist</li>
@@ -1206,8 +1226,13 @@ function generateOrgAdminInvitationEmailContent(params: {
   inviterName: string;
   organizationName: string;
   setupAccountUrl: string;
+  expiresAt?: Date;
 }) {
   const subject = `Administrator invitation for ${params.organizationName} on StoryCare`;
+
+  const expiryText = params.expiresAt
+    ? `\nThis invitation link will expire on ${params.expiresAt.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.\nIf it expires, please contact the platform administrator for a new invitation.\n`
+    : '';
 
   const bodyText = `
 Hi ${params.orgAdminName},
@@ -1216,7 +1241,7 @@ ${params.inviterName} has invited you to be an administrator for ${params.organi
 
 To get started, please set up your account:
 ${params.setupAccountUrl}
-
+${expiryText}
 As an organization administrator, you'll be able to:
 - Manage therapists in your organization
 - View organization-wide analytics and metrics
@@ -1261,6 +1286,8 @@ The StoryCare Team
         Set Up Admin Account
       </a>
     </div>
+
+    ${params.expiresAt ? `<p style="font-size: 14px; color: #EF4444; margin-bottom: 20px; text-align: center;"><strong>This invitation link will expire on ${params.expiresAt.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.</strong><br>If it expires, please contact the platform administrator for a new invitation.</p>` : ''}
 
     <p style="font-size: 16px; margin-bottom: 10px;"><strong>As an organization administrator, you'll be able to:</strong></p>
     <ul style="font-size: 16px; color: #4B5563; line-height: 1.8;">

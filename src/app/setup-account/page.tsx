@@ -1,39 +1,120 @@
 /**
  * Setup Account Page
  * For invited users to create their password and activate their account
+ * Supports token-based flow (preferred) and email-based flow (fallback)
  */
 
 'use client';
 
-import { ArrowRight, Check } from 'lucide-react';
+import { AlertCircle, ArrowRight, Check, Clock, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { signUp } from '@/libs/Firebase';
 import { humanizeFirebaseError } from '@/utils/FirebaseErrorMessages';
 
-type Step = 1 | 2 | 3;
+type Step = 'loading' | 'email' | 'password' | 'success' | 'error';
 
 type InvitationDetails = {
   name: string;
   email: string;
   role: string;
   organizationName: string;
+  expiresAt?: string;
 };
 
-export default function SetupAccountPage() {
-  const [currentStep, setCurrentStep] = useState<Step>(1);
+type ErrorState = {
+  message: string;
+  type: 'expired' | 'invalid' | 'already_activated' | 'generic';
+};
+
+function SetupAccountForm() {
+  const [currentStep, setCurrentStep] = useState<Step>('loading');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [invitation, setInvitation] = useState<InvitationDetails | null>(null);
   const [error, setError] = useState('');
+  const [errorState, setErrorState] = useState<ErrorState | null>(null);
   const [loading, setLoading] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  // Step 1: Verify email has invitation
+  // On mount, check for token in URL and validate it
+  useEffect(() => {
+    const urlToken = searchParams.get('token');
+    const urlEmail = searchParams.get('email');
+
+    if (urlToken) {
+      setToken(urlToken);
+      validateToken(urlToken);
+    } else if (urlEmail) {
+      // Fallback to email-based flow for backward compatibility
+      setEmail(urlEmail);
+      setCurrentStep('email');
+    } else {
+      setCurrentStep('email');
+    }
+  }, [searchParams]);
+
+  // Validate invitation token
+  const validateToken = async (tokenToValidate: string) => {
+    try {
+      const response = await fetch('/api/auth/validate-invitation-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: tokenToValidate }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.valid) {
+        // Valid token - set invitation details and skip to password step
+        setInvitation({
+          name: data.name,
+          email: data.email,
+          role: data.role,
+          organizationName: data.organizationName,
+          expiresAt: data.expiresAt,
+        });
+        setEmail(data.email);
+        setCurrentStep('password');
+      } else if (response.status === 410) {
+        // Token already used
+        setErrorState({
+          message: data.error || 'This invitation has already been used.',
+          type: 'already_activated',
+        });
+        setCurrentStep('error');
+      } else if (response.status === 404 && data.expired) {
+        // Token expired
+        setErrorState({
+          message: data.error || 'This invitation link has expired.',
+          type: 'expired',
+        });
+        setCurrentStep('error');
+      } else {
+        // Invalid token
+        setErrorState({
+          message: data.error || 'Invalid invitation link.',
+          type: 'invalid',
+        });
+        setCurrentStep('error');
+      }
+    } catch (err) {
+      console.error('Token validation error:', err);
+      setErrorState({
+        message: 'Failed to validate invitation. Please try again.',
+        type: 'generic',
+      });
+      setCurrentStep('error');
+    }
+  };
+
+  // Step 1: Verify email has invitation (fallback flow)
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -46,7 +127,7 @@ export default function SetupAccountPage() {
       if (response.ok && data.status === 'pending' && data.exists) {
         // Valid pending invitation found
         setInvitation(data);
-        setCurrentStep(2);
+        setCurrentStep('password');
       } else if (response.ok && data.status === 'already_activated') {
         // Account already activated
         setError(
@@ -62,7 +143,7 @@ export default function SetupAccountPage() {
           data.error || 'No invitation found for this email. Please contact your therapist or administrator.',
         );
       }
-    } catch (err) {
+    } catch {
       setError('Failed to verify invitation. Please try again.');
     } finally {
       setLoading(false);
@@ -87,7 +168,7 @@ export default function SetupAccountPage() {
     setLoading(true);
 
     try {
-      // Create Firebase account
+      // Create Firebase account (without email verification)
       const { user, error: signUpError } = await signUp(email, password);
 
       if (signUpError) {
@@ -115,7 +196,7 @@ export default function SetupAccountPage() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${idToken}`,
               },
-              body: JSON.stringify({ email }),
+              body: JSON.stringify({ email, token }),
             });
 
             const linkData = await linkResponse.json();
@@ -128,8 +209,8 @@ export default function SetupAccountPage() {
             }
 
             // Successfully linked existing account
-            console.log('✅ Existing Firebase account linked:', linkData);
-            setCurrentStep(3);
+            console.log('Account linked and activated:', linkData);
+            setCurrentStep('success');
             setTimeout(() => {
               router.push('/sign-in?setup=complete');
             }, 2000);
@@ -157,7 +238,7 @@ export default function SetupAccountPage() {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${idToken}`,
             },
-            body: JSON.stringify({ email }),
+            body: JSON.stringify({ email, token }),
           });
 
           const linkData = await linkResponse.json();
@@ -175,6 +256,9 @@ export default function SetupAccountPage() {
             } else if (linkResponse.status === 404) {
               // No invitation found
               setError(linkData.error || 'No invitation found. Please contact your administrator.');
+            } else if (linkResponse.status === 410) {
+              // Token expired
+              setError(linkData.error || 'Invitation has expired. Please request a new invitation.');
             } else {
               setError(linkData.error || 'Failed to activate account. Please try again or contact support.');
             }
@@ -183,7 +267,7 @@ export default function SetupAccountPage() {
             return;
           }
 
-          console.log('✅ Account linked and activated:', linkData);
+          console.log('Account linked and activated:', linkData);
         } catch (linkError) {
           console.error('Error linking Firebase UID:', linkError);
           setError('Failed to complete account setup. Please try again or contact support.');
@@ -192,7 +276,7 @@ export default function SetupAccountPage() {
         }
 
         // Success! Move to completion step
-        setCurrentStep(3);
+        setCurrentStep('success');
 
         // Wait a moment, then redirect to sign-in
         setTimeout(() => {
@@ -234,14 +318,67 @@ export default function SetupAccountPage() {
 
         {/* Setup Form */}
         <div className="rounded-2xl bg-white p-8 shadow-xl">
-          {error && (
+          {/* Loading State */}
+          {currentStep === 'loading' && (
+            <div className="flex flex-col items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+              <p className="mt-4 text-gray-600">Validating your invitation...</p>
+            </div>
+          )}
+
+          {/* Error State */}
+          {currentStep === 'error' && errorState && (
+            <div className="text-center">
+              <div
+                className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${
+                  errorState.type === 'expired' ? 'bg-orange-100' : 'bg-red-100'
+                }`}
+              >
+                {errorState.type === 'expired' ? (
+                  <Clock className="h-8 w-8 text-orange-600" />
+                ) : (
+                  <AlertCircle className="h-8 w-8 text-red-600" />
+                )}
+              </div>
+              <h2 className="mb-2 text-2xl font-bold text-gray-900">
+                {errorState.type === 'expired' && 'Invitation Expired'}
+                {errorState.type === 'already_activated' && 'Already Activated'}
+                {errorState.type === 'invalid' && 'Invalid Invitation'}
+                {errorState.type === 'generic' && 'Something Went Wrong'}
+              </h2>
+              <p className="mb-6 text-gray-600">
+                {errorState.message}
+              </p>
+
+              {errorState.type === 'already_activated' ? (
+                <Link href="/sign-in">
+                  <Button variant="primary" className="w-full">
+                    Go to Sign In
+                  </Button>
+                </Link>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-500">
+                    Please contact your administrator to request a new invitation.
+                  </p>
+                  <Link href="/sign-in">
+                    <Button variant="secondary" className="w-full">
+                      Go to Sign In
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+
+          {error && currentStep !== 'error' && (
             <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               {error}
             </div>
           )}
 
-          {/* Step 1: Email Verification */}
-          {currentStep === 1 && (
+          {/* Step 1: Email Verification (fallback when no token) */}
+          {currentStep === 'email' && (
             <div>
               <div className="mb-6">
                 <h2 className="mb-2 text-2xl font-bold text-gray-900">
@@ -291,22 +428,29 @@ export default function SetupAccountPage() {
           )}
 
           {/* Step 2: Password Creation */}
-          {currentStep === 2 && invitation && (
+          {currentStep === 'password' && invitation && (
             <div>
               <div className="mb-6">
                 <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4">
                   <div className="flex items-start">
                     <Check className="mt-0.5 mr-3 h-5 w-5 flex-shrink-0 text-green-600" />
                     <div className="text-sm">
-                      <p className="font-medium text-green-900">Found your invitation!</p>
+                      <p className="font-medium text-green-900">Invitation verified!</p>
                       <p className="mt-1 text-green-700">
-                        You're joining as a
+                        Welcome,
+                        {' '}
+                        <strong>{invitation.name}</strong>
+                        ! You're joining as a
                         {' '}
                         <strong>{getRoleDisplay(invitation.role)}</strong>
-                        {' '}
-                        at
-                        {' '}
-                        <strong>{invitation.organizationName}</strong>
+                        {invitation.organizationName && (
+                          <>
+                            {' '}
+                            at
+                            {' '}
+                            <strong>{invitation.organizationName}</strong>
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -321,6 +465,14 @@ export default function SetupAccountPage() {
               </div>
 
               <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                <Input
+                  type="email"
+                  label="Email Address"
+                  value={email}
+                  disabled
+                  className="bg-gray-50"
+                />
+
                 <Input
                   type="password"
                   label="Create Password"
@@ -362,7 +514,7 @@ export default function SetupAccountPage() {
           )}
 
           {/* Step 3: Success */}
-          {currentStep === 3 && (
+          {currentStep === 'success' && (
             <div className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
                 <Check className="h-8 w-8 text-green-600" />
@@ -379,7 +531,7 @@ export default function SetupAccountPage() {
         </div>
 
         {/* Footer Links */}
-        {currentStep === 1 && (
+        {currentStep === 'email' && (
           <div className="mt-6 text-center text-sm text-gray-600">
             <p>Don't have an invitation?</p>
             <Link
@@ -392,5 +544,21 @@ export default function SetupAccountPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function SetupAccountPage() {
+  return (
+    <Suspense fallback={(
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-50">
+        <div className="text-center">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )}
+    >
+      <SetupAccountForm />
+    </Suspense>
   );
 }

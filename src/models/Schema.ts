@@ -313,6 +313,11 @@ export const usersSchema: any = pgTable('users', {
   // Firebase Auth
   firebaseUid: varchar('firebase_uid', { length: 255 }).unique(),
 
+  // Invitation token (secure, one-time use)
+  invitationToken: varchar('invitation_token', { length: 64 }).unique(),
+  invitationTokenExpiresAt: timestamp('invitation_token_expires_at'),
+  invitationSentAt: timestamp('invitation_sent_at'),
+
   // Soft delete for HIPAA compliance
   deletedAt: timestamp('deleted_at'),
 });

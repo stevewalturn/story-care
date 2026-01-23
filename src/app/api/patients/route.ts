@@ -21,6 +21,7 @@ import {
 } from '@/models/Schema';
 import { sendPatientInvitationEmail } from '@/services/EmailService';
 import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
+import { calculateExpirationDate, generateInvitationToken } from '@/utils/InvitationTokens';
 import { invitePatientSchema } from '@/validations/UserValidation';
 
 /**
@@ -311,6 +312,10 @@ export async function POST(request: NextRequest) {
     const shouldSendInvitation = validated.email && validated.sendInvitation;
     const patientStatus = shouldSendInvitation ? 'invited' : 'active';
 
+    // Generate secure invitation token if sending invitation
+    const invitationToken = shouldSendInvitation ? generateInvitationToken() : null;
+    const invitationTokenExpiresAt = shouldSendInvitation ? calculateExpirationDate(7) : null;
+
     // Create patient - IMPORTANT: Inherit organizationId from therapist
     const patientResult = await db
       .insert(users)
@@ -325,6 +330,9 @@ export async function POST(request: NextRequest) {
         organizationId: therapist.organizationId, // Inherit organization from therapist
         status: patientStatus,
         firebaseUid: shouldSendInvitation ? null : undefined, // null for invited, undefined for active
+        invitationToken,
+        invitationTokenExpiresAt,
+        invitationSentAt: shouldSendInvitation ? new Date() : null,
         createdAt: new Date(),
         updatedAt: new Date(),
       })
@@ -343,11 +351,11 @@ export async function POST(request: NextRequest) {
     let emailSent = false;
     let emailError: string | null = null;
 
-    if (shouldSendInvitation && validated.email) {
+    if (shouldSendInvitation && validated.email && invitationToken) {
       try {
-        // Construct setup account URL
+        // Construct setup account URL with token
         const appUrl = Env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const setupAccountUrl = `${appUrl}/setup-account?email=${encodeURIComponent(validated.email)}&type=patient`;
+        const setupAccountUrl = `${appUrl}/setup-account?token=${invitationToken}`;
 
         // Send invitation email
         await sendPatientInvitationEmail({
@@ -359,6 +367,7 @@ export async function POST(request: NextRequest) {
           therapistAvatarUrl: therapist.avatarUrl || undefined,
           setupAccountUrl,
           welcomeMessage: validated.welcomeMessage,
+          expiresAt: invitationTokenExpiresAt || undefined,
         });
 
         emailSent = true;

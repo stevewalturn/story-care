@@ -12,6 +12,7 @@ import { Env } from '@/libs/Env';
 import { organizationsSchema, users } from '@/models/Schema';
 import { sendOrgAdminInvitationEmail } from '@/services/EmailService';
 import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
+import { calculateExpirationDate, generateInvitationToken } from '@/utils/InvitationTokens';
 
 /**
  * POST /api/org-admins/[id]/resend-invitation - Resend invitation to an org admin
@@ -103,9 +104,24 @@ export async function POST(
       );
     }
 
-    // Construct setup account URL
+    // Generate new invitation token (invalidates old one)
+    const invitationToken = generateInvitationToken();
+    const invitationTokenExpiresAt = calculateExpirationDate(7); // 7 days expiry
+
+    // Update user with new token
+    await db
+      .update(users)
+      .set({
+        invitationToken,
+        invitationTokenExpiresAt,
+        invitationSentAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, orgAdminId));
+
+    // Construct setup account URL with token
     const appUrl = Env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const setupAccountUrl = `${appUrl}/setup-account?email=${encodeURIComponent(orgAdmin.email)}&type=org_admin`;
+    const setupAccountUrl = `${appUrl}/setup-account?token=${invitationToken}`;
 
     // Resend invitation email
     try {
@@ -116,6 +132,7 @@ export async function POST(
         inviterName: 'Super Admin',
         organizationName: organization.name,
         setupAccountUrl,
+        expiresAt: invitationTokenExpiresAt,
       });
 
       return NextResponse.json({

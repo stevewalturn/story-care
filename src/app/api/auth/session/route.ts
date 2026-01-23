@@ -15,15 +15,11 @@ export async function POST(request: Request) {
 
     // Verify the token with Firebase Admin SDK
     const decodedToken = await adminAuth.verifyIdToken(idToken);
-    const { uid, email, name, email_verified } = decodedToken;
+    const { uid, email, name } = decodedToken;
 
-    // SECURITY: Require email verification
-    if (!email_verified) {
-      return NextResponse.json(
-        { error: 'Email verification required. Please verify your email before signing in.' },
-        { status: 403 },
-      );
-    }
+    // Note: Email verification is now handled via invitation tokens, not Firebase
+    // Users are verified when they complete the setup-account flow with a valid token
+    // The user's 'active' status in the database confirms they've been verified
 
     // Check if user exists in database by Firebase UID
     const [existingUser] = await db

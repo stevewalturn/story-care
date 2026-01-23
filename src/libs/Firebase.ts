@@ -5,7 +5,6 @@ import {
   createUserWithEmailAndPassword,
   getAuth,
   onAuthStateChanged,
-  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
@@ -54,21 +53,12 @@ export const signUp = async (email: string, password: string) => {
       password,
     );
 
-    // Send email verification
-    await sendEmailVerification(userCredential.user);
+    // Note: Email verification is now handled via invitation tokens, not Firebase
+    // The account will be activated when linked via /api/auth/link-firebase-uid
 
     return { user: userCredential.user, error: null };
   } catch (error: any) {
     return { user: null, error: error.message };
-  }
-};
-
-export const sendVerificationEmail = async (user: User) => {
-  try {
-    await sendEmailVerification(user);
-    return { error: null };
-  } catch (error: any) {
-    return { error: error.message };
   }
 };
 

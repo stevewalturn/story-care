@@ -12,6 +12,7 @@ import { Env } from '@/libs/Env';
 import { organizationsSchema, users } from '@/models/Schema';
 import { sendTherapistInvitationEmail } from '@/services/EmailService';
 import { handleAuthError, requireAdmin, requireAuth } from '@/utils/AuthHelpers';
+import { calculateExpirationDate, generateInvitationToken } from '@/utils/InvitationTokens';
 import { inviteTherapistSchema } from '@/validations/UserValidation';
 
 /**
@@ -164,6 +165,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Generate secure invitation token
+    const invitationToken = generateInvitationToken();
+    const invitationTokenExpiresAt = calculateExpirationDate(7); // 7 days expiry
+
     // Create invited therapist
     const therapistResult = await db
       .insert(users)
@@ -176,6 +181,9 @@ export async function POST(request: NextRequest) {
         organizationId: authUser.organizationId, // null for super_admin is OK
         status: 'invited', // Will be activated when they sign in
         firebaseUid: null, // Will be linked when they sign in
+        invitationToken,
+        invitationTokenExpiresAt,
+        invitationSentAt: new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),
       })
@@ -209,9 +217,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Construct setup account URL
+      // Construct setup account URL with token
       const appUrl = Env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-      const setupAccountUrl = `${appUrl}/setup-account?email=${encodeURIComponent(validated.email)}`;
+      const setupAccountUrl = `${appUrl}/setup-account?token=${invitationToken}`;
 
       // Send invitation email
       await sendTherapistInvitationEmail({
@@ -221,6 +229,7 @@ export async function POST(request: NextRequest) {
         inviterName: authUser.name || 'Admin', // Use actual inviter name
         organizationName,
         setupAccountUrl,
+        expiresAt: invitationTokenExpiresAt,
       });
 
       emailSent = true;

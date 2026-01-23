@@ -16,9 +16,6 @@ function SignInForm() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const [showResendEmail, setShowResendEmail] = useState(false);
-  const [resendLoading, setResendLoading] = useState(false);
-  const [unverifiedUser, setUnverifiedUser] = useState<any>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -27,7 +24,7 @@ function SignInForm() {
     if (searchParams.get('setup') === 'complete') {
       // Defer setState to avoid cascading renders
       queueMicrotask(() => {
-        setSuccessMessage('Account created successfully! Please check your email to verify your account (check your spam folder if you don\'t see it). After that, you can sign in.');
+        setSuccessMessage('Account created successfully! You can now sign in.');
       });
     }
   }, [searchParams]);
@@ -65,32 +62,6 @@ function SignInForm() {
     setPassword(mockPassword);
     setError('');
     setSuccessMessage('');
-    setShowResendEmail(false);
-  };
-
-  const handleResendVerificationEmail = async () => {
-    if (!unverifiedUser)
-      return;
-
-    setResendLoading(true);
-    setError('');
-
-    try {
-      const { sendVerificationEmail } = await import('@/libs/Firebase');
-      const { error: sendError } = await sendVerificationEmail(unverifiedUser);
-
-      if (sendError) {
-        setError(`Failed to send verification email: ${sendError}`);
-      } else {
-        setSuccessMessage('Verification email sent! Please check your inbox and spam folder.');
-        setShowResendEmail(false);
-        setError('');
-      }
-    } catch (err) {
-      setError('Failed to send verification email. Please try again.');
-    } finally {
-      setResendLoading(false);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,25 +76,21 @@ function SignInForm() {
       setError(humanizeFirebaseError(signInError));
       setLoading(false);
     } else if (user) {
-      // Check if email is verified
-      if (!user.emailVerified) {
-        setUnverifiedUser(user);
-        setShowResendEmail(true);
-        setError(
-          'Please verify your email before signing in. Check your inbox for the verification link.',
-        );
-        setLoading(false);
-        return;
-      }
-
       try {
         // Get the ID token and set session cookie
         const idToken = await user.getIdToken();
-        await fetch('/api/auth/session', {
+        const sessionResponse = await fetch('/api/auth/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken }),
         });
+
+        if (!sessionResponse.ok) {
+          const sessionData = await sessionResponse.json();
+          setError(sessionData.error || 'Failed to complete sign in. Please try again.');
+          setLoading(false);
+          return;
+        }
 
         // Get the redirect URL from query params or default to dashboard
         const searchParams = new URLSearchParams(window.location.search);
@@ -166,18 +133,6 @@ function SignInForm() {
           {error && (
             <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
               <p className="text-sm text-red-700">{error}</p>
-              {showResendEmail && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleResendVerificationEmail}
-                  disabled={resendLoading}
-                  className="mt-3 w-full border-red-300 text-red-700 hover:bg-red-100"
-                >
-                  {resendLoading ? 'Sending...' : 'Resend Verification Email'}
-                </Button>
-              )}
             </div>
           )}
 

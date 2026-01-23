@@ -55,12 +55,8 @@ export async function requireAuth(
     // Verify token with Firebase Admin SDK
     const user = await verifyIdToken(token);
 
-    // SECURITY: Require email verification for all authenticated requests
-    // Skip in development mode for easier testing
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    if (!isDevelopment && !user.emailVerified) {
-      throw new Error('Email verification required. Please verify your email before accessing the platform.');
-    }
+    // Note: Email verification is now handled via invitation tokens, not Firebase
+    // Users are verified when they complete the setup-account flow with a valid token
 
     return user;
   } catch (error) {

@@ -12,6 +12,7 @@ import { Env } from '@/libs/Env';
 import { organizationsSchema, users } from '@/models/Schema';
 import { sendTherapistInvitationEmail } from '@/services/EmailService';
 import { handleAuthError, requireAdmin } from '@/utils/AuthHelpers';
+import { calculateExpirationDate, generateInvitationToken } from '@/utils/InvitationTokens';
 
 /**
  * POST /api/therapists/[id]/resend-invitation - Resend invitation to a therapist
@@ -99,9 +100,24 @@ export async function POST(
       }
     }
 
-    // Construct setup account URL
+    // Generate new invitation token (invalidates old one)
+    const invitationToken = generateInvitationToken();
+    const invitationTokenExpiresAt = calculateExpirationDate(7); // 7 days expiry
+
+    // Update user with new token
+    await db
+      .update(users)
+      .set({
+        invitationToken,
+        invitationTokenExpiresAt,
+        invitationSentAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, therapistId));
+
+    // Construct setup account URL with token
     const appUrl = Env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const setupAccountUrl = `${appUrl}/setup-account?email=${encodeURIComponent(therapist.email)}`;
+    const setupAccountUrl = `${appUrl}/setup-account?token=${invitationToken}`;
 
     // Resend invitation email
     try {
@@ -112,6 +128,7 @@ export async function POST(
         inviterName: 'Admin',
         organizationName,
         setupAccountUrl,
+        expiresAt: invitationTokenExpiresAt,
       });
 
       return NextResponse.json({

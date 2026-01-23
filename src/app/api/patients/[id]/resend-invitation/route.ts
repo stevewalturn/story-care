@@ -12,6 +12,7 @@ import { Env } from '@/libs/Env';
 import { users } from '@/models/Schema';
 import { sendPatientInvitationEmail } from '@/services/EmailService';
 import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
+import { calculateExpirationDate, generateInvitationToken } from '@/utils/InvitationTokens';
 
 /**
  * POST /api/patients/[id]/resend-invitation - Resend invitation to a patient
@@ -130,9 +131,24 @@ export async function POST(
       );
     }
 
-    // Construct setup account URL
+    // Generate new invitation token (invalidates old one)
+    const invitationToken = generateInvitationToken();
+    const invitationTokenExpiresAt = calculateExpirationDate(7); // 7 days expiry
+
+    // Update user with new token
+    await db
+      .update(users)
+      .set({
+        invitationToken,
+        invitationTokenExpiresAt,
+        invitationSentAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, patientId));
+
+    // Construct setup account URL with token
     const appUrl = Env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const setupAccountUrl = `${appUrl}/setup-account?email=${encodeURIComponent(patient.email)}&type=patient`;
+    const setupAccountUrl = `${appUrl}/setup-account?token=${invitationToken}`;
 
     // Resend invitation email
     try {
@@ -145,6 +161,7 @@ export async function POST(
         therapistAvatarUrl: therapist.avatarUrl || undefined,
         setupAccountUrl,
         welcomeMessage: undefined, // No custom message on resend
+        expiresAt: invitationTokenExpiresAt,
       });
 
       return NextResponse.json({
