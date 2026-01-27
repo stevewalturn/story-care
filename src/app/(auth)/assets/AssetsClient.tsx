@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Download, Edit2, Eye, Frame, MoreVertical, Music, Pencil, Plus, RefreshCw, Sparkles, Trash2, Upload, Users, Video } from 'lucide-react';
+import { ChevronDown, Download, Edit2, Eye, Frame, Image as ImageIcon, MoreVertical, Music, Pencil, Plus, RefreshCw, Sparkles, Trash2, Upload, Users, Video } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -9,6 +9,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MediaViewer } from '@/components/assets/MediaViewer';
 import { EditMediaModal } from '@/components/media/EditMediaModal';
+import { ExtractLastFrameModal } from '@/components/media/ExtractLastFrameModal';
 import { GenerateImageModal } from '@/components/media/GenerateImageModal';
 import { GenerateMusicModal } from '@/components/media/GenerateMusicModal';
 import { GenerateVideoModal } from '@/components/media/GenerateVideoModal';
@@ -94,6 +95,11 @@ export function AssetsClient() {
   const [showGenerateMusicModal, setShowGenerateMusicModal] = useState(false);
   const [showGenerateVideoModal, setShowGenerateVideoModal] = useState(false);
 
+  // Create Media dropdown state
+  const [showCreateDropdown, setShowCreateDropdown] = useState(false);
+  const createDropdownRef = useRef<HTMLDivElement>(null);
+  const [musicMode, setMusicMode] = useState<'instrumental' | 'lyrical'>('instrumental');
+
   // Menu state
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
@@ -102,6 +108,9 @@ export function AssetsClient() {
 
   // Edit Details state
   const [editingMedia, setEditingMedia] = useState<MediaItem | null>(null);
+
+  // Extract Last Frame state
+  const [extractingMedia, setExtractingMedia] = useState<MediaItem | null>(null);
 
   // Regenerate state (for Generate New Version)
   const [regenerateImageData, setRegenerateImageData] = useState<{
@@ -131,6 +140,17 @@ export function AssetsClient() {
   // In-progress tasks state
   const [inProgressTasks, setInProgressTasks] = useState<any[]>([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+
+  // Handle click outside for Create Media dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (createDropdownRef.current && !createDropdownRef.current.contains(event.target as Node)) {
+        setShowCreateDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Load patients on mount (only when user is available)
   useEffect(() => {
@@ -538,42 +558,31 @@ export function AssetsClient() {
     }
   };
 
-  // Extract Last Frame handler
-  const handleExtractLastFrame = async (item: MediaItem) => {
+  // Extract Last Frame handler - opens modal
+  const handleExtractLastFrame = (item: MediaItem) => {
     if (item.mediaType !== 'video') {
       toast.error('Can only extract frames from videos');
       return;
     }
+    setExtractingMedia(item);
+  };
 
-    if (!user) return;
+  // Perform the actual frame extraction API call (passed to modal)
+  const performExtractFrame = async () => {
+    if (!extractingMedia || !user) return;
 
-    const toastId = toast.loading('Extracting last frame...');
+    const response = await authenticatedFetch(
+      `/api/media/${extractingMedia.id}/extract-frame`,
+      user,
+      { method: 'POST' },
+    );
 
-    try {
-      const idToken = await user.getIdToken();
-      const response = await fetch(`/api/media/${item.id}/extract-frame`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to extract frame');
-      }
-
-      const { image } = await response.json();
-
-      // Add to top of media list
-      setMedia(prev => [image, ...prev]);
-
-      toast.dismiss(toastId);
-      toast.success('Last frame extracted and saved to library');
-    } catch (error: any) {
-      toast.dismiss(toastId);
-      toast.error(error.message || 'Failed to extract last frame');
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to extract frame');
     }
+
+    return response.json();
   };
 
   // Generate New Version handler
@@ -605,6 +614,7 @@ export function AssetsClient() {
         prompt: item.generationPrompt,
         title: `${item.title} - Variation`,
       });
+      setMusicMode('instrumental'); // Default to instrumental for regeneration
       setShowGenerateMusicModal(true);
     }
   };
@@ -1012,14 +1022,63 @@ export function AssetsClient() {
                   <Upload className="mr-2 h-4 w-4" />
                   Import
                 </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setShowGenerateImageModal(true)}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Media
-                </Button>
+                <div className="relative" ref={createDropdownRef}>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setShowCreateDropdown(!showCreateDropdown)}
+                  >
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Create Media
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+                  {showCreateDropdown && (
+                    <div className="absolute right-0 z-50 mt-2 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                      <button
+                        className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700"
+                        onClick={() => {
+                          setShowGenerateImageModal(true);
+                          setShowCreateDropdown(false);
+                        }}
+                      >
+                        <ImageIcon className="mr-3 h-4 w-4" />
+                        Generate Image
+                      </button>
+                      <button
+                        className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700"
+                        onClick={() => {
+                          setShowGenerateVideoModal(true);
+                          setShowCreateDropdown(false);
+                        }}
+                      >
+                        <Video className="mr-3 h-4 w-4" />
+                        Generate Video
+                      </button>
+                      <button
+                        className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700"
+                        onClick={() => {
+                          setMusicMode('lyrical');
+                          setShowGenerateMusicModal(true);
+                          setShowCreateDropdown(false);
+                        }}
+                      >
+                        <Music className="mr-3 h-4 w-4" />
+                        Generate Music (Lyrical)
+                      </button>
+                      <button
+                        className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700"
+                        onClick={() => {
+                          setMusicMode('instrumental');
+                          setShowGenerateMusicModal(true);
+                          setShowCreateDropdown(false);
+                        }}
+                      >
+                        <Music className="mr-3 h-4 w-4" />
+                        Generate Music (Instrumental)
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -2104,20 +2163,20 @@ export function AssetsClient() {
           }}
           patientId={selectedPatient}
           user={user}
-          instrumentalOption={regenerateMusicData ? {
+          instrumentalOption={musicMode === 'instrumental' ? (regenerateMusicData ? {
             title: regenerateMusicData.title,
             music_description: regenerateMusicData.prompt,
           } : {
             title: 'Therapeutic Music',
             music_description: 'Create therapeutic music for this patient',
-          }}
-          lyricalOption={regenerateMusicData ? {
+          }) : undefined}
+          lyricalOption={musicMode === 'lyrical' ? (regenerateMusicData ? {
             title: regenerateMusicData.title,
             music_description: regenerateMusicData.prompt,
           } : {
             title: 'Lyrical Therapeutic Song',
             music_description: 'Create a song with meaningful lyrics for this patient',
-          }}
+          }) : undefined}
           onComplete={() => {
             // Refresh media list and tasks when music generation completes
             loadMedia();
@@ -2180,6 +2239,23 @@ export function AssetsClient() {
           onSave={handleSaveMediaDetails}
         />
       )}
+
+      {/* Extract Last Frame Modal */}
+      <ExtractLastFrameModal
+        isOpen={!!extractingMedia}
+        onClose={() => setExtractingMedia(null)}
+        video={extractingMedia ? {
+          id: extractingMedia.id,
+          title: extractingMedia.title,
+          mediaUrl: extractingMedia.mediaUrl,
+          thumbnailUrl: extractingMedia.thumbnailUrl ?? undefined,
+        } : null}
+        onExtract={performExtractFrame}
+        user={user}
+        onFrameExtracted={(newMedia) => {
+          setMedia(prev => [newMedia, ...prev]);
+        }}
+      />
     </div>
   );
 }

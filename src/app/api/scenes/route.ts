@@ -1,14 +1,19 @@
 import type { NextRequest } from 'next/server';
-import { and, desc, eq, ilike } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+import { getClientInfo, logAudit } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
 import { generatePresignedUrl } from '@/libs/GCS';
 import { mediaLibrary, sceneClips, scenes, sessions, usersSchema, videoProcessingJobs } from '@/models/Schema';
+import { handleAuthError, requireAuth, verifyTherapistPatientAccess } from '@/utils/AuthHelpers';
 
 // GET /api/scenes - List scenes
 export async function GET(request: NextRequest) {
   try {
+    // HIPAA: Require authentication
+    const user = await requireAuth(request);
+
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get('patientId');
     const search = searchParams.get('search');
@@ -33,7 +38,36 @@ export async function GET(request: NextRequest) {
 
     // Build filters
     const filters = [];
+
+    // Role-based access control (HIPAA compliance)
+    if (user.role === 'therapist') {
+      // Therapists can only see scenes they created
+      filters.push(eq(scenes.createdByTherapistId, user.dbUserId));
+    } else if (user.role === 'patient') {
+      // Patients can only see their own scenes
+      filters.push(eq(scenes.patientId, user.dbUserId));
+    } else if (user.role === 'org_admin') {
+      // Org admins can see scenes created by therapists in their organization
+      const therapistsInOrg = db
+        .select({ id: usersSchema.id })
+        .from(usersSchema)
+        .where(and(
+          eq(usersSchema.organizationId, user.organizationId!),
+          eq(usersSchema.role, 'therapist'),
+        ));
+      filters.push(inArray(scenes.createdByTherapistId, therapistsInOrg));
+    }
+    // Super admin: no filter (sees all)
+
     if (patientId) {
+      // HIPAA: Verify user has access to this patient before filtering
+      const accessCheck = await verifyTherapistPatientAccess(user, patientId);
+      if (!accessCheck.hasAccess) {
+        return NextResponse.json(
+          { error: accessCheck.error },
+          { status: 403 },
+        );
+      }
       filters.push(eq(scenes.patientId, patientId));
     }
     if (search) {
@@ -108,8 +142,21 @@ export async function GET(request: NextRequest) {
       }),
     );
 
+    // HIPAA: Log PHI access
+    await logAudit({
+      userId: user.dbUserId,
+      action: 'read',
+      resourceType: 'scene',
+      resourceId: 'list',
+      ...getClientInfo(request),
+      metadata: { count: scenesWithSignedUrls.length, patientId },
+    });
+
     return NextResponse.json({ scenes: scenesWithSignedUrls });
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      return handleAuthError(error);
+    }
     console.error('Error fetching scenes:', error);
     return NextResponse.json(
       { error: 'Failed to fetch scenes' },
@@ -134,7 +181,7 @@ export async function POST(request: NextRequest) {
     let user;
     try {
       user = await verifyIdToken(token);
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: 'Invalid token' },
         { status: 401 },
@@ -205,6 +252,44 @@ export async function POST(request: NextRequest) {
         { error: 'Unable to determine patient ID' },
         { status: 400 },
       );
+    }
+
+    // HIPAA: Verify therapist has access to this patient
+    // Fetch therapist's full info for access check
+    const [therapistInfo] = await db
+      .select({
+        organizationId: usersSchema.organizationId,
+        role: usersSchema.role,
+        name: usersSchema.name,
+        email: usersSchema.email,
+        status: usersSchema.status,
+      })
+      .from(usersSchema)
+      .where(eq(usersSchema.id, therapist.id))
+      .limit(1);
+
+    if (therapistInfo) {
+      const accessCheck = await verifyTherapistPatientAccess(
+        {
+          uid: user.uid,
+          dbUserId: therapist.id,
+          name: therapistInfo.name || '',
+          organizationId: therapistInfo.organizationId,
+          email: therapistInfo.email,
+          emailVerified: true,
+          role: therapistInfo.role as 'therapist',
+          status: therapistInfo.status as 'active',
+          avatarUrl: null,
+        },
+        finalPatientId,
+      );
+
+      if (!accessCheck.hasAccess) {
+        return NextResponse.json(
+          { error: accessCheck.error },
+          { status: 403 },
+        );
+      }
     }
 
     // Insert new scene

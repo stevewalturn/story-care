@@ -1,13 +1,18 @@
 import type { NextRequest } from 'next/server';
-import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+import { getClientInfo, logAudit } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { generatePresignedUrlsForMedia } from '@/libs/GCS';
 import { mediaLibrary, scenes, sessions, users } from '@/models/Schema';
+import { handleAuthError, requireAuth, verifyTherapistPatientAccess } from '@/utils/AuthHelpers';
 
 // GET /api/media - List media files
 export async function GET(request: NextRequest) {
   try {
+    // HIPAA: Require authentication
+    const user = await requireAuth(request);
+
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get('patientId');
     const sourceSessionId = searchParams.get('sessionId');
@@ -47,7 +52,36 @@ export async function GET(request: NextRequest) {
 
     // Build filters
     const filters = [];
+
+    // Role-based access control (HIPAA compliance)
+    if (user.role === 'therapist') {
+      // Therapists can only see media they created
+      filters.push(eq(mediaLibrary.createdByTherapistId, user.dbUserId));
+    } else if (user.role === 'patient') {
+      // Patients can only see their own media
+      filters.push(eq(mediaLibrary.patientId, user.dbUserId));
+    } else if (user.role === 'org_admin') {
+      // Org admins can see media created by therapists in their organization
+      const therapistsInOrg = db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(
+          eq(users.organizationId, user.organizationId!),
+          eq(users.role, 'therapist'),
+        ));
+      filters.push(inArray(mediaLibrary.createdByTherapistId, therapistsInOrg));
+    }
+    // Super admin: no filter (sees all)
+
     if (patientId) {
+      // HIPAA: Verify user has access to this patient before filtering
+      const accessCheck = await verifyTherapistPatientAccess(user, patientId);
+      if (!accessCheck.hasAccess) {
+        return NextResponse.json(
+          { error: accessCheck.error },
+          { status: 403 },
+        );
+      }
       filters.push(eq(mediaLibrary.patientId, patientId));
     }
     if (sourceSessionId) {
@@ -75,8 +109,21 @@ export async function GET(request: NextRequest) {
     // Generate presigned URLs for all media items (HIPAA compliant, 1-hour expiration)
     const mediaWithSignedUrls = await generatePresignedUrlsForMedia(media, 1);
 
+    // HIPAA: Log PHI access
+    await logAudit({
+      userId: user.dbUserId,
+      action: 'read',
+      resourceType: 'media',
+      resourceId: 'list',
+      ...getClientInfo(request),
+      metadata: { count: mediaWithSignedUrls.length, patientId },
+    });
+
     return NextResponse.json({ media: mediaWithSignedUrls });
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      return handleAuthError(error);
+    }
     console.error('Error fetching media:', error);
     return NextResponse.json(
       { error: 'Failed to fetch media' },
@@ -112,9 +159,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convert Firebase UID to database UUID
+    // Convert Firebase UID to database UUID and get full therapist info
     const [therapist] = await db
-      .select({ id: users.id })
+      .select({
+        id: users.id,
+        organizationId: users.organizationId,
+        role: users.role,
+        name: users.name,
+        email: users.email,
+        status: users.status,
+      })
       .from(users)
       .where(eq(users.firebaseUid, therapistFirebaseUid))
       .limit(1);
@@ -123,6 +177,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Therapist not found' },
         { status: 404 },
+      );
+    }
+
+    // HIPAA: Verify therapist has access to this patient
+    const accessCheck = await verifyTherapistPatientAccess(
+      {
+        uid: therapistFirebaseUid,
+        dbUserId: therapist.id,
+        name: therapist.name || '',
+        organizationId: therapist.organizationId,
+        email: therapist.email,
+        emailVerified: true,
+        role: therapist.role as 'therapist',
+        status: therapist.status as 'active',
+        avatarUrl: null,
+      },
+      patientId,
+    );
+
+    if (!accessCheck.hasAccess) {
+      return NextResponse.json(
+        { error: accessCheck.error },
+        { status: 403 },
       );
     }
 

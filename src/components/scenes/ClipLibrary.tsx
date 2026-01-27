@@ -266,9 +266,18 @@ export function ClipLibrary({ onAddToTimeline, patientId }: ClipLibraryProps) {
                         )
                       : item.type === 'video'
                         ? (
-                            <div className="flex h-full w-full items-center justify-center">
-                              <Video className="h-6 w-6 text-gray-400" />
-                            </div>
+                            <>
+                              {item.thumbnailUrl ? (
+                                <img src={item.thumbnailUrl} alt={item.title} className="h-full w-full object-cover" />
+                              ) : (
+                                <div className="h-full w-full bg-gradient-to-br from-purple-100 to-purple-200" />
+                              )}
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                <div className="rounded-full bg-white p-1.5 shadow-lg">
+                                  <Video className="h-4 w-4 text-purple-600" />
+                                </div>
+                              </div>
+                            </>
                           )
                         : (
                             <img

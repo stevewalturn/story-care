@@ -14,11 +14,13 @@ import {
   Eye,
   Film,
   Image,
+  Loader2,
   MoreVertical,
   Music,
   RefreshCw,
   Sparkles,
   Trash2,
+  XCircle,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -666,8 +668,10 @@ export function MediaTab({
             {media.map(item => (
               <div
                 key={item.id}
-                className="group relative cursor-pointer rounded-lg border border-gray-200 bg-white transition-all hover:border-purple-300 hover:shadow-md"
-                onClick={() => setSelectedMedia(item)}
+                aria-label={`${item.title || 'Untitled'}${item.status === 'processing' ? ' - Processing' : item.status === 'failed' ? ' - Failed' : ''}`}
+                aria-disabled={item.status === 'processing'}
+                className={`group relative rounded-lg border border-gray-200 bg-white transition-all hover:border-purple-300 hover:shadow-md ${item.status === 'processing' ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                onClick={() => item.status !== 'processing' && setSelectedMedia(item)}
               >
                 {/* Thumbnail */}
                 <div className="relative aspect-square overflow-hidden rounded-t-lg bg-gray-100">
@@ -723,47 +727,78 @@ export function MediaTab({
                   )}
                 </div>
 
+                {/* Processing status overlay */}
+                {item.status === 'processing' && (
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-lg bg-gradient-to-br from-blue-900/80 to-indigo-900/80 backdrop-blur-sm">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-white border-t-transparent" />
+                    <p className="mt-2 text-sm font-medium text-white">Generating...</p>
+                  </div>
+                )}
+
+                {/* Failed status overlay */}
+                {item.status === 'failed' && (
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-lg bg-red-900/70 backdrop-blur-sm">
+                    <XCircle className="h-8 w-8 text-red-300" />
+                    <p className="mt-2 text-sm font-medium text-red-200">Generation Failed</p>
+                  </div>
+                )}
+
                 {/* Context Menu Button - positioned relative to card, not thumbnail */}
-                <div className="absolute top-2 right-2 z-10">
-                  <button
-                    ref={(el) => {
-                      if (el) menuButtonRefs.current.set(item.id, el);
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (activeMenuId === item.id) {
-                        setActiveMenuId(null);
-                        setMenuPosition(null);
-                      } else {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        const menuWidth = 192; // w-48 = 12rem = 192px
-                        const menuHeight = 280; // approximate menu height
-                        const viewportHeight = window.innerHeight;
+                {item.status !== 'processing' && (
+                  <div className="absolute top-2 right-2 z-10">
+                    <button
+                      ref={(el) => {
+                        if (el) menuButtonRefs.current.set(item.id, el);
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (activeMenuId === item.id) {
+                          setActiveMenuId(null);
+                          setMenuPosition(null);
+                        } else {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const menuWidth = 192; // w-48 = 12rem = 192px
+                          const menuHeight = 280; // approximate menu height
+                          const viewportHeight = window.innerHeight;
 
-                        // Calculate left position - prefer right-aligned, but flip if near right edge
-                        let left = rect.right - menuWidth;
-                        if (left < 8) {
-                          left = rect.left;
+                          // Calculate left position - prefer right-aligned, but flip if near right edge
+                          let left = rect.right - menuWidth;
+                          if (left < 8) {
+                            left = rect.left;
+                          }
+
+                          // Calculate top position - prefer below, but flip if near bottom
+                          let top = rect.bottom + 4;
+                          if (top + menuHeight > viewportHeight - 8) {
+                            top = rect.top - menuHeight - 4;
+                          }
+
+                          setMenuPosition({ top, left });
+                          setActiveMenuId(item.id);
                         }
-
-                        // Calculate top position - prefer below, but flip if near bottom
-                        let top = rect.bottom + 4;
-                        if (top + menuHeight > viewportHeight - 8) {
-                          top = rect.top - menuHeight - 4;
-                        }
-
-                        setMenuPosition({ top, left });
-                        setActiveMenuId(item.id);
-                      }
-                    }}
-                    className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:bg-white"
-                  >
-                    <MoreVertical className="h-4 w-4 text-gray-600" />
-                  </button>
-                </div>
+                      }}
+                      className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:bg-white"
+                    >
+                      <MoreVertical className="h-4 w-4 text-gray-600" />
+                    </button>
+                  </div>
+                )}
 
                 {/* Title and Scene Link */}
                 <div className="p-2">
+                  {/* Status badge for non-completed items */}
+                  {item.status === 'processing' && (
+                    <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Processing
+                    </span>
+                  )}
+                  {item.status === 'failed' && (
+                    <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                      <XCircle className="h-3 w-3" />
+                      Failed
+                    </span>
+                  )}
                   <h4 className="line-clamp-2 text-xs font-medium text-gray-700">
                     {item.title}
                   </h4>

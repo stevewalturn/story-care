@@ -55,6 +55,7 @@ export async function verifyIdToken(token: string) {
         firebaseUid: true,
         status: true,
         avatarUrl: true,
+        deletedAt: true, // Include for soft-delete check
       },
     });
 
@@ -73,6 +74,7 @@ export async function verifyIdToken(token: string) {
           firebaseUid: true,
           status: true,
           avatarUrl: true,
+          deletedAt: true, // Include for soft-delete check
         },
       });
 
@@ -94,6 +96,7 @@ export async function verifyIdToken(token: string) {
             firebaseUid: users.firebaseUid,
             status: users.status,
             avatarUrl: users.avatarUrl,
+            deletedAt: users.deletedAt, // Include for soft-delete check
           });
 
         dbUser = updatedUser;
@@ -103,6 +106,16 @@ export async function verifyIdToken(token: string) {
     // 4. If user still doesn't exist, they haven't been invited or signed up
     if (!dbUser) {
       throw new Error('User not found in database. Please complete registration or contact your administrator.');
+    }
+
+    // 5. Block inactive users from logging in
+    if (dbUser.status === 'inactive') {
+      throw new Error('Account is deactivated. Please contact your administrator.');
+    }
+
+    // 6. Block soft-deleted users from logging in
+    if (dbUser.deletedAt) {
+      throw new Error('Account has been removed. Please contact your administrator.');
     }
 
     return {

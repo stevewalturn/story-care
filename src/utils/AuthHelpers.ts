@@ -310,3 +310,86 @@ export function isAuthError(error: unknown): error is Error {
       || error.message.includes('Forbidden'))
   );
 }
+
+/**
+ * Verifies that a therapist has access to a specific patient
+ * by checking that the patient is assigned to this therapist.
+ *
+ * This is a critical HIPAA security control that must be called
+ * before any operation that creates or accesses patient data.
+ *
+ * @param user - Authenticated user (from requireAuth)
+ * @param patientId - Patient's database UUID
+ * @returns Object with { hasAccess, patient } or { hasAccess: false, error }
+ *
+ * @example
+ * ```typescript
+ * const accessCheck = await verifyTherapistPatientAccess(user, patientId);
+ * if (!accessCheck.hasAccess) {
+ *   return NextResponse.json({ error: accessCheck.error }, { status: 403 });
+ * }
+ * ```
+ */
+export async function verifyTherapistPatientAccess(
+  user: AuthenticatedUser,
+  patientId: string,
+): Promise<
+  | { hasAccess: true; patient: { id: string; therapistId: string | null; organizationId: string | null } }
+  | { hasAccess: false; error: string }
+> {
+  // Super admin can access any patient
+  if (user.role === 'super_admin') {
+    return { hasAccess: true, patient: { id: patientId, therapistId: null, organizationId: null } };
+  }
+
+  // Import db and users here to avoid circular dependencies
+  const { db } = await import('@/libs/DB');
+  const { users } = await import('@/models/Schema');
+  const { eq } = await import('drizzle-orm');
+
+  // Fetch the patient to verify access
+  const [patient] = await db
+    .select({
+      id: users.id,
+      therapistId: users.therapistId,
+      organizationId: users.organizationId,
+      role: users.role,
+    })
+    .from(users)
+    .where(eq(users.id, patientId))
+    .limit(1);
+
+  if (!patient) {
+    return { hasAccess: false, error: 'Patient not found' };
+  }
+
+  if (patient.role !== 'patient') {
+    return { hasAccess: false, error: 'Invalid patient ID' };
+  }
+
+  // Org admin can access patients in their organization
+  if (user.role === 'org_admin') {
+    if (user.organizationId === patient.organizationId) {
+      return { hasAccess: true, patient };
+    }
+    return { hasAccess: false, error: 'Forbidden: Patient is not in your organization' };
+  }
+
+  // Therapist can only access their assigned patients
+  if (user.role === 'therapist') {
+    if (patient.therapistId === user.dbUserId) {
+      return { hasAccess: true, patient };
+    }
+    return { hasAccess: false, error: 'Forbidden: You do not have access to this patient' };
+  }
+
+  // Patient can only access their own data
+  if (user.role === 'patient') {
+    if (user.dbUserId === patientId) {
+      return { hasAccess: true, patient };
+    }
+    return { hasAccess: false, error: 'Forbidden: You can only access your own data' };
+  }
+
+  return { hasAccess: false, error: 'Forbidden: Insufficient permissions' };
+}

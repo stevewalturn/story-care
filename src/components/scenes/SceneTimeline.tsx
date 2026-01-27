@@ -83,12 +83,21 @@ function SortableClipItem({
         <GripVertical className="h-5 w-5 text-gray-400" />
       </div>
 
-      <div className="h-16 w-28 flex-shrink-0 overflow-hidden rounded bg-gradient-to-br from-gray-100 to-gray-200">
+      <div className="relative h-16 w-28 flex-shrink-0 overflow-hidden rounded bg-gradient-to-br from-gray-100 to-gray-200">
         {clip.type === 'video'
           ? (
-              <div className="flex h-full w-full items-center justify-center">
-                <Video className="h-8 w-8 text-gray-400" />
-              </div>
+              <>
+                {clip.thumbnailUrl ? (
+                  <img src={clip.thumbnailUrl} alt={clip.title} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="h-full w-full bg-gradient-to-br from-purple-100 to-purple-200" />
+                )}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                  <div className="rounded-full bg-white p-1 shadow">
+                    <Video className="h-5 w-5 text-purple-600" />
+                  </div>
+                </div>
+              </>
             )
           : (
               <img src={clip.thumbnailUrl} alt={clip.title} className="h-full w-full object-cover" />
@@ -402,9 +411,16 @@ export function SceneTimeline({
                   <div className="relative h-full w-full">
                     {clip.type === 'video'
                       ? (
-                          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
-                            <Video className="h-8 w-8 text-gray-300" />
-                          </div>
+                          <>
+                            {clip.thumbnailUrl ? (
+                              <img src={clip.thumbnailUrl} alt={clip.title} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="h-full w-full bg-gradient-to-br from-gray-700 to-gray-800" />
+                            )}
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                              <Video className="h-6 w-6 text-white drop-shadow" />
+                            </div>
+                          </>
                         )
                       : (
                           <img

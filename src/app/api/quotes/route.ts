@@ -1,13 +1,17 @@
 import type { NextRequest } from 'next/server';
-import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+import { getClientInfo, logAudit } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
-import { quotes, sessions, speakers, transcriptsSchema, utterancesSchema } from '@/models/Schema';
-import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
+import { quotes, sessions, speakers, transcriptsSchema, users, utterancesSchema } from '@/models/Schema';
+import { handleAuthError, requireAuth, requireTherapist, verifyTherapistPatientAccess } from '@/utils/AuthHelpers';
 
 // GET /api/quotes - List quotes
 export async function GET(request: NextRequest) {
   try {
+    // HIPAA: Require authentication
+    const user = await requireAuth(request);
+
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get('patientId');
     const sessionId = searchParams.get('sessionId');
@@ -38,7 +42,36 @@ export async function GET(request: NextRequest) {
 
     // Build filters
     const filters = [];
+
+    // Role-based access control (HIPAA compliance)
+    if (user.role === 'therapist') {
+      // Therapists can only see quotes they created
+      filters.push(eq(quotes.createdByTherapistId, user.dbUserId));
+    } else if (user.role === 'patient') {
+      // Patients can only see their own quotes
+      filters.push(eq(quotes.patientId, user.dbUserId));
+    } else if (user.role === 'org_admin') {
+      // Org admins can see quotes created by therapists in their organization
+      const therapistsInOrg = db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(
+          eq(users.organizationId, user.organizationId!),
+          eq(users.role, 'therapist'),
+        ));
+      filters.push(inArray(quotes.createdByTherapistId, therapistsInOrg));
+    }
+    // Super admin: no filter (sees all)
+
     if (patientId) {
+      // HIPAA: Verify user has access to this patient before filtering
+      const accessCheck = await verifyTherapistPatientAccess(user, patientId);
+      if (!accessCheck.hasAccess) {
+        return NextResponse.json(
+          { error: accessCheck.error },
+          { status: 403 },
+        );
+      }
       filters.push(eq(quotes.patientId, patientId));
     }
     if (sessionId) {
@@ -59,8 +92,21 @@ export async function GET(request: NextRequest) {
 
     const quotesList = await query.orderBy(desc(quotes.createdAt));
 
+    // HIPAA: Log PHI access
+    await logAudit({
+      userId: user.dbUserId,
+      action: 'read',
+      resourceType: 'quote',
+      resourceId: 'list',
+      ...getClientInfo(request),
+      metadata: { count: quotesList.length, patientId, sessionId },
+    });
+
     return NextResponse.json({ quotes: quotesList });
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      return handleAuthError(error);
+    }
     console.error('Error fetching quotes:', error);
     return NextResponse.json(
       { error: 'Failed to fetch quotes' },
@@ -95,6 +141,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Missing required fields: patientId, quoteText' },
         { status: 400 },
+      );
+    }
+
+    // HIPAA: Verify therapist has access to this patient
+    const accessCheck = await verifyTherapistPatientAccess(user, patientId);
+    if (!accessCheck.hasAccess) {
+      return NextResponse.json(
+        { error: accessCheck.error },
+        { status: 403 },
       );
     }
 

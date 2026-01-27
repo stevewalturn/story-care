@@ -5,7 +5,7 @@
 
 'use client';
 
-import { ArrowLeft, Download, Send, User, UserPlus } from 'lucide-react';
+import { ArrowLeft, Download, Pencil, Send, Trash2, User, UserCheck, UserPlus, UserX } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 
@@ -22,6 +22,10 @@ type TherapistHeaderProps = {
   onResendInvitation?: () => void;
   onAssignPatients?: () => void;
   onGenerateReport?: () => void;
+  onEdit?: () => void;
+  onToggleStatus?: () => void;
+  onDelete?: () => void;
+  patientCount?: number;
 };
 
 export function TherapistDetailHeader({
@@ -29,6 +33,10 @@ export function TherapistDetailHeader({
   onResendInvitation,
   onAssignPatients,
   onGenerateReport,
+  onEdit,
+  onToggleStatus,
+  onDelete,
+  patientCount = 0,
 }: TherapistHeaderProps) {
   const router = useRouter();
 
@@ -97,7 +105,8 @@ export function TherapistDetailHeader({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Primary Actions */}
           {therapist.status === 'invited' && onResendInvitation && (
             <Button variant="secondary" onClick={onResendInvitation}>
               <Send className="mr-2 h-4 w-4" />
@@ -114,6 +123,54 @@ export function TherapistDetailHeader({
             <Button variant="secondary" onClick={onGenerateReport}>
               <Download className="mr-2 h-4 w-4" />
               Generate Report
+            </Button>
+          )}
+
+          {/* Management Actions */}
+          {onEdit && (
+            <Button variant="secondary" onClick={onEdit}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </Button>
+          )}
+
+          {/* Status Toggle - only for active/inactive users */}
+          {onToggleStatus && therapist.status !== 'invited' && (
+            <Button
+              variant="secondary"
+              onClick={onToggleStatus}
+              className={therapist.status === 'active'
+                ? 'border-amber-300 text-amber-600 hover:bg-amber-50'
+                : 'border-green-300 text-green-600 hover:bg-green-50'}
+            >
+              {therapist.status === 'active'
+                ? (
+                    <>
+                      <UserX className="mr-2 h-4 w-4" />
+                      Deactivate
+                    </>
+                  )
+                : (
+                    <>
+                      <UserCheck className="mr-2 h-4 w-4" />
+                      Activate
+                    </>
+                  )}
+            </Button>
+          )}
+
+          {/* Delete Button */}
+          {onDelete && (
+            <Button
+              variant="secondary"
+              onClick={onDelete}
+              className="border-red-300 text-red-600 hover:bg-red-50"
+              title={patientCount > 0
+                ? `Cannot delete: ${patientCount} patient(s) assigned`
+                : 'Delete therapist'}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
             </Button>
           )}
         </div>

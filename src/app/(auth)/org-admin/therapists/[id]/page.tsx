@@ -5,9 +5,11 @@
 
 'use client';
 
-import { useParams } from 'next/navigation';
+import { AlertTriangle } from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { AssignPatientsModal } from '@/components/therapists/AssignPatientsModal';
+import { EditTherapistModal } from '@/components/therapists/EditTherapistModal';
 import { TherapistActivityTab } from '@/components/therapists/TherapistActivityTab';
 import { TherapistDetailHeader } from '@/components/therapists/TherapistDetailHeader';
 import { TherapistOverviewTab } from '@/components/therapists/TherapistOverviewTab';
@@ -53,6 +55,7 @@ type TherapistDetails = {
 
 export default function TherapistDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const { user } = useAuth();
   const [therapistDetails, setTherapistDetails] = useState<TherapistDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,13 +64,26 @@ export default function TherapistDetailPage() {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
+  const [idToken, setIdToken] = useState('');
+
+  // Edit modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  // Confirmation dialog state
+  const [showStatusConfirm, setShowStatusConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState('');
 
   const fetchTherapistDetails = useCallback(async () => {
     try {
-      const idToken = await user?.getIdToken();
+      const token = await user?.getIdToken();
+      if (token) {
+        setIdToken(token);
+      }
       const response = await fetch(`/api/therapists/${params.id}`, {
         headers: {
-          Authorization: `Bearer ${idToken}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -130,6 +146,87 @@ export default function TherapistDetailPage() {
     window.open(`/api/therapists/${params.id}/report?format=pdf`, '_blank');
   };
 
+  const handleEdit = () => {
+    setShowEditModal(true);
+  };
+
+  const handleEditSuccess = () => {
+    fetchTherapistDetails();
+    setSuccessMessage('Therapist updated successfully');
+  };
+
+  const handleToggleStatusClick = () => {
+    setShowStatusConfirm(true);
+    setActionError('');
+  };
+
+  const handleToggleStatusConfirm = async () => {
+    if (!therapistDetails)
+      return;
+
+    setActionLoading(true);
+    setActionError('');
+
+    try {
+      const newStatus = therapistDetails.therapist.status === 'active' ? 'inactive' : 'active';
+      const response = await fetch(`/api/therapists/${params.id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (response.ok) {
+        fetchTherapistDetails();
+        setShowStatusConfirm(false);
+        setSuccessMessage(`Therapist ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
+      } else {
+        const data = await response.json();
+        setActionError(data.error || 'Failed to update status');
+      }
+    } catch {
+      setActionError('Network error. Please try again.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+    setActionError('');
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!therapistDetails)
+      return;
+
+    setActionLoading(true);
+    setActionError('');
+
+    try {
+      const response = await fetch(`/api/therapists/${params.id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      });
+
+      if (response.ok) {
+        // Redirect to therapist list
+        router.push('/org-admin/therapists');
+      } else {
+        const data = await response.json();
+        setActionError(data.error || 'Failed to delete therapist');
+      }
+    } catch {
+      setActionError('Network error. Please try again.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -174,6 +271,10 @@ export default function TherapistDetailPage() {
         }
         onAssignPatients={() => setShowAssignModal(true)}
         onGenerateReport={handleGenerateReport}
+        onEdit={handleEdit}
+        onToggleStatus={handleToggleStatusClick}
+        onDelete={handleDeleteClick}
+        patientCount={therapistDetails.metrics.totalPatients}
       />
 
       {/* Tabs */}
@@ -284,6 +385,169 @@ export default function TherapistDetailPage() {
         therapistName={therapistDetails.therapist.name}
         onSuccess={handleAssignSuccess}
       />
+
+      {/* Edit Therapist Modal */}
+      {showEditModal && (
+        <EditTherapistModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          onSuccess={handleEditSuccess}
+          therapist={therapistDetails.therapist}
+          idToken={idToken}
+        />
+      )}
+
+      {/* Status Toggle Confirmation Dialog */}
+      {showStatusConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={actionLoading ? undefined : () => setShowStatusConfirm(false)}
+          />
+          <div className="relative z-10 mx-4 w-full max-w-md overflow-hidden rounded-lg bg-white shadow-xl">
+            <div className="p-6">
+              <div className="flex items-start gap-4">
+                <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full ${
+                  therapistDetails.therapist.status === 'active' ? 'bg-amber-100' : 'bg-green-100'
+                }`}
+                >
+                  <AlertTriangle className={`h-6 w-6 ${
+                    therapistDetails.therapist.status === 'active' ? 'text-amber-600' : 'text-green-600'
+                  }`}
+                  />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {therapistDetails.therapist.status === 'active' ? 'Deactivate' : 'Activate'}
+                    {' '}
+                    Therapist
+                  </h3>
+                  <p className="mt-2 text-sm text-gray-600">
+                    {therapistDetails.therapist.status === 'active'
+                      ? `Are you sure you want to deactivate ${therapistDetails.therapist.name}? They will no longer be able to access the platform.`
+                      : `Are you sure you want to activate ${therapistDetails.therapist.name}? They will regain access to the platform.`}
+                  </p>
+                  {actionError && (
+                    <p className="mt-2 text-sm text-red-600">{actionError}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="bg-gray-50 px-6 py-4">
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowStatusConfirm(false);
+                    setActionError('');
+                  }}
+                  disabled={actionLoading}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleToggleStatusConfirm}
+                  disabled={actionLoading}
+                  className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                    therapistDetails.therapist.status === 'active'
+                      ? 'bg-amber-600 hover:bg-amber-700'
+                      : 'bg-green-600 hover:bg-green-700'
+                  }`}
+                >
+                  {actionLoading
+                    ? (
+                        <>
+                          <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Processing...
+                        </>
+                      )
+                    : therapistDetails.therapist.status === 'active' ? 'Deactivate' : 'Activate'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={actionLoading ? undefined : () => setShowDeleteConfirm(false)}
+          />
+          <div className="relative z-10 mx-4 w-full max-w-md overflow-hidden rounded-lg bg-white shadow-xl">
+            <div className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Delete Therapist
+                  </h3>
+                  <p className="mt-2 text-sm text-gray-600">
+                    Are you sure you want to delete
+                    {' '}
+                    <strong>{therapistDetails.therapist.name}</strong>
+                    ? This action cannot be undone.
+                  </p>
+                  {therapistDetails.metrics.totalPatients > 0 && (
+                    <p className="mt-2 text-sm text-amber-600">
+                      This therapist has
+                      {' '}
+                      {therapistDetails.metrics.totalPatients}
+                      {' '}
+                      assigned patient(s). You must reassign them before deleting.
+                    </p>
+                  )}
+                  {actionError && (
+                    <p className="mt-2 text-sm text-red-600">{actionError}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="bg-gray-50 px-6 py-4">
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setActionError('');
+                  }}
+                  disabled={actionLoading}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteConfirm}
+                  disabled={actionLoading}
+                  className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {actionLoading
+                    ? (
+                        <>
+                          <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Deleting...
+                        </>
+                      )
+                    : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

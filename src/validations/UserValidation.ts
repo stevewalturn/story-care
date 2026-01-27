@@ -77,7 +77,34 @@ export const inviteOrgAdminSchema = z.object({
     .min(1, 'Organization ID is required'),
 });
 
+/**
+ * Schema for updating therapist details (org_admin can edit)
+ */
+export const updateTherapistSchema = z.object({
+  name: z.string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(255, 'Name must not exceed 255 characters')
+    .optional(),
+  licenseNumber: z.string()
+    .max(100, 'License number must not exceed 100 characters')
+    .nullable()
+    .optional(),
+  specialty: z.string()
+    .max(500, 'Specialty must not exceed 500 characters')
+    .nullable()
+    .optional(),
+});
+
+/**
+ * Schema for changing therapist status
+ */
+export const updateTherapistStatusSchema = z.object({
+  status: z.enum(['active', 'inactive']),
+});
+
 export type InviteTherapistInput = z.infer<typeof inviteTherapistSchema>;
 export type CreatePatientInput = z.infer<typeof createPatientSchema>;
 export type InvitePatientInput = z.infer<typeof invitePatientSchema>;
 export type InviteOrgAdminInput = z.infer<typeof inviteOrgAdminSchema>;
+export type UpdateTherapistInput = z.infer<typeof updateTherapistSchema>;
+export type UpdateTherapistStatusInput = z.infer<typeof updateTherapistStatusSchema>;

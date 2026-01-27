@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import { getClientInfo, logAudit } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { notes, sessions, users } from '@/models/Schema';
-import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
+import { handleAuthError, requireAuth, verifyTherapistPatientAccess } from '@/utils/AuthHelpers';
 
 // GET /api/notes - List notes
 export async function GET(request: NextRequest) {
@@ -48,6 +48,14 @@ export async function GET(request: NextRequest) {
     // Admin can see all notes
 
     if (patientId) {
+      // HIPAA: Verify user has access to this patient before filtering
+      const accessCheck = await verifyTherapistPatientAccess(user, patientId);
+      if (!accessCheck.hasAccess) {
+        return NextResponse.json(
+          { error: accessCheck.error },
+          { status: 403 },
+        );
+      }
       filters.push(eq(notes.patientId, patientId));
     }
     if (sessionId) {
