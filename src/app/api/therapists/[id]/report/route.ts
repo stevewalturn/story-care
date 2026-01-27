@@ -1,25 +1,27 @@
 /**
  * Therapist Report Generation API
- * Generate PDF/CSV reports for therapist activity and metrics
- * HIPAA Compliant: Requires authentication and enforces organization boundaries
+ * Generates PDF reports for therapist activity and metrics
+ * HIPAA Compliant: Requires admin authentication and audit logging
  */
 
 import type { NextRequest } from 'next/server';
-import { and, count, eq } from 'drizzle-orm';
+import { and, count, desc, eq } from 'drizzle-orm';
+import { jsPDF as JsPDF } from 'jspdf';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { auditLogs, mediaLibrary, sessions, storyPages, users } from '@/models/Schema';
+import { mediaLibrary, sessions, storyPages, users } from '@/models/Schema';
+import { logAuditFromRequest } from '@/services/AuditService';
 import { handleAuthError, requireAdmin } from '@/utils/AuthHelpers';
 
 /**
- * GET /api/therapists/[id]/report - Generate therapist activity report
+ * GET /api/therapists/[id]/report - Generate therapist report
  *
  * Query Parameters:
- * - format: 'pdf' | 'csv' (default: 'pdf')
+ * - format: 'pdf' (default) - Output format for the report
  *
  * Access Control:
  * - Org admins: Can only generate reports for therapists in their organization
- * - Super admins: Can generate reports for any therapist
+ * - Super admins: Can generate reports for therapists across all organizations
  */
 export async function GET(
   request: NextRequest,
@@ -29,9 +31,6 @@ export async function GET(
     // HIPAA: Require org admin or super admin
     const authUser = await requireAdmin(request);
     const { id } = await params;
-
-    const { searchParams } = new URL(request.url);
-    const format = searchParams.get('format') || 'pdf';
 
     // Fetch therapist
     const therapist = await db.query.users.findFirst({
@@ -45,7 +44,7 @@ export async function GET(
       );
     }
 
-    // Ensure therapist is actually a therapist role
+    // Ensure user is actually a therapist
     if (therapist.role !== 'therapist') {
       return NextResponse.json(
         { error: 'User is not a therapist' },
@@ -57,13 +56,25 @@ export async function GET(
     if (authUser.role === 'org_admin') {
       if (therapist.organizationId !== authUser.organizationId) {
         return NextResponse.json(
-          { error: 'Forbidden: Cannot generate reports for therapists outside your organization' },
+          { error: 'Forbidden: Cannot access therapists outside your organization' },
           { status: 403 },
         );
       }
     }
 
-    // Gather comprehensive metrics
+    // Fetch organization details
+    let organizationName = 'N/A';
+    if (therapist.organizationId) {
+      const organization = await db.query.organizations.findFirst({
+        where: (orgs, { eq }) => eq(orgs.id, therapist.organizationId!),
+      });
+      if (organization) {
+        organizationName = organization.name;
+      }
+    }
+
+    // Calculate metrics
+    // 1. Total patients
     const totalPatientsResult = await db
       .select({ count: count() })
       .from(users)
@@ -75,235 +86,324 @@ export async function GET(
       );
     const totalPatients = Number(totalPatientsResult[0]?.count || 0);
 
+    // 2. Total sessions
     const totalSessionsResult = await db
       .select({ count: count() })
       .from(sessions)
       .where(eq(sessions.therapistId, therapist.id));
     const totalSessions = Number(totalSessionsResult[0]?.count || 0);
 
+    // 3. Story pages created
     const storyPagesCreatedResult = await db
       .select({ count: count() })
       .from(storyPages)
       .where(eq(storyPages.createdByTherapistId, therapist.id));
     const storyPagesCreated = Number(storyPagesCreatedResult[0]?.count || 0);
 
+    // 4. Media generated
     const mediaGeneratedResult = await db
       .select({ count: count() })
       .from(mediaLibrary)
       .where(eq(mediaLibrary.createdByTherapistId, therapist.id));
     const mediaGenerated = Number(mediaGeneratedResult[0]?.count || 0);
 
-    const activityLogResult = await db
-      .select({ count: count() })
-      .from(auditLogs)
-      .where(eq(auditLogs.userId, therapist.id));
-    const totalActivityEntries = Number(activityLogResult[0]?.count || 0);
+    // Fetch patients with session counts
+    const patientsList = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        status: users.status,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(
+        and(
+          eq(users.role, 'patient'),
+          eq(users.therapistId, therapist.id),
+        ),
+      )
+      .orderBy(desc(users.createdAt))
+      .limit(20);
 
-    // Generate report data
-    const reportData = {
-      therapist: {
-        name: therapist.name,
-        email: therapist.email,
-        licenseNumber: therapist.licenseNumber,
-        specialty: therapist.specialty,
-        status: therapist.status,
-        createdAt: therapist.createdAt,
-        lastLoginAt: therapist.lastLoginAt,
-      },
-      metrics: {
-        totalPatients,
-        totalSessions,
-        storyPagesCreated,
-        mediaGenerated,
-        totalActivityEntries,
-      },
-      generatedAt: new Date().toISOString(),
-      generatedBy: authUser.email,
+    // Get session count for each patient
+    const patientsWithSessionCount = await Promise.all(
+      patientsList.map(async (patient) => {
+        const sessionCountResult = await db
+          .select({ count: count() })
+          .from(sessions)
+          .where(
+            and(
+              eq(sessions.patientId, patient.id),
+              eq(sessions.therapistId, therapist.id),
+            ),
+          );
+        return {
+          ...patient,
+          sessionCount: Number(sessionCountResult[0]?.count || 0),
+        };
+      }),
+    );
+
+    // Fetch recent sessions
+    const recentSessions = await db
+      .select({
+        id: sessions.id,
+        title: sessions.title,
+        sessionDate: sessions.sessionDate,
+        sessionType: sessions.sessionType,
+        patientId: sessions.patientId,
+      })
+      .from(sessions)
+      .where(eq(sessions.therapistId, therapist.id))
+      .orderBy(desc(sessions.sessionDate))
+      .limit(10);
+
+    // Get patient names for sessions
+    const sessionsWithPatient = await Promise.all(
+      recentSessions.map(async (session) => {
+        if (!session.patientId) {
+          return { ...session, patientName: 'Group Session' };
+        }
+        const patient = await db.query.users.findFirst({
+          where: (users, { eq }) => eq(users.id, session.patientId!),
+        });
+        return {
+          ...session,
+          patientName: patient?.name || 'Unknown Patient',
+        };
+      }),
+    );
+
+    // Generate PDF
+    const doc = new JsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    const contentWidth = pageWidth - (margin * 2);
+    let yPos = margin;
+
+    // Helper function to add a new page if needed
+    const checkPageBreak = (neededSpace: number) => {
+      if (yPos + neededSpace > doc.internal.pageSize.getHeight() - margin) {
+        doc.addPage();
+        yPos = margin;
+        return true;
+      }
+      return false;
     };
 
-    // Return format based on query parameter
-    if (format === 'csv') {
-      // Generate CSV report
-      const csv = [
-        // Header
-        'Metric,Value',
-        `Therapist Name,${reportData.therapist.name}`,
-        `Email,${reportData.therapist.email}`,
-        `License Number,${reportData.therapist.licenseNumber || 'N/A'}`,
-        `Specialty,${reportData.therapist.specialty || 'N/A'}`,
-        `Status,${reportData.therapist.status}`,
-        `Account Created,${reportData.therapist.createdAt}`,
-        `Last Login,${reportData.therapist.lastLoginAt || 'Never'}`,
-        '',
-        'Activity Metrics,',
-        `Total Patients,${reportData.metrics.totalPatients}`,
-        `Total Sessions,${reportData.metrics.totalSessions}`,
-        `Story Pages Created,${reportData.metrics.storyPagesCreated}`,
-        `Media Generated,${reportData.metrics.mediaGenerated}`,
-        `Total Activity Entries,${reportData.metrics.totalActivityEntries}`,
-        '',
-        `Report Generated At,${reportData.generatedAt}`,
-        `Generated By,${reportData.generatedBy}`,
-      ].join('\n');
+    // Header
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(79, 70, 229); // Purple color
+    doc.text('StoryCare', margin, yPos);
+    yPos += 10;
 
-      return new NextResponse(csv, {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="therapist-report-${therapist.id}-${Date.now()}.csv"`,
-        },
+    doc.setFontSize(18);
+    doc.setTextColor(0, 0, 0);
+    doc.text('Therapist Activity Report', margin, yPos);
+    yPos += 8;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, margin, yPos);
+    yPos += 15;
+
+    // Therapist Information Section
+    doc.setFillColor(249, 250, 251);
+    doc.rect(margin, yPos, contentWidth, 40, 'F');
+    yPos += 8;
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text('Therapist Information', margin + 5, yPos);
+    yPos += 8;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Name: ${therapist.name || 'N/A'}`, margin + 5, yPos);
+    yPos += 5;
+    doc.text(`Email: ${therapist.email || 'N/A'}`, margin + 5, yPos);
+    yPos += 5;
+    doc.text(`License: ${therapist.licenseNumber || 'N/A'}`, margin + 5, yPos);
+    doc.text(`Specialty: ${therapist.specialty || 'N/A'}`, margin + 80, yPos);
+    yPos += 5;
+    doc.text(`Status: ${therapist.status || 'N/A'}`, margin + 5, yPos);
+    doc.text(`Organization: ${organizationName}`, margin + 80, yPos);
+    yPos += 15;
+
+    // Activity Metrics Section
+    checkPageBreak(50);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Activity Metrics', margin, yPos);
+    yPos += 8;
+
+    // Metrics table
+    doc.setFillColor(249, 250, 251);
+    doc.rect(margin, yPos, contentWidth, 8, 'F');
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(100, 100, 100);
+    doc.text('Metric', margin + 5, yPos + 5);
+    doc.text('Count', margin + 120, yPos + 5);
+    yPos += 10;
+
+    const metrics = [
+      { label: 'Total Patients', value: totalPatients.toString() },
+      { label: 'Total Sessions', value: totalSessions.toString() },
+      { label: 'Story Pages Created', value: storyPagesCreated.toString() },
+      { label: 'Media Generated', value: mediaGenerated.toString() },
+    ];
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    metrics.forEach((metric) => {
+      doc.text(metric.label, margin + 5, yPos + 5);
+      doc.text(metric.value, margin + 120, yPos + 5);
+      yPos += 8;
+    });
+    yPos += 10;
+
+    // Patient List Section
+    checkPageBreak(60);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Patient List', margin, yPos);
+    yPos += 8;
+
+    if (patientsWithSessionCount.length > 0) {
+      // Table header
+      doc.setFillColor(249, 250, 251);
+      doc.rect(margin, yPos, contentWidth, 8, 'F');
+
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(100, 100, 100);
+      doc.text('Name', margin + 5, yPos + 5);
+      doc.text('Status', margin + 70, yPos + 5);
+      doc.text('Sessions', margin + 110, yPos + 5);
+      doc.text('Added', margin + 145, yPos + 5);
+      yPos += 10;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+
+      patientsWithSessionCount.forEach((patient) => {
+        checkPageBreak(10);
+        const name = (patient.name || 'N/A').substring(0, 30);
+        doc.text(name, margin + 5, yPos + 5);
+        doc.text(patient.status || 'N/A', margin + 70, yPos + 5);
+        doc.text(patient.sessionCount.toString(), margin + 110, yPos + 5);
+        doc.text(
+          patient.createdAt
+            ? new Date(patient.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : 'N/A',
+          margin + 145,
+          yPos + 5,
+        );
+        yPos += 8;
       });
     } else {
-      // Generate HTML report (simpler alternative to PDF generation)
-      // In production, you'd use a library like puppeteer or pdfkit
-      const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Therapist Activity Report - ${therapist.name}</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 800px;
-      margin: 40px auto;
-      padding: 20px;
-      color: #333;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(100, 100, 100);
+      doc.text('No patients assigned to this therapist.', margin + 5, yPos + 5);
+      yPos += 10;
     }
-    h1 {
-      color: #4F46E5;
-      border-bottom: 3px solid #4F46E5;
-      padding-bottom: 10px;
-    }
-    h2 {
-      color: #6366F1;
-      margin-top: 30px;
-      margin-bottom: 15px;
-    }
-    .info-grid {
-      display: grid;
-      grid-template-columns: 200px 1fr;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-    .label {
-      font-weight: bold;
-      color: #666;
-    }
-    .value {
-      color: #333;
-    }
-    .metric-box {
-      background: #F3F4F6;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-    }
-    .metric-label {
-      font-size: 14px;
-      color: #666;
-      margin-bottom: 5px;
-    }
-    .metric-value {
-      font-size: 28px;
-      font-weight: bold;
-      color: #4F46E5;
-    }
-    .footer {
-      margin-top: 40px;
-      padding-top: 20px;
-      border-top: 1px solid #E5E7EB;
-      font-size: 12px;
-      color: #999;
-    }
-    @media print {
-      body {
-        margin: 0;
-        padding: 20px;
-      }
-    }
-  </style>
-</head>
-<body>
-  <h1>Therapist Activity Report</h1>
+    yPos += 10;
 
-  <h2>Therapist Information</h2>
-  <div class="info-grid">
-    <div class="label">Name:</div>
-    <div class="value">${reportData.therapist.name}</div>
+    // Recent Sessions Section
+    checkPageBreak(60);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text('Recent Sessions', margin, yPos);
+    yPos += 8;
 
-    <div class="label">Email:</div>
-    <div class="value">${reportData.therapist.email}</div>
+    if (sessionsWithPatient.length > 0) {
+      // Table header
+      doc.setFillColor(249, 250, 251);
+      doc.rect(margin, yPos, contentWidth, 8, 'F');
 
-    <div class="label">License Number:</div>
-    <div class="value">${reportData.therapist.licenseNumber || 'N/A'}</div>
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(100, 100, 100);
+      doc.text('Title', margin + 5, yPos + 5);
+      doc.text('Patient', margin + 70, yPos + 5);
+      doc.text('Type', margin + 120, yPos + 5);
+      doc.text('Date', margin + 150, yPos + 5);
+      yPos += 10;
 
-    <div class="label">Specialty:</div>
-    <div class="value">${reportData.therapist.specialty || 'N/A'}</div>
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
 
-    <div class="label">Status:</div>
-    <div class="value">${reportData.therapist.status}</div>
-
-    <div class="label">Account Created:</div>
-    <div class="value">${new Date(reportData.therapist.createdAt).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    })}</div>
-
-    <div class="label">Last Login:</div>
-    <div class="value">${reportData.therapist.lastLoginAt
-      ? new Date(reportData.therapist.lastLoginAt).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        })
-      : 'Never'}</div>
-  </div>
-
-  <h2>Activity Metrics</h2>
-
-  <div class="metric-box">
-    <div class="metric-label">Total Patients</div>
-    <div class="metric-value">${reportData.metrics.totalPatients}</div>
-  </div>
-
-  <div class="metric-box">
-    <div class="metric-label">Total Sessions</div>
-    <div class="metric-value">${reportData.metrics.totalSessions}</div>
-  </div>
-
-  <div class="metric-box">
-    <div class="metric-label">Story Pages Created</div>
-    <div class="metric-value">${reportData.metrics.storyPagesCreated}</div>
-  </div>
-
-  <div class="metric-box">
-    <div class="metric-label">Media Generated</div>
-    <div class="metric-value">${reportData.metrics.mediaGenerated}</div>
-  </div>
-
-  <div class="metric-box">
-    <div class="metric-label">Total Activity Entries (HIPAA Audit Log)</div>
-    <div class="metric-value">${reportData.metrics.totalActivityEntries}</div>
-  </div>
-
-  <div class="footer">
-    <p>Report Generated: ${new Date(reportData.generatedAt).toLocaleString('en-US')}</p>
-    <p>Generated By: ${reportData.generatedBy}</p>
-    <p>This report contains Protected Health Information (PHI) and must be handled in accordance with HIPAA regulations.</p>
-  </div>
-</body>
-</html>
-      `.trim();
-
-      return new NextResponse(html, {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/html',
-        },
+      sessionsWithPatient.forEach((session) => {
+        checkPageBreak(10);
+        const title = (session.title || 'Untitled').substring(0, 28);
+        const patientName = (session.patientName || 'N/A').substring(0, 20);
+        doc.text(title, margin + 5, yPos + 5);
+        doc.text(patientName, margin + 70, yPos + 5);
+        doc.text(session.sessionType || 'N/A', margin + 120, yPos + 5);
+        doc.text(
+          session.sessionDate
+            ? new Date(session.sessionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : 'N/A',
+          margin + 150,
+          yPos + 5,
+        );
+        yPos += 8;
       });
+    } else {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(100, 100, 100);
+      doc.text('No sessions found for this therapist.', margin + 5, yPos + 5);
     }
+
+    // Footer on last page
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(150, 150, 150);
+      doc.text(
+        `StoryCare - Confidential | Page ${i} of ${pageCount}`,
+        pageWidth / 2,
+        doc.internal.pageSize.getHeight() - 10,
+        { align: 'center' },
+      );
+    }
+
+    // Generate PDF buffer
+    const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
+
+    // Generate filename
+    const therapistName = (therapist.name || 'unknown').replace(/[^a-z0-9]/gi, '-').toLowerCase();
+    const dateStr = new Date().toISOString().split('T')[0];
+    const filename = `therapist-report-${therapistName}-${dateStr}.pdf`;
+
+    // HIPAA: Audit log the report generation
+    await logAuditFromRequest(request, authUser, 'export', 'user', id, {
+      reportType: 'therapist_activity',
+      format: 'pdf',
+      therapistEmail: therapist.email,
+      therapistName: therapist.name,
+    });
+
+    // Return PDF as download
+    return new NextResponse(pdfBuffer, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': pdfBuffer.length.toString(),
+      },
+    });
   } catch (error) {
     console.error('Failed to generate therapist report:', error);
     return handleAuthError(error);

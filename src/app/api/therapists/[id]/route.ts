@@ -8,6 +8,7 @@ import type { NextRequest } from 'next/server';
 import { and, count, desc, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
+import { generatePresignedUrlsForPatients } from '@/libs/GCS';
 import { auditLogs, mediaLibrary, sessions, storyPages, users } from '@/models/Schema';
 import { logAuditFromRequest } from '@/services/AuditService';
 import { handleAuthError, requireAdmin } from '@/utils/AuthHelpers';
@@ -168,6 +169,12 @@ export async function GET(
       }),
     );
 
+    // Generate presigned URLs for patient avatars (HIPAA compliant, 1-hour expiration)
+    const recentPatientsWithSignedUrls = await generatePresignedUrlsForPatients(
+      recentPatientsWithSessionCount,
+      1,
+    );
+
     // Fetch recent sessions (top 10)
     const recentSessions = await db
       .select({
@@ -254,7 +261,7 @@ export async function GET(
         mediaGenerated,
         lastActivityDate,
       },
-      recentPatients: recentPatientsWithSessionCount,
+      recentPatients: recentPatientsWithSignedUrls,
       recentSessions: recentSessionsWithPatient,
       activityLog,
     });
@@ -464,7 +471,7 @@ export async function DELETE(
       .update(users)
       .set({
         deletedAt: new Date(),
-        status: 'inactive',
+        status: 'deleted',
         updatedAt: new Date(),
       })
       .where(eq(users.id, id));

@@ -58,6 +58,7 @@
     "firebase-admin": "^13.0.1",
     "google-auth-library": "^9.15.1",
     "jsonrepair": "^3.13.1",
+    "jspdf": "^4.0.0",
     "lightningcss": "^1.30.2",
     "lucide-react": "^0.548.0",
     "marked": "^17.0.1",

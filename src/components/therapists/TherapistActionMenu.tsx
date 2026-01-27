@@ -12,7 +12,7 @@ type Therapist = {
   id: string;
   name: string;
   email: string;
-  status: 'active' | 'inactive' | 'invited';
+  status: 'active' | 'inactive' | 'invited' | 'deleted';
   patientCount?: number;
   licenseNumber?: string | null;
   specialty?: string | null;
@@ -51,9 +51,10 @@ export function TherapistActionMenu({
     onDelete(therapist);
   };
 
-  // Only show status toggle for active/inactive users, not invited
-  const canToggleStatus = therapist.status !== 'invited';
+  // Only show status toggle for active/inactive users, not invited or deleted
+  const canToggleStatus = therapist.status !== 'invited' && therapist.status !== 'deleted';
   const isActive = therapist.status === 'active';
+  const isDeleted = therapist.status === 'deleted';
 
   return (
     <div className="relative">
@@ -113,18 +114,20 @@ export function TherapistActionMenu({
               </button>
             )}
 
-            {/* Separator */}
-            <hr className="my-1" />
-
-            {/* Delete */}
-            <button
-              type="button"
-              onClick={handleDelete}
-              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete
-            </button>
+            {/* Separator and Delete - only show if not already deleted */}
+            {!isDeleted && (
+              <>
+                <hr className="my-1" />
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </button>
+              </>
+            )}
           </div>
         </>
       )}

@@ -207,16 +207,21 @@ export function MediaTab({
 
   // Load in-progress video tasks
   const loadInProgressVideoTasks = async () => {
-    if (!user || !selectedPatient || selectedPatient === 'all') return;
+    if (!user) return;
 
     try {
       setIsLoadingVideoTasks(true);
 
-      // Fetch in-progress video tasks for this patient
+      // Fetch in-progress video tasks - use sessionId when no patient selected
       const params = new URLSearchParams({
-        patientId: selectedPatient,
+        sessionId,
         status: 'processing',
       });
+
+      // Also filter by patient if one is selected
+      if (selectedPatient && selectedPatient !== 'all') {
+        params.append('patientId', selectedPatient);
+      }
 
       const response = await authenticatedFetch(`/api/ai/video-tasks?${params.toString()}`, user);
       if (response.ok) {
@@ -693,18 +698,22 @@ export function MediaTab({
                           playsInline
                         />
                       ) : (
-                        /* Processing state: show placeholder */
-                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-                          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+                        /* Processing state: show prominent placeholder */
+                        <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+                          <Film className="mb-1 h-8 w-8 text-blue-400" />
+                          <div className="h-6 w-6 animate-spin rounded-full border-[3px] border-blue-500 border-t-transparent" />
                         </div>
                       )}
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 shadow-lg">
-                          <svg className="h-6 w-6 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                          </svg>
+                      {/* Only show play button when video is ready to play */}
+                      {item.status !== 'processing' && item.status !== 'failed' && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 shadow-lg">
+                            <svg className="h-6 w-6 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                            </svg>
+                          </div>
                         </div>
-                      </div>
+                      )}
                       {/* Scene badge for compiled videos */}
                       {item.sourceType === 'scene' && (
                         <span className="absolute top-2 left-2 rounded-full bg-purple-600 px-2 py-0.5 text-xs font-medium text-white shadow-sm">
@@ -797,6 +806,13 @@ export function MediaTab({
                     <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
                       <XCircle className="h-3 w-3" />
                       Failed
+                    </span>
+                  )}
+                  {/* Fallback: Show pending badge if video has no content (defensive) */}
+                  {item.mediaType === 'video' && !item.thumbnailUrl && !item.mediaUrl && item.status !== 'failed' && item.status !== 'processing' && (
+                    <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Pending
                     </span>
                   )}
                   <h4 className="line-clamp-2 text-xs font-medium text-gray-700">

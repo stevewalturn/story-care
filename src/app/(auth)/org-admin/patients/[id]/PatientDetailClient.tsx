@@ -92,9 +92,9 @@ export function PatientDetailClient({ patientId }: PatientDetailClientProps) {
       <div className="p-8">
         <div className="py-16 text-center">
           <p className="text-red-600">{error || 'Patient not found'}</p>
-          <Link href="/admin/patients">
+          <Link href="/org-admin/therapists">
             <Button variant="secondary" className="mt-4">
-              Back to Patients
+              Back to Therapists
             </Button>
           </Link>
         </div>

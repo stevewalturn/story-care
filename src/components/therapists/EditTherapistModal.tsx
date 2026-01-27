@@ -14,7 +14,7 @@ type Therapist = {
   id: string;
   name: string;
   email: string;
-  status: 'active' | 'inactive' | 'invited';
+  status: 'active' | 'inactive' | 'invited' | 'deleted';
   licenseNumber?: string | null;
   specialty?: string | null;
 };

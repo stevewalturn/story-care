@@ -33,6 +33,7 @@ export const userStatusEnum = pgEnum('user_status', [
   'invited', // Pre-created by org admin/super admin, waiting for first sign-in
   'active',
   'inactive',
+  'deleted', // Soft-deleted users
 ]);
 export const organizationStatusEnum = pgEnum('organization_status', [
   'active',

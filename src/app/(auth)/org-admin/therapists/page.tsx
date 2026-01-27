@@ -19,7 +19,7 @@ type Therapist = {
   id: string;
   name: string;
   email: string;
-  status: 'active' | 'inactive' | 'invited';
+  status: 'active' | 'inactive' | 'invited' | 'deleted';
   patientCount?: number;
   licenseNumber?: string | null;
   specialty?: string | null;
@@ -247,7 +247,9 @@ export default function TherapistsPage() {
                           ? 'bg-green-100 text-green-700'
                           : therapist.status === 'invited'
                             ? 'bg-blue-100 text-blue-700'
-                            : 'bg-gray-100 text-gray-700'
+                            : therapist.status === 'deleted'
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-gray-100 text-gray-700'
                       }`}
                     >
                       {therapist.status}
