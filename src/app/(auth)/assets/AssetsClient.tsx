@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Download, Edit2, Eye, Frame, Image as ImageIcon, MoreVertical, Music, Pencil, Plus, RefreshCw, Sparkles, Trash2, Upload, Users, Video } from 'lucide-react';
+import { ChevronDown, Clapperboard, Download, Edit2, Eye, Frame, Image as ImageIcon, MoreVertical, Music, Pencil, Plus, RefreshCw, Sparkles, Trash2, Upload, Users, Video } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -14,6 +14,7 @@ import { GenerateImageModal } from '@/components/media/GenerateImageModal';
 import { GenerateMusicModal } from '@/components/media/GenerateMusicModal';
 import { GenerateVideoModal } from '@/components/media/GenerateVideoModal';
 import { CreateNoteModal } from '@/components/notes/CreateNoteModal';
+import { SceneGenerationLayout } from '@/components/scenes-generation/SceneGenerationLayout';
 import { EditNoteModal } from '@/components/notes/EditNoteModal';
 import { CreateQuoteModal } from '@/components/quotes/CreateQuoteModal';
 import { EditQuoteModal } from '@/components/sessions/EditQuoteModal';
@@ -99,6 +100,7 @@ export function AssetsClient() {
   const [showCreateDropdown, setShowCreateDropdown] = useState(false);
   const createDropdownRef = useRef<HTMLDivElement>(null);
   const [musicMode, setMusicMode] = useState<'instrumental' | 'lyrical'>('instrumental');
+  const [showSceneGenerationModal, setShowSceneGenerationModal] = useState(false);
 
   // Menu state
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -564,6 +566,18 @@ export function AssetsClient() {
       toast.error('Can only extract frames from videos');
       return;
     }
+
+    // Validate video has a URL to extract from
+    if (!item.mediaUrl || item.status === 'processing') {
+      toast.error('Cannot extract frame: video is still processing');
+      return;
+    }
+
+    if (item.status === 'failed') {
+      toast.error('Cannot extract frame: video generation failed');
+      return;
+    }
+
     setExtractingMedia(item);
   };
 
@@ -1076,6 +1090,16 @@ export function AssetsClient() {
                         <Music className="mr-3 h-4 w-4" />
                         Generate Music (Instrumental)
                       </button>
+                      <button
+                        className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700"
+                        onClick={() => {
+                          setShowSceneGenerationModal(true);
+                          setShowCreateDropdown(false);
+                        }}
+                      >
+                        <Clapperboard className="mr-3 h-4 w-4" />
+                        Generate Scene
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1422,8 +1446,8 @@ export function AssetsClient() {
                                   Edit Details
                                 </button>
 
-                                {/* Extract Last Frame - Video only */}
-                                {item.mediaType === 'video' && (
+                                {/* Extract Last Frame - Video only, not for processing/failed videos */}
+                                {item.mediaType === 'video' && item.mediaUrl && item.status !== 'processing' && item.status !== 'failed' && (
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -2215,6 +2239,28 @@ export function AssetsClient() {
         />
       )}
 
+      {/* Scene Generation Modal */}
+      {showSceneGenerationModal && (
+        <SceneGenerationLayout
+          isOpen={showSceneGenerationModal}
+          onClose={() => {
+            setShowSceneGenerationModal(false);
+            loadMedia();
+          }}
+          initialScenes={[]}
+          patient={
+            selectedPatient && patients.find(p => p.id === selectedPatient)
+              ? {
+                  id: selectedPatient,
+                  name: patients.find(p => p.id === selectedPatient)?.name || '',
+                  avatarUrl: patients.find(p => p.id === selectedPatient)?.avatarUrl,
+                }
+              : undefined
+          }
+          mode="create"
+        />
+      )}
+
       {/* View Details Modal */}
       {viewingMedia && (
         <MediaViewer
@@ -2241,21 +2287,23 @@ export function AssetsClient() {
       )}
 
       {/* Extract Last Frame Modal */}
-      <ExtractLastFrameModal
-        isOpen={!!extractingMedia}
-        onClose={() => setExtractingMedia(null)}
-        video={extractingMedia ? {
-          id: extractingMedia.id,
-          title: extractingMedia.title,
-          mediaUrl: extractingMedia.mediaUrl,
-          thumbnailUrl: extractingMedia.thumbnailUrl ?? undefined,
-        } : null}
-        onExtract={performExtractFrame}
-        user={user}
-        onFrameExtracted={(newMedia) => {
-          setMedia(prev => [newMedia, ...prev]);
-        }}
-      />
+      {extractingMedia && extractingMedia.mediaUrl && (
+        <ExtractLastFrameModal
+          isOpen={!!extractingMedia}
+          onClose={() => setExtractingMedia(null)}
+          video={{
+            id: extractingMedia.id,
+            title: extractingMedia.title,
+            mediaUrl: extractingMedia.mediaUrl,
+            thumbnailUrl: extractingMedia.thumbnailUrl ?? undefined,
+          }}
+          onExtract={performExtractFrame}
+          user={user}
+          onFrameExtracted={(newMedia) => {
+            setMedia(prev => [newMedia, ...prev]);
+          }}
+        />
+      )}
     </div>
   );
 }
