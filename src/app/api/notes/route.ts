@@ -1,10 +1,10 @@
 import type { NextRequest } from 'next/server';
-import { and, desc, eq, ilike, or } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { getClientInfo, logAudit } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { notes, sessions, users } from '@/models/Schema';
-import { handleAuthError, requireAuth, verifyTherapistPatientAccess } from '@/utils/AuthHelpers';
+import { getTherapistPatientIds, handleAuthError, requireAuth, verifyTherapistPatientAccess } from '@/utils/AuthHelpers';
 
 // GET /api/notes - List notes
 export async function GET(request: NextRequest) {
@@ -37,10 +37,16 @@ export async function GET(request: NextRequest) {
     // Build filters
     const filters = [];
 
-    // Filter by user role
+    // Filter by user role (HIPAA compliance)
     if (user.role === 'therapist') {
-      // Therapist can only see notes for their patients
-      filters.push(eq(notes.therapistId, user.dbUserId));
+      // HIPAA: Therapists can only see notes for patients currently assigned to them
+      // This prevents access to data from patients who have been reassigned
+      const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+      if (therapistPatientIds.length === 0) {
+        // No patients assigned - return empty result
+        return NextResponse.json({ notes: [] });
+      }
+      filters.push(inArray(notes.patientId, therapistPatientIds));
     } else if (user.role === 'patient') {
       // Patient can only see their own notes
       filters.push(eq(notes.patientId, user.dbUserId));

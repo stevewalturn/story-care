@@ -5,7 +5,7 @@ import { getClientInfo, logAudit } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { generatePresignedUrlsForMedia } from '@/libs/GCS';
 import { mediaLibrary, scenes, sessions, users } from '@/models/Schema';
-import { handleAuthError, requireAuth, verifyTherapistPatientAccess } from '@/utils/AuthHelpers';
+import { getTherapistPatientIds, handleAuthError, requireAuth, verifyTherapistPatientAccess } from '@/utils/AuthHelpers';
 
 // GET /api/media - List media files
 export async function GET(request: NextRequest) {
@@ -55,8 +55,14 @@ export async function GET(request: NextRequest) {
 
     // Role-based access control (HIPAA compliance)
     if (user.role === 'therapist') {
-      // Therapists can only see media they created
-      filters.push(eq(mediaLibrary.createdByTherapistId, user.dbUserId));
+      // HIPAA: Therapists can only see media for patients currently assigned to them
+      // This prevents access to data from patients who have been reassigned
+      const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+      if (therapistPatientIds.length === 0) {
+        // No patients assigned - return empty result
+        return NextResponse.json({ media: [] });
+      }
+      filters.push(inArray(mediaLibrary.patientId, therapistPatientIds));
     } else if (user.role === 'patient') {
       // Patients can only see their own media
       filters.push(eq(mediaLibrary.patientId, user.dbUserId));

@@ -6,7 +6,7 @@ import { db } from '@/libs/DB';
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
 import { generatePresignedUrl } from '@/libs/GCS';
 import { mediaLibrary, sceneClips, scenes, sessions, usersSchema, videoProcessingJobs } from '@/models/Schema';
-import { handleAuthError, requireAuth, verifyTherapistPatientAccess } from '@/utils/AuthHelpers';
+import { getTherapistPatientIds, handleAuthError, requireAuth, verifyTherapistPatientAccess } from '@/utils/AuthHelpers';
 
 // GET /api/scenes - List scenes
 export async function GET(request: NextRequest) {
@@ -41,8 +41,14 @@ export async function GET(request: NextRequest) {
 
     // Role-based access control (HIPAA compliance)
     if (user.role === 'therapist') {
-      // Therapists can only see scenes they created
-      filters.push(eq(scenes.createdByTherapistId, user.dbUserId));
+      // HIPAA: Therapists can only see scenes for patients currently assigned to them
+      // This prevents access to data from patients who have been reassigned
+      const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+      if (therapistPatientIds.length === 0) {
+        // No patients assigned - return empty result
+        return NextResponse.json({ scenes: [] });
+      }
+      filters.push(inArray(scenes.patientId, therapistPatientIds));
     } else if (user.role === 'patient') {
       // Patients can only see their own scenes
       filters.push(eq(scenes.patientId, user.dbUserId));

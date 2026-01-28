@@ -393,3 +393,41 @@ export async function verifyTherapistPatientAccess(
 
   return { hasAccess: false, error: 'Forbidden: Insufficient permissions' };
 }
+
+/**
+ * Gets all patient IDs currently assigned to a therapist.
+ *
+ * This is critical for HIPAA compliance when filtering resources
+ * by "All Patients" - therapists should only see resources for
+ * patients currently assigned to them, not patients they previously
+ * created content for but have since been reassigned.
+ *
+ * @param therapistDbUserId - Therapist's database UUID
+ * @returns Array of patient database UUIDs assigned to this therapist
+ *
+ * @example
+ * ```typescript
+ * const patientIds = await getTherapistPatientIds(user.dbUserId);
+ * if (patientIds.length > 0) {
+ *   filters.push(inArray(mediaLibrary.patientId, patientIds));
+ * } else {
+ *   return NextResponse.json({ media: [] });
+ * }
+ * ```
+ */
+export async function getTherapistPatientIds(therapistDbUserId: string): Promise<string[]> {
+  // Import db and users here to avoid circular dependencies
+  const { db } = await import('@/libs/DB');
+  const { users } = await import('@/models/Schema');
+  const { and, eq } = await import('drizzle-orm');
+
+  const patients = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(
+      eq(users.therapistId, therapistDbUserId),
+      eq(users.role, 'patient'),
+    ));
+
+  return patients.map(p => p.id);
+}

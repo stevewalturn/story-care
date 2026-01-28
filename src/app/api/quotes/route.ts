@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import { getClientInfo, logAudit } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { quotes, sessions, speakers, transcriptsSchema, users, utterancesSchema } from '@/models/Schema';
-import { handleAuthError, requireAuth, requireTherapist, verifyTherapistPatientAccess } from '@/utils/AuthHelpers';
+import { getTherapistPatientIds, handleAuthError, requireAuth, requireTherapist, verifyTherapistPatientAccess } from '@/utils/AuthHelpers';
 
 // GET /api/quotes - List quotes
 export async function GET(request: NextRequest) {
@@ -45,8 +45,14 @@ export async function GET(request: NextRequest) {
 
     // Role-based access control (HIPAA compliance)
     if (user.role === 'therapist') {
-      // Therapists can only see quotes they created
-      filters.push(eq(quotes.createdByTherapistId, user.dbUserId));
+      // HIPAA: Therapists can only see quotes for patients currently assigned to them
+      // This prevents access to data from patients who have been reassigned
+      const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+      if (therapistPatientIds.length === 0) {
+        // No patients assigned - return empty result
+        return NextResponse.json({ quotes: [] });
+      }
+      filters.push(inArray(quotes.patientId, therapistPatientIds));
     } else if (user.role === 'patient') {
       // Patients can only see their own quotes
       filters.push(eq(quotes.patientId, user.dbUserId));

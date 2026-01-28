@@ -1511,11 +1511,10 @@ export function SceneGenerationLayout({
           )}
 
           <div className="flex items-center justify-between">
-            {/* Back Button - Gray outline style */}
+            {/* Back Button - Gray outline style (always enabled, compilation runs async) */}
             <button
               onClick={onClose}
-              disabled={isCompiling}
-              className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-6 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-6 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
               Back
             </button>
