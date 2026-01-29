@@ -41,6 +41,14 @@ export async function generateImageWithStability(
     ...options.traceMetadata,
     tags: ['stability-ai', 'image-generation', model, ...(options.traceMetadata?.tags || [])],
   });
+
+  // Update trace with input for better visibility in dashboard
+  if (trace) {
+    trace.update({
+      input: { prompt: options.prompt, model, aspectRatio: options.aspectRatio },
+    });
+  }
+
   const span = createImageSpan(trace, 'generate-image', {
     name: 'stability-image-generation',
     input: {
@@ -123,9 +131,10 @@ export async function generateImageWithStability(
       imageCount: 1,
     });
 
-    // Log cost if calculated
-    if (trace && cost !== undefined) {
+    // Update trace with output and cost
+    if (trace) {
       trace.update({
+        output: { imageUrl: '[base64 image generated]', model },
         metadata: {
           ...options.traceMetadata?.metadata,
           calculatedCost: cost,

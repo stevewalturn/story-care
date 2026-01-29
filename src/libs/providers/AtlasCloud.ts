@@ -1924,6 +1924,19 @@ export async function generateImageWithAtlas(
     ...options.traceMetadata,
     tags: ['atlascloud', 'image-generation', model, ...(options.traceMetadata?.tags || [])],
   });
+
+  // Update trace with input for better visibility in dashboard
+  if (trace) {
+    trace.update({
+      input: {
+        prompt: options.prompt,
+        model,
+        size: options.size,
+        numImages: options.numImages || 1,
+      },
+    });
+  }
+
   const span = createImageSpan(trace, 'generate-image', {
     name: 'atlascloud-image-generation',
     input: {
@@ -2034,9 +2047,10 @@ export async function generateImageWithAtlas(
       imageCount,
     });
 
-    // Log cost if calculated
-    if (trace && cost !== undefined) {
+    // Update trace with output and cost
+    if (trace) {
       trace.update({
+        output: { imageUrl: '[generated image URL]', model },
         metadata: {
           ...options.traceMetadata?.metadata,
           calculatedCost: cost,
@@ -2333,6 +2347,19 @@ export async function generateVideoWithAtlas(
     ...options.traceMetadata,
     tags: ['atlascloud', 'video-generation', model, ...(options.traceMetadata?.tags || [])],
   });
+
+  // Update trace with input for better visibility in dashboard
+  if (trace) {
+    trace.update({
+      input: {
+        prompt: options.prompt,
+        model,
+        duration: durationSeconds,
+        hasReferenceImage: !!options.referenceImage,
+      },
+    });
+  }
+
   const span = createVideoSpan(trace, 'generate-video', {
     name: 'atlascloud-video-generation',
     input: {
@@ -2435,9 +2462,10 @@ export async function generateVideoWithAtlas(
       durationSeconds,
     });
 
-    // Log cost if calculated
-    if (trace && cost !== undefined) {
+    // Update trace with output and cost
+    if (trace) {
       trace.update({
+        output: { videoUrl: '[generated video URL]', model },
         metadata: {
           ...options.traceMetadata?.metadata,
           calculatedCost: cost,

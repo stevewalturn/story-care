@@ -17,6 +17,8 @@ export async function GET(request: NextRequest) {
     const sessionId = searchParams.get('sessionId');
     const search = searchParams.get('search');
 
+    console.log('[API/notes] Query params - patientId:', patientId, 'sessionId:', sessionId);
+
     // Select with session info
     let query = db
       .select({
@@ -42,8 +44,10 @@ export async function GET(request: NextRequest) {
       // HIPAA: Therapists can only see notes for patients currently assigned to them
       // This prevents access to data from patients who have been reassigned
       const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+      console.log('[API/notes] Therapist patient IDs:', therapistPatientIds);
       if (therapistPatientIds.length === 0) {
         // No patients assigned - return empty result
+        console.log('[API/notes] No patients assigned to therapist, returning empty');
         return NextResponse.json({ notes: [] });
       }
       filters.push(inArray(notes.patientId, therapistPatientIds));
@@ -81,6 +85,11 @@ export async function GET(request: NextRequest) {
     }
 
     const notesList = await query.orderBy(desc(notes.updatedAt));
+
+    console.log('[API/notes] Notes found:', notesList.length);
+    if (notesList.length > 0) {
+      console.log('[API/notes] First note patient ID:', (notesList[0] as any).patientId);
+    }
 
     // Log PHI access
     await logAudit({

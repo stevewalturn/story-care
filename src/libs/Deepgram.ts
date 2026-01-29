@@ -71,6 +71,14 @@ export async function transcribeAudio(
     ...traceMetadata,
     tags: ['deepgram', 'transcription', model, ...(traceMetadata?.tags || [])],
   });
+
+  // Update trace with input for better visibility in dashboard
+  if (trace) {
+    trace.update({
+      input: { audioUrl, model, language, diarize },
+    });
+  }
+
   const span = createTranscriptionSpan(trace, 'transcribe-audio', {
     name: 'deepgram-transcription',
     input: {
@@ -143,9 +151,15 @@ export async function transcribeAudio(
       durationMinutes,
     });
 
-    // Log cost if calculated
-    if (trace && cost !== undefined) {
+    // Update trace with output and cost
+    if (trace) {
       trace.update({
+        output: {
+          textLength: alternative.transcript.length,
+          utteranceCount: result.results.utterances?.length || 0,
+          wordCount: alternative.words?.length || 0,
+          durationSeconds,
+        },
         metadata: {
           ...traceMetadata?.metadata,
           calculatedCost: cost,
@@ -212,6 +226,14 @@ export async function transcribeAudioBuffer(
     ...traceMetadata,
     tags: ['deepgram', 'transcription', model, 'buffer', ...(traceMetadata?.tags || [])],
   });
+
+  // Update trace with input for better visibility in dashboard
+  if (trace) {
+    trace.update({
+      input: { bufferSize: audioBuffer.length, model, language, diarize },
+    });
+  }
+
   const span = createTranscriptionSpan(trace, 'transcribe-audio-buffer', {
     name: 'deepgram-transcription-buffer',
     input: {
@@ -282,9 +304,15 @@ export async function transcribeAudioBuffer(
       durationMinutes,
     });
 
-    // Log cost if calculated
-    if (trace && cost !== undefined) {
+    // Update trace with output and cost
+    if (trace) {
       trace.update({
+        output: {
+          textLength: alternative.transcript.length,
+          utteranceCount: result.results.utterances?.length || 0,
+          wordCount: alternative.words?.length || 0,
+          durationSeconds,
+        },
         metadata: {
           ...traceMetadata?.metadata,
           calculatedCost: cost,

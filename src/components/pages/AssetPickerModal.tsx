@@ -211,11 +211,18 @@ export function AssetPickerModal({
           setQuoteAssets(data.quotes || []);
         }
       } else if (tab === 'notes') {
+        console.log('[AssetPickerModal] Fetching notes with patientId:', patientParam || '(none - all patients)');
         const url = `/api/notes${patientParam ? `?patientId=${patientParam}` : ''}`;
         const res = await authenticatedFetch(url, user);
         if (res.ok) {
           const data = await res.json();
+          console.log('[AssetPickerModal] Notes fetched:', data.notes?.length || 0, 'notes');
+          if (data.notes?.length > 0) {
+            console.log('[AssetPickerModal] First note patientId:', data.notes[0].patientId);
+          }
           setNoteAssets(data.notes || []);
+        } else {
+          console.error('[AssetPickerModal] Notes fetch failed:', res.status, res.statusText);
         }
       } else if (tab === 'scenes') {
         const url = `/api/scenes${patientParam ? `?patientId=${patientParam}` : ''}`;

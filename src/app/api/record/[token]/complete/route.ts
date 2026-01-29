@@ -67,6 +67,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
+    // VALIDATION: Check chunk sequence is complete (0, 1, 2, ... N-1)
+    const sortedIndices = chunks.map(c => c.chunkIndex).sort((a, b) => a - b);
+    for (let i = 0; i < sortedIndices.length; i++) {
+      if (sortedIndices[i] !== i) {
+        return NextResponse.json(
+          { error: `Missing chunk at index ${i}. Recording incomplete.` },
+          { status: 400 },
+        );
+      }
+    }
+
     // Determine final audio URL
     let finalAudioUrl: string | null = null;
     if (chunks.length === 1) {

@@ -358,6 +358,7 @@ export default function PublicRecordingPage() {
 
   // Stop recording
   const stopRecording = useCallback(async () => {
+    // Stop timers first
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -369,8 +370,25 @@ export default function PublicRecordingPage() {
 
     stopVisualization();
 
+    // FIX: Wait for MediaRecorder to stop and collect final data
+    // This fixes the race condition where stop() is called but ondataavailable
+    // hasn't fired yet, causing the final chunk to be empty or incomplete
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
+      // Request any buffered data before stopping
+      mediaRecorderRef.current.requestData();
+
+      // Wait for the onstop event to fire (which means ondataavailable has completed)
+      await new Promise<void>((resolve) => {
+        const recorder = mediaRecorderRef.current!;
+        const originalOnStop = recorder.onstop;
+        recorder.onstop = (event) => {
+          if (originalOnStop) {
+            originalOnStop.call(recorder, event);
+          }
+          resolve();
+        };
+        recorder.stop();
+      });
     }
 
     if (streamRef.current) {
@@ -380,6 +398,7 @@ export default function PublicRecordingPage() {
     setRecordingState('uploading');
 
     try {
+      // Now chunksRef.current has the final data from ondataavailable
       await uploadCurrentChunk(true);
 
       // Complete recording

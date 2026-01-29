@@ -67,6 +67,14 @@ export async function generateImageWithGemini(
     ...traceMetadata,
     tags: ['gemini', 'vertex-ai', 'image-generation', model, ...(traceMetadata?.tags || [])],
   });
+
+  // Update trace with input for better visibility in dashboard
+  if (trace) {
+    trace.update({
+      input: { prompt, model, hasReferenceImage: !!referenceImage },
+    });
+  }
+
   const span = createImageSpan(trace, 'generate-image', {
     name: 'gemini-image-generation',
     input: {
@@ -251,9 +259,10 @@ export async function generateImageWithGemini(
       imageCount: 1,
     });
 
-    // Log cost if calculated
-    if (trace && cost !== undefined) {
+    // Update trace with output and cost
+    if (trace) {
       trace.update({
+        output: { imageUrl: '[base64 image generated]', model },
         metadata: {
           ...traceMetadata?.metadata,
           calculatedCost: cost,

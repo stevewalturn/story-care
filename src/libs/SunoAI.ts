@@ -81,6 +81,21 @@ export async function generateSunoMusic(
     ...options.traceMetadata,
     tags: ['suno', 'music-generation', model, ...(options.traceMetadata?.tags || [])],
   });
+
+  // Update trace with input for better visibility in dashboard
+  if (trace) {
+    trace.update({
+      input: {
+        prompt: options.prompt,
+        style: options.style,
+        title: options.title,
+        model,
+        instrumental: options.instrumental,
+        customMode: options.customMode,
+      },
+    });
+  }
+
   const span = createMusicSpan(trace, 'generate-music', {
     name: 'suno-music-generation',
     input: {
@@ -189,6 +204,13 @@ export async function generateSunoMusic(
         taskId: data.data?.taskId,
       },
     });
+
+    // Update trace with output for better visibility in dashboard
+    if (trace) {
+      trace.update({
+        output: { taskId: data.data?.taskId, status: 'submitted' },
+      });
+    }
 
     // Flush asynchronously (don't block response)
     flushLangfuse().catch(console.error);

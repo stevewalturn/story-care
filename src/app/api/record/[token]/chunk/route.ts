@@ -83,6 +83,28 @@ export async function POST(request: NextRequest, context: RouteContext) {
       // Get current chunks
       const currentChunks = (recording.audioChunks as AudioChunk[]) || [];
 
+      // VALIDATION 1: Check for duplicate chunk (idempotent handling)
+      const existingChunk = currentChunks.find(c => c.chunkIndex === chunkIndex);
+      if (existingChunk) {
+        // Return success if already uploaded - idempotent behavior
+        return NextResponse.json({
+          success: true,
+          chunkIndex,
+          totalChunks: currentChunks.length,
+          totalDurationSeconds: currentChunks.reduce((sum, c) => sum + c.durationSeconds, 0),
+          duplicate: true,
+        });
+      }
+
+      // VALIDATION 2: Check sequential order (chunk index should be next in sequence)
+      const expectedIndex = currentChunks.length;
+      if (chunkIndex !== expectedIndex) {
+        return NextResponse.json(
+          { error: `Expected chunk index ${expectedIndex}, received ${chunkIndex}` },
+          { status: 400 },
+        );
+      }
+
       // Add new chunk
       const newChunk: AudioChunk = {
         chunkIndex,

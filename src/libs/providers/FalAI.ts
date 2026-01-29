@@ -50,6 +50,14 @@ export async function generateImageWithFal(
     ...options.traceMetadata,
     tags: ['fal-ai', 'image-generation', model, ...(options.traceMetadata?.tags || [])],
   });
+
+  // Update trace with input for better visibility in dashboard
+  if (trace) {
+    trace.update({
+      input: { prompt: options.prompt, model, width: options.width || 1024, height: options.height || 1024 },
+    });
+  }
+
   const span = createImageSpan(trace, 'generate-image', {
     name: 'fal-image-generation',
     input: {
@@ -138,9 +146,10 @@ export async function generateImageWithFal(
       imageCount: 1,
     });
 
-    // Log cost if calculated
-    if (trace && cost !== undefined) {
+    // Update trace with output and cost
+    if (trace) {
       trace.update({
+        output: { imageUrl: result.images[0].url, model },
         metadata: {
           ...options.traceMetadata?.metadata,
           calculatedCost: cost,
