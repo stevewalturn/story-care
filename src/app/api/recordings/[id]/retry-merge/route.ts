@@ -27,7 +27,7 @@ async function triggerMergeJob(jobId: string, recordingId: string, chunks: Audio
   const parent = `projects/${projectId}/locations/${region}`;
   const jobPath = `${parent}/jobs/${jobName}`;
 
-  console.log(`🎵 Triggering Cloud Run Job for audio merge: ${jobPath}`);
+  console.log(`🎵 Triggering Cloud Run Job for audio merge retry: ${jobPath}`);
 
   // Execute the job with environment variables
   const [operation] = await client.runJob({
@@ -47,7 +47,10 @@ async function triggerMergeJob(jobId: string, recordingId: string, chunks: Audio
   return operation.name;
 }
 
-// POST /api/recordings/[id]/finalize - Mark recording as complete
+/**
+ * POST /api/recordings/[id]/retry-merge
+ * Retry a failed audio merge job
+ */
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
     const user = await requireTherapist(request);
@@ -69,26 +72,26 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Parse request body
-    const body = await request.json();
-    const { totalDurationSeconds } = body;
+    // Only allow retrying failed recordings
+    if (recording.status !== 'failed') {
+      return NextResponse.json(
+        { error: `Can only retry failed recordings. Current status: ${recording.status}` },
+        { status: 400 },
+      );
+    }
 
     // Get chunks
     const chunks = (recording.audioChunks as AudioChunk[]) || [];
 
     if (chunks.length === 0) {
       return NextResponse.json(
-        { error: 'No chunks uploaded. Cannot finalize empty recording.' },
+        { error: 'No audio chunks available to merge' },
         { status: 400 },
       );
     }
 
-    // Calculate final totals
-    const totalSize = chunks.reduce((sum, chunk) => sum + chunk.sizeBytes, 0);
-    const calculatedDuration = chunks.reduce((sum, chunk) => sum + chunk.durationSeconds, 0);
-
-    // Single chunk - just use it directly
     if (chunks.length === 1) {
+      // Single chunk - just complete directly
       const finalAudioUrl = chunks[0]?.gcsPath || null;
 
       await db
@@ -96,27 +99,23 @@ export async function POST(request: NextRequest, context: RouteContext) {
         .set({
           status: 'completed',
           finalAudioUrl,
-          totalDurationSeconds: totalDurationSeconds || calculatedDuration,
-          totalFileSizeBytes: totalSize,
           updatedAt: new Date(),
         })
         .where(eq(uploadedRecordings.id, id));
 
-      await logPHIUpdate(user.dbUserId, 'recording', id, request, { action: 'finalize' });
+      await logPHIUpdate(user.dbUserId, 'recording', id, request, { action: 'retry_single_chunk' });
 
       return NextResponse.json({
         success: true,
         recordingId: id,
         status: 'completed',
-        totalDurationSeconds: totalDurationSeconds || calculatedDuration,
-        totalFileSizeBytes: totalSize,
-        chunksCount: chunks.length,
+        chunksCount: 1,
       });
     }
 
-    // Multiple chunks - trigger Cloud Run job to merge
+    // Multiple chunks - trigger new Cloud Run job to merge
     try {
-      // Create video processing job record
+      // Create new video processing job record
       const [job] = await db
         .insert(videoProcessingJobs)
         .values({
@@ -126,9 +125,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
           inputData: {
             recordingId: id,
             chunks,
-            totalDurationSeconds: totalDurationSeconds || calculatedDuration,
+            totalDurationSeconds: recording.totalDurationSeconds,
+            isRetry: true,
           },
-          currentStep: 'Initializing audio merge',
+          currentStep: 'Retrying audio merge',
           createdByUserId: user.dbUserId,
         })
         .returning();
@@ -142,8 +142,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
         .update(uploadedRecordings)
         .set({
           status: 'merging',
-          totalDurationSeconds: totalDurationSeconds || calculatedDuration,
-          totalFileSizeBytes: totalSize,
           updatedAt: new Date(),
         })
         .where(eq(uploadedRecordings.id, id));
@@ -161,51 +159,32 @@ export async function POST(request: NextRequest, context: RouteContext) {
         })
         .where(eq(videoProcessingJobs.id, job.id));
 
-      console.log(`✅ Audio merge job ${job.id} started for recording ${id}`);
+      console.log(`✅ Retry audio merge job ${job.id} started for recording ${id}`);
 
-      await logPHIUpdate(user.dbUserId, 'recording', id, request, { action: 'finalize_merge', jobId: job.id });
+      await logPHIUpdate(user.dbUserId, 'recording', id, request, { action: 'retry_merge', jobId: job.id });
 
       return NextResponse.json({
         success: true,
         recordingId: id,
         status: 'merging',
         jobId: job.id,
-        totalDurationSeconds: totalDurationSeconds || calculatedDuration,
-        totalFileSizeBytes: totalSize,
         chunksCount: chunks.length,
-        message: 'Audio chunks are being merged. This may take a moment.',
+        message: 'Retrying audio merge. This may take a moment.',
       });
     } catch (cloudRunError: any) {
       console.error('Failed to trigger Cloud Run merge job:', cloudRunError);
 
-      // Fall back to folder path approach
-      const finalAudioUrl = `recordings/${id}/`;
-
-      await db
-        .update(uploadedRecordings)
-        .set({
-          status: 'completed',
-          finalAudioUrl,
-          totalDurationSeconds: totalDurationSeconds || calculatedDuration,
-          totalFileSizeBytes: totalSize,
-          updatedAt: new Date(),
-        })
-        .where(eq(uploadedRecordings.id, id));
-
-      await logPHIUpdate(user.dbUserId, 'recording', id, request, { action: 'finalize_fallback' });
-
-      return NextResponse.json({
-        success: true,
-        recordingId: id,
-        status: 'completed',
-        totalDurationSeconds: totalDurationSeconds || calculatedDuration,
-        totalFileSizeBytes: totalSize,
-        chunksCount: chunks.length,
-        warning: 'Cloud Run merge failed. Audio stored as separate chunks.',
-      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to start merge job',
+          details: cloudRunError.message,
+        },
+        { status: 500 },
+      );
     }
   } catch (error) {
-    console.error('Error finalizing recording:', error);
+    console.error('Error retrying merge:', error);
     return handleAuthError(error);
   }
 }

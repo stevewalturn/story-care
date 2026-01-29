@@ -592,7 +592,7 @@ export function MediaTab({
             {inProgressVideoTasks.map(task => (
               <div
                 key={task.id}
-                className="relative animate-pulse-subtle overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-50 p-4 shadow-md shadow-blue-100 transition-all duration-500"
+                className="animate-pulse-subtle relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-50 p-4 shadow-md shadow-blue-100 transition-all duration-500"
               >
                 {/* Shimmer overlay when processing */}
                 <div className="animate-shimmer absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent" />

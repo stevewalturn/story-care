@@ -25,6 +25,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Page not found' }, { status: 404 });
     }
 
+    // Generate presigned URL for background music if present
+    let backgroundMusicSignedUrl = null;
+    if (page.backgroundMusicUrl) {
+      try {
+        backgroundMusicSignedUrl = await generatePresignedUrl(page.backgroundMusicUrl, 1);
+      } catch (error) {
+        console.error('Error generating presigned URL for background music:', error);
+      }
+    }
+
     const blocks = await db
       .select()
       .from(pageBlocks)
@@ -116,14 +126,23 @@ export async function GET(request: NextRequest, context: RouteContext) {
       }
 
       return NextResponse.json({
-        page,
+        page: {
+          ...page,
+          backgroundMusicUrl: backgroundMusicSignedUrl || page.backgroundMusicUrl,
+        },
         blocks: blocksWithSignedUrls,
         reflectionQuestions: allReflectionQuestions,
         surveyQuestions: allSurveyQuestions,
       });
     }
 
-    return NextResponse.json({ page, blocks: blocksWithSignedUrls });
+    return NextResponse.json({
+      page: {
+        ...page,
+        backgroundMusicUrl: backgroundMusicSignedUrl || page.backgroundMusicUrl,
+      },
+      blocks: blocksWithSignedUrls,
+    });
   } catch (error) {
     console.error('Error fetching page:', error);
     return NextResponse.json(
@@ -138,7 +157,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
     const body = await request.json();
-    const { title, blocks, status, patientId } = body;
+    const { title, blocks, status, patientId, backgroundMusicUrl } = body;
 
     // Update page
     const updateData: any = { updatedAt: new Date() };
@@ -153,6 +172,17 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     }
     if (patientId !== undefined) {
       updateData.patientId = patientId;
+    }
+    if (backgroundMusicUrl !== undefined) {
+      // Extract GCS path if needed
+      let musicUrl = backgroundMusicUrl;
+      if (musicUrl) {
+        const gcsPath = extractGcsPath(musicUrl);
+        if (gcsPath) {
+          musicUrl = gcsPath;
+        }
+      }
+      updateData.backgroundMusicUrl = musicUrl;
     }
 
     const [page] = await db

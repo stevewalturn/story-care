@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, ArrowRight, Bell, ChevronRight, Eye, LogOut, Share } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronRight, Eye, LogOut, Share } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
@@ -163,16 +163,6 @@ export function TopBar({
             Publish
           </Button>
         )}
-
-        {/* Notification Bell */}
-        <button
-          className="relative flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
-          title="Notifications"
-        >
-          <Bell className="h-5 w-5" />
-          {/* Notification badge - uncomment when there are notifications */}
-          {/* <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" /> */}
-        </button>
 
         {/* User Avatar with Dropdown */}
         {user && (

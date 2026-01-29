@@ -265,8 +265,16 @@ export default function PublicRecordingPage() {
         throw new Error(error.error || 'Failed to start recording');
       }
 
-      const { recordingId: newRecordingId } = await startResponse.json();
+      const startData = await startResponse.json();
+      const { recordingId: newRecordingId, resumed, savedDurationSeconds, nextChunkIndex } = startData;
       setRecordingId(newRecordingId);
+
+      // If resuming, restore progress from server
+      if (resumed && savedDurationSeconds > 0) {
+        setElapsedSeconds(savedDurationSeconds);
+        setSavedSeconds(savedDurationSeconds);
+        setCurrentChunkIndex(nextChunkIndex || 0);
+      }
 
       // Determine supported MIME type
       mimeTypeRef.current = getSupportedMimeType();
@@ -294,16 +302,18 @@ export default function PublicRecordingPage() {
       // Start recording
       mediaRecorder.start(1000);
 
-      // Start timer
-      setElapsedSeconds(0);
-      setSavedSeconds(0);
-      setCurrentChunkIndex(0);
+      // Start timer (only reset if not resuming)
+      if (!resumed) {
+        setElapsedSeconds(0);
+        setSavedSeconds(0);
+        setCurrentChunkIndex(0);
+      }
       timerRef.current = setInterval(() => {
         setElapsedSeconds(prev => prev + 1);
       }, 1000);
 
-      // Set up chunk upload timer (every 5 minutes)
-      const chunkIntervalMs = 5 * 60 * 1000;
+      // Set up chunk upload timer (every 3 minutes)
+      const chunkIntervalMs = 3 * 60 * 1000;
       chunkTimerRef.current = setInterval(async () => {
         await uploadCurrentChunk(false);
       }, chunkIntervalMs);

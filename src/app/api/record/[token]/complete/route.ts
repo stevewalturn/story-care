@@ -1,5 +1,5 @@
-import type { AudioChunk } from '@/models/Schema';
 import type { NextRequest } from 'next/server';
+import type { AudioChunk } from '@/models/Schema';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';

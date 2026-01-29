@@ -190,6 +190,16 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       .where(eq(users.id, page.patientId))
       .limit(1);
 
+    // Generate presigned URL for background music if present
+    let backgroundMusicSignedUrl = null;
+    if (page.backgroundMusicUrl) {
+      try {
+        backgroundMusicSignedUrl = await generatePresignedUrl(page.backgroundMusicUrl, 1);
+      } catch (error) {
+        console.error('Error generating presigned URL for background music:', error);
+      }
+    }
+
     return NextResponse.json({
       page: {
         id: page.id,
@@ -197,6 +207,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         description: page.description,
         status: page.status,
         patientName: patient?.name || 'Patient',
+        backgroundMusicUrl: backgroundMusicSignedUrl,
       },
       blocks: blocksWithSignedUrls,
       reflectionQuestions: reflectionQuestionsData,

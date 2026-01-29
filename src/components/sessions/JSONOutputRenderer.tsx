@@ -1775,7 +1775,10 @@ function renderPreview(
                   <p className="mb-1 text-xs font-medium text-blue-700">Narrative Elements:</p>
                   <ul className="space-y-1">
                     {data.analysis.narrative_elements.map((el: string, i: number) => (
-                      <li key={i} className="text-xs text-blue-800">• {el}</li>
+                      <li key={i} className="text-xs text-blue-800">
+                        •
+                        {el}
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -1787,7 +1790,12 @@ function renderPreview(
           {data.images && Array.isArray(data.images) && data.images.length > 0 && (
             <div className="space-y-4">
               <p className="text-sm font-semibold text-gray-900">
-                🖼️ {data.images.length} Image Suggestion{data.images.length !== 1 ? 's' : ''}
+                🖼️
+                {' '}
+                {data.images.length}
+                {' '}
+                Image Suggestion
+                {data.images.length !== 1 ? 's' : ''}
               </p>
               {data.images.map((img: any, index: number) => (
                 <div
@@ -1811,7 +1819,9 @@ function renderPreview(
                         Patient Quote
                       </p>
                       <p className="text-sm leading-relaxed text-purple-900 italic">
-                        "{img.source_quote}"
+                        "
+                        {img.source_quote}
+                        "
                       </p>
                     </div>
                   )}
@@ -1833,7 +1843,9 @@ function renderPreview(
                       className="flex w-full items-center justify-center gap-2 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-purple-700"
                     >
                       <Image className="h-4 w-4" />
-                      Generate Image: "{img.title}"
+                      Generate Image: "
+                      {img.title}
+                      "
                     </button>
                   )}
                 </div>

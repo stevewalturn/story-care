@@ -55,7 +55,7 @@ export function AudioVisualizer({
       const barWidth = Math.max(2, totalBarWidth);
 
       // Get frequency data if available and active
-      let values: number[] = new Array(BAR_COUNT).fill(0);
+      const values: number[] = Array.from({ length: BAR_COUNT }).fill(0) as number[];
 
       if (analyser && dataArrayRef.current && isActive) {
         analyser.getByteFrequencyData(dataArrayRef.current);

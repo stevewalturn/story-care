@@ -57,7 +57,7 @@ export function GenericJSONPreview({ data, schemaType }: GenericJSONPreviewProps
         </div>
       )}
 
-      {dataKeys.map(key => {
+      {dataKeys.map((key) => {
         const value = data[key];
 
         return (
@@ -146,7 +146,10 @@ function ImageReferencesPreview({ images }: { images: any[] }) {
         image_references
       </div>
       <p className="text-sm text-gray-600">
-        {images.length} Image Suggestion{images.length !== 1 ? 's' : ''}
+        {images.length}
+        {' '}
+        Image Suggestion
+        {images.length !== 1 ? 's' : ''}
       </p>
 
       <div className="space-y-6">
@@ -172,7 +175,9 @@ function ImageReferencesPreview({ images }: { images: any[] }) {
                   Patient Quote
                 </p>
                 <p className="text-sm leading-relaxed text-purple-900 italic">
-                  "{img.source_quote}"
+                  "
+                  {img.source_quote}
+                  "
                 </p>
               </div>
             )}
@@ -193,17 +198,19 @@ function ImageReferencesPreview({ images }: { images: any[] }) {
             <button
               type="button"
               disabled
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-purple-600/50 px-4 py-2.5 text-sm font-semibold text-white cursor-not-allowed"
+              className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-purple-600/50 px-4 py-2.5 text-sm font-semibold text-white"
               title="Available after running prompt"
             >
               <Image className="h-4 w-4" />
-              Generate Image: "{img.title}"
+              Generate Image: "
+              {img.title}
+              "
             </button>
           </div>
         ))}
       </div>
 
-      <p className="text-xs text-gray-400 italic text-center">
+      <p className="text-center text-xs text-gray-400 italic">
         Buttons will be enabled after the prompt generates results
       </p>
     </div>
@@ -220,7 +227,10 @@ function VideoReferencesPreview({ videos }: { videos: any[] }) {
         video_references
       </div>
       <p className="text-sm text-gray-600">
-        {videos.length} Video Suggestion{videos.length !== 1 ? 's' : ''}
+        {videos.length}
+        {' '}
+        Video Suggestion
+        {videos.length !== 1 ? 's' : ''}
       </p>
 
       <div className="space-y-4">
@@ -230,14 +240,14 @@ function VideoReferencesPreview({ videos }: { videos: any[] }) {
             className="rounded-lg border border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 p-4 shadow-sm"
           >
             <div className="flex items-start gap-3">
-              <Film className="h-5 w-5 text-purple-600 flex-shrink-0 mt-0.5" />
+              <Film className="mt-0.5 h-5 w-5 flex-shrink-0 text-purple-600" />
               <div className="min-w-0 flex-1">
                 <h4 className="mb-2 text-sm font-medium text-gray-900">{vid.title}</h4>
 
                 {vid.reference_image_prompt && (
                   <div className="mb-2">
                     <p className="text-xs font-medium text-gray-500">Reference Image:</p>
-                    <p className="text-xs text-gray-600 line-clamp-2">{vid.reference_image_prompt}</p>
+                    <p className="line-clamp-2 text-xs text-gray-600">{vid.reference_image_prompt}</p>
                   </div>
                 )}
 
@@ -250,7 +260,8 @@ function VideoReferencesPreview({ videos }: { videos: any[] }) {
 
                 {vid.duration && (
                   <span className="inline-block rounded bg-purple-100 px-2 py-0.5 text-xs text-purple-700">
-                    {vid.duration}s
+                    {vid.duration}
+                    s
                   </span>
                 )}
               </div>
@@ -260,7 +271,7 @@ function VideoReferencesPreview({ videos }: { videos: any[] }) {
             <button
               type="button"
               disabled
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-purple-600/50 px-4 py-2 text-sm font-semibold text-white cursor-not-allowed"
+              className="mt-3 flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-purple-600/50 px-4 py-2 text-sm font-semibold text-white"
               title="Available after running prompt"
             >
               <Film className="h-4 w-4" />
@@ -270,7 +281,7 @@ function VideoReferencesPreview({ videos }: { videos: any[] }) {
         ))}
       </div>
 
-      <p className="text-xs text-gray-400 italic text-center">
+      <p className="text-center text-xs text-gray-400 italic">
         Buttons will be enabled after the prompt generates results
       </p>
     </div>
@@ -292,20 +303,22 @@ function MusicGenerationPreview({ data }: { data: any }) {
         {/* Instrumental Option */}
         {data.instrumental_option && (
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="mb-3 flex items-center gap-2">
               <Music className="h-5 w-5 text-blue-600" />
               <h4 className="text-sm font-semibold text-blue-900">Instrumental</h4>
             </div>
-            <p className="text-sm font-medium text-gray-900 mb-2">
+            <p className="mb-2 text-sm font-medium text-gray-900">
               {data.instrumental_option.title}
             </p>
             {data.instrumental_option.mood && (
-              <p className="text-xs text-gray-600 mb-2">
-                Mood: {data.instrumental_option.mood}
+              <p className="mb-2 text-xs text-gray-600">
+                Mood:
+                {' '}
+                {data.instrumental_option.mood}
               </p>
             )}
             {data.instrumental_option.genre_tags && (
-              <div className="flex flex-wrap gap-1 mb-3">
+              <div className="mb-3 flex flex-wrap gap-1">
                 {data.instrumental_option.genre_tags.map((tag: string, i: number) => (
                   <span key={i} className="rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700">
                     {tag}
@@ -316,7 +329,7 @@ function MusicGenerationPreview({ data }: { data: any }) {
             <button
               type="button"
               disabled
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600/50 px-3 py-2 text-xs font-semibold text-white cursor-not-allowed"
+              className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-blue-600/50 px-3 py-2 text-xs font-semibold text-white"
             >
               <Music className="h-3 w-3" />
               Generate Instrumental
@@ -327,20 +340,22 @@ function MusicGenerationPreview({ data }: { data: any }) {
         {/* Lyrical Option */}
         {data.lyrical_option && (
           <div className="rounded-lg border border-pink-200 bg-pink-50 p-4">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="mb-3 flex items-center gap-2">
               <Music className="h-5 w-5 text-pink-600" />
               <h4 className="text-sm font-semibold text-pink-900">Lyrical</h4>
             </div>
-            <p className="text-sm font-medium text-gray-900 mb-2">
+            <p className="mb-2 text-sm font-medium text-gray-900">
               {data.lyrical_option.title}
             </p>
             {data.lyrical_option.mood && (
-              <p className="text-xs text-gray-600 mb-2">
-                Mood: {data.lyrical_option.mood}
+              <p className="mb-2 text-xs text-gray-600">
+                Mood:
+                {' '}
+                {data.lyrical_option.mood}
               </p>
             )}
             {data.lyrical_option.genre_tags && (
-              <div className="flex flex-wrap gap-1 mb-3">
+              <div className="mb-3 flex flex-wrap gap-1">
                 {data.lyrical_option.genre_tags.map((tag: string, i: number) => (
                   <span key={i} className="rounded bg-pink-100 px-1.5 py-0.5 text-xs text-pink-700">
                     {tag}
@@ -351,7 +366,7 @@ function MusicGenerationPreview({ data }: { data: any }) {
             <button
               type="button"
               disabled
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-pink-600/50 px-3 py-2 text-xs font-semibold text-white cursor-not-allowed"
+              className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-pink-600/50 px-3 py-2 text-xs font-semibold text-white"
             >
               <Music className="h-3 w-3" />
               Generate Song
@@ -360,7 +375,7 @@ function MusicGenerationPreview({ data }: { data: any }) {
         )}
       </div>
 
-      <p className="text-xs text-gray-400 italic text-center">
+      <p className="text-center text-xs text-gray-400 italic">
         Buttons will be enabled after the prompt generates results
       </p>
     </div>
@@ -390,29 +405,34 @@ function SceneCardPreview({ data }: { data: any }) {
             key={index}
             className="rounded-lg border border-gray-200 bg-white p-4"
           >
-            <div className="flex items-center gap-2 mb-3">
+            <div className="mb-3 flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 text-xs font-semibold text-purple-700">
                 {scene.sceneNumber || index + 1}
               </span>
-              <span className="text-sm font-medium text-gray-700">Scene {scene.sceneNumber || index + 1}</span>
+              <span className="text-sm font-medium text-gray-700">
+                Scene
+                {scene.sceneNumber || index + 1}
+              </span>
             </div>
 
             {scene.sections && (
               <div className="space-y-3">
                 {scene.sections.patientQuote && (
                   <div className="border-l-4 border-purple-500 bg-purple-50 py-2 pl-3">
-                    <p className="text-xs font-semibold text-purple-700 mb-1">
+                    <p className="mb-1 text-xs font-semibold text-purple-700">
                       {scene.sections.patientQuote.label || 'Patient Quote'}
                     </p>
-                    <p className="text-sm italic text-purple-900">
-                      "{scene.sections.patientQuote.content}"
+                    <p className="text-sm text-purple-900 italic">
+                      "
+                      {scene.sections.patientQuote.content}
+                      "
                     </p>
                   </div>
                 )}
 
                 {scene.sections.meaning && (
                   <div>
-                    <p className="text-xs font-semibold text-gray-600 mb-1">
+                    <p className="mb-1 text-xs font-semibold text-gray-600">
                       {scene.sections.meaning.label || 'Therapist Reflection'}
                     </p>
                     <p className="text-sm text-gray-700">
@@ -423,10 +443,10 @@ function SceneCardPreview({ data }: { data: any }) {
 
                 {scene.sections.imagePrompt && (
                   <div>
-                    <p className="text-xs font-semibold text-gray-600 mb-1">
+                    <p className="mb-1 text-xs font-semibold text-gray-600">
                       {scene.sections.imagePrompt.label || 'Image Prompt'}
                     </p>
-                    <p className="text-xs text-gray-600 line-clamp-2">
+                    <p className="line-clamp-2 text-xs text-gray-600">
                       {scene.sections.imagePrompt.content}
                     </p>
                   </div>
@@ -437,7 +457,7 @@ function SceneCardPreview({ data }: { data: any }) {
             <button
               type="button"
               disabled
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-purple-600/50 px-3 py-2 text-xs font-semibold text-white cursor-not-allowed"
+              className="mt-3 flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-purple-600/50 px-3 py-2 text-xs font-semibold text-white"
             >
               <Film className="h-3 w-3" />
               Create Scene
@@ -446,7 +466,7 @@ function SceneCardPreview({ data }: { data: any }) {
         ))}
       </div>
 
-      <p className="text-xs text-gray-400 italic text-center">
+      <p className="text-center text-xs text-gray-400 italic">
         Buttons will be enabled after the prompt generates results
       </p>
     </div>
@@ -463,7 +483,10 @@ function QuoteExtractionPreview({ quotes }: { quotes: any[] }) {
         quote_extraction
       </div>
       <p className="text-sm text-gray-600">
-        {quotes.length} Extracted Quote{quotes.length !== 1 ? 's' : ''}
+        {quotes.length}
+        {' '}
+        Extracted Quote
+        {quotes.length !== 1 ? 's' : ''}
       </p>
 
       <div className="space-y-3">
@@ -473,24 +496,28 @@ function QuoteExtractionPreview({ quotes }: { quotes: any[] }) {
             className="rounded-lg border border-amber-200 bg-amber-50 p-4"
           >
             <div className="flex items-start gap-3">
-              <MessageSquareQuote className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <MessageSquareQuote className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900 italic mb-2">
-                  "{quote.quote_text}"
+                <p className="mb-2 text-sm font-medium text-gray-900 italic">
+                  "
+                  {quote.quote_text}
+                  "
                 </p>
                 {quote.speaker && (
-                  <p className="text-xs text-gray-600 mb-1">
-                    — {quote.speaker}
+                  <p className="mb-1 text-xs text-gray-600">
+                    —
+                    {' '}
+                    {quote.speaker}
                     {quote.patient_name && ` (${quote.patient_name})`}
                   </p>
                 )}
                 {quote.context && (
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="mt-2 text-xs text-gray-500">
                     {quote.context}
                   </p>
                 )}
                 {quote.tags && quote.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
+                  <div className="mt-2 flex flex-wrap gap-1">
                     {quote.tags.map((tag: string, i: number) => (
                       <span key={i} className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700">
                         {tag}
@@ -504,7 +531,7 @@ function QuoteExtractionPreview({ quotes }: { quotes: any[] }) {
             <button
               type="button"
               disabled
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600/50 px-3 py-2 text-xs font-semibold text-white cursor-not-allowed"
+              className="mt-3 flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-amber-600/50 px-3 py-2 text-xs font-semibold text-white"
             >
               <MessageSquareQuote className="h-3 w-3" />
               Save Quote
@@ -513,10 +540,9 @@ function QuoteExtractionPreview({ quotes }: { quotes: any[] }) {
         ))}
       </div>
 
-      <p className="text-xs text-gray-400 italic text-center">
+      <p className="text-center text-xs text-gray-400 italic">
         Buttons will be enabled after the prompt generates results
       </p>
     </div>
   );
 }
-

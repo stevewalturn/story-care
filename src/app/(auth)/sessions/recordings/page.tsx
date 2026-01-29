@@ -1,8 +1,8 @@
 'use client';
 
-import { Calendar, Clock, ExternalLink, Filter, Link2, Loader2, Mic, Music, Play, Trash2 } from 'lucide-react';
+import { Calendar, Clock, ExternalLink, Filter, Link2, Loader2, Mic, Music, Play, RefreshCw, Square, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -13,10 +13,11 @@ type Recording = {
   recordedAt: string | null;
   totalDurationSeconds: number | null;
   totalFileSizeBytes: number | null;
-  status: 'recording' | 'uploading' | 'completed' | 'failed' | 'used';
+  status: 'recording' | 'uploading' | 'merging' | 'completed' | 'failed' | 'used';
   sessionId: string | null;
   createdAt: string;
   audioUrl: string | null;
+  chunksCount?: number;
 };
 
 type RecordingLink = {
@@ -45,41 +46,108 @@ export default function RecordingsPage() {
   const [activeTab, setActiveTab] = useState<'recordings' | 'links'>('recordings');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [playingRecordingId, setPlayingRecordingId] = useState<string | null>(null);
+  const [stoppingId, setStoppingId] = useState<string | null>(null);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
 
   // Fetch recordings and links
-  useEffect(() => {
-    async function fetchData() {
-      if (!user) return;
+  const fetchRecordings = useCallback(async () => {
+    if (!user) return;
 
-      try {
-        const idToken = await user.getIdToken();
+    try {
+      const idToken = await user.getIdToken();
 
-        // Fetch recordings
-        const recordingsResponse = await fetch('/api/recordings', {
-          headers: { Authorization: `Bearer ${idToken}` },
-        });
-        if (recordingsResponse.ok) {
-          const data = await recordingsResponse.json();
-          setRecordings(data.recordings);
-        }
-
-        // Fetch links
-        const linksResponse = await fetch('/api/recording-links', {
-          headers: { Authorization: `Bearer ${idToken}` },
-        });
-        if (linksResponse.ok) {
-          const data = await linksResponse.json();
-          setLinks(data.links);
-        }
-      } catch (error) {
-        console.error('Failed to fetch data:', error);
-      } finally {
-        setLoading(false);
+      // Fetch recordings
+      const recordingsResponse = await fetch('/api/recordings', {
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      if (recordingsResponse.ok) {
+        const data = await recordingsResponse.json();
+        setRecordings(data.recordings);
       }
-    }
 
-    fetchData();
+      // Fetch links
+      const linksResponse = await fetch('/api/recording-links', {
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      if (linksResponse.ok) {
+        const data = await linksResponse.json();
+        setLinks(data.links);
+      }
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchRecordings();
+  }, [fetchRecordings]);
+
+  // Poll for merging recordings
+  useEffect(() => {
+    const mergingRecordings = recordings.filter(r => r.status === 'merging');
+    if (mergingRecordings.length === 0) return;
+
+    const pollInterval = setInterval(() => {
+      fetchRecordings();
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [recordings, fetchRecordings]);
+
+  // Stop recording handler
+  const handleStopRecording = async (recordingId: string) => {
+    if (!user) return;
+
+    setStoppingId(recordingId);
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch(`/api/recordings/${recordingId}/stop`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+
+      if (response.ok) {
+        await fetchRecordings();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to stop recording');
+      }
+    } catch (error) {
+      console.error('Failed to stop recording:', error);
+      alert('Failed to stop recording');
+    } finally {
+      setStoppingId(null);
+    }
+  };
+
+  // Retry merge handler
+  const handleRetryMerge = async (recordingId: string) => {
+    if (!user) return;
+
+    setRetryingId(recordingId);
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch(`/api/recordings/${recordingId}/retry-merge`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+
+      if (response.ok) {
+        await fetchRecordings();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to retry merge');
+      }
+    } catch (error) {
+      console.error('Failed to retry merge:', error);
+      alert('Failed to retry merge');
+    } finally {
+      setRetryingId(null);
+    }
+  };
 
   // Format duration
   const formatDuration = (seconds: number | null): string => {
@@ -123,6 +191,8 @@ export default function RecordingsPage() {
       case 'recording':
       case 'uploading':
         return 'bg-yellow-100 text-yellow-800';
+      case 'merging':
+        return 'bg-purple-100 text-purple-800';
       case 'used':
         return 'bg-blue-100 text-blue-800';
       case 'failed':
@@ -286,6 +356,7 @@ export default function RecordingsPage() {
                   <option value="completed">Completed</option>
                   <option value="recording">Recording</option>
                   <option value="uploading">Uploading</option>
+                  <option value="merging">Merging</option>
                   <option value="used">Used</option>
                   <option value="failed">Failed</option>
                 </>
@@ -367,8 +438,51 @@ export default function RecordingsPage() {
 
                       <div className="flex items-center gap-3">
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusColor(recording.status)}`}>
-                          {recording.status}
+                          {recording.status === 'merging' ? (
+                            <span className="flex items-center gap-1">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              merging
+                            </span>
+                          ) : recording.status}
                         </span>
+
+                        {/* STOP button for in-progress recordings */}
+                        {(recording.status === 'recording' || recording.status === 'uploading') && (
+                          <Button
+                            variant="secondary"
+                            onClick={() => handleStopRecording(recording.id)}
+                            disabled={stoppingId === recording.id}
+                            className="text-sm"
+                          >
+                            {stoppingId === recording.id
+                              ? (
+                                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                                )
+                              : (
+                                  <Square className="mr-1 h-4 w-4" />
+                                )}
+                            Stop
+                          </Button>
+                        )}
+
+                        {/* Retry button for failed recordings with multiple chunks */}
+                        {recording.status === 'failed' && (recording.chunksCount ?? 0) > 0 && (
+                          <Button
+                            variant="secondary"
+                            onClick={() => handleRetryMerge(recording.id)}
+                            disabled={retryingId === recording.id}
+                            className="text-sm"
+                          >
+                            {retryingId === recording.id
+                              ? (
+                                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                                )
+                              : (
+                                  <RefreshCw className="mr-1 h-4 w-4" />
+                                )}
+                            Retry
+                          </Button>
+                        )}
 
                         {recording.status === 'completed' && (
                           <>
@@ -404,7 +518,7 @@ export default function RecordingsPage() {
                           </Button>
                         )}
 
-                        {recording.status !== 'used' && (
+                        {recording.status !== 'used' && recording.status !== 'merging' && (
                           <button
                             onClick={() => handleDeleteRecording(recording.id)}
                             className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"

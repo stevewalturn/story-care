@@ -5,13 +5,13 @@ import { generateText } from '@/libs/TextGeneration';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 import { aiRateLimit, checkRateLimit, getClientIP } from '@/utils/RateLimiter';
 
-export interface ExtractedQuote {
+export type ExtractedQuote = {
   quoteText: string;
   speaker: string;
   timestampSeconds?: number;
   timestampDisplay?: string;
   context?: string;
-}
+};
 
 // POST /api/ai/extract-quotes - Extract quotes from AI message text
 export async function POST(request: NextRequest) {

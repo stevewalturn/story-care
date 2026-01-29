@@ -6,8 +6,8 @@
  * Includes clickable timestamp detection for quote navigation
  */
 
-import { Play } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { Play } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';

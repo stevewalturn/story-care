@@ -17,8 +17,8 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
 import { useRouter } from 'next/navigation';
+import { QRCodeSVG } from 'qrcode.react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';

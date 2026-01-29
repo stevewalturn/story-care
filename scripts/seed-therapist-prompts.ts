@@ -29,7 +29,7 @@ function createBlock(
   blockType: string,
   systemPrompt: string,
   outputFields: any[] = [],
-  order: number = 0
+  order: number = 0,
 ) {
   return {
     id: `block-${Date.now()}-${order}-${Math.random().toString(36).substring(7)}`,
@@ -48,7 +48,7 @@ function createOutputField(
   label: string,
   order: number,
   config: any = {},
-  locked?: boolean
+  locked?: boolean,
 ) {
   return {
     id: `field-${Date.now()}-${order}-${Math.random().toString(36).substring(7)}`,
@@ -112,7 +112,7 @@ Analyze the session themes and generate 3-5 open-ended questions that:
             fieldPrompt: 'Generate 3-5 open-ended questions that invite self-exploration and build on session insights',
           }),
         ],
-        0
+        0,
       ),
     ],
     jsonSchema: {
@@ -195,7 +195,7 @@ Read the transcript carefully and create a comprehensive clinical note that incl
             fieldPrompt: 'Add relevant clinical tags for categorization',
           }),
         ],
-        0
+        0,
       ),
     ],
     jsonSchema: {
@@ -255,7 +255,7 @@ Use patient's words and metaphors when possible. Keep language strength-based an
             fieldPrompt: 'Generate lyrical music option with title, full lyrics, genre tags, mood, and Suno AI style prompt',
           }),
         ],
-        0
+        0,
       ),
     ],
     jsonSchema: {
@@ -336,7 +336,7 @@ Suggest 3-5 image concepts with detailed DALL-E generation prompts (2-3 sentence
             fieldPrompt: 'Generate 3-5 therapeutic image concepts with detailed DALL-E prompts',
           }),
         ],
-        0
+        0,
       ),
     ],
     jsonSchema: {
@@ -405,7 +405,7 @@ Extract 3-5 quotes with context and patient attribution.`,
             fieldPrompt: 'Extract 3-5 therapeutically significant quotes with speaker, patient, context, and tags',
           }),
         ],
-        0
+        0,
       ),
     ],
     jsonSchema: {
@@ -488,7 +488,7 @@ Focus on moments of insight, breakthrough, growth, connection, or resilience.`,
             fieldPrompt: 'Create 2-3 scenes with patient quote, meaning, image prompt, and animation direction',
           }),
         ],
-        0
+        0,
       ),
     ],
     jsonSchema: {
@@ -599,7 +599,7 @@ Suggest 3-5 video concepts (5-10 seconds each) with reference image prompt, anim
             fieldPrompt: 'Generate 3-5 video concepts with reference image prompt, animation direction, duration, style, therapeutic purpose, and source quote',
           }),
         ],
-        0
+        0,
       ),
     ],
     jsonSchema: {

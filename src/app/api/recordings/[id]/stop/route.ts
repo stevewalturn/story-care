@@ -47,7 +47,10 @@ async function triggerMergeJob(jobId: string, recordingId: string, chunks: Audio
   return operation.name;
 }
 
-// POST /api/recordings/[id]/finalize - Mark recording as complete
+/**
+ * POST /api/recordings/[id]/stop
+ * Stop a recording in progress and finalize it with whatever chunks have been uploaded
+ */
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
     const user = await requireTherapist(request);
@@ -69,23 +72,40 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Parse request body
-    const body = await request.json();
-    const { totalDurationSeconds } = body;
+    // Only allow stopping recordings that are in progress
+    if (recording.status !== 'recording' && recording.status !== 'uploading') {
+      return NextResponse.json(
+        { error: `Cannot stop recording with status: ${recording.status}` },
+        { status: 400 },
+      );
+    }
 
     // Get chunks
     const chunks = (recording.audioChunks as AudioChunk[]) || [];
 
     if (chunks.length === 0) {
-      return NextResponse.json(
-        { error: 'No chunks uploaded. Cannot finalize empty recording.' },
-        { status: 400 },
-      );
+      // No chunks uploaded - mark as failed
+      await db
+        .update(uploadedRecordings)
+        .set({
+          status: 'failed',
+          updatedAt: new Date(),
+        })
+        .where(eq(uploadedRecordings.id, id));
+
+      await logPHIUpdate(user.dbUserId, 'recording', id, request, { action: 'stop_empty' });
+
+      return NextResponse.json({
+        success: false,
+        recordingId: id,
+        status: 'failed',
+        error: 'No audio chunks were recorded',
+      });
     }
 
-    // Calculate final totals
+    // Calculate totals
     const totalSize = chunks.reduce((sum, chunk) => sum + chunk.sizeBytes, 0);
-    const calculatedDuration = chunks.reduce((sum, chunk) => sum + chunk.durationSeconds, 0);
+    const totalDuration = chunks.reduce((sum, chunk) => sum + chunk.durationSeconds, 0);
 
     // Single chunk - just use it directly
     if (chunks.length === 1) {
@@ -96,21 +116,21 @@ export async function POST(request: NextRequest, context: RouteContext) {
         .set({
           status: 'completed',
           finalAudioUrl,
-          totalDurationSeconds: totalDurationSeconds || calculatedDuration,
+          totalDurationSeconds: totalDuration,
           totalFileSizeBytes: totalSize,
           updatedAt: new Date(),
         })
         .where(eq(uploadedRecordings.id, id));
 
-      await logPHIUpdate(user.dbUserId, 'recording', id, request, { action: 'finalize' });
+      await logPHIUpdate(user.dbUserId, 'recording', id, request, { action: 'stop_single_chunk' });
 
       return NextResponse.json({
         success: true,
         recordingId: id,
         status: 'completed',
-        totalDurationSeconds: totalDurationSeconds || calculatedDuration,
+        totalDurationSeconds: totalDuration,
         totalFileSizeBytes: totalSize,
-        chunksCount: chunks.length,
+        chunksCount: 1,
       });
     }
 
@@ -126,7 +146,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           inputData: {
             recordingId: id,
             chunks,
-            totalDurationSeconds: totalDurationSeconds || calculatedDuration,
+            totalDurationSeconds: totalDuration,
           },
           currentStep: 'Initializing audio merge',
           createdByUserId: user.dbUserId,
@@ -142,7 +162,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         .update(uploadedRecordings)
         .set({
           status: 'merging',
-          totalDurationSeconds: totalDurationSeconds || calculatedDuration,
+          totalDurationSeconds: totalDuration,
           totalFileSizeBytes: totalSize,
           updatedAt: new Date(),
         })
@@ -163,17 +183,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
       console.log(`✅ Audio merge job ${job.id} started for recording ${id}`);
 
-      await logPHIUpdate(user.dbUserId, 'recording', id, request, { action: 'finalize_merge', jobId: job.id });
+      await logPHIUpdate(user.dbUserId, 'recording', id, request, { action: 'stop_merge', jobId: job.id });
 
       return NextResponse.json({
         success: true,
         recordingId: id,
         status: 'merging',
         jobId: job.id,
-        totalDurationSeconds: totalDurationSeconds || calculatedDuration,
+        totalDurationSeconds: totalDuration,
         totalFileSizeBytes: totalSize,
         chunksCount: chunks.length,
-        message: 'Audio chunks are being merged. This may take a moment.',
+        message: 'Recording stopped. Audio chunks are being merged.',
       });
     } catch (cloudRunError: any) {
       console.error('Failed to trigger Cloud Run merge job:', cloudRunError);
@@ -186,26 +206,26 @@ export async function POST(request: NextRequest, context: RouteContext) {
         .set({
           status: 'completed',
           finalAudioUrl,
-          totalDurationSeconds: totalDurationSeconds || calculatedDuration,
+          totalDurationSeconds: totalDuration,
           totalFileSizeBytes: totalSize,
           updatedAt: new Date(),
         })
         .where(eq(uploadedRecordings.id, id));
 
-      await logPHIUpdate(user.dbUserId, 'recording', id, request, { action: 'finalize_fallback' });
+      await logPHIUpdate(user.dbUserId, 'recording', id, request, { action: 'stop_fallback' });
 
       return NextResponse.json({
         success: true,
         recordingId: id,
         status: 'completed',
-        totalDurationSeconds: totalDurationSeconds || calculatedDuration,
+        totalDurationSeconds: totalDuration,
         totalFileSizeBytes: totalSize,
         chunksCount: chunks.length,
         warning: 'Cloud Run merge failed. Audio stored as separate chunks.',
       });
     }
   } catch (error) {
-    console.error('Error finalizing recording:', error);
+    console.error('Error stopping recording:', error);
     return handleAuthError(error);
   }
 }

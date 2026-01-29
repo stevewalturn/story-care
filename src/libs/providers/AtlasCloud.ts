@@ -1502,26 +1502,26 @@ export function parseAtlasError(error: string): string {
 /**
  * Determine model family for parameter formatting
  */
-type ModelFamily =
-  | 'flux-kontext-max-pro' // Max/Pro: ONLY seed, image, prompt, guidance_scale, safety_tolerance
-  | 'flux-kontext-dev' // Dev variants: Extended params (size, num_images, num_inference_steps, etc.)
-  | 'flux-kontext-multi' // Multi variants: Uses images array
-  | 'flux-1.1-pro' // Uses aspect_ratio, output_format
-  | 'flux-1.1-pro-ultra' // Uses aspect_ratio, output_format + raw parameter
-  | 'flux-standard' // Uses size, num_inference_steps, guidance_scale
-  | 'flux-lora' // Uses size, loras array
-  | 'imagen' // Uses aspect_ratio, negative_prompt, num_images
-  | 'atlascloud-imagen' // Uses aspect_ratio, output_format (no negative_prompt, no num_images)
-  | 'nano-banana' // Uses aspect_ratio, resolution, output_format
-  | 'gemini-image' // Uses aspect_ratio, output_format
-  | 'recraft' // Uses aspect_ratio, style
-  | 'ideogram' // Uses aspect_ratio, style
-  | 'photon' // Minimal params (just prompt)
-  | 'seedream' // Uses size, enable_prompt_expansion
-  | 'wan' // Uses size, negative_prompt
-  | 'atlascloud' // Uses size, enable_safety_checker
-  | 'z-image' // Uses size, loras
-  | 'style-transfer'; // Uses image, minimal params
+type ModelFamily
+  = | 'flux-kontext-max-pro' // Max/Pro: ONLY seed, image, prompt, guidance_scale, safety_tolerance
+    | 'flux-kontext-dev' // Dev variants: Extended params (size, num_images, num_inference_steps, etc.)
+    | 'flux-kontext-multi' // Multi variants: Uses images array
+    | 'flux-1.1-pro' // Uses aspect_ratio, output_format
+    | 'flux-1.1-pro-ultra' // Uses aspect_ratio, output_format + raw parameter
+    | 'flux-standard' // Uses size, num_inference_steps, guidance_scale
+    | 'flux-lora' // Uses size, loras array
+    | 'imagen' // Uses aspect_ratio, negative_prompt, num_images
+    | 'atlascloud-imagen' // Uses aspect_ratio, output_format (no negative_prompt, no num_images)
+    | 'nano-banana' // Uses aspect_ratio, resolution, output_format
+    | 'gemini-image' // Uses aspect_ratio, output_format
+    | 'recraft' // Uses aspect_ratio, style
+    | 'ideogram' // Uses aspect_ratio, style
+    | 'photon' // Minimal params (just prompt)
+    | 'seedream' // Uses size, enable_prompt_expansion
+    | 'wan' // Uses size, negative_prompt
+    | 'atlascloud' // Uses size, enable_safety_checker
+    | 'z-image' // Uses size, loras
+    | 'style-transfer'; // Uses image, minimal params
 
 function getModelFamily(model: AtlasImageModel): ModelFamily {
   // Flux Kontext models - split by specific variant
@@ -1585,8 +1585,14 @@ function getModelFamily(model: AtlasImageModel): ModelFamily {
 
   // Style transfer models
   if ([
-    'plastic-bubble-figure', 'my-world', 'micro-landscape-mini-world', 'glass-ball',
-    'felt-keychain', 'felt-3d-polaroid', 'advanced-photography', 'american-comic-style',
+    'plastic-bubble-figure',
+    'my-world',
+    'micro-landscape-mini-world',
+    'glass-ball',
+    'felt-keychain',
+    'felt-3d-polaroid',
+    'advanced-photography',
+    'american-comic-style',
     'ghibli',
   ].includes(model)) {
     return 'style-transfer';
@@ -1972,23 +1978,23 @@ export async function generateImageWithAtlas(
  * Video model family for parameter formatting
  * Different video models require different parameters per IMAGE_TO_VIDEO.md
  */
-type VideoModelFamily =
-  | 'seedance' // aspect_ratio, camera_fixed, generate_audio, resolution
-  | 'kling-standard' // cfg_scale, negative_prompt, sound
-  | 'kling-o1' // aspect_ratio, last_image
-  | 'kling-multi' // images[], aspect_ratio
-  | 'kling-effects' // effect_scene only
-  | 'veo' // aspect_ratio, generate_audio, negative_prompt, resolution
-  | 'veo-ref' // images[], generate_audio, negative_prompt, resolution
-  | 'sora' // Basic: image, prompt, duration
-  | 'sora-dev' // Basic + size
-  | 'hailuo' // enable_prompt_expansion
-  | 'luma' // size, duration (string)
-  | 'vidu' // images[], movement_amplitude
-  | 'wan-video' // enable_prompt_expansion, negative_prompt, resolution
-  | 'video-effects' // image only
-  | 'ltx' // generate_audio
-  | 'generic'; // Basic params
+type VideoModelFamily
+  = | 'seedance' // aspect_ratio, camera_fixed, generate_audio, resolution
+    | 'kling-standard' // cfg_scale, negative_prompt, sound
+    | 'kling-o1' // aspect_ratio, last_image
+    | 'kling-multi' // images[], aspect_ratio
+    | 'kling-effects' // effect_scene only
+    | 'veo' // aspect_ratio, generate_audio, negative_prompt, resolution
+    | 'veo-ref' // images[], generate_audio, negative_prompt, resolution
+    | 'sora' // Basic: image, prompt, duration
+    | 'sora-dev' // Basic + size
+    | 'hailuo' // enable_prompt_expansion
+    | 'luma' // size, duration (string)
+    | 'vidu' // images[], movement_amplitude
+    | 'wan-video' // enable_prompt_expansion, negative_prompt, resolution
+    | 'video-effects' // image only
+    | 'ltx' // generate_audio
+    | 'generic'; // Basic params
 
 function getVideoModelFamily(atlasModel: string): VideoModelFamily {
   // Seedance models

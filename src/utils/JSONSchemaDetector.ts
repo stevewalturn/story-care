@@ -485,7 +485,7 @@ export function shouldRetryForMalformedJSON(content: string): boolean {
  */
 export function looksLikeBrokenJSON(content: string): boolean {
   // Check if content has JSON code block markers
-  const hasJSONCodeBlock = /```json/i.test(content) || /```\s*\n\s*\{/.test(content);
+  const hasJSONCodeBlock = /```json/i.test(content) || /```[\t\v\f\r \xA0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]*\n\s*\{/.test(content);
 
   // Check if content has common schema structure (even without code blocks)
   const hasJSONStructure = /["']schemaType["']\s*:/.test(content)

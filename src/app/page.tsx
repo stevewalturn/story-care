@@ -33,7 +33,7 @@ export default function LandingPage() {
           style={{ transform: `translate(${mousePosition.x}px, ${mousePosition.y}px)` }}
         />
         <div
-          className="absolute bottom-0 right-1/4 h-[500px] w-[500px] rounded-full bg-violet-200/30 blur-[100px] transition-transform duration-1000"
+          className="absolute right-1/4 bottom-0 h-[500px] w-[500px] rounded-full bg-violet-200/30 blur-[100px] transition-transform duration-1000"
           style={{ transform: `translate(${-mousePosition.x}px, ${-mousePosition.y}px)` }}
         />
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiM5MzMzZWEiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-50" />
@@ -79,7 +79,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-4xl text-center">
             {/* Animated Badge */}
-            <div className={`mb-8 transition-all duration-700 delay-200 ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+            <div className={`mb-8 transition-all delay-200 duration-700 ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
               <div className="group inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-5 py-2.5 text-sm font-medium text-purple-700 transition-all hover:border-purple-300 hover:bg-purple-100">
                 <Sparkles className="h-4 w-4 animate-pulse text-purple-500" />
                 <span>AI-Powered Narrative Therapy Platform</span>
@@ -88,8 +88,8 @@ export default function LandingPage() {
             </div>
 
             {/* Main Heading with Animation */}
-            <h1 className={`mb-8 transition-all duration-700 delay-300 ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-              <span className="block text-5xl font-bold leading-tight tracking-tight text-gray-900 sm:text-6xl lg:text-7xl">
+            <h1 className={`mb-8 transition-all delay-300 duration-700 ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+              <span className="block text-5xl leading-tight font-bold tracking-tight text-gray-900 sm:text-6xl lg:text-7xl">
                 Transform Lives Through
               </span>
               <span className="relative mt-2 block">
@@ -119,12 +119,12 @@ export default function LandingPage() {
             </h1>
 
             {/* Subheading */}
-            <p className={`mx-auto mb-12 max-w-2xl text-lg leading-relaxed text-gray-600 sm:text-xl transition-all duration-700 delay-400 ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+            <p className={`mx-auto mb-12 max-w-2xl text-lg leading-relaxed text-gray-600 transition-all delay-400 duration-700 sm:text-xl ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
               StoryCare empowers therapists to create personalized, AI-generated therapeutic content that helps patients visualize healing and growth.
             </p>
 
             {/* CTA Button */}
-            <div className={`flex items-center justify-center transition-all duration-700 delay-500 ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+            <div className={`flex items-center justify-center transition-all delay-500 duration-700 ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
               <Link
                 href="/sign-up"
                 className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-purple-600 to-violet-600 px-10 py-5 text-lg font-semibold text-white shadow-2xl shadow-purple-500/30 transition-all hover:-translate-y-1 hover:shadow-purple-500/50"
@@ -139,12 +139,12 @@ export default function LandingPage() {
             </div>
 
             {/* Trust Badges */}
-            <div className={`mt-12 flex flex-wrap items-center justify-center gap-8 transition-all duration-700 delay-600 ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+            <div className={`mt-12 flex flex-wrap items-center justify-center gap-8 transition-all delay-600 duration-700 ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
               {[
                 { icon: Shield, text: 'HIPAA Compliant', color: 'text-green-500' },
                 { icon: Zap, text: '14-Day Free Trial', color: 'text-amber-500' },
                 { icon: Heart, text: 'No Credit Card', color: 'text-pink-500' },
-              ].map((badge) => (
+              ].map(badge => (
                 <div
                   key={badge.text}
                   className="flex items-center gap-2 text-sm text-gray-500"
@@ -157,7 +157,7 @@ export default function LandingPage() {
           </div>
 
           {/* Floating Feature Cards */}
-          <div className={`relative mt-24 transition-all duration-1000 delay-700 ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'}`}>
+          <div className={`relative mt-24 transition-all delay-700 duration-1000 ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'}`}>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {[
                 {
@@ -207,7 +207,7 @@ export default function LandingPage() {
         </div>
 
         {/* Scroll indicator */}
-        <div className={`absolute bottom-10 left-1/2 -translate-x-1/2 transition-all duration-700 delay-1000 ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+        <div className={`absolute bottom-10 left-1/2 -translate-x-1/2 transition-all delay-1000 duration-700 ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
           <div className="flex flex-col items-center gap-2">
             <span className="text-xs text-gray-400">Scroll to explore</span>
             <div className="h-14 w-8 rounded-full border border-purple-200 bg-white p-2 shadow-sm">
@@ -225,9 +225,9 @@ export default function LandingPage() {
               { value: '500+', label: 'Therapists Trust Us' },
               { value: '10,000+', label: 'Stories Created' },
               { value: '95%', label: 'Time Saved on Docs' },
-            ].map((stat) => (
+            ].map(stat => (
               <div key={stat.label} className="text-center">
-                <div className="mb-2 text-4xl font-bold bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-transparent sm:text-5xl">
+                <div className="mb-2 bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-4xl font-bold text-transparent sm:text-5xl">
                   {stat.value}
                 </div>
                 <div className="text-sm text-gray-600">{stat.label}</div>
@@ -311,12 +311,12 @@ export default function LandingPage() {
                   <h3 className="mb-3 text-xl font-semibold text-gray-900">
                     {feature.title}
                   </h3>
-                  <p className="mb-6 text-gray-600 leading-relaxed">
+                  <p className="mb-6 leading-relaxed text-gray-600">
                     {feature.description}
                   </p>
 
                   <div className="space-y-2">
-                    {feature.features.map((item) => (
+                    {feature.features.map(item => (
                       <div key={item} className="flex items-center gap-2 text-sm text-gray-500">
                         <CheckCircle2 className="h-4 w-4 text-purple-500" />
                         {item}
@@ -337,7 +337,7 @@ export default function LandingPage() {
             {/* Animated background elements */}
             <div className="absolute inset-0 -z-10">
               <div className="absolute top-0 left-1/4 h-64 w-64 animate-pulse rounded-full bg-white/10 blur-[100px]" />
-              <div className="absolute bottom-0 right-1/4 h-64 w-64 animate-pulse rounded-full bg-white/10 blur-[100px]" style={{ animationDelay: '1s' }} />
+              <div className="absolute right-1/4 bottom-0 h-64 w-64 animate-pulse rounded-full bg-white/10 blur-[100px]" style={{ animationDelay: '1s' }} />
             </div>
 
             <div className="relative">

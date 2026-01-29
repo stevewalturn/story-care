@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CreatePromptModal } from '@/components/prompts/CreatePromptModal';
 import { EditPromptModal } from '@/components/prompts/EditPromptModal';
 import { PromptLibrary } from '@/components/prompts/PromptLibrary';
+import { AIQuoteExtractorModal } from '@/components/sessions/AIQuoteExtractorModal';
 import { AssistantMessageContent } from '@/components/sessions/AssistantMessageContent';
 import { BulkSaveQuotesModal } from '@/components/sessions/BulkSaveQuotesModal';
 import { JSONOutputRenderer } from '@/components/sessions/JSONOutputRenderer';
@@ -22,7 +23,6 @@ import { MessagePreviewModal } from '@/components/sessions/MessagePreviewModal';
 import { ModuleSelectorModal } from '@/components/sessions/ModuleSelectorModal';
 import { SaveNoteModal } from '@/components/sessions/SaveNoteModal';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
-import { AIQuoteExtractorModal } from '@/components/sessions/AIQuoteExtractorModal';
 import { Modal } from '@/components/ui/Modal';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -917,15 +917,15 @@ ${userText}`;
 ${transcriptContext}`;
 
     // Append JSON instructions for JSON output prompts with a schema
-    if ('outputType' in promptData && promptData.outputType === 'json' &&
-        'jsonSchema' in promptData && promptData.jsonSchema) {
+    if ('outputType' in promptData && promptData.outputType === 'json'
+      && 'jsonSchema' in promptData && promptData.jsonSchema) {
       const schema = promptData.jsonSchema as Record<string, unknown>;
 
       // Extract schemaType from jsonSchema if available
       const schemaType = (schema as Record<string, unknown>)?.schemaType as string
         || ((schema as Record<string, unknown>)?.properties as Record<string, unknown>)?.schemaType
-          && (((schema as Record<string, unknown>)?.properties as Record<string, unknown>)?.schemaType as Record<string, unknown>)?.enum
-          && ((((schema as Record<string, unknown>)?.properties as Record<string, unknown>)?.schemaType as Record<string, unknown>)?.enum as string[])?.[0]
+        && (((schema as Record<string, unknown>)?.properties as Record<string, unknown>)?.schemaType as Record<string, unknown>)?.enum
+        && ((((schema as Record<string, unknown>)?.properties as Record<string, unknown>)?.schemaType as Record<string, unknown>)?.enum as string[])?.[0]
         || 'structured_output';
 
       // Build JSON instruction block

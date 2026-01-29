@@ -1,4 +1,5 @@
 import type { NextRequest } from 'next/server';
+import type { AudioChunk } from '@/models/Schema';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
@@ -65,9 +66,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (existingRecording) {
       // Return existing recording ID if not completed/failed
       if (existingRecording.status === 'recording' || existingRecording.status === 'uploading') {
+        // Calculate progress from existing chunks
+        const chunks = (existingRecording.audioChunks as AudioChunk[]) || [];
+        const savedDurationSeconds = chunks.reduce((sum, chunk) => sum + chunk.durationSeconds, 0);
+        const nextChunkIndex = chunks.length;
+
         return NextResponse.json({
           recordingId: existingRecording.id,
           resumed: true,
+          savedDurationSeconds,
+          nextChunkIndex,
+          chunksCount: chunks.length,
         });
       }
 

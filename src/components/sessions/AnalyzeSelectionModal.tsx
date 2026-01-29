@@ -140,8 +140,8 @@ export function AnalyzeSelectionModal({
       // Extract schemaType from jsonSchema if available
       const schemaType = (schema as Record<string, unknown>)?.schemaType as string
         || ((schema as Record<string, unknown>)?.properties as Record<string, unknown>)?.schemaType
-          && (((schema as Record<string, unknown>)?.properties as Record<string, unknown>)?.schemaType as Record<string, unknown>)?.enum
-          && ((((schema as Record<string, unknown>)?.properties as Record<string, unknown>)?.schemaType as Record<string, unknown>)?.enum as string[])?.[0]
+        && (((schema as Record<string, unknown>)?.properties as Record<string, unknown>)?.schemaType as Record<string, unknown>)?.enum
+        && ((((schema as Record<string, unknown>)?.properties as Record<string, unknown>)?.schemaType as Record<string, unknown>)?.enum as string[])?.[0]
         || 'structured_output';
 
       // Build JSON instruction block

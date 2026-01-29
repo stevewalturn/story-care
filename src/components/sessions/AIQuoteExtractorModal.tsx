@@ -4,9 +4,9 @@ import type { PatientOption } from './SaveNoteModal';
 import type { ExtractedQuote } from '@/app/api/ai/extract-quotes/route';
 import { Check, ChevronDown, Loader2, Play, Quote, RefreshCw, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { Button } from '../ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedPost } from '@/utils/AuthenticatedFetch';
+import { Button } from '../ui/Button';
 
 type AIQuoteExtractorModalProps = {
   isOpen: boolean;
@@ -229,7 +229,7 @@ export function AIQuoteExtractorModal({
               </p>
               <button
                 onClick={extractQuotes}
-                className="mt-4 flex items-center gap-1 mx-auto text-sm font-medium text-purple-600 hover:text-purple-700"
+                className="mx-auto mt-4 flex items-center gap-1 text-sm font-medium text-purple-600 hover:text-purple-700"
               >
                 <RefreshCw className="h-4 w-4" />
                 Try Again
@@ -249,7 +249,12 @@ export function AIQuoteExtractorModal({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-gray-700">
-                  Found {extractedQuotes.length} quote{extractedQuotes.length !== 1 ? 's' : ''}
+                  Found
+                  {' '}
+                  {extractedQuotes.length}
+                  {' '}
+                  quote
+                  {extractedQuotes.length !== 1 ? 's' : ''}
                 </p>
                 <button
                   onClick={() => {
@@ -292,16 +297,20 @@ export function AIQuoteExtractorModal({
                           {isSelected && <Check className="h-3 w-3" />}
                         </button>
 
-                        <div className="flex-1 min-w-0">
+                        <div className="min-w-0 flex-1">
                           {/* Quote Text */}
                           <p className={`text-sm leading-relaxed ${isSelected ? 'text-gray-900' : 'text-gray-700'}`}>
-                            "{quote.quoteText}"
+                            "
+                            {quote.quoteText}
+                            "
                           </p>
 
                           {/* Metadata */}
                           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                             <span className="text-gray-500">
-                              Speaker: <span className="font-medium text-gray-700">{quote.speaker || 'Unknown'}</span>
+                              Speaker:
+                              {' '}
+                              <span className="font-medium text-gray-700">{quote.speaker || 'Unknown'}</span>
                             </span>
 
                             {/* Timestamp with Jump Button */}

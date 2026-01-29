@@ -14,7 +14,7 @@ type Patient = {
 
 type ContentBlock = {
   id: string;
-  type: 'text' | 'image' | 'video' | 'quote' | 'scene' | 'reflection' | 'survey';
+  type: 'text' | 'image' | 'video' | 'quote' | 'note' | 'scene' | 'reflection' | 'survey';
   order: number;
   content: any;
 };
@@ -29,6 +29,7 @@ export default function EditPagePage({ params }: { params: Promise<{ id: string 
     title: string;
     blocks: ContentBlock[];
     patientId: string;
+    backgroundMusicUrl?: string | null;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -185,6 +186,7 @@ export default function EditPagePage({ params }: { params: Promise<{ id: string 
         title: page.title,
         blocks: transformedBlocks,
         patientId: page.patientId,
+        backgroundMusicUrl: page.backgroundMusicUrl || null,
       });
     } catch (error) {
       console.error('Failed to load page:', error);
@@ -201,12 +203,13 @@ export default function EditPagePage({ params }: { params: Promise<{ id: string 
     }
   }, [user, fetchPatients, fetchPage]);
 
-  const handleSavePage = async (title: string, blocks: any[], patientId: string | null) => {
+  const handleSavePage = async (title: string, blocks: any[], patientId: string | null, backgroundMusicUrl?: string | null) => {
     try {
       const response = await authenticatedPut(`/api/pages/${resolvedParams.id}`, user, {
         title,
         blocks,
         patientId,
+        backgroundMusicUrl,
       });
 
       if (!response.ok) {
@@ -259,6 +262,7 @@ export default function EditPagePage({ params }: { params: Promise<{ id: string 
         initialTitle={pageData.title}
         initialBlocks={pageData.blocks}
         initialPatientId={pageData.patientId}
+        initialBackgroundMusicUrl={pageData.backgroundMusicUrl || undefined}
         patients={patients}
         onSave={handleSavePage}
         onClose={handleClose}

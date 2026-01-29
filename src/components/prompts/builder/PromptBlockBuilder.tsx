@@ -535,310 +535,314 @@ export function PromptBlockBuilder({
             {isEditing ? 'Modify your prompt template' : 'Configure your AI prompt template'}
           </p>
         </div>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={isSaving}
-            className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
-          >
-            <Save className="h-4 w-4" />
-            {isSaving ? 'Saving...' : isEditing ? 'Update' : 'Compile & Save'}
-          </button>
-        </header>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={isSaving}
+          className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
+        >
+          <Save className="h-4 w-4" />
+          {isSaving ? 'Saving...' : isEditing ? 'Update' : 'Compile & Save'}
+        </button>
+      </header>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="mx-auto max-w-4xl space-y-6">
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="mx-auto max-w-4xl space-y-6">
 
-            {/* SECTION 1: Basic Information */}
-            <div className="rounded-lg border border-gray-200 bg-white p-6">
-              <h2 className="mb-6 text-lg font-semibold text-gray-900">
-                Basic Information
-              </h2>
-              <div className="space-y-6">
-                {/* Prompt Name */}
-                <div>
-                  <label htmlFor="promptName" className="mb-2 block text-sm font-medium text-gray-700">
-                    Prompt Name
-                    {' '}
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="promptName"
-                    type="text"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    placeholder="e.g., Generate Therapeutic Imagery"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
-                    maxLength={255}
-                  />
-                </div>
+          {/* SECTION 1: Basic Information */}
+          <div className="rounded-lg border border-gray-200 bg-white p-6">
+            <h2 className="mb-6 text-lg font-semibold text-gray-900">
+              Basic Information
+            </h2>
+            <div className="space-y-6">
+              {/* Prompt Name */}
+              <div>
+                <label htmlFor="promptName" className="mb-2 block text-sm font-medium text-gray-700">
+                  Prompt Name
+                  {' '}
+                  <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="promptName"
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="e.g., Generate Therapeutic Imagery"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
+                  maxLength={255}
+                />
+              </div>
 
-                {/* Category */}
-                <div>
-                  <label htmlFor="category" className="mb-2 block text-sm font-medium text-gray-700">
-                    Category
-                    {' '}
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    id="category"
-                    value={category}
-                    onChange={e => setCategory(e.target.value as PromptCategory)}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
-                  >
-                    <option value="analysis">Analysis</option>
-                    <option value="creative">Creative</option>
-                    <option value="extraction">Extraction</option>
-                    <option value="reflection">Reflection</option>
-                  </select>
-                </div>
+              {/* Category */}
+              <div>
+                <label htmlFor="category" className="mb-2 block text-sm font-medium text-gray-700">
+                  Category
+                  {' '}
+                  <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="category"
+                  value={category}
+                  onChange={e => setCategory(e.target.value as PromptCategory)}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
+                >
+                  <option value="analysis">Analysis</option>
+                  <option value="creative">Creative</option>
+                  <option value="extraction">Extraction</option>
+                  <option value="reflection">Reflection</option>
+                </select>
+              </div>
 
-                {/* Icon Selector */}
-                <div>
-                  <label htmlFor="icon" className="mb-2 block text-sm font-medium text-gray-700">
-                    Icon
-                  </label>
-                  <select
-                    id="icon"
-                    value={icon}
-                    onChange={e => setIcon(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
-                  >
-                    <option value="sparkles">✨ Sparkles</option>
-                    <option value="target">🎯 Target</option>
-                    <option value="lightbulb">💡 Lightbulb</option>
-                    <option value="heart">❤️ Heart</option>
-                    <option value="brain">🧠 Brain</option>
-                    <option value="pencil">✏️ Pencil</option>
-                    <option value="image">🖼️ Image</option>
-                    <option value="video">🎥 Video</option>
-                    <option value="music">🎵 Music</option>
-                    <option value="quote">💬 Quote</option>
-                    <option value="note">📝 Note</option>
-                    <option value="star">⭐ Star</option>
-                  </select>
-                </div>
+              {/* Icon Selector */}
+              <div>
+                <label htmlFor="icon" className="mb-2 block text-sm font-medium text-gray-700">
+                  Icon
+                </label>
+                <select
+                  id="icon"
+                  value={icon}
+                  onChange={e => setIcon(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
+                >
+                  <option value="sparkles">✨ Sparkles</option>
+                  <option value="target">🎯 Target</option>
+                  <option value="lightbulb">💡 Lightbulb</option>
+                  <option value="heart">❤️ Heart</option>
+                  <option value="brain">🧠 Brain</option>
+                  <option value="pencil">✏️ Pencil</option>
+                  <option value="image">🖼️ Image</option>
+                  <option value="video">🎥 Video</option>
+                  <option value="music">🎵 Music</option>
+                  <option value="quote">💬 Quote</option>
+                  <option value="note">📝 Note</option>
+                  <option value="star">⭐ Star</option>
+                </select>
+              </div>
 
-                {/* Description */}
-                <div>
-                  <label htmlFor="description" className="mb-2 block text-sm font-medium text-gray-700">
-                    Description
-                  </label>
-                  <textarea
-                    id="description"
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                    placeholder="Describe what this prompt does..."
-                    rows={3}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
-                    maxLength={500}
-                  />
-                </div>
+              {/* Description */}
+              <div>
+                <label htmlFor="description" className="mb-2 block text-sm font-medium text-gray-700">
+                  Description
+                </label>
+                <textarea
+                  id="description"
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  placeholder="Describe what this prompt does..."
+                  rows={3}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
+                  maxLength={500}
+                />
+              </div>
 
-                {/* Output Type */}
-                <div>
-                  <label className="mb-3 block text-sm font-medium text-gray-700">
-                    Output Type
-                    {' '}
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <div className="space-y-3">
-                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-4 transition-colors hover:border-purple-300 hover:bg-purple-50/50">
-                      <input
-                        type="radio"
-                        name="outputType"
-                        value="json"
-                        checked={outputType === 'json'}
-                        onChange={e => setOutputType(e.target.value as 'text' | 'json')}
-                        className="mt-1 h-4 w-4 text-purple-600 border-gray-300 focus:ring-purple-500"
-                      />
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900">📊 Structured JSON Output</div>
-                        <div className="mt-1 text-xs text-gray-500">
-                          Returns data in JSON format with a defined schema. Best for extracting structured information.
-                        </div>
+              {/* Output Type */}
+              <div>
+                <label className="mb-3 block text-sm font-medium text-gray-700">
+                  Output Type
+                  {' '}
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="space-y-3">
+                  <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-4 transition-colors hover:border-purple-300 hover:bg-purple-50/50">
+                    <input
+                      type="radio"
+                      name="outputType"
+                      value="json"
+                      checked={outputType === 'json'}
+                      onChange={e => setOutputType(e.target.value as 'text' | 'json')}
+                      className="mt-1 h-4 w-4 border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-gray-900">📊 Structured JSON Output</div>
+                      <div className="mt-1 text-xs text-gray-500">
+                        Returns data in JSON format with a defined schema. Best for extracting structured information.
                       </div>
-                    </label>
-                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-4 transition-colors hover:border-purple-300 hover:bg-purple-50/50">
-                      <input
-                        type="radio"
-                        name="outputType"
-                        value="text"
-                        checked={outputType === 'text'}
-                        onChange={e => setOutputType(e.target.value as 'text' | 'json')}
-                        className="mt-1 h-4 w-4 text-purple-600 border-gray-300 focus:ring-purple-500"
-                      />
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900">📝 Plain Text Output</div>
-                        <div className="mt-1 text-xs text-gray-500">
-                          Returns a simple text response without structure. Best for open-ended analysis or creative content.
-                        </div>
+                    </div>
+                  </label>
+                  <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-4 transition-colors hover:border-purple-300 hover:bg-purple-50/50">
+                    <input
+                      type="radio"
+                      name="outputType"
+                      value="text"
+                      checked={outputType === 'text'}
+                      onChange={e => setOutputType(e.target.value as 'text' | 'json')}
+                      className="mt-1 h-4 w-4 border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-gray-900">📝 Plain Text Output</div>
+                      <div className="mt-1 text-xs text-gray-500">
+                        Returns a simple text response without structure. Best for open-ended analysis or creative content.
                       </div>
-                    </label>
-                  </div>
+                    </div>
+                  </label>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* SECTION 2A: JSON Configuration (conditional) */}
-            {outputType === 'json' && (
-              <>
-                {/* Block Selector */}
-                <div className="rounded-lg border border-gray-200 bg-white p-6">
-                  <h2 className="mb-4 text-lg font-semibold text-gray-900">
-                    Select Output Type
-                  </h2>
-                  <BlockPalette
-                    selectedBlockType={selectedBlockType}
-                    onSelectBlock={handleSelectBlock}
-                  />
-                </div>
-
-                {/* Block Configuration */}
-                {blockInstance && (
-                  <div className="rounded-lg border border-gray-200 bg-white p-6">
-                    <h2 className="mb-4 text-lg font-semibold text-gray-900">
-                      Configure {getBlockDefinition(blockInstance.blockType)?.label}
-                    </h2>
-
-                    {/* System Prompt Editor */}
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700">
-                        System Prompt (AI Instructions)
-                      </label>
-                      <p className="mb-2 text-xs text-gray-500">
-                        Customize the AI instructions or leave empty to use the default prompt.
-                      </p>
-                      <textarea
-                        value={blockInstance.customSystemPrompt || ''}
-                        onChange={(e) => handleUpdateSystemPrompt(e.target.value)}
-                        placeholder="Enter custom AI instructions or leave empty for default..."
-                        rows={12}
-                        className="w-full rounded-lg border border-gray-300 p-4 font-mono text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Preview Section */}
-                {blockInstance && previewData && (
-                  <div className="rounded-lg border border-gray-200 bg-white p-6">
-                    <h2 className="mb-4 text-lg font-semibold text-gray-900">
-                      Preview
-                    </h2>
-                    <div className="space-y-4">
-                      <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
-                        <p className="text-xs text-blue-600">
-                          This preview shows the default output structure for this block type.
-                        </p>
-                      </div>
-
-                      {!previewData.sampleOutput ? (
-                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                          <p className="text-sm text-amber-600">
-                            Preview not available for this output type
-                          </p>
-                        </div>
-                      ) : (
-                        <GenericJSONPreview
-                          data={previewData.sampleOutput as any}
-                          fields={[]}
-                          schemaType={previewData.definition.schemaType}
-                        />
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Technical Details (Collapsible) */}
-                <div className="rounded-lg border border-gray-200 bg-white">
-                  <button
-                    type="button"
-                    onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
-                    className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors"
-                  >
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      Technical Details
-                    </h2>
-                    {showTechnicalDetails ? (
-                      <ChevronUp className="h-5 w-5 text-gray-500" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-gray-500" />
-                    )}
-                  </button>
-                  {showTechnicalDetails && (
-                    <div className="border-t border-gray-200 p-6 space-y-6">
-                      {/* Generated System Prompt */}
-                      <div className="rounded-lg border border-purple-200 bg-purple-50">
-                        <div className="border-b border-purple-200 px-4 py-3">
-                          <h2 className="text-sm font-medium text-purple-900">Generated System Prompt (AI Instructions)</h2>
-                          <p className="mt-1 text-xs text-purple-600">
-                            This is the compiled prompt that tells the AI how to generate each field
-                          </p>
-                        </div>
-                        <pre className="overflow-auto p-4 text-xs whitespace-pre-wrap text-purple-800">
-                          {generateSystemPrompt() || 'Select a block to generate a system prompt'}
-                        </pre>
-                      </div>
-
-                      {/* JSON Schema */}
-                      <div className="rounded-lg border border-gray-200 bg-white">
-                        <div className="border-b border-gray-200 px-4 py-3">
-                          <h2 className="text-sm font-medium text-gray-900">Generated JSON Schema</h2>
-                          <p className="mt-1 text-xs text-gray-500">
-                            The structure defining the expected output format
-                          </p>
-                        </div>
-                        <pre className="overflow-auto p-4 text-xs text-gray-700">
-                          {JSON.stringify(generateJSONSchema(), null, 2)}
-                        </pre>
-                      </div>
-
-                      {/* Block Data */}
-                      <div className="rounded-lg border border-gray-200 bg-white">
-                        <div className="border-b border-gray-200 px-4 py-3">
-                          <h2 className="text-sm font-medium text-gray-900">Block Configuration</h2>
-                          <p className="mt-1 text-xs text-gray-500">
-                            Selected block configuration and custom settings
-                          </p>
-                        </div>
-                        <pre className="overflow-auto p-4 text-xs text-gray-700">
-                          {blockInstance ? JSON.stringify(blockInstance, null, 2) : 'No block selected'}
-                        </pre>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-
-            {/* SECTION 2B: Text Configuration (conditional) */}
-            {outputType === 'text' && (
+          {/* SECTION 2A: JSON Configuration (conditional) */}
+          {outputType === 'json' && (
+            <>
+              {/* Block Selector */}
               <div className="rounded-lg border border-gray-200 bg-white p-6">
                 <h2 className="mb-4 text-lg font-semibold text-gray-900">
-                  System Prompt
+                  Select Output Type
                 </h2>
-                <p className="mb-4 text-sm text-gray-600">
-                  This prompt will be sent to the AI as instructions. The AI will return a plain text response without any structured format.
-                </p>
-                <textarea
-                  value={textModeSystemPrompt}
-                  onChange={(e) => setTextModeSystemPrompt(e.target.value)}
-                  placeholder="Enter your system prompt here...
+                <BlockPalette
+                  selectedBlockType={selectedBlockType}
+                  onSelectBlock={handleSelectBlock}
+                />
+              </div>
+
+              {/* Block Configuration */}
+              {blockInstance && (
+                <div className="rounded-lg border border-gray-200 bg-white p-6">
+                  <h2 className="mb-4 text-lg font-semibold text-gray-900">
+                    Configure
+                    {' '}
+                    {getBlockDefinition(blockInstance.blockType)?.label}
+                  </h2>
+
+                  {/* System Prompt Editor */}
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700">
+                      System Prompt (AI Instructions)
+                    </label>
+                    <p className="mb-2 text-xs text-gray-500">
+                      Customize the AI instructions or leave empty to use the default prompt.
+                    </p>
+                    <textarea
+                      value={blockInstance.customSystemPrompt || ''}
+                      onChange={e => handleUpdateSystemPrompt(e.target.value)}
+                      placeholder="Enter custom AI instructions or leave empty for default..."
+                      rows={12}
+                      className="w-full rounded-lg border border-gray-300 p-4 font-mono text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Preview Section */}
+              {blockInstance && previewData && (
+                <div className="rounded-lg border border-gray-200 bg-white p-6">
+                  <h2 className="mb-4 text-lg font-semibold text-gray-900">
+                    Preview
+                  </h2>
+                  <div className="space-y-4">
+                    <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
+                      <p className="text-xs text-blue-600">
+                        This preview shows the default output structure for this block type.
+                      </p>
+                    </div>
+
+                    {!previewData.sampleOutput ? (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                        <p className="text-sm text-amber-600">
+                          Preview not available for this output type
+                        </p>
+                      </div>
+                    ) : (
+                      <GenericJSONPreview
+                        data={previewData.sampleOutput as any}
+                        fields={[]}
+                        schemaType={previewData.definition.schemaType}
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Technical Details (Collapsible) */}
+              <div className="rounded-lg border border-gray-200 bg-white">
+                <button
+                  type="button"
+                  onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
+                  className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-gray-50"
+                >
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Technical Details
+                  </h2>
+                  {showTechnicalDetails ? (
+                    <ChevronUp className="h-5 w-5 text-gray-500" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-gray-500" />
+                  )}
+                </button>
+                {showTechnicalDetails && (
+                  <div className="space-y-6 border-t border-gray-200 p-6">
+                    {/* Generated System Prompt */}
+                    <div className="rounded-lg border border-purple-200 bg-purple-50">
+                      <div className="border-b border-purple-200 px-4 py-3">
+                        <h2 className="text-sm font-medium text-purple-900">Generated System Prompt (AI Instructions)</h2>
+                        <p className="mt-1 text-xs text-purple-600">
+                          This is the compiled prompt that tells the AI how to generate each field
+                        </p>
+                      </div>
+                      <pre className="overflow-auto p-4 text-xs whitespace-pre-wrap text-purple-800">
+                        {generateSystemPrompt() || 'Select a block to generate a system prompt'}
+                      </pre>
+                    </div>
+
+                    {/* JSON Schema */}
+                    <div className="rounded-lg border border-gray-200 bg-white">
+                      <div className="border-b border-gray-200 px-4 py-3">
+                        <h2 className="text-sm font-medium text-gray-900">Generated JSON Schema</h2>
+                        <p className="mt-1 text-xs text-gray-500">
+                          The structure defining the expected output format
+                        </p>
+                      </div>
+                      <pre className="overflow-auto p-4 text-xs text-gray-700">
+                        {JSON.stringify(generateJSONSchema(), null, 2)}
+                      </pre>
+                    </div>
+
+                    {/* Block Data */}
+                    <div className="rounded-lg border border-gray-200 bg-white">
+                      <div className="border-b border-gray-200 px-4 py-3">
+                        <h2 className="text-sm font-medium text-gray-900">Block Configuration</h2>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Selected block configuration and custom settings
+                        </p>
+                      </div>
+                      <pre className="overflow-auto p-4 text-xs text-gray-700">
+                        {blockInstance ? JSON.stringify(blockInstance, null, 2) : 'No block selected'}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* SECTION 2B: Text Configuration (conditional) */}
+          {outputType === 'text' && (
+            <div className="rounded-lg border border-gray-200 bg-white p-6">
+              <h2 className="mb-4 text-lg font-semibold text-gray-900">
+                System Prompt
+              </h2>
+              <p className="mb-4 text-sm text-gray-600">
+                This prompt will be sent to the AI as instructions. The AI will return a plain text response without any structured format.
+              </p>
+              <textarea
+                value={textModeSystemPrompt}
+                onChange={e => setTextModeSystemPrompt(e.target.value)}
+                placeholder="Enter your system prompt here...
 
 Example:
 Analyze the following therapeutic conversation and provide insights on the patient's progress, emotional state, and key themes discussed. Focus on identifying breakthrough moments and areas that may need further attention."
-                  rows={20}
-                  className="w-full rounded-lg border border-gray-300 p-4 font-mono text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
-                />
-                <p className="mt-2 text-xs text-gray-500">
-                  {textModeSystemPrompt.length} / 5000 characters
-                </p>
-              </div>
-            )}
-          </div>
+                rows={20}
+                className="w-full rounded-lg border border-gray-300 p-4 font-mono text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
+              />
+              <p className="mt-2 text-xs text-gray-500">
+                {textModeSystemPrompt.length}
+                {' '}
+                / 5000 characters
+              </p>
+            </div>
+          )}
         </div>
       </div>
+    </div>
   );
 }

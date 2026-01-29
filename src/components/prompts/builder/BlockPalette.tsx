@@ -21,7 +21,7 @@ function SelectableBlock({ block, isSelected, onSelect }: SelectableBlockProps) 
   return (
     <button
       onClick={() => onSelect(block.id)}
-      className={`flex items-center gap-3 p-4 border-2 rounded-lg transition-all text-left ${
+      className={`flex items-center gap-3 rounded-lg border-2 p-4 text-left transition-all ${
         isSelected
           ? 'border-purple-600 bg-purple-50 shadow-md'
           : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
@@ -29,16 +29,16 @@ function SelectableBlock({ block, isSelected, onSelect }: SelectableBlockProps) 
       title={block.description}
     >
       <Icon className={`h-6 w-6 flex-shrink-0 ${isSelected ? 'text-purple-600' : 'text-gray-600'}`} />
-      <div className="flex-1 min-w-0">
-        <div className={`font-medium text-sm ${isSelected ? 'text-purple-900' : 'text-gray-900'}`}>
+      <div className="min-w-0 flex-1">
+        <div className={`text-sm font-medium ${isSelected ? 'text-purple-900' : 'text-gray-900'}`}>
           {block.label}
         </div>
-        <div className="text-xs text-gray-500 line-clamp-1">
+        <div className="line-clamp-1 text-xs text-gray-500">
           {block.description}
         </div>
       </div>
       {isSelected && (
-        <CheckCircle className="h-5 w-5 text-purple-600 flex-shrink-0" />
+        <CheckCircle className="h-5 w-5 flex-shrink-0 text-purple-600" />
       )}
     </button>
   );
@@ -53,7 +53,7 @@ type BlockPaletteProps = {
 export function BlockPalette({
   selectedBlockType = null,
   onSelectBlock,
-  className = ''
+  className = '',
 }: BlockPaletteProps) {
   return (
     <div className={`flex flex-col gap-4 ${className}`}>
@@ -61,13 +61,13 @@ export function BlockPalette({
         <h3 className="mb-2 text-sm font-semibold text-gray-900">
           Choose Output Type
         </h3>
-        <p className="text-sm text-gray-500 mb-4">
+        <p className="mb-4 text-sm text-gray-500">
           Select the type of content this prompt will generate
         </p>
       </div>
 
       {/* AI Blocks Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {AI_BLOCKS.map(block => (
           <SelectableBlock
             key={block.id}

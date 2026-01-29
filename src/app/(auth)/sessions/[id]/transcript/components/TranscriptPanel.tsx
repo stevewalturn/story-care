@@ -165,7 +165,7 @@ export function TranscriptPanel({
 
       // Find and scroll to the utterance that contains this timestamp
       const matchingUtterance = utterances.find(
-        u => u.startTime <= seekToTimestamp && seekToTimestamp < u.endTime
+        u => u.startTime <= seekToTimestamp && seekToTimestamp < u.endTime,
       );
       if (matchingUtterance) {
         // Highlight the utterance temporarily
@@ -786,7 +786,7 @@ export function TranscriptPanel({
               }}
               className={`-mx-2 flex cursor-pointer gap-3 rounded-lg p-2 transition-colors duration-200 hover:bg-gray-50 ${
                 isHighlightedFromSeek
-                  ? 'ring-2 ring-purple-400 bg-purple-50 border-l-2 border-purple-500'
+                  ? 'border-l-2 border-purple-500 bg-purple-50 ring-2 ring-purple-400'
                   : isCurrentUtterance
                     ? 'border-l-2 border-purple-500 bg-purple-50'
                     : isCurrentSearchMatch

@@ -227,13 +227,213 @@ function generateThumbnail(videoPath, thumbnailPath) {
  */
 function extractLastFrame(videoPath, outputPath) {
   execFileSync('ffmpeg', [
-    '-sseof', '-1',          // Seek to 1 second before end
-    '-i', videoPath,
-    '-vframes', '1',         // Extract single frame
-    '-q:v', '2',             // High quality JPEG
-    '-y',                    // Overwrite output
+    '-sseof',
+    '-1', // Seek to 1 second before end
+    '-i',
+    videoPath,
+    '-vframes',
+    '1', // Extract single frame
+    '-q:v',
+    '2', // High quality JPEG
+    '-y', // Overwrite output
     outputPath,
   ], { stdio: 'pipe' });
+}
+
+/**
+ * Download file from GCS path to local path
+ */
+async function downloadFromGCS(gcsPath, destPath) {
+  const { Storage } = require('@google-cloud/storage');
+
+  const storage = new Storage({
+    projectId: process.env.GCS_PROJECT_ID,
+    credentials: {
+      client_email: process.env.GCS_CLIENT_EMAIL,
+      private_key: process.env.GCS_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    },
+  });
+
+  const bucket = storage.bucket(process.env.GCS_BUCKET_NAME);
+  await bucket.file(gcsPath).download({ destination: destPath });
+
+  console.log(`✅ Downloaded ${gcsPath} -> ${destPath}`);
+}
+
+/**
+ * Update uploaded recording status in database
+ */
+async function updateRecordingStatus(recordingId, status, finalAudioUrl = null, errorMessage = null) {
+  try {
+    const updateFields = ['status = $1', 'updated_at = $2'];
+    const values = [status, new Date()];
+    let paramIndex = 3;
+
+    if (finalAudioUrl) {
+      updateFields.push(`final_audio_url = $${paramIndex}`);
+      values.push(finalAudioUrl);
+      paramIndex++;
+    }
+
+    // Store error in device_info field as JSON since there's no error column
+    if (errorMessage) {
+      updateFields.push(`device_info = jsonb_set(COALESCE(device_info, '{}')::jsonb, '{mergeError}', $${paramIndex}::jsonb)`);
+      values.push(JSON.stringify(errorMessage));
+      paramIndex++;
+    }
+
+    values.push(recordingId);
+
+    await pool.query(
+      `UPDATE uploaded_recordings
+       SET ${updateFields.join(', ')}
+       WHERE id = $${paramIndex}`,
+      values,
+    );
+
+    console.log(`✅ Recording ${recordingId} updated: ${status}`);
+  }
+  catch (error) {
+    console.error('❌ Failed to update recording:', error.message);
+  }
+}
+
+/**
+ * Execute audio chunk merging job
+ * Merges multiple audio chunks into a single M4A/AAC file
+ */
+async function executeMergeAudioChunksJob() {
+  const jobId = process.env.JOB_ID;
+  const recordingId = process.env.RECORDING_ID;
+  const chunksData = process.env.CHUNKS_DATA ? JSON.parse(process.env.CHUNKS_DATA) : [];
+  const tempDir = '/tmp/audio-merge';
+
+  // Ensure temp directory exists
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+
+  try {
+    console.log(`🎵 Starting audio merge for recording ${recordingId}`);
+    console.log(`📦 Processing ${chunksData.length} chunks`);
+
+    // Update status: processing
+    await updateJobStatus('processing', 0, 'Initializing audio merge');
+
+    if (!recordingId) {
+      throw new Error('No recording ID provided');
+    }
+
+    if (!chunksData || chunksData.length === 0) {
+      throw new Error('No chunks provided for merging');
+    }
+
+    // Sort chunks by index to ensure correct order
+    const sortedChunks = [...chunksData].sort((a, b) => a.chunkIndex - b.chunkIndex);
+
+    // Step 1: Download all chunks (0-40%)
+    await updateJobStatus('processing', 10, `Downloading ${sortedChunks.length} audio chunks`);
+
+    const downloadedChunks = [];
+    for (let i = 0; i < sortedChunks.length; i++) {
+      const chunk = sortedChunks[i];
+      const ext = chunk.gcsPath.split('.').pop() || 'webm';
+      const localPath = path.join(tempDir, `chunk-${i}.${ext}`);
+
+      await downloadFromGCS(chunk.gcsPath, localPath);
+      downloadedChunks.push({
+        ...chunk,
+        localPath,
+      });
+
+      const progress = 10 + Math.floor((i / sortedChunks.length) * 30);
+      await updateJobStatus('processing', progress, `Downloaded ${i + 1}/${sortedChunks.length} chunks`);
+    }
+
+    await updateJobStatus('processing', 40, 'All chunks downloaded');
+
+    // Step 2: Create concat file for FFmpeg (40-50%)
+    await updateJobStatus('processing', 45, 'Preparing for merge');
+
+    const concatFile = path.join(tempDir, 'concat.txt');
+    const concatContent = downloadedChunks.map(chunk => `file '${chunk.localPath}'`).join('\n');
+    fs.writeFileSync(concatFile, concatContent);
+
+    console.log('📝 Concat file contents:');
+    console.log(concatContent);
+
+    // Step 3: Merge with FFmpeg (50-80%)
+    await updateJobStatus('processing', 50, 'Merging audio chunks with FFmpeg');
+
+    const outputPath = path.join(tempDir, `merged-${recordingId}.m4a`);
+
+    // Use FFmpeg concat demuxer to merge WebM/Opus audio files and transcode to AAC
+    // AAC/M4A is more widely compatible across browsers and players
+    execFileSync('ffmpeg', [
+      '-f',
+      'concat',
+      '-safe',
+      '0',
+      '-i',
+      concatFile,
+      '-c:a',
+      'aac',
+      '-b:a',
+      '128k',
+      '-y', // Overwrite output
+      outputPath,
+    ], { stdio: 'pipe' });
+
+    await updateJobStatus('processing', 80, 'Audio merge completed');
+
+    // Step 4: Upload merged file to GCS (80-95%)
+    await updateJobStatus('processing', 85, 'Uploading merged audio to GCS');
+
+    const gcsPath = `recordings/${recordingId}/merged-audio.m4a`;
+    const gcsUrl = await uploadToGCS(outputPath, gcsPath);
+
+    await updateJobStatus('processing', 95, 'Merged audio uploaded');
+
+    // Step 5: Update recording in database (95-100%)
+    await updateJobStatus('processing', 98, 'Updating recording status');
+
+    // Update the recording with the merged audio URL
+    await updateRecordingStatus(recordingId, 'completed', gcsPath);
+
+    // Update job with output info
+    await updateJobStatus('completed', 100, 'Audio merge completed', gcsUrl);
+
+    console.log(`✅ Job ${jobId} completed successfully`);
+    console.log(`🎵 Merged audio: ${gcsUrl}`);
+
+    // Cleanup temp files
+    console.log('🧹 Cleaning up temp files...');
+    fs.readdirSync(tempDir).forEach((file) => {
+      fs.unlinkSync(path.join(tempDir, file));
+    });
+
+    // Close database connection
+    await pool.end();
+
+    // Exit successfully
+    process.exit(0);
+  }
+  catch (error) {
+    console.error(`❌ Job ${jobId} failed:`, error);
+
+    await updateJobStatus('failed', 0, 'Audio merge failed', null, null, error.message);
+
+    // Update recording status to failed
+    if (recordingId) {
+      await updateRecordingStatus(recordingId, 'failed', null, error.message);
+    }
+
+    // Close database connection
+    await pool.end();
+
+    // Exit with error
+    process.exit(1);
+  }
 }
 
 /**
@@ -312,18 +512,18 @@ async function executeFrameExtractionJob() {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
       RETURNING *`,
       [
-        `${sourceVideoTitle} - Last Frame`,                    // title
-        `Extracted from video: ${sourceVideoTitle}`,           // description
-        'image',                                               // media_type
-        gcsPath,                                               // media_url (GCS path)
-        gcsPath,                                               // thumbnail_url
-        'extracted',                                           // source_type
-        mediaId,                                               // source_media_id
-        patientId,                                             // patient_id
-        therapistId,                                           // created_by_therapist_id
-        allTags,                                               // tags
-        'completed',                                           // status
-        generationMetadata,                                    // generation_metadata
+        `${sourceVideoTitle} - Last Frame`, // title
+        `Extracted from video: ${sourceVideoTitle}`, // description
+        'image', // media_type
+        gcsPath, // media_url (GCS path)
+        gcsPath, // thumbnail_url
+        'extracted', // source_type
+        mediaId, // source_media_id
+        patientId, // patient_id
+        therapistId, // created_by_therapist_id
+        allTags, // tags
+        'completed', // status
+        generationMetadata, // generation_metadata
       ],
     );
 
@@ -563,6 +763,12 @@ const jobType = process.env.JOB_TYPE || 'scene_assembly';
 
 if (jobType === 'extract_frame') {
   executeFrameExtractionJob().catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });
+}
+else if (jobType === 'merge_audio_chunks') {
+  executeMergeAudioChunksJob().catch((error) => {
     console.error('Fatal error:', error);
     process.exit(1);
   });

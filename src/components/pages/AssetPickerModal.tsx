@@ -70,9 +70,11 @@ type AssetPickerModalProps = {
   onClose: () => void;
   onSelect: (asset: { type: AssetType; data: MediaAsset | QuoteAsset | NoteAsset | SceneAsset }) => void;
   patientId?: string;
-  filterType?: 'image' | 'video' | 'text' | 'all';
+  filterType?: 'image' | 'video' | 'text' | 'quote' | 'note' | 'all';
   /** When true, only show media grid without category tabs */
   mediaOnly?: boolean;
+  /** Default media type filter (only used when mediaOnly is true) */
+  mediaTypeDefault?: MediaTypeFilter;
 };
 
 export function AssetPickerModal({
@@ -82,6 +84,7 @@ export function AssetPickerModal({
   patientId,
   filterType = 'all',
   mediaOnly = false,
+  mediaTypeDefault,
 }: AssetPickerModalProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<AssetType>('media');
@@ -124,7 +127,7 @@ export function AssetPickerModal({
     // When mediaOnly is true, always default to media tab
     if (mediaOnly) {
       newTab = 'media';
-      newMediaType = 'all';
+      newMediaType = mediaTypeDefault || 'all';
     } else if (filterType === 'image') {
       newMediaType = 'image';
       newTab = 'media';
@@ -134,6 +137,12 @@ export function AssetPickerModal({
     } else if (filterType === 'text') {
       newMediaType = 'all';
       newTab = 'quotes'; // Default to quotes tab for text/quote blocks
+    } else if (filterType === 'quote') {
+      newMediaType = 'all';
+      newTab = 'quotes'; // Show only quotes tab
+    } else if (filterType === 'note') {
+      newMediaType = 'all';
+      newTab = 'notes'; // Show only notes tab
     }
 
     setMediaTypeFilter(newMediaType);
@@ -229,6 +238,9 @@ export function AssetPickerModal({
   };
 
   const filteredMediaAssets = mediaAssets.filter((asset) => {
+    // Check mediaTypeFilter state (for mediaOnly mode with specific type like audio)
+    if (mediaTypeFilter !== 'all' && mediaTypeFilter !== asset.mediaType) return false;
+    // Check filterType prop (for legacy behavior when filterType is image/video)
     if (filterType !== 'all' && filterType !== asset.mediaType) return false;
     if (!search) return true;
     return asset.title?.toLowerCase().includes(search.toLowerCase());
@@ -365,8 +377,8 @@ export function AssetPickerModal({
           </div>
         </div>
 
-        {/* Main Tabs - Hidden when mediaOnly is true */}
-        {!mediaOnly && (
+        {/* Main Tabs - Hidden when mediaOnly is true or single category filter */}
+        {!mediaOnly && filterType !== 'quote' && filterType !== 'note' && (
           <div className="flex border-b border-gray-200">
             {(filterType === 'all' || filterType === 'image' || filterType === 'video') && (
               <button
@@ -427,8 +439,25 @@ export function AssetPickerModal({
           </div>
         )}
 
-        {/* Media Type Sub-tabs (only shown for Media tab when filterType is 'all' or mediaOnly) */}
-        {activeTab === 'media' && (filterType === 'all' || mediaOnly) && (
+        {/* Single category header for quote/note filter */}
+        {(filterType === 'quote' || filterType === 'note') && (
+          <div className="flex items-center gap-2 border-b border-gray-200 bg-gray-50 px-6 py-3">
+            {filterType === 'quote' ? (
+              <>
+                <FileText className="h-4 w-4 text-purple-600" />
+                <span className="text-sm font-medium text-gray-900">Select a Quote</span>
+              </>
+            ) : (
+              <>
+                <StickyNote className="h-4 w-4 text-amber-600" />
+                <span className="text-sm font-medium text-gray-900">Select a Note</span>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Media Type Sub-tabs (only shown for Media tab when filterType is 'all' or mediaOnly, and no specific mediaTypeDefault is set) */}
+        {activeTab === 'media' && (filterType === 'all' || mediaOnly) && (!mediaTypeDefault || mediaTypeDefault === 'all') && (
           <div className="flex items-center gap-2 border-b border-gray-100 bg-gray-50 px-6 py-2">
             <span className="text-xs font-medium text-gray-500">Type:</span>
             <div className="flex gap-1">

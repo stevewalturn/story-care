@@ -828,7 +828,9 @@ export function VoiceRecorder({
             You have an incomplete recording
           </p>
           <p className="mb-3 text-xs text-yellow-700">
-            {formatTime(pendingResume.savedSeconds)} saved to cloud
+            {formatTime(pendingResume.savedSeconds)}
+            {' '}
+            saved to cloud
           </p>
           <div className="flex gap-2">
             <Button size="sm" variant="primary" onClick={handleResume}>
@@ -854,7 +856,7 @@ export function VoiceRecorder({
         className={`mb-6 flex h-32 w-32 items-center justify-center rounded-full transition-all ${
           disabled || isCheckingResume || pendingResume
             ? 'cursor-not-allowed bg-gray-200'
-            : 'bg-purple-100 hover:bg-purple-200 hover:scale-105'
+            : 'bg-purple-100 hover:scale-105 hover:bg-purple-200'
         }`}
         aria-label="Start recording"
       >

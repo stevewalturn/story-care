@@ -125,7 +125,6 @@ export function BlockPropertyPanel({
             </div>
           )}
 
-
           {/* Divider for AI blocks */}
           {isAIBlock && definition.defaultSystemPrompt && (
             <div className="flex items-center gap-2 py-2">

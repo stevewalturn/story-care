@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     ];
 
     // Filter by status if provided
-    if (status && ['recording', 'uploading', 'completed', 'failed', 'used'].includes(status)) {
+    if (status && ['recording', 'uploading', 'merging', 'completed', 'failed', 'used'].includes(status)) {
       whereConditions.push(eq(uploadedRecordings.status, status as any));
     }
 
@@ -53,16 +53,22 @@ export async function GET(request: NextRequest) {
       .where(and(...whereConditions))
       .orderBy(desc(uploadedRecordings.createdAt));
 
-    // Generate presigned URLs for audio
+    // Generate presigned URLs for audio and add chunksCount
     const recordingsWithUrls = await Promise.all(
       recordings.map(async (recording) => {
-        const audioUrl = recording.finalAudioUrl
+        // Only generate presigned URL if it's a file path, not a folder
+        const audioUrl = recording.finalAudioUrl && !recording.finalAudioUrl.endsWith('/')
           ? await generatePresignedUrl(recording.finalAudioUrl, 1)
           : null;
+
+        // Get chunks count for retry functionality
+        const chunks = (recording.audioChunks as Array<{ chunkIndex: number }>) || [];
+        const chunksCount = chunks.length;
 
         return {
           ...recording,
           audioUrl,
+          chunksCount,
         };
       }),
     );

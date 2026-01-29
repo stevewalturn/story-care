@@ -1,20 +1,23 @@
 'use client';
 
 import type { TreatmentModule } from '@/models/Schema';
-import { Clapperboard, Eye, FileText, GripVertical, Image as ImageIcon, ListChecks, MessageCircle, Sparkles, Trash2, Type, Video, X } from 'lucide-react';
+import { Clapperboard, Eye, FileText, GripVertical, Image as ImageIcon, ListChecks, MessageCircle, Music, Sparkles, StickyNote, Trash2, Type, Video, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { AssetPickerModal } from '@/components/pages/AssetPickerModal';
 import { BrowseSceneModal } from '@/components/pages/BrowseSceneModal';
 import { ModulePageGenerator } from '@/components/pages/ModulePageGenerator';
+import { PageBlockEditor } from '@/components/pages/PageBlockEditor';
 import { Button } from '@/components/ui/Button';
+import { HTMLContent } from '@/components/ui/HTMLContent';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { extractGcsPath } from '@/utils/GCSUtils';
+import { markdownToHTML } from '@/utils/MarkdownToHTML';
 
-type BlockType = 'text' | 'image' | 'video' | 'quote' | 'scene' | 'reflection' | 'survey';
+type BlockType = 'text' | 'image' | 'video' | 'quote' | 'note' | 'scene' | 'reflection' | 'survey';
 
 type QuestionType = 'open_text' | 'scale' | 'multiple_choice' | 'yes_no';
 
@@ -96,16 +99,37 @@ type PageEditorProps = {
   initialTitle?: string;
   initialBlocks?: ContentBlock[];
   initialPatientId?: string;
+  initialBackgroundMusicUrl?: string;
+  initialBackgroundMusicTitle?: string;
   patients?: Patient[];
-  onSave: (title: string, blocks: ContentBlock[], patientId: string | null) => void;
+  onSave: (title: string, blocks: ContentBlock[], patientId: string | null, backgroundMusicUrl?: string | null) => void;
   onClose?: () => void;
 };
+
+/**
+ * Checks if content appears to be HTML rather than Markdown
+ */
+function isLikelyHTML(content: string): boolean {
+  if (!content) return false;
+  const trimmed = content.trim();
+  return trimmed.startsWith('<') || /<[a-z][\s\S]*>/i.test(trimmed);
+}
+
+/**
+ * Renders content as HTML, auto-converting Markdown if needed
+ */
+function renderContent(content: string): string {
+  if (!content) return '';
+  return isLikelyHTML(content) ? content : markdownToHTML(content);
+}
 
 export function PageEditor({
   pageId: _pageId,
   initialTitle = 'Untitled Page',
   initialBlocks = [],
   initialPatientId,
+  initialBackgroundMusicUrl,
+  initialBackgroundMusicTitle,
   patients = [],
   onSave,
   onClose: _onClose,
@@ -117,6 +141,11 @@ export function PageEditor({
   const [showPreview, setShowPreview] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(initialPatientId || null);
 
+  // Background music
+  const [backgroundMusicUrl, setBackgroundMusicUrl] = useState<string | null>(initialBackgroundMusicUrl || null);
+  const [backgroundMusicTitle, setBackgroundMusicTitle] = useState<string | null>(initialBackgroundMusicTitle || null);
+  const [showMusicPicker, setShowMusicPicker] = useState(false);
+
   // Template selection
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [templateType, setTemplateType] = useState<'reflection' | 'survey' | null>(null);
@@ -127,7 +156,7 @@ export function PageEditor({
   // Asset picker modal
   const [showAssetPicker, setShowAssetPicker] = useState(false);
   const [assetPickerBlockId, setAssetPickerBlockId] = useState<string | null>(null);
-  const [assetPickerFilterType, setAssetPickerFilterType] = useState<'image' | 'video' | 'text' | 'all'>('all');
+  const [assetPickerFilterType, setAssetPickerFilterType] = useState<'image' | 'video' | 'text' | 'quote' | 'note' | 'all'>('all');
 
   // Scene picker modal
   const [showScenePicker, setShowScenePicker] = useState(false);
@@ -137,11 +166,12 @@ export function PageEditor({
   const [showModuleGenerator, setShowModuleGenerator] = useState(false);
   const [selectedSessionForGenerator, setSelectedSessionForGenerator] = useState<SessionWithModule | null>(null);
 
-  const blockTypes: Array<{ value: BlockType; label: string; icon: any }> = [
+  const blockTypes: Array<{ value: BlockType; label: string; icon: any; iconColor?: string }> = [
     { value: 'text', label: 'Text', icon: Type },
     { value: 'image', label: 'Image', icon: ImageIcon },
     { value: 'video', label: 'Video', icon: Video },
     { value: 'quote', label: 'Quote', icon: FileText },
+    { value: 'note', label: 'Note', icon: StickyNote, iconColor: 'text-amber-600' },
     { value: 'scene', label: 'Scene', icon: Clapperboard },
     { value: 'reflection', label: 'Reflection Question', icon: MessageCircle },
     { value: 'survey', label: 'Survey Question', icon: ListChecks },
@@ -285,7 +315,7 @@ export function PageEditor({
     );
   };
 
-  const openAssetPicker = (blockId: string, filterType: 'image' | 'video' | 'text' | 'all') => {
+  const openAssetPicker = (blockId: string, filterType: 'image' | 'video' | 'text' | 'quote' | 'note' | 'all') => {
     setAssetPickerBlockId(blockId);
     setAssetPickerFilterType(filterType);
     setShowAssetPicker(true);
@@ -417,22 +447,11 @@ export function PageEditor({
       case 'text':
         return (
           <div className="space-y-2">
-            <textarea
-              value={block.content.text || ''}
-              onChange={e => updateBlockContent(block.id, { text: e.target.value })}
-              placeholder="Enter your text here (supports Markdown)..."
-              className="h-32 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+            <PageBlockEditor
+              content={block.content.text || ''}
+              onChange={html => updateBlockContent(block.id, { text: html })}
+              placeholder="Enter your text here..."
             />
-            {block.content.text && (
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <p className="mb-2 text-xs font-medium text-gray-500">Preview:</p>
-                <div className="prose prose-sm max-w-none">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {block.content.text}
-                  </ReactMarkdown>
-                </div>
-              </div>
-            )}
             <Button
               variant="ghost"
               size="sm"
@@ -447,11 +466,23 @@ export function PageEditor({
       case 'image':
         return (
           <div className="space-y-2">
-            <Input
-              value={block.content.mediaUrl || ''}
-              onChange={e => updateBlockContent(block.id, { mediaUrl: e.target.value })}
-              placeholder="Image URL or select from library..."
-            />
+            {(block.content.displayUrl || block.content.mediaUrl) && (
+              <div className="relative">
+                <img
+                  src={block.content.displayUrl || block.content.mediaUrl}
+                  alt="Preview"
+                  className="max-h-64 w-full rounded object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => updateBlockContent(block.id, { mediaUrl: undefined, displayUrl: undefined })}
+                  className="absolute top-2 right-2 rounded-full bg-black/60 p-1 text-white transition-colors hover:bg-black/80"
+                  title="Remove image"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -459,25 +490,30 @@ export function PageEditor({
               className="w-full"
             >
               <ImageIcon className="mr-2 h-4 w-4" />
-              Browse Library
+              {(block.content.displayUrl || block.content.mediaUrl) ? 'Change Image' : 'Browse Library'}
             </Button>
-            {(block.content.displayUrl || block.content.mediaUrl) && (
-              <img
-                src={block.content.displayUrl || block.content.mediaUrl}
-                alt="Preview"
-                className="max-h-64 w-full rounded object-cover"
-              />
-            )}
           </div>
         );
       case 'video':
         return (
           <div className="space-y-2">
-            <Input
-              value={block.content.mediaUrl || ''}
-              onChange={e => updateBlockContent(block.id, { mediaUrl: e.target.value })}
-              placeholder="Video URL or select from library..."
-            />
+            {(block.content.displayUrl || block.content.mediaUrl) && (
+              <div className="relative">
+                <video
+                  src={block.content.displayUrl || block.content.mediaUrl}
+                  controls
+                  className="max-h-64 w-full rounded"
+                />
+                <button
+                  type="button"
+                  onClick={() => updateBlockContent(block.id, { mediaUrl: undefined, displayUrl: undefined })}
+                  className="absolute top-2 right-2 rounded-full bg-black/60 p-1 text-white transition-colors hover:bg-black/80"
+                  title="Remove video"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -485,28 +521,42 @@ export function PageEditor({
               className="w-full"
             >
               <Video className="mr-2 h-4 w-4" />
-              Browse Library
+              {(block.content.displayUrl || block.content.mediaUrl) ? 'Change Video' : 'Browse Library'}
             </Button>
-            {block.content.mediaUrl && (
-              <div className="flex aspect-video items-center justify-center rounded bg-gray-100">
-                <Video className="h-12 w-12 text-gray-400" />
-              </div>
-            )}
           </div>
         );
       case 'quote':
         return (
           <div className="space-y-2">
+            <PageBlockEditor
+              content={block.content.text || ''}
+              onChange={html => updateBlockContent(block.id, { text: html })}
+              placeholder="Enter quote text..."
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openAssetPicker(block.id, 'quote')}
+              className="w-full"
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Browse Library (Quotes)
+            </Button>
+          </div>
+        );
+      case 'note':
+        return (
+          <div className="space-y-2">
             <textarea
               value={block.content.text || ''}
               onChange={e => updateBlockContent(block.id, { text: e.target.value })}
-              placeholder="Enter quote text (supports Markdown)..."
-              className="h-24 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              placeholder="Enter note text (supports Markdown)..."
+              className="h-24 w-full resize-none rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
             />
             {block.content.text && (
-              <div className="rounded-lg border-l-4 border-purple-500 bg-purple-50 p-3">
-                <p className="mb-2 text-xs font-medium text-purple-600">Preview:</p>
-                <div className="prose prose-sm max-w-none italic">
+              <div className="rounded-lg border-l-4 border-amber-500 bg-amber-50 p-3">
+                <p className="mb-2 text-xs font-medium text-amber-600">Preview:</p>
+                <div className="prose prose-sm max-w-none">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {block.content.text}
                   </ReactMarkdown>
@@ -516,11 +566,11 @@ export function PageEditor({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => openAssetPicker(block.id, 'text')}
+              onClick={() => openAssetPicker(block.id, 'note')}
               className="w-full"
             >
-              <FileText className="mr-2 h-4 w-4" />
-              Browse Library (Quotes)
+              <StickyNote className="mr-2 h-4 w-4" />
+              Browse Library (Notes)
             </Button>
           </div>
         );
@@ -806,6 +856,35 @@ export function PageEditor({
               ))}
             </select>
           </div>
+          {/* Background Music Picker */}
+          {backgroundMusicUrl ? (
+            <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+              <Music className="h-4 w-4 text-green-600" />
+              <span className="max-w-[120px] truncate text-sm font-medium text-green-700">
+                {backgroundMusicTitle || 'Background Music'}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setBackgroundMusicUrl(null);
+                  setBackgroundMusicTitle(null);
+                }}
+                className="rounded p-0.5 text-green-600 hover:bg-green-100"
+                title="Remove background music"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              onClick={() => setShowMusicPicker(true)}
+              className="border border-gray-200"
+            >
+              <Music className="mr-2 h-4 w-4" />
+              Add Music
+            </Button>
+          )}
           <Button
             variant={showPreview ? 'secondary' : 'ghost'}
             onClick={() => setShowPreview(!showPreview)}
@@ -816,7 +895,7 @@ export function PageEditor({
           </Button>
           <Button
             variant="primary"
-            onClick={() => onSave(title, blocks, selectedPatientId)}
+            onClick={() => onSave(title, blocks, selectedPatientId, backgroundMusicUrl)}
             disabled={blocks.length === 0 || !selectedPatientId}
           >
             Save Page
@@ -901,7 +980,12 @@ export function PageEditor({
                   {selectedBlockId !== block.id && (
                     <div className="text-sm text-gray-600">
                       {block.content.text && (
-                        <p className="line-clamp-2">{block.content.text}</p>
+                        <div className="line-clamp-2">
+                          <HTMLContent
+                            html={renderContent(block.content.text)}
+                            className="prose-sm text-gray-600"
+                          />
+                        </div>
                       )}
                       {block.content.sceneId && block.content.sceneTitle && (
                         <p className="line-clamp-1 text-sm text-gray-700">
@@ -983,30 +1067,50 @@ export function PageEditor({
           /* Preview Mode */
           <div className="mx-auto max-w-2xl">
             <h1 className="mb-8 text-3xl font-bold text-gray-900">{title}</h1>
-            <div className="space-y-6">
+            <div className="space-y-8">
               {blocks.map(block => (
                 <div key={block.id}>
                   {block.type === 'text' && block.content.text && (
-                    <p className="leading-relaxed text-gray-700">{block.content.text}</p>
-                  )}
-                  {block.type === 'image' && (block.content.displayUrl || block.content.mediaUrl) && (
-                    <img
-                      src={block.content.displayUrl || block.content.mediaUrl}
-                      alt="Content"
-                      className="w-full rounded-lg"
+                    <HTMLContent
+                      html={renderContent(block.content.text)}
+                      className="prose-lg text-gray-700"
                     />
                   )}
-                  {block.type === 'video' && block.content.mediaUrl && (
-                    <div className="flex aspect-video items-center justify-center rounded-lg bg-gray-900">
-                      <Video className="h-16 w-16 text-white opacity-50" />
+                  {block.type === 'image' && (block.content.displayUrl || block.content.mediaUrl) && (
+                    <div className="overflow-hidden rounded-lg shadow-lg">
+                      <img
+                        src={block.content.displayUrl || block.content.mediaUrl}
+                        alt="Story image"
+                        className="h-auto w-full object-cover"
+                      />
+                    </div>
+                  )}
+                  {block.type === 'video' && (block.content.displayUrl || block.content.mediaUrl) && (
+                    <div className="overflow-hidden rounded-lg shadow-lg">
+                      <video
+                        src={block.content.displayUrl || block.content.mediaUrl}
+                        controls
+                        className="h-auto w-full"
+                      />
                     </div>
                   )}
                   {block.type === 'quote' && block.content.text && (
-                    <blockquote className="border-l-4 border-purple-500 py-2 pl-4 text-gray-700 italic">
-                      "
-                      {block.content.text}
-                      "
+                    <blockquote className="border-l-4 border-purple-500 bg-purple-50 px-6 py-4 text-gray-800 italic">
+                      <HTMLContent html={renderContent(block.content.text)} />
                     </blockquote>
+                  )}
+                  {block.type === 'note' && block.content.text && (
+                    <div className="border-l-4 border-amber-500 bg-amber-50 px-6 py-4 text-gray-800">
+                      <div className="mb-2 flex items-center gap-2">
+                        <StickyNote className="h-4 w-4 text-amber-600" />
+                        <span className="text-xs font-medium text-amber-600">Note</span>
+                      </div>
+                      <div className="prose prose-lg max-w-none">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {block.content.text}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
                   )}
                   {block.type === 'scene' && block.content.sceneId && (
                     <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
@@ -1030,8 +1134,8 @@ export function PageEditor({
                     </div>
                   )}
                   {block.type === 'reflection' && block.content.questions && block.content.questions.length > 0 && (
-                    <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
-                      <p className="mb-3 font-medium text-purple-900">Reflection Questions</p>
+                    <div className="rounded-lg border border-purple-200 bg-purple-50 p-6">
+                      <h3 className="mb-4 text-xl font-semibold text-purple-900">Reflection Questions</h3>
                       <div className="space-y-4">
                         {block.content.questions.map((q, i) => (
                           <div key={q.id || i}>
@@ -1052,8 +1156,8 @@ export function PageEditor({
                     </div>
                   )}
                   {block.type === 'survey' && block.content.surveyQuestions && block.content.surveyQuestions.length > 0 && (
-                    <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-                      <p className="mb-3 font-medium text-green-900">Survey Questions</p>
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-6">
+                      <h3 className="mb-4 text-xl font-semibold text-blue-900">Survey Questions</h3>
                       <div className="space-y-4">
                         {block.content.surveyQuestions.map((q, i) => (
                           <div key={q.id || i}>
@@ -1234,6 +1338,25 @@ export function PageEditor({
         }}
         onSelect={handleAssetSelect}
         filterType={assetPickerFilterType}
+        patientId={selectedPatientId || undefined}
+      />
+
+      {/* Music Picker Modal */}
+      <AssetPickerModal
+        isOpen={showMusicPicker}
+        onClose={() => setShowMusicPicker(false)}
+        onSelect={(asset) => {
+          if (asset.type === 'media') {
+            const mediaAsset = asset.data as { mediaUrl: string; title: string | null };
+            // Extract GCS path from presigned URL for saving
+            const gcsPath = extractGcsPath(mediaAsset.mediaUrl);
+            setBackgroundMusicUrl(gcsPath || mediaAsset.mediaUrl);
+            setBackgroundMusicTitle(mediaAsset.title || 'Background Music');
+          }
+          setShowMusicPicker(false);
+        }}
+        mediaOnly={true}
+        mediaTypeDefault="audio"
         patientId={selectedPatientId || undefined}
       />
 

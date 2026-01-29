@@ -106,7 +106,7 @@ export function SelectionFloatingMenu({
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 animate-in fade-in zoom-in-95 duration-150"
+      className="animate-in fade-in zoom-in-95 fixed z-50 duration-150"
       style={{
         left: `${adjustedPosition.x}px`,
         top: `${adjustedPosition.y}px`,

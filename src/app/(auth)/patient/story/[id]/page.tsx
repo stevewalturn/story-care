@@ -1,7 +1,7 @@
 /**
  * Patient Story Page Viewer
  * Authenticated patient access to their published story pages
- * Beautiful, immersive design for therapeutic storytelling
+ * Modern, human-crafted design with editorial feel
  */
 
 'use client';
@@ -13,14 +13,34 @@ import {
   FileText,
   Heart,
   Loader2,
-  MessageCircle,
-  Quote,
+  Pause,
+  Play,
   Send,
   Sparkles,
+  StickyNote,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
+import { HTMLContent } from '@/components/ui/HTMLContent';
 import { useAuth } from '@/contexts/AuthContext';
+import { markdownToHTML } from '@/utils/MarkdownToHTML';
+
+/**
+ * Helper function to detect if content is likely HTML
+ */
+function isLikelyHTML(content: string): boolean {
+  return /<[a-z][\s\S]*>/i.test(content);
+}
+
+/**
+ * Render content - if it's HTML, use as-is; if it's markdown, convert to HTML
+ */
+function renderContent(content: string): string {
+  if (!content) return '';
+  return isLikelyHTML(content) ? content : markdownToHTML(content);
+}
 
 type PageData = {
   page: {
@@ -29,6 +49,7 @@ type PageData = {
     description: string | null;
     status: string;
     patientName: string;
+    backgroundMusicUrl?: string | null;
   };
   blocks: any[];
   reflectionQuestions: any[];
@@ -50,6 +71,11 @@ export default function PatientStoryPage({ params }: Props) {
   const [surveyAnswers, setSurveyAnswers] = useState<Record<string, string | number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  // Background music state
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
     fetchPageData();
@@ -150,12 +176,12 @@ export default function PatientStoryPage({ params }: Props) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 via-white to-pink-50">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-white via-purple-50/30 to-white">
         <div className="text-center">
           <div className="relative mx-auto h-16 w-16">
             <div className="absolute inset-0 animate-ping rounded-full bg-purple-200 opacity-75" />
             <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-lg">
-              <Heart className="h-8 w-8 animate-pulse text-purple-600" />
+              <Heart className="h-8 w-8 animate-pulse text-purple-500" />
             </div>
           </div>
           <p className="mt-4 text-gray-600">Loading your story...</p>
@@ -166,18 +192,18 @@ export default function PatientStoryPage({ params }: Props) {
 
   if (error === 'notfound') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 via-white to-pink-50 p-8">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-white via-purple-50/30 to-white px-4">
         <div className="max-w-md text-center">
           <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-gray-100">
             <FileText className="h-12 w-12 text-gray-400" />
           </div>
-          <h1 className="mb-2 text-2xl font-bold text-gray-900">Story Not Found</h1>
-          <p className="mb-6 text-gray-600">
+          <h1 className="mb-3 text-2xl font-bold tracking-tight text-gray-800">Story Not Found</h1>
+          <p className="mb-6 leading-relaxed text-gray-600">
             This story page doesn't exist or has been removed.
           </p>
           <button
             onClick={() => router.push('/patient/story')}
-            className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-6 py-3 font-medium text-white transition-all hover:bg-purple-700 hover:shadow-lg"
+            className="inline-flex items-center gap-2 rounded-full bg-purple-600 px-6 py-3 font-medium text-white transition-all hover:bg-purple-700 hover:shadow-lg active:scale-95"
             type="button"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -190,20 +216,20 @@ export default function PatientStoryPage({ params }: Props) {
 
   if (error === 'forbidden') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 via-white to-pink-50 p-8">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-white via-purple-50/30 to-white px-4">
         <div className="max-w-md text-center">
           <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-red-100">
             <svg className="h-12 w-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
-          <h1 className="mb-2 text-2xl font-bold text-gray-900">Access Denied</h1>
-          <p className="mb-6 text-gray-600">
+          <h1 className="mb-3 text-2xl font-bold tracking-tight text-gray-800">Access Denied</h1>
+          <p className="mb-6 leading-relaxed text-gray-600">
             You don't have permission to view this story page.
           </p>
           <button
             onClick={() => router.push('/patient/story')}
-            className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-6 py-3 font-medium text-white transition-all hover:bg-purple-700 hover:shadow-lg"
+            className="inline-flex items-center gap-2 rounded-full bg-purple-600 px-6 py-3 font-medium text-white transition-all hover:bg-purple-700 hover:shadow-lg active:scale-95"
             type="button"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -216,20 +242,20 @@ export default function PatientStoryPage({ params }: Props) {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 via-white to-pink-50 p-8">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-white via-purple-50/30 to-white px-4">
         <div className="max-w-md text-center">
           <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-gray-100">
             <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h1 className="mb-2 text-2xl font-bold text-gray-900">Error Loading Page</h1>
-          <p className="mb-6 text-gray-600">
+          <h1 className="mb-3 text-2xl font-bold tracking-tight text-gray-800">Error Loading Page</h1>
+          <p className="mb-6 leading-relaxed text-gray-600">
             Something went wrong. Please try again later.
           </p>
           <button
             onClick={() => router.push('/patient/story')}
-            className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-6 py-3 font-medium text-white transition-all hover:bg-purple-700 hover:shadow-lg"
+            className="inline-flex items-center gap-2 rounded-full bg-purple-600 px-6 py-3 font-medium text-white transition-all hover:bg-purple-700 hover:shadow-lg active:scale-95"
             type="button"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -245,25 +271,23 @@ export default function PatientStoryPage({ params }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
+    <div className="min-h-screen bg-gradient-to-b from-white via-purple-50/20 to-white">
       {/* Success Banner */}
       {submitSuccess && (
-        <div className="sticky top-0 z-50 border-b border-green-200 bg-gradient-to-r from-green-500 to-emerald-500 px-4 py-4">
-          <div className="mx-auto max-w-4xl">
-            <div className="flex items-center justify-center gap-3 text-white">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
-                <CheckCircle2 className="h-5 w-5" />
-              </div>
+        <div className="sticky top-0 z-50 border-b border-green-200 bg-gradient-to-r from-emerald-50 to-green-50 px-4 py-4">
+          <div className="mx-auto max-w-2xl">
+            <div className="flex items-center justify-center gap-3 text-green-800">
+              <CheckCircle2 className="h-5 w-5" />
               <p className="font-medium">
-                Thank you! Your responses have been submitted successfully.
+                Thank you! Your responses have been submitted.
               </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Hero Header - mobile optimized */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 px-4 py-10 sm:px-8 sm:py-16">
+      {/* Hero Header */}
+      <header className="relative overflow-hidden bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 px-4 py-10 sm:px-8 sm:py-16">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute -top-4 -left-4 h-24 w-24 rounded-full bg-white" />
@@ -272,72 +296,72 @@ export default function PatientStoryPage({ params }: Props) {
           <div className="absolute -right-4 -bottom-4 h-32 w-32 rounded-full bg-white" />
         </div>
 
-        <div className="relative mx-auto max-w-4xl">
+        <div className="relative mx-auto max-w-2xl">
           {/* Back Button */}
           <button
             onClick={() => router.push('/patient/story')}
-            className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1.5 text-sm font-medium text-white backdrop-blur-sm transition-all hover:bg-white/30 sm:mb-8 sm:px-4 sm:py-2"
+            className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm transition-all hover:bg-white/30 active:scale-95 sm:mb-8"
             type="button"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Stories
           </button>
 
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1.5 text-xs text-white backdrop-blur-sm sm:mb-4 sm:px-4 sm:py-2 sm:text-sm">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm text-white backdrop-blur-sm">
             <Sparkles className="h-4 w-4" />
             Your personal story
           </div>
 
-          <h1 className="mb-3 text-2xl font-bold text-white sm:mb-4 sm:text-3xl md:text-4xl">
+          <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl">
             {pageData.page.title}
           </h1>
           {pageData.page.description && (
-            <p className="max-w-2xl text-base text-purple-100 sm:text-lg">
+            <p className="mt-4 max-w-xl text-lg leading-relaxed text-purple-100 sm:text-xl">
               {pageData.page.description}
             </p>
           )}
         </div>
-      </div>
+      </header>
 
-      {/* Content - mobile optimized */}
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
-        <div className="space-y-6 sm:space-y-8">
-          {pageData.blocks.map((block, index) => {
-            const blockQuestions = pageData.reflectionQuestions.filter(
-              (q: any) => q.blockId === block.id,
-            );
-            const blockSurveyQuestions = pageData.surveyQuestions.filter(
-              (q: any) => q.blockId === block.id,
-            );
+      {/* Content Blocks - No wrapper boxes */}
+      <main className="mx-auto max-w-2xl px-4 py-8 sm:py-12">
+        {pageData.blocks.map((block, index) => {
+          const blockQuestions = pageData.reflectionQuestions.filter(
+            (q: any) => q.blockId === block.id,
+          );
+          const blockSurveyQuestions = pageData.surveyQuestions.filter(
+            (q: any) => q.blockId === block.id,
+          );
 
-            return (
-              <div
-                key={block.id || index}
-                className="overflow-hidden rounded-2xl bg-white shadow-sm transition-shadow duration-300 hover:shadow-lg"
-              >
-                {/* Text Block */}
-                {block.blockType === 'text' && block.textContent && (
-                  <div className="p-5 sm:p-8">
-                    <div className="prose prose-base max-w-none sm:prose-lg">
-                      <p className="leading-relaxed text-gray-700">{block.textContent}</p>
-                    </div>
-                  </div>
-                )}
+          return (
+            <div key={block.id || index}>
+              {/* Text Block - Editorial Feel */}
+              {block.blockType === 'text' && block.textContent && (
+                <article className="py-8 sm:py-12">
+                  <HTMLContent
+                    html={renderContent(block.textContent)}
+                    className="prose prose-lg max-w-none leading-relaxed text-gray-700 sm:prose-xl"
+                  />
+                </article>
+              )}
 
-                {/* Image Block */}
-                {block.blockType === 'image' && block.settings?.mediaUrl && (
-                  <div className="overflow-hidden">
+              {/* Image Block - Gallery Quality */}
+              {block.blockType === 'image' && block.settings?.mediaUrl && (
+                <figure className="-mx-4 my-10 sm:mx-0 sm:my-14">
+                  <div className="overflow-hidden sm:rounded-2xl">
                     <img
                       src={block.settings.mediaUrl}
-                      alt="Story content"
-                      className="w-full"
+                      alt="Story moment"
+                      className="w-full transition-transform duration-700 hover:scale-[1.02]"
                     />
                   </div>
-                )}
+                </figure>
+              )}
 
-                {/* Video Block */}
-                {block.blockType === 'video' && block.settings?.mediaUrl && (
-                  <div className="aspect-video overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800">
+              {/* Video Block - Cinematic */}
+              {block.blockType === 'video' && block.settings?.mediaUrl && (
+                <div className="-mx-4 my-10 sm:mx-0 sm:my-14">
+                  <div className="aspect-video overflow-hidden bg-gray-950 shadow-2xl sm:rounded-2xl">
                     <video
                       src={block.settings.mediaUrl}
                       controls
@@ -349,279 +373,265 @@ export default function PatientStoryPage({ params }: Props) {
                       Your browser does not support the video tag.
                     </video>
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* Quote Block */}
-                {block.blockType === 'quote' && block.textContent && (
-                  <div className="border-l-4 border-purple-500 bg-gradient-to-r from-purple-50 to-white p-5 sm:p-8">
-                    <div className="flex items-start gap-3 sm:gap-4">
-                      <Quote className="h-6 w-6 flex-shrink-0 text-purple-400 sm:h-8 sm:w-8" />
-                      <blockquote className="text-lg text-gray-700 italic sm:text-xl">
-                        "
-                        {block.textContent}
-                        "
-                      </blockquote>
+              {/* Quote Block - Striking & Personal */}
+              {block.blockType === 'quote' && block.textContent && (
+                <blockquote className="relative my-12 py-8 sm:my-16">
+                  <div className="absolute top-0 bottom-0 left-0 w-1 rounded-full bg-gradient-to-b from-purple-400 to-purple-600" />
+                  <div className="pl-8 sm:pl-12">
+                    <div className="text-2xl leading-relaxed font-light text-gray-800 sm:text-3xl">
+                      "
+                      <HTMLContent html={renderContent(block.textContent)} className="inline" />
+                      "
                     </div>
                   </div>
-                )}
+                </blockquote>
+              )}
 
-                {/* Scene Block */}
-                {block.blockType === 'scene' && block.sceneId && (
-                  <div className="overflow-hidden">
-                    <div className="flex items-center gap-3 border-b border-purple-100 bg-gradient-to-r from-purple-50 to-indigo-50 px-4 py-3 sm:px-6 sm:py-4">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-100 sm:h-10 sm:w-10">
-                        <Clapperboard className="h-4 w-4 text-purple-600 sm:h-5 sm:w-5" />
+              {/* Note Block - Warm amber styling */}
+              {block.blockType === 'note' && block.textContent && (
+                <div className="my-10 sm:my-14">
+                  <div className="flex items-start gap-4 rounded-2xl bg-amber-50 p-6">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-amber-100">
+                      <StickyNote className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <HTMLContent
+                      html={renderContent(block.textContent)}
+                      className="prose prose-base max-w-none leading-relaxed text-gray-700 sm:prose-lg"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Scene Block - Theatrical */}
+              {block.blockType === 'scene' && block.sceneId && (
+                <div className="-mx-4 my-12 sm:mx-0 sm:my-16">
+                  {/* Title card */}
+                  <div className="mb-4 flex items-center gap-4 px-4 sm:px-0">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg shadow-purple-500/25">
+                      <Clapperboard className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-800">
+                        {block.settings?.sceneTitle || 'Your Scene'}
+                      </h3>
+                      <p className="text-sm text-purple-600">Created just for you</p>
+                    </div>
+                  </div>
+                  {/* Video */}
+                  {(block.settings?.videoUrl || block.settings?.mediaUrl) && (
+                    <div className="aspect-video overflow-hidden bg-gray-950 shadow-2xl sm:rounded-2xl">
+                      <video
+                        src={block.settings.videoUrl || block.settings.mediaUrl}
+                        controls
+                        controlsList="nodownload"
+                        preload="metadata"
+                        className="h-full w-full"
+                        playsInline
+                        poster={block.settings?.thumbnailUrl}
+                      >
+                        Your browser does not support the video tag.
+                      </video>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Reflection Block - Intimate & Inviting */}
+              {block.blockType === 'reflection' && blockQuestions.length > 0 && (
+                <section className="my-12 sm:my-16">
+                  {/* Warm intro */}
+                  <div className="mb-8 flex items-start gap-4">
+                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-purple-100">
+                      <Heart className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-800">A moment to reflect</h3>
+                      <p className="mt-1 text-gray-600">Take your time. There's no right or wrong answer.</p>
+                    </div>
+                  </div>
+                  {/* Questions - journal-like */}
+                  <div className="space-y-8">
+                    {blockQuestions.map((q: any) => (
+                      <div key={q.id} className="group">
+                        <label className="mb-3 block text-lg font-medium text-gray-800">
+                          {q.questionText}
+                          {q.required && <span className="ml-1 text-red-500">*</span>}
+                        </label>
+                        <textarea
+                          value={reflectionAnswers[q.id] || ''}
+                          onChange={e => setReflectionAnswers({ ...reflectionAnswers, [q.id]: e.target.value })}
+                          placeholder="Share your thoughts here..."
+                          className="min-h-[140px] w-full rounded-2xl border-2 border-gray-100 bg-white px-5 py-4 text-lg leading-relaxed text-gray-700 transition-all duration-200 placeholder:text-gray-400 focus:border-purple-300 focus:ring-4 focus:ring-purple-50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                          rows={5}
+                          disabled={submitSuccess}
+                        />
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold text-purple-900 sm:text-base">
-                          {block.settings?.sceneTitle || 'Your Scene'}
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Survey Block - Friendly Check-In */}
+              {block.blockType === 'survey' && blockSurveyQuestions.length > 0 && (
+                <section className="my-12 sm:my-16">
+                  {/* Friendly header */}
+                  <div className="mb-8 flex items-start gap-4">
+                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-emerald-100">
+                      <Sparkles className="h-6 w-6 text-emerald-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-800">Quick check-in</h3>
+                      <p className="mt-1 text-gray-600">How are you feeling about what you've seen?</p>
+                    </div>
+                  </div>
+                  <div className="space-y-10">
+                    {blockSurveyQuestions.map((q: any) => (
+                      <div key={q.id}>
+                        <p className="mb-5 text-lg font-medium text-gray-800">
+                          {q.questionText}
+                          {q.required && <span className="ml-1 text-red-500">*</span>}
                         </p>
-                        <p className="text-xs text-purple-600 sm:text-sm">Created just for you</p>
-                      </div>
-                    </div>
-                    {(block.settings?.videoUrl || block.settings?.mediaUrl) && (
-                      <div className="aspect-video overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800">
-                        <video
-                          src={block.settings.videoUrl || block.settings.mediaUrl}
-                          controls
-                          controlsList="nodownload"
-                          preload="metadata"
-                          className="h-full w-full"
-                          playsInline
-                          poster={block.settings?.thumbnailUrl}
-                        >
-                          Your browser does not support the video tag.
-                        </video>
-                      </div>
-                    )}
-                  </div>
-                )}
 
-                {/* Reflection Block */}
-                {block.blockType === 'reflection' && blockQuestions.length > 0 && (
-                  <div className="overflow-hidden">
-                    <div className="flex items-center gap-3 border-b border-purple-100 bg-gradient-to-r from-purple-50 to-indigo-50 px-4 py-3 sm:px-6 sm:py-4">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-100 sm:h-10 sm:w-10">
-                        <MessageCircle className="h-4 w-4 text-purple-600 sm:h-5 sm:w-5" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-purple-900 sm:text-base">Reflection Time</p>
-                        <p className="text-xs text-purple-600 sm:text-sm">Take a moment to share your thoughts</p>
-                      </div>
-                    </div>
-                    <div className="space-y-4 p-4 sm:space-y-6 sm:p-6">
-                      {blockQuestions.map((q: any, i: number) => (
-                        <div key={q.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4 sm:p-5">
-                          <p className="mb-3 font-medium text-gray-900">
-                            <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 text-sm text-purple-600">
-                              {i + 1}
-                            </span>
-                            {q.questionText}
-                            {q.required && <span className="ml-1 text-red-500">*</span>}
-                          </p>
+                        {/* Open Text */}
+                        {q.questionType === 'open_text' && (
                           <textarea
-                            value={reflectionAnswers[q.id] || ''}
-                            onChange={e => setReflectionAnswers({ ...reflectionAnswers, [q.id]: e.target.value })}
-                            placeholder="Share your thoughts here..."
-                            className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-700 transition-all focus:border-purple-500 focus:ring-2 focus:ring-purple-100 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                            value={surveyAnswers[q.id] as string || ''}
+                            onChange={e => setSurveyAnswers({ ...surveyAnswers, [q.id]: e.target.value })}
+                            placeholder="Type your answer here..."
+                            className="min-h-[120px] w-full rounded-2xl border-2 border-gray-100 bg-white px-5 py-4 text-lg leading-relaxed text-gray-700 transition-all duration-200 placeholder:text-gray-400 focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                             rows={4}
                             disabled={submitSuccess}
                           />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                        )}
 
-                {/* Survey Block */}
-                {block.blockType === 'survey' && blockSurveyQuestions.length > 0 && (
-                  <div className="overflow-hidden">
-                    <div className="flex items-center gap-3 border-b border-green-100 bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3 sm:px-6 sm:py-4">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-100 sm:h-10 sm:w-10">
-                        <FileText className="h-4 w-4 text-green-600 sm:h-5 sm:w-5" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-green-900 sm:text-base">Quick Survey</p>
-                        <p className="text-xs text-green-600 sm:text-sm">Help us understand how you're feeling</p>
-                      </div>
-                    </div>
-                    <div className="space-y-4 p-4 sm:space-y-6 sm:p-6">
-                      {blockSurveyQuestions.map((q: any, i: number) => (
-                        <div key={q.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4 sm:p-5">
-                          <p className="mb-4 font-medium text-gray-900">
-                            <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-sm text-green-600">
-                              {i + 1}
-                            </span>
-                            {q.questionText}
-                            {q.required && <span className="ml-1 text-red-500">*</span>}
-                          </p>
-
-                          {/* Open Text */}
-                          {q.questionType === 'open_text' && (
-                            <textarea
-                              value={surveyAnswers[q.id] as string || ''}
-                              onChange={e => setSurveyAnswers({ ...surveyAnswers, [q.id]: e.target.value })}
-                              placeholder="Type your answer here..."
-                              className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-700 transition-all focus:border-green-500 focus:ring-2 focus:ring-green-100 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                              rows={3}
-                              disabled={submitSuccess}
-                            />
-                          )}
-
-                          {/* Scale/Rating - mobile optimized */}
-                          {q.questionType === 'scale' && (
-                            <div className="space-y-3 sm:space-y-4">
-                              <div className="flex items-center justify-between text-xs text-gray-600 sm:text-sm">
-                                <span className="rounded-full bg-gray-100 px-2 py-1 sm:px-3">{q.scaleMinLabel || `${q.scaleMin || 1}`}</span>
-                                <span className="rounded-full bg-gray-100 px-2 py-1 sm:px-3">{q.scaleMaxLabel || `${q.scaleMax || 5}`}</span>
-                              </div>
-
-                              <div className="flex flex-wrap justify-center gap-2 sm:flex-nowrap sm:justify-start">
-                                {Array.from({ length: (q.scaleMax || 5) - (q.scaleMin || 1) + 1 }, (_, index) => {
-                                  const value = (q.scaleMin || 1) + index;
-                                  const isSelected = surveyAnswers[q.id] === value;
-                                  return (
-                                    <button
-                                      key={value}
-                                      type="button"
-                                      onClick={() => setSurveyAnswers({ ...surveyAnswers, [q.id]: value })}
-                                      disabled={submitSuccess}
-                                      className={`min-h-[48px] min-w-[48px] flex-1 rounded-xl border-2 py-3 text-center text-base font-semibold transition-all sm:min-h-0 sm:min-w-0 sm:py-4 sm:text-lg ${
-                                        isSelected
-                                          ? 'border-green-500 bg-green-500 text-white shadow-lg'
-                                          : 'border-gray-200 bg-white text-gray-700 hover:border-green-300 hover:bg-green-50'
-                                      } ${submitSuccess ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
-                                    >
-                                      {value}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-
-                              {surveyAnswers[q.id] !== undefined && (
-                                <div className="text-center">
-                                  <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-2 text-sm font-medium text-green-800">
-                                    <CheckCircle2 className="h-4 w-4" />
-                                    Selected:
-                                    {' '}
-                                    {surveyAnswers[q.id]}
-                                  </span>
-                                </div>
-                              )}
+                        {/* Scale - pill buttons */}
+                        {q.questionType === 'scale' && (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between text-sm text-gray-500">
+                              <span>{q.scaleMinLabel || `${q.scaleMin || 1}`}</span>
+                              <span>{q.scaleMaxLabel || `${q.scaleMax || 5}`}</span>
                             </div>
-                          )}
-
-                          {/* Multiple Choice - mobile optimized */}
-                          {q.questionType === 'multiple_choice' && q.options && (
-                            <div className="space-y-2 sm:space-y-3">
-                              {q.options.map((option: string, optIndex: number) => (
-                                <label
-                                  key={optIndex}
-                                  className={`flex min-h-[48px] cursor-pointer items-center gap-3 rounded-xl border-2 p-3 transition-all sm:gap-4 sm:p-4 ${
-                                    surveyAnswers[q.id] === option
-                                      ? 'border-green-500 bg-green-50'
-                                      : 'border-gray-200 bg-white hover:border-green-300'
-                                  } ${submitSuccess ? 'cursor-not-allowed opacity-50' : ''}`}
-                                >
-                                  <div className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 sm:h-6 sm:w-6 ${
-                                    surveyAnswers[q.id] === option
-                                      ? 'border-green-500 bg-green-500'
-                                      : 'border-gray-300'
-                                  }`}
-                                  >
-                                    {surveyAnswers[q.id] === option && (
-                                      <CheckCircle2 className="h-3 w-3 text-white sm:h-4 sm:w-4" />
-                                    )}
-                                  </div>
-                                  <input
-                                    type="radio"
-                                    name={`question-${q.id}`}
-                                    value={option}
-                                    checked={surveyAnswers[q.id] === option}
-                                    onChange={e => setSurveyAnswers({ ...surveyAnswers, [q.id]: e.target.value })}
+                            <div className="flex flex-wrap gap-3">
+                              {Array.from({ length: (q.scaleMax || 5) - (q.scaleMin || 1) + 1 }, (_, index) => {
+                                const value = (q.scaleMin || 1) + index;
+                                const isSelected = surveyAnswers[q.id] === value;
+                                return (
+                                  <button
+                                    key={value}
+                                    type="button"
+                                    onClick={() => setSurveyAnswers({ ...surveyAnswers, [q.id]: value })}
                                     disabled={submitSuccess}
-                                    className="sr-only"
-                                  />
-                                  <span className="text-sm font-medium text-gray-700 sm:text-base">{option}</span>
-                                </label>
-                              ))}
+                                    className={`h-14 w-14 rounded-2xl text-lg font-semibold transition-all duration-200 ${
+                                      isSelected
+                                        ? 'scale-110 bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-emerald-50 hover:text-emerald-700'
+                                    } ${submitSuccess ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                                  >
+                                    {value}
+                                  </button>
+                                );
+                              })}
                             </div>
-                          )}
+                          </div>
+                        )}
 
-                          {/* Emotion Picker - mobile optimized */}
-                          {q.questionType === 'emotion' && (
-                            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 sm:gap-3">
-                              {[
-                                { emoji: '😢', label: 'Very Sad', value: 1 },
-                                { emoji: '😕', label: 'Sad', value: 2 },
-                                { emoji: '😐', label: 'Neutral', value: 3 },
-                                { emoji: '🙂', label: 'Happy', value: 4 },
-                                { emoji: '😄', label: 'Very Happy', value: 5 },
-                              ].map(emotion => (
-                                <button
-                                  key={emotion.value}
-                                  type="button"
-                                  onClick={() => setSurveyAnswers({ ...surveyAnswers, [q.id]: emotion.value })}
-                                  disabled={submitSuccess}
-                                  className={`flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border-2 p-2 transition-all sm:min-h-0 sm:gap-2 sm:p-4 ${
-                                    surveyAnswers[q.id] === emotion.value
-                                      ? 'border-green-500 bg-green-50 shadow-lg'
-                                      : 'border-gray-200 bg-white hover:border-green-300 hover:bg-green-50'
-                                  } ${submitSuccess ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
-                                >
-                                  <span className="text-2xl sm:text-4xl">{emotion.emoji}</span>
-                                  <span className="text-[10px] font-medium leading-tight text-gray-600 sm:text-xs">{emotion.label}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                        {/* Multiple Choice - clean pills */}
+                        {q.questionType === 'multiple_choice' && q.options && (
+                          <div className="space-y-3">
+                            {q.options.map((option: string, optIndex: number) => (
+                              <button
+                                key={optIndex}
+                                type="button"
+                                onClick={() => setSurveyAnswers({ ...surveyAnswers, [q.id]: option })}
+                                disabled={submitSuccess}
+                                className={`w-full rounded-2xl px-5 py-4 text-left font-medium transition-all duration-200 ${
+                                  surveyAnswers[q.id] === option
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-gray-50 text-gray-700 hover:bg-emerald-50'
+                                } ${submitSuccess ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                              >
+                                {option}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Emotion - large friendly emojis */}
+                        {q.questionType === 'emotion' && (
+                          <div className="flex gap-2 sm:gap-4">
+                            {[
+                              { emoji: '😢', label: 'Very Sad', value: 1 },
+                              { emoji: '😕', label: 'Sad', value: 2 },
+                              { emoji: '😐', label: 'Neutral', value: 3 },
+                              { emoji: '🙂', label: 'Happy', value: 4 },
+                              { emoji: '😄', label: 'Very Happy', value: 5 },
+                            ].map(emotion => (
+                              <button
+                                key={emotion.value}
+                                type="button"
+                                onClick={() => setSurveyAnswers({ ...surveyAnswers, [q.id]: emotion.value })}
+                                disabled={submitSuccess}
+                                className={`flex flex-1 flex-col items-center rounded-2xl py-4 transition-all duration-200 ${
+                                  surveyAnswers[q.id] === emotion.value
+                                    ? 'scale-105 bg-emerald-50 ring-2 ring-emerald-400'
+                                    : 'bg-gray-50 hover:bg-gray-100'
+                                } ${submitSuccess ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                              >
+                                <span className="text-3xl sm:text-4xl">{emotion.emoji}</span>
+                                <span className="mt-1 text-xs text-gray-500">{emotion.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                </section>
+              )}
+            </div>
+          );
+        })}
 
-        {/* Submit Button - full width on mobile */}
+        {/* Submit Button - Feels Complete */}
         {(pageData.reflectionQuestions.length > 0 || pageData.surveyQuestions.length > 0) && !submitSuccess && (
-          <div className="mt-8 sm:mt-12 sm:flex sm:justify-center">
+          <div className="mt-16 mb-20 flex justify-center">
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 px-8 py-4 text-base font-medium text-white shadow-lg transition-all hover:from-purple-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:gap-3 sm:px-10 sm:text-lg"
+              className="group rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 px-10 py-4 text-lg font-semibold text-white shadow-xl shadow-purple-500/25 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-purple-500/30 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50"
               type="button"
             >
               {isSubmitting ? (
-                <>
+                <span className="flex items-center gap-3">
                   <Loader2 className="h-5 w-5 animate-spin" />
                   Submitting...
-                </>
+                </span>
               ) : (
-                <>
-                  <Send className="h-5 w-5" />
+                <span className="flex items-center gap-3">
                   Submit My Responses
-                </>
+                  <Send className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                </span>
               )}
             </button>
           </div>
         )}
 
-        {/* Success Message - mobile optimized */}
+        {/* Success Message */}
         {submitSuccess && (
-          <div className="mt-8 overflow-hidden rounded-2xl bg-gradient-to-r from-green-500 to-emerald-500 p-6 text-center text-white shadow-xl sm:mt-12 sm:p-8">
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-white/20 sm:mb-4 sm:h-16 sm:w-16">
-              <CheckCircle2 className="h-7 w-7 sm:h-8 sm:w-8" />
+          <div className="mt-12 mb-20 rounded-3xl bg-gradient-to-r from-emerald-50 to-green-50 p-8 text-center sm:p-12">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+              <CheckCircle2 className="h-8 w-8 text-emerald-600" />
             </div>
-            <h3 className="mb-2 text-xl font-bold sm:text-2xl">Responses Submitted!</h3>
-            <p className="text-sm text-green-100 sm:text-base">
+            <h3 className="mb-2 text-xl font-semibold text-gray-800">Responses Submitted!</h3>
+            <p className="mb-6 text-gray-600">
               Thank you for sharing your thoughts. Your therapist will review your responses.
             </p>
             <button
               onClick={() => router.push('/patient/story')}
-              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 font-medium text-green-600 transition-all hover:bg-green-50 sm:mt-6 sm:w-auto"
+              className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-6 py-3 font-medium text-white transition-all hover:bg-emerald-700 active:scale-95"
               type="button"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -629,7 +639,51 @@ export default function PatientStoryPage({ params }: Props) {
             </button>
           </div>
         )}
-      </div>
+      </main>
+
+      {/* Floating Audio Player for Background Music */}
+      {pageData.page.backgroundMusicUrl && (
+        <>
+          <audio
+            ref={audioRef}
+            src={pageData.page.backgroundMusicUrl}
+            loop
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+          />
+          <div className="fixed right-4 bottom-4 z-50 flex items-center gap-2 rounded-full bg-white px-4 py-3 shadow-lg sm:right-6 sm:bottom-6">
+            <button
+              onClick={() => {
+                if (audioRef.current) {
+                  if (isPlaying) {
+                    audioRef.current.pause();
+                  } else {
+                    audioRef.current.play();
+                  }
+                }
+              }}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-600 text-white transition-all hover:bg-purple-700 active:scale-95"
+              type="button"
+              title={isPlaying ? 'Pause music' : 'Play music'}
+            >
+              {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="ml-0.5 h-5 w-5" />}
+            </button>
+            <button
+              onClick={() => {
+                if (audioRef.current) {
+                  audioRef.current.muted = !isMuted;
+                  setIsMuted(!isMuted);
+                }
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100"
+              type="button"
+              title={isMuted ? 'Unmute' : 'Mute'}
+            >
+              {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

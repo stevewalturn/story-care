@@ -2,6 +2,7 @@
 
 import type { SaveQuoteData, SelectedPatientInfo, SpeakerInfo, Utterance } from './types/transcript.types';
 import type { AIPromptOption } from '@/components/sessions/AnalyzeSelectionModal';
+import type { QuoteWithPatient } from '@/components/sessions/BulkSaveQuotesModal';
 import type { PatientOption } from '@/components/sessions/SaveNoteModal';
 import type { TreatmentModule } from '@/models/Schema';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -12,7 +13,7 @@ import { MediaUploadModal } from '@/components/media/MediaUploadModal';
 import { SceneGenerationLayout } from '@/components/scenes-generation/SceneGenerationLayout';
 import { AnalyzeSelectionModal } from '@/components/sessions/AnalyzeSelectionModal';
 import { AssignModuleModal } from '@/components/sessions/AssignModuleModal';
-import { BulkSaveQuotesModal, type QuoteWithPatient } from '@/components/sessions/BulkSaveQuotesModal';
+import { BulkSaveQuotesModal } from '@/components/sessions/BulkSaveQuotesModal';
 import { EditQuoteModal } from '@/components/sessions/EditQuoteModal';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
 import { SpeakerLabelingModal } from '@/components/sessions/SpeakerLabelingModal';
