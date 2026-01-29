@@ -2,7 +2,20 @@
  * Atlas Cloud AI Generation Provider
  * Supports: Flux image models and video generation
  * Documentation: https://docs.atlascloud.ai/
+ * Includes Langfuse tracing for observability and cost tracking
  */
+
+import { flushLangfuse } from '../Langfuse';
+import {
+  calculateImageCost,
+  calculateVideoCost,
+  createImageSpan,
+  createTrace,
+  createVideoSpan,
+  endImageSpan,
+  endVideoSpan,
+  type TraceMetadata,
+} from '../LangfuseTracing';
 
 export type AtlasImageModel
   // Text-to-Image (Flux)
@@ -1436,6 +1449,7 @@ export type AtlasImageGenerateOptions = {
   numInferenceSteps?: number;
   enableSafetyChecker?: boolean;
   referenceImages?: string[]; // Array of URLs or base64 - for image-to-image generation
+  traceMetadata?: TraceMetadata;
 };
 
 export type AtlasVideoGenerateOptions = {
@@ -1445,6 +1459,7 @@ export type AtlasVideoGenerateOptions = {
   duration?: number; // seconds
   fps?: number;
   seed?: number;
+  traceMetadata?: TraceMetadata;
 };
 
 type AtlasPredictionResponse = {
@@ -1904,6 +1919,26 @@ export async function generateImageWithAtlas(
     throw new Error(`Model "${model}" requires a reference image. Please provide a patient reference image or portrait.`);
   }
 
+  // Create Langfuse trace and span
+  const trace = createTrace('atlascloud-image', {
+    ...options.traceMetadata,
+    tags: ['atlascloud', 'image-generation', model, ...(options.traceMetadata?.tags || [])],
+  });
+  const span = createImageSpan(trace, 'generate-image', {
+    name: 'atlascloud-image-generation',
+    input: {
+      prompt: options.prompt,
+      model,
+      size: options.size,
+      numImages: options.numImages || 1,
+      referenceImageCount: options.referenceImages?.length || 0,
+    },
+    metadata: {
+      provider: 'atlascloud',
+      modelConfig: modelConfig.atlasName,
+    },
+  });
+
   // Build request body based on model family (each family has different parameter requirements)
   const requestBody = buildModelRequestBody(model, modelConfig, options);
 
@@ -1920,58 +1955,115 @@ export async function generateImageWithAtlas(
     requestBody,
   });
 
-  const generateResponse = await fetch(
-    'https://api.atlascloud.ai/api/v1/model/generateImage',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+  try {
+    const generateResponse = await fetch(
+      'https://api.atlascloud.ai/api/v1/model/generateImage',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(requestBody),
       },
-      body: JSON.stringify(requestBody),
-    },
-  );
+    );
 
-  console.log('[AtlasCloud] Response status:', generateResponse.status, generateResponse.statusText);
+    console.log('[AtlasCloud] Response status:', generateResponse.status, generateResponse.statusText);
 
-  if (!generateResponse.ok) {
-    const error = await generateResponse.json().catch(() => ({ msg: 'Unknown error' }));
-    console.error('[AtlasCloud] Error response:', {
-      status: generateResponse.status,
-      statusText: generateResponse.statusText,
-      error,
-      headers: Object.fromEntries(generateResponse.headers.entries()),
+    if (!generateResponse.ok) {
+      const error = await generateResponse.json().catch(() => ({ msg: 'Unknown error' }));
+      console.error('[AtlasCloud] Error response:', {
+        status: generateResponse.status,
+        statusText: generateResponse.statusText,
+        error,
+        headers: Object.fromEntries(generateResponse.headers.entries()),
+      });
+      const errorMessage = `Atlas Cloud error: ${error.msg || generateResponse.statusText}`;
+
+      // End span with error
+      endImageSpan(span, model, {
+        output: null,
+        statusMessage: errorMessage,
+        level: 'ERROR',
+        imageCount: options.numImages || 1,
+      });
+      await flushLangfuse();
+
+      throw new Error(errorMessage);
+    }
+
+    const generateResult: AtlasPredictionResponse = await generateResponse.json();
+
+    console.log('[AtlasCloud] Generate result:', {
+      code: generateResult.code,
+      msg: generateResult.msg,
+      predictionId: generateResult.data?.id,
+      status: generateResult.data?.status,
     });
-    throw new Error(`Atlas Cloud error: ${error.msg || generateResponse.statusText}`);
+
+    if (generateResult.code !== 200) {
+      console.error('[AtlasCloud] Non-200 code in response:', generateResult);
+      const errorMessage = `Atlas Cloud error: ${generateResult.msg}`;
+
+      endImageSpan(span, model, {
+        output: null,
+        statusMessage: errorMessage,
+        level: 'ERROR',
+        imageCount: options.numImages || 1,
+      });
+      await flushLangfuse();
+
+      throw new Error(errorMessage);
+    }
+
+    const predictionId = generateResult.data.id;
+
+    console.log('[AtlasCloud] Polling for result with prediction ID:', predictionId);
+
+    // Step 2: Poll for result
+    const imageUrl = await pollAtlasStatus(predictionId, apiKey, 'image');
+
+    console.log('[AtlasCloud] Image generation successful:', imageUrl);
+
+    // Calculate cost and end span
+    const imageCount = options.numImages || 1;
+    const cost = calculateImageCost(model, imageCount);
+
+    endImageSpan(span, model, {
+      output: { imageUrl, predictionId },
+      imageCount,
+    });
+
+    // Log cost if calculated
+    if (trace && cost !== undefined) {
+      trace.update({
+        metadata: {
+          ...options.traceMetadata?.metadata,
+          calculatedCost: cost,
+        },
+      });
+    }
+
+    // Flush asynchronously (don't block response)
+    flushLangfuse().catch(console.error);
+
+    return {
+      imageUrl,
+      model,
+    };
+  } catch (error) {
+    // Ensure span is ended on unexpected errors
+    if (span) {
+      endImageSpan(span, model, {
+        output: null,
+        statusMessage: error instanceof Error ? error.message : 'Unknown error',
+        level: 'ERROR',
+        imageCount: options.numImages || 1,
+      });
+      flushLangfuse().catch(console.error);
+    }
+    throw error;
   }
-
-  const generateResult: AtlasPredictionResponse = await generateResponse.json();
-
-  console.log('[AtlasCloud] Generate result:', {
-    code: generateResult.code,
-    msg: generateResult.msg,
-    predictionId: generateResult.data?.id,
-    status: generateResult.data?.status,
-  });
-
-  if (generateResult.code !== 200) {
-    console.error('[AtlasCloud] Non-200 code in response:', generateResult);
-    throw new Error(`Atlas Cloud error: ${generateResult.msg}`);
-  }
-
-  const predictionId = generateResult.data.id;
-
-  console.log('[AtlasCloud] Polling for result with prediction ID:', predictionId);
-
-  // Step 2: Poll for result
-  const imageUrl = await pollAtlasStatus(predictionId, apiKey, 'image');
-
-  console.log('[AtlasCloud] Image generation successful:', imageUrl);
-
-  return {
-    imageUrl,
-    model,
-  };
 }
 
 /**
@@ -2234,6 +2326,25 @@ export async function generateVideoWithAtlas(
   }
 
   const model = options.model || 'seedance-v1.5-pro-i2v';
+  const durationSeconds = options.duration || 5;
+
+  // Create Langfuse trace and span
+  const trace = createTrace('atlascloud-video', {
+    ...options.traceMetadata,
+    tags: ['atlascloud', 'video-generation', model, ...(options.traceMetadata?.tags || [])],
+  });
+  const span = createVideoSpan(trace, 'generate-video', {
+    name: 'atlascloud-video-generation',
+    input: {
+      prompt: options.prompt,
+      model,
+      duration: durationSeconds,
+      hasReferenceImage: !!options.referenceImage,
+    },
+    metadata: {
+      provider: 'atlascloud',
+    },
+  });
 
   // Import the mapping function from ModelMetadata
   const { getAtlasCloudVideoModelId } = await import('../ModelMetadata');
@@ -2252,52 +2363,108 @@ export async function generateVideoWithAtlas(
   console.log('[AtlasCloud Video] Model family:', getVideoModelFamily(atlasModel));
   console.log('[AtlasCloud Video] Prompt:', `${options.prompt?.substring(0, 100)}...`);
   console.log('[AtlasCloud Video] Image (reference):', options.referenceImage ? 'YES (provided)' : 'NO');
-  console.log('[AtlasCloud Video] Duration:', options.duration || 5);
+  console.log('[AtlasCloud Video] Duration:', durationSeconds);
   console.log('[AtlasCloud Video] Full request body:', JSON.stringify(requestBody, null, 2));
 
-  // Step 1: Start video generation
-  const generateResponse = await fetch(
-    'https://api.atlascloud.ai/api/v1/model/generateVideo',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+  try {
+    // Step 1: Start video generation
+    const generateResponse = await fetch(
+      'https://api.atlascloud.ai/api/v1/model/generateVideo',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(requestBody),
       },
-      body: JSON.stringify(requestBody),
-    },
-  );
+    );
 
-  console.log('[AtlasCloud Video] Response status:', generateResponse.status, generateResponse.statusText);
+    console.log('[AtlasCloud Video] Response status:', generateResponse.status, generateResponse.statusText);
 
-  if (!generateResponse.ok) {
-    const errorText = await generateResponse.text();
-    console.log('[AtlasCloud Video] ERROR response body:', errorText);
-    let error;
-    try {
-      error = JSON.parse(errorText);
-    } catch {
-      error = { msg: errorText || 'Unknown error' };
+    if (!generateResponse.ok) {
+      const errorText = await generateResponse.text();
+      console.log('[AtlasCloud Video] ERROR response body:', errorText);
+      let error;
+      try {
+        error = JSON.parse(errorText);
+      } catch {
+        error = { msg: errorText || 'Unknown error' };
+      }
+      const errorMessage = `Atlas Cloud error: ${error.msg || generateResponse.statusText}`;
+
+      // End span with error
+      endVideoSpan(span, model, {
+        output: null,
+        statusMessage: errorMessage,
+        level: 'ERROR',
+        durationSeconds,
+      });
+      await flushLangfuse();
+
+      throw new Error(errorMessage);
     }
-    throw new Error(`Atlas Cloud error: ${error.msg || generateResponse.statusText}`);
+
+    const generateResult: AtlasPredictionResponse = await generateResponse.json();
+
+    if (generateResult.code !== 200) {
+      const errorMsg = generateResult.msg || generateResult.data?.error || 'Video generation failed';
+      const errorMessage = `Atlas Cloud error: ${errorMsg}`;
+
+      endVideoSpan(span, model, {
+        output: null,
+        statusMessage: errorMessage,
+        level: 'ERROR',
+        durationSeconds,
+      });
+      await flushLangfuse();
+
+      throw new Error(errorMessage);
+    }
+
+    const predictionId = generateResult.data.id;
+
+    // Step 2: Poll for result
+    const videoUrl = await pollAtlasStatus(predictionId, apiKey, 'video');
+
+    // Calculate cost and end span
+    const cost = calculateVideoCost(model, durationSeconds);
+
+    endVideoSpan(span, model, {
+      output: { videoUrl, predictionId },
+      durationSeconds,
+    });
+
+    // Log cost if calculated
+    if (trace && cost !== undefined) {
+      trace.update({
+        metadata: {
+          ...options.traceMetadata?.metadata,
+          calculatedCost: cost,
+        },
+      });
+    }
+
+    // Flush asynchronously (don't block response)
+    flushLangfuse().catch(console.error);
+
+    return {
+      videoUrl,
+      model,
+    };
+  } catch (error) {
+    // Ensure span is ended on unexpected errors
+    if (span) {
+      endVideoSpan(span, model, {
+        output: null,
+        statusMessage: error instanceof Error ? error.message : 'Unknown error',
+        level: 'ERROR',
+        durationSeconds,
+      });
+      flushLangfuse().catch(console.error);
+    }
+    throw error;
   }
-
-  const generateResult: AtlasPredictionResponse = await generateResponse.json();
-
-  if (generateResult.code !== 200) {
-    const errorMsg = generateResult.msg || generateResult.data?.error || 'Video generation failed';
-    throw new Error(`Atlas Cloud error: ${errorMsg}`);
-  }
-
-  const predictionId = generateResult.data.id;
-
-  // Step 2: Poll for result
-  const videoUrl = await pollAtlasStatus(predictionId, apiKey, 'video');
-
-  return {
-    videoUrl,
-    model,
-  };
 }
 
 /**

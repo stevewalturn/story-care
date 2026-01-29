@@ -1,4 +1,12 @@
 import { createClient } from '@deepgram/sdk';
+import { flushLangfuse } from './Langfuse';
+import {
+  calculateTranscriptionCost,
+  createTrace,
+  createTranscriptionSpan,
+  endTranscriptionSpan,
+  type TraceMetadata,
+} from './LangfuseTracing';
 
 const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
 
@@ -14,6 +22,7 @@ export type TranscriptionOptions = {
   punctuate?: boolean;
   utterances?: boolean;
   model?: string;
+  traceMetadata?: TraceMetadata;
 };
 
 export type DeepgramUtterance = {
@@ -54,7 +63,26 @@ export async function transcribeAudio(
     punctuate = true,
     utterances = true,
     model = 'nova-2',
+    traceMetadata,
   } = options;
+
+  // Create Langfuse trace and span
+  const trace = createTrace('deepgram-transcription', {
+    ...traceMetadata,
+    tags: ['deepgram', 'transcription', model, ...(traceMetadata?.tags || [])],
+  });
+  const span = createTranscriptionSpan(trace, 'transcribe-audio', {
+    name: 'deepgram-transcription',
+    input: {
+      audioUrl,
+      model,
+      language,
+      diarize,
+    },
+    metadata: {
+      provider: 'deepgram',
+    },
+  });
 
   try {
     const { result, error } = await deepgram.listen.prerecorded.transcribeUrl(
@@ -72,15 +100,62 @@ export async function transcribeAudio(
     );
 
     if (error) {
-      throw new Error(`Deepgram error: ${error.message}`);
+      const errorMessage = `Deepgram error: ${error.message}`;
+
+      endTranscriptionSpan(span, model, {
+        output: null,
+        statusMessage: errorMessage,
+        level: 'ERROR',
+      });
+      await flushLangfuse();
+
+      throw new Error(errorMessage);
     }
 
     const channel = result.results.channels[0];
     const alternative = channel?.alternatives[0];
 
     if (!alternative) {
-      throw new Error('No transcription results found');
+      const errorMessage = 'No transcription results found';
+
+      endTranscriptionSpan(span, model, {
+        output: null,
+        statusMessage: errorMessage,
+        level: 'ERROR',
+      });
+      await flushLangfuse();
+
+      throw new Error(errorMessage);
     }
+
+    const durationSeconds = result.metadata?.duration || 0;
+    const durationMinutes = durationSeconds / 60;
+
+    // Calculate cost and end span
+    const cost = calculateTranscriptionCost(model, durationMinutes);
+
+    endTranscriptionSpan(span, model, {
+      output: {
+        textLength: alternative.transcript.length,
+        utteranceCount: result.results.utterances?.length || 0,
+        wordCount: alternative.words?.length || 0,
+      },
+      durationMinutes,
+    });
+
+    // Log cost if calculated
+    if (trace && cost !== undefined) {
+      trace.update({
+        metadata: {
+          ...traceMetadata?.metadata,
+          calculatedCost: cost,
+          durationSeconds,
+        },
+      });
+    }
+
+    // Flush asynchronously (don't block response)
+    flushLangfuse().catch(console.error);
 
     return {
       text: alternative.transcript,
@@ -99,11 +174,19 @@ export async function transcribeAudio(
         confidence: w.confidence,
         speaker: w.speaker,
       })),
-      duration: result.metadata?.duration || 0,
+      duration: durationSeconds,
       channels: result.results.channels.length,
     };
   } catch (error) {
     console.error('Deepgram transcription error:', error);
+    if (span) {
+      endTranscriptionSpan(span, model, {
+        output: null,
+        statusMessage: error instanceof Error ? error.message : 'Unknown error',
+        level: 'ERROR',
+      });
+      flushLangfuse().catch(console.error);
+    }
     throw error;
   }
 }
@@ -121,7 +204,26 @@ export async function transcribeAudioBuffer(
     punctuate = true,
     utterances = true,
     model = 'nova-2',
+    traceMetadata,
   } = options;
+
+  // Create Langfuse trace and span
+  const trace = createTrace('deepgram-transcription', {
+    ...traceMetadata,
+    tags: ['deepgram', 'transcription', model, 'buffer', ...(traceMetadata?.tags || [])],
+  });
+  const span = createTranscriptionSpan(trace, 'transcribe-audio-buffer', {
+    name: 'deepgram-transcription-buffer',
+    input: {
+      bufferSize: audioBuffer.length,
+      model,
+      language,
+      diarize,
+    },
+    metadata: {
+      provider: 'deepgram',
+    },
+  });
 
   try {
     const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
@@ -137,15 +239,62 @@ export async function transcribeAudioBuffer(
     );
 
     if (error) {
-      throw new Error(`Deepgram error: ${error.message}`);
+      const errorMessage = `Deepgram error: ${error.message}`;
+
+      endTranscriptionSpan(span, model, {
+        output: null,
+        statusMessage: errorMessage,
+        level: 'ERROR',
+      });
+      await flushLangfuse();
+
+      throw new Error(errorMessage);
     }
 
     const channel = result.results.channels[0];
     const alternative = channel?.alternatives[0];
 
     if (!alternative) {
-      throw new Error('No transcription results found');
+      const errorMessage = 'No transcription results found';
+
+      endTranscriptionSpan(span, model, {
+        output: null,
+        statusMessage: errorMessage,
+        level: 'ERROR',
+      });
+      await flushLangfuse();
+
+      throw new Error(errorMessage);
     }
+
+    const durationSeconds = result.metadata?.duration || 0;
+    const durationMinutes = durationSeconds / 60;
+
+    // Calculate cost and end span
+    const cost = calculateTranscriptionCost(model, durationMinutes);
+
+    endTranscriptionSpan(span, model, {
+      output: {
+        textLength: alternative.transcript.length,
+        utteranceCount: result.results.utterances?.length || 0,
+        wordCount: alternative.words?.length || 0,
+      },
+      durationMinutes,
+    });
+
+    // Log cost if calculated
+    if (trace && cost !== undefined) {
+      trace.update({
+        metadata: {
+          ...traceMetadata?.metadata,
+          calculatedCost: cost,
+          durationSeconds,
+        },
+      });
+    }
+
+    // Flush asynchronously (don't block response)
+    flushLangfuse().catch(console.error);
 
     return {
       text: alternative.transcript,
@@ -164,11 +313,19 @@ export async function transcribeAudioBuffer(
         confidence: w.confidence,
         speaker: w.speaker,
       })),
-      duration: result.metadata?.duration || 0,
+      duration: durationSeconds,
       channels: result.results.channels.length,
     };
   } catch (error) {
     console.error('Deepgram transcription error:', error);
+    if (span) {
+      endTranscriptionSpan(span, model, {
+        output: null,
+        statusMessage: error instanceof Error ? error.message : 'Unknown error',
+        level: 'ERROR',
+      });
+      flushLangfuse().catch(console.error);
+    }
     throw error;
   }
 }

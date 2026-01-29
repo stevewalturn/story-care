@@ -1,5 +1,14 @@
 // Suno AI Music Generation Service
 // API Documentation: https://sunoapi.org
+// Includes Langfuse tracing for observability and cost tracking
+
+import { flushLangfuse } from './Langfuse';
+import {
+  createMusicSpan,
+  createTrace,
+  endMusicSpan,
+  type TraceMetadata,
+} from './LangfuseTracing';
 
 export type SunoGenerateOptions = {
   prompt?: string; // Description or lyrics (required if instrumental=false in custom mode)
@@ -15,6 +24,7 @@ export type SunoGenerateOptions = {
   weirdnessConstraint?: number; // Creative deviation constraint (0.00-1.00)
   audioWeight?: number; // Audio influence weight (0.00-1.00)
   callBackUrl?: string; // Callback URL for completion notification
+  traceMetadata?: TraceMetadata;
 };
 
 export type SunoGenerateResponse = {
@@ -64,19 +74,65 @@ export async function generateSunoMusic(
     throw new Error('SUNO_API_KEY environment variable is not set');
   }
 
+  const model = options.model || 'V4_5';
+
+  // Create Langfuse trace and span
+  const trace = createTrace('suno-music', {
+    ...options.traceMetadata,
+    tags: ['suno', 'music-generation', model, ...(options.traceMetadata?.tags || [])],
+  });
+  const span = createMusicSpan(trace, 'generate-music', {
+    name: 'suno-music-generation',
+    input: {
+      prompt: options.prompt,
+      style: options.style,
+      title: options.title,
+      model,
+      instrumental: options.instrumental,
+      customMode: options.customMode,
+    },
+    metadata: {
+      provider: 'suno-ai',
+    },
+  });
+
   // Validate options based on mode
   if (options.customMode) {
     if (!options.title) {
+      endMusicSpan(span, model, {
+        output: null,
+        statusMessage: 'Title is required in custom mode',
+        level: 'ERROR',
+      });
+      await flushLangfuse();
       throw new Error('Title is required in custom mode');
     }
     if (!options.style) {
+      endMusicSpan(span, model, {
+        output: null,
+        statusMessage: 'Style is required in custom mode',
+        level: 'ERROR',
+      });
+      await flushLangfuse();
       throw new Error('Style is required in custom mode');
     }
     if (!options.instrumental && !options.prompt) {
+      endMusicSpan(span, model, {
+        output: null,
+        statusMessage: 'Prompt is required when instrumental is false',
+        level: 'ERROR',
+      });
+      await flushLangfuse();
       throw new Error('Prompt is required when instrumental is false');
     }
   } else {
     if (!options.prompt) {
+      endMusicSpan(span, model, {
+        output: null,
+        statusMessage: 'Prompt is required in non-custom mode',
+        level: 'ERROR',
+      });
+      await flushLangfuse();
       throw new Error('Prompt is required in non-custom mode');
     }
   }
@@ -115,11 +171,38 @@ export async function generateSunoMusic(
         455: 'System maintenance',
         500: 'Server error',
       };
-      throw new Error(errorMessages[data.code] || data.msg || 'Music generation failed');
+      const errorMessage = errorMessages[data.code] || data.msg || 'Music generation failed';
+
+      endMusicSpan(span, model, {
+        output: null,
+        statusMessage: errorMessage,
+        level: 'ERROR',
+      });
+      await flushLangfuse();
+
+      throw new Error(errorMessage);
     }
+
+    // End span with success (duration will be calculated when task completes via webhook)
+    endMusicSpan(span, model, {
+      output: {
+        taskId: data.data?.taskId,
+      },
+    });
+
+    // Flush asynchronously (don't block response)
+    flushLangfuse().catch(console.error);
 
     return data;
   } catch (error) {
+    if (span) {
+      endMusicSpan(span, model, {
+        output: null,
+        statusMessage: error instanceof Error ? error.message : 'Unknown error',
+        level: 'ERROR',
+      });
+      flushLangfuse().catch(console.error);
+    }
     if (error instanceof Error) {
       throw error;
     }

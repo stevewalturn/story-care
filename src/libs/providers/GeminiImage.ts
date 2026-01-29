@@ -2,9 +2,18 @@
  * Google Gemini Image Generation Provider via Vertex AI
  * Supports: Gemini 2.5 Flash Image (Nano Banana) - Image-to-Image generation
  * Authentication: Google Cloud OAuth2 (via google-auth-library)
+ * Includes Langfuse tracing for observability and cost tracking
  */
 
 import type { ImageGenerationResult } from '../ImageGeneration';
+import { flushLangfuse } from '../Langfuse';
+import {
+  calculateImageCost,
+  createImageSpan,
+  createTrace,
+  endImageSpan,
+  type TraceMetadata,
+} from '../LangfuseTracing';
 
 export type GeminiImageModel = 'gemini-2.5-flash-image';
 
@@ -12,6 +21,7 @@ export type GeminiImageOptions = {
   prompt: string;
   model: GeminiImageModel;
   referenceImage?: string; // Base64 or URL
+  traceMetadata?: TraceMetadata;
 };
 
 type GeminiImageRequestBody = {
@@ -50,11 +60,36 @@ export async function generateImageWithGemini(
     throw new Error('GOOGLE_VERTEX_PROJECT_ID is not configured');
   }
 
-  const { model, prompt, referenceImage } = options;
+  const { model, prompt, referenceImage, traceMetadata } = options;
+
+  // Create Langfuse trace and span
+  const trace = createTrace('gemini-image', {
+    ...traceMetadata,
+    tags: ['gemini', 'vertex-ai', 'image-generation', model, ...(traceMetadata?.tags || [])],
+  });
+  const span = createImageSpan(trace, 'generate-image', {
+    name: 'gemini-image-generation',
+    input: {
+      prompt,
+      model,
+      hasReferenceImage: !!referenceImage,
+    },
+    metadata: {
+      provider: 'google-vertex-ai',
+    },
+  });
 
   // Gemini Image requires a reference image for image-to-image
   if (!referenceImage) {
-    throw new Error('Reference image is required for Gemini image-to-image generation');
+    const errorMessage = 'Reference image is required for Gemini image-to-image generation';
+    endImageSpan(span, model, {
+      output: null,
+      statusMessage: errorMessage,
+      level: 'ERROR',
+      imageCount: 1,
+    });
+    await flushLangfuse();
+    throw new Error(errorMessage);
   }
 
   // Prepare the image data
@@ -152,43 +187,97 @@ export async function generateImageWithGemini(
     ],
   };
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken.token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(requestBody),
-  });
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(`Gemini Image error: ${JSON.stringify(error)}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      const errorMessage = `Gemini Image error: ${JSON.stringify(error)}`;
+
+      endImageSpan(span, model, {
+        output: null,
+        statusMessage: errorMessage,
+        level: 'ERROR',
+        imageCount: 1,
+      });
+      await flushLangfuse();
+
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+
+    // Gemini returns generated images as inline data in the response
+    // Note: The API returns camelCase (inlineData) not snake_case (inline_data)
+    const imagePart = result.candidates?.[0]?.content?.parts?.find(
+      (part: any) => part.inlineData || part.inline_data,
+    );
+
+    if (!imagePart?.inlineData?.data && !imagePart?.inline_data?.data) {
+      console.error('No image found in response. Full result:', JSON.stringify(result, null, 2));
+      const errorMessage = 'No image returned from Gemini';
+
+      endImageSpan(span, model, {
+        output: null,
+        statusMessage: errorMessage,
+        level: 'ERROR',
+        imageCount: 1,
+      });
+      await flushLangfuse();
+
+      throw new Error(errorMessage);
+    }
+
+    // Handle both camelCase and snake_case response formats
+    const generatedImageData = imagePart.inlineData || imagePart.inline_data;
+    const generatedMimeType = generatedImageData.mimeType || generatedImageData.mime_type || 'image/png';
+    const base64Data = generatedImageData.data;
+
+    // Convert the base64 image data to a data URL
+    const imageUrl = `data:${generatedMimeType};base64,${base64Data}`;
+
+    // Calculate cost and end span
+    const cost = calculateImageCost(model, 1);
+
+    endImageSpan(span, model, {
+      output: { imageUrl: '[base64 image]' },
+      imageCount: 1,
+    });
+
+    // Log cost if calculated
+    if (trace && cost !== undefined) {
+      trace.update({
+        metadata: {
+          ...traceMetadata?.metadata,
+          calculatedCost: cost,
+        },
+      });
+    }
+
+    // Flush asynchronously (don't block response)
+    flushLangfuse().catch(console.error);
+
+    return {
+      imageUrl,
+      model,
+    };
+  } catch (error) {
+    if (span) {
+      endImageSpan(span, model, {
+        output: null,
+        statusMessage: error instanceof Error ? error.message : 'Unknown error',
+        level: 'ERROR',
+        imageCount: 1,
+      });
+      flushLangfuse().catch(console.error);
+    }
+    throw error;
   }
-
-  const result = await response.json();
-
-  // Gemini returns generated images as inline data in the response
-  // Note: The API returns camelCase (inlineData) not snake_case (inline_data)
-  const imagePart = result.candidates?.[0]?.content?.parts?.find(
-    (part: any) => part.inlineData || part.inline_data,
-  );
-
-  if (!imagePart?.inlineData?.data && !imagePart?.inline_data?.data) {
-    console.error('No image found in response. Full result:', JSON.stringify(result, null, 2));
-    throw new Error('No image returned from Gemini');
-  }
-
-  // Handle both camelCase and snake_case response formats
-  const generatedImageData = imagePart.inlineData || imagePart.inline_data;
-  const generatedMimeType = generatedImageData.mimeType || generatedImageData.mime_type || 'image/png';
-  const base64Data = generatedImageData.data;
-
-  // Convert the base64 image data to a data URL
-  const imageUrl = `data:${generatedMimeType};base64,${base64Data}`;
-
-  return {
-    imageUrl,
-    model,
-  };
 }
