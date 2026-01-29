@@ -32,6 +32,11 @@ export const Env = createEnv({
     WEBHOOK_SECRET: z.string().min(1).optional(),
     CLOUD_RUN_JOB_NAME: z.string().min(1).optional(),
     CLOUD_RUN_REGION: z.string().min(1).optional(),
+
+    // Langfuse (AI Observability)
+    LANGFUSE_PUBLIC_KEY: z.string().min(1).optional(),
+    LANGFUSE_SECRET_KEY: z.string().min(1).optional(),
+    LANGFUSE_BASE_URL: z.string().url().optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().optional(),
@@ -83,6 +88,11 @@ export const Env = createEnv({
     WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
     CLOUD_RUN_JOB_NAME: process.env.CLOUD_RUN_JOB_NAME,
     CLOUD_RUN_REGION: process.env.CLOUD_RUN_REGION,
+
+    // Langfuse (AI Observability)
+    LANGFUSE_PUBLIC_KEY: process.env.LANGFUSE_PUBLIC_KEY,
+    LANGFUSE_SECRET_KEY: process.env.LANGFUSE_SECRET_KEY,
+    LANGFUSE_BASE_URL: process.env.LANGFUSE_BASE_URL,
 
     // Client vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
