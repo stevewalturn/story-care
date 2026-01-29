@@ -6,7 +6,7 @@
 
 'use client';
 
-import { Heart, Send, Sparkles } from 'lucide-react';
+import { Heart, Pause, Play, Send, Sparkles, Volume2, VolumeX } from 'lucide-react';
 import { use, useEffect, useRef, useState } from 'react';
 import { HTMLContent } from '@/components/ui/HTMLContent';
 import { markdownToHTML } from '@/utils/MarkdownToHTML';

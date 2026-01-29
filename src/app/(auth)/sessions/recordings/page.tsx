@@ -307,6 +307,7 @@ export default function RecordingsPage() {
       <div className="mb-6 border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
           <button
+            type="button"
             onClick={() => setActiveTab('recordings')}
             className={`border-b-2 px-1 pb-4 text-sm font-medium ${
               activeTab === 'recordings'
@@ -323,6 +324,7 @@ export default function RecordingsPage() {
             )}
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('links')}
             className={`border-b-2 px-1 pb-4 text-sm font-medium ${
               activeTab === 'links'
@@ -520,6 +522,7 @@ export default function RecordingsPage() {
 
                         {recording.status !== 'used' && recording.status !== 'merging' && (
                           <button
+                            type="button"
                             onClick={() => handleDeleteRecording(recording.id)}
                             className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
                             title="Delete"
@@ -614,6 +617,7 @@ export default function RecordingsPage() {
                         {link.status === 'pending' && (
                           <>
                             <button
+                              type="button"
                               onClick={() => copyLinkToClipboard(link.token)}
                               className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                               title="Copy Link"
@@ -621,6 +625,7 @@ export default function RecordingsPage() {
                               <ExternalLink className="h-4 w-4" />
                             </button>
                             <button
+                              type="button"
                               onClick={() => handleRevokeLink(link.id)}
                               className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
                               title="Revoke"
