@@ -561,6 +561,50 @@ export default function PublicSharePage({ params }: Props) {
           </div>
         )}
       </main>
+
+      {/* Floating Audio Player for Background Music */}
+      {pageData.page.backgroundMusicUrl && (
+        <>
+          <audio
+            ref={audioRef}
+            src={pageData.page.backgroundMusicUrl}
+            loop
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+          />
+          <div className="fixed right-4 bottom-4 z-50 flex items-center gap-2 rounded-full bg-white px-4 py-3 shadow-lg sm:right-6 sm:bottom-6">
+            <button
+              onClick={() => {
+                if (audioRef.current) {
+                  if (isPlaying) {
+                    audioRef.current.pause();
+                  } else {
+                    audioRef.current.play();
+                  }
+                }
+              }}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-600 text-white transition-all hover:bg-purple-700 active:scale-95"
+              type="button"
+              title={isPlaying ? 'Pause music' : 'Play music'}
+            >
+              {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="ml-0.5 h-5 w-5" />}
+            </button>
+            <button
+              onClick={() => {
+                if (audioRef.current) {
+                  audioRef.current.muted = !isMuted;
+                  setIsMuted(!isMuted);
+                }
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100"
+              type="button"
+              title={isMuted ? 'Unmute' : 'Mute'}
+            >
+              {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
