@@ -1,11 +1,11 @@
+import type { TraceMetadata } from './LangfuseTracing';
 import { createClient } from '@deepgram/sdk';
 import { flushLangfuse } from './Langfuse';
 import {
-  calculateTranscriptionCost,
   createTrace,
-  createTranscriptionSpan,
-  endTranscriptionSpan,
-  type TraceMetadata,
+  createTranscriptionGeneration,
+  endTranscriptionGeneration,
+
 } from './LangfuseTracing';
 
 const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
@@ -66,7 +66,7 @@ export async function transcribeAudio(
     traceMetadata,
   } = options;
 
-  // Create Langfuse trace and span
+  // Create Langfuse trace and generation
   const trace = createTrace('deepgram-transcription', {
     ...traceMetadata,
     tags: ['deepgram', 'transcription', model, ...(traceMetadata?.tags || [])],
@@ -79,11 +79,10 @@ export async function transcribeAudio(
     });
   }
 
-  const span = createTranscriptionSpan(trace, 'transcribe-audio', {
-    name: 'deepgram-transcription',
+  const generation = createTranscriptionGeneration(trace, 'transcribe-audio', {
+    model,
     input: {
       audioUrl,
-      model,
       language,
       diarize,
     },
@@ -110,7 +109,7 @@ export async function transcribeAudio(
     if (error) {
       const errorMessage = `Deepgram error: ${error.message}`;
 
-      endTranscriptionSpan(span, model, {
+      endTranscriptionGeneration(generation, model, {
         output: null,
         statusMessage: errorMessage,
         level: 'ERROR',
@@ -126,7 +125,7 @@ export async function transcribeAudio(
     if (!alternative) {
       const errorMessage = 'No transcription results found';
 
-      endTranscriptionSpan(span, model, {
+      endTranscriptionGeneration(generation, model, {
         output: null,
         statusMessage: errorMessage,
         level: 'ERROR',
@@ -139,10 +138,8 @@ export async function transcribeAudio(
     const durationSeconds = result.metadata?.duration || 0;
     const durationMinutes = durationSeconds / 60;
 
-    // Calculate cost and end span
-    const cost = calculateTranscriptionCost(model, durationMinutes);
-
-    endTranscriptionSpan(span, model, {
+    // End generation with success (cost is calculated in endTranscriptionGeneration)
+    endTranscriptionGeneration(generation, model, {
       output: {
         textLength: alternative.transcript.length,
         utteranceCount: result.results.utterances?.length || 0,
@@ -151,18 +148,13 @@ export async function transcribeAudio(
       durationMinutes,
     });
 
-    // Update trace with output and cost
+    // Update trace with output
     if (trace) {
       trace.update({
         output: {
           textLength: alternative.transcript.length,
           utteranceCount: result.results.utterances?.length || 0,
           wordCount: alternative.words?.length || 0,
-          durationSeconds,
-        },
-        metadata: {
-          ...traceMetadata?.metadata,
-          calculatedCost: cost,
           durationSeconds,
         },
       });
@@ -193,8 +185,8 @@ export async function transcribeAudio(
     };
   } catch (error) {
     console.error('Deepgram transcription error:', error);
-    if (span) {
-      endTranscriptionSpan(span, model, {
+    if (generation) {
+      endTranscriptionGeneration(generation, model, {
         output: null,
         statusMessage: error instanceof Error ? error.message : 'Unknown error',
         level: 'ERROR',
@@ -221,7 +213,7 @@ export async function transcribeAudioBuffer(
     traceMetadata,
   } = options;
 
-  // Create Langfuse trace and span
+  // Create Langfuse trace and generation
   const trace = createTrace('deepgram-transcription', {
     ...traceMetadata,
     tags: ['deepgram', 'transcription', model, 'buffer', ...(traceMetadata?.tags || [])],
@@ -234,11 +226,10 @@ export async function transcribeAudioBuffer(
     });
   }
 
-  const span = createTranscriptionSpan(trace, 'transcribe-audio-buffer', {
-    name: 'deepgram-transcription-buffer',
+  const generation = createTranscriptionGeneration(trace, 'transcribe-audio-buffer', {
+    model,
     input: {
       bufferSize: audioBuffer.length,
-      model,
       language,
       diarize,
     },
@@ -263,7 +254,7 @@ export async function transcribeAudioBuffer(
     if (error) {
       const errorMessage = `Deepgram error: ${error.message}`;
 
-      endTranscriptionSpan(span, model, {
+      endTranscriptionGeneration(generation, model, {
         output: null,
         statusMessage: errorMessage,
         level: 'ERROR',
@@ -279,7 +270,7 @@ export async function transcribeAudioBuffer(
     if (!alternative) {
       const errorMessage = 'No transcription results found';
 
-      endTranscriptionSpan(span, model, {
+      endTranscriptionGeneration(generation, model, {
         output: null,
         statusMessage: errorMessage,
         level: 'ERROR',
@@ -292,10 +283,8 @@ export async function transcribeAudioBuffer(
     const durationSeconds = result.metadata?.duration || 0;
     const durationMinutes = durationSeconds / 60;
 
-    // Calculate cost and end span
-    const cost = calculateTranscriptionCost(model, durationMinutes);
-
-    endTranscriptionSpan(span, model, {
+    // End generation with success (cost is calculated in endTranscriptionGeneration)
+    endTranscriptionGeneration(generation, model, {
       output: {
         textLength: alternative.transcript.length,
         utteranceCount: result.results.utterances?.length || 0,
@@ -304,18 +293,13 @@ export async function transcribeAudioBuffer(
       durationMinutes,
     });
 
-    // Update trace with output and cost
+    // Update trace with output
     if (trace) {
       trace.update({
         output: {
           textLength: alternative.transcript.length,
           utteranceCount: result.results.utterances?.length || 0,
           wordCount: alternative.words?.length || 0,
-          durationSeconds,
-        },
-        metadata: {
-          ...traceMetadata?.metadata,
-          calculatedCost: cost,
           durationSeconds,
         },
       });
@@ -346,8 +330,8 @@ export async function transcribeAudioBuffer(
     };
   } catch (error) {
     console.error('Deepgram transcription error:', error);
-    if (span) {
-      endTranscriptionSpan(span, model, {
+    if (generation) {
+      endTranscriptionGeneration(generation, model, {
         output: null,
         statusMessage: error instanceof Error ? error.message : 'Unknown error',
         level: 'ERROR',

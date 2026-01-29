@@ -2,12 +2,13 @@
 // API Documentation: https://sunoapi.org
 // Includes Langfuse tracing for observability and cost tracking
 
+import type { TraceMetadata } from './LangfuseTracing';
 import { flushLangfuse } from './Langfuse';
 import {
-  createMusicSpan,
+  createMusicGeneration,
   createTrace,
-  endMusicSpan,
-  type TraceMetadata,
+  endMusicGeneration,
+
 } from './LangfuseTracing';
 
 export type SunoGenerateOptions = {
@@ -76,7 +77,7 @@ export async function generateSunoMusic(
 
   const model = options.model || 'V4_5';
 
-  // Create Langfuse trace and span
+  // Create Langfuse trace and generation
   const trace = createTrace('suno-music', {
     ...options.traceMetadata,
     tags: ['suno', 'music-generation', model, ...(options.traceMetadata?.tags || [])],
@@ -96,13 +97,12 @@ export async function generateSunoMusic(
     });
   }
 
-  const span = createMusicSpan(trace, 'generate-music', {
-    name: 'suno-music-generation',
+  const generation = createMusicGeneration(trace, 'generate-music', {
+    model,
     input: {
       prompt: options.prompt,
       style: options.style,
       title: options.title,
-      model,
       instrumental: options.instrumental,
       customMode: options.customMode,
     },
@@ -114,7 +114,7 @@ export async function generateSunoMusic(
   // Validate options based on mode
   if (options.customMode) {
     if (!options.title) {
-      endMusicSpan(span, model, {
+      endMusicGeneration(generation, model, {
         output: null,
         statusMessage: 'Title is required in custom mode',
         level: 'ERROR',
@@ -123,7 +123,7 @@ export async function generateSunoMusic(
       throw new Error('Title is required in custom mode');
     }
     if (!options.style) {
-      endMusicSpan(span, model, {
+      endMusicGeneration(generation, model, {
         output: null,
         statusMessage: 'Style is required in custom mode',
         level: 'ERROR',
@@ -132,7 +132,7 @@ export async function generateSunoMusic(
       throw new Error('Style is required in custom mode');
     }
     if (!options.instrumental && !options.prompt) {
-      endMusicSpan(span, model, {
+      endMusicGeneration(generation, model, {
         output: null,
         statusMessage: 'Prompt is required when instrumental is false',
         level: 'ERROR',
@@ -142,7 +142,7 @@ export async function generateSunoMusic(
     }
   } else {
     if (!options.prompt) {
-      endMusicSpan(span, model, {
+      endMusicGeneration(generation, model, {
         output: null,
         statusMessage: 'Prompt is required in non-custom mode',
         level: 'ERROR',
@@ -188,7 +188,7 @@ export async function generateSunoMusic(
       };
       const errorMessage = errorMessages[data.code] || data.msg || 'Music generation failed';
 
-      endMusicSpan(span, model, {
+      endMusicGeneration(generation, model, {
         output: null,
         statusMessage: errorMessage,
         level: 'ERROR',
@@ -198,8 +198,9 @@ export async function generateSunoMusic(
       throw new Error(errorMessage);
     }
 
-    // End span with success (duration will be calculated when task completes via webhook)
-    endMusicSpan(span, model, {
+    // End generation with success (duration will be calculated when task completes via webhook)
+    // Note: For async tasks like Suno, cost is tracked separately when task completes
+    endMusicGeneration(generation, model, {
       output: {
         taskId: data.data?.taskId,
       },
@@ -217,8 +218,8 @@ export async function generateSunoMusic(
 
     return data;
   } catch (error) {
-    if (span) {
-      endMusicSpan(span, model, {
+    if (generation) {
+      endMusicGeneration(generation, model, {
         output: null,
         statusMessage: error instanceof Error ? error.message : 'Unknown error',
         level: 'ERROR',

@@ -448,8 +448,8 @@ export default function RecordingsPage() {
                           ) : recording.status}
                         </span>
 
-                        {/* STOP button for in-progress recordings */}
-                        {(recording.status === 'recording' || recording.status === 'uploading') && (
+                        {/* STOP button for in-progress recordings - only show when chunks exist */}
+                        {(recording.status === 'recording' || recording.status === 'uploading') && (recording.chunksCount ?? 0) > 0 && (
                           <Button
                             variant="secondary"
                             onClick={() => handleStopRecording(recording.id)}

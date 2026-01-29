@@ -5,6 +5,10 @@
  * NOTE: For text models (OpenAI, Gemini, etc.), Langfuse has built-in
  * automatic cost calculation based on model name and token usage.
  * We only manually calculate costs for custom models (images, videos, etc.)
+ *
+ * IMPORTANT: All media generation (image, video, music, transcription) uses
+ * Generation objects (not Spans) to properly track costs in Langfuse's
+ * Total Cost column via the usage.totalCost field.
  */
 
 import type { LangfuseGenerationClient, LangfuseSpanClient, LangfuseTraceClient } from 'langfuse';
@@ -176,18 +180,21 @@ export function endTextGeneration(
 // ============================================================
 
 /**
- * Create a span for image generation
+ * Create a generation for image generation
+ * Using Generation allows Langfuse to properly aggregate costs via usage.totalCost
  */
-export function createImageSpan(
+export function createImageGeneration(
   trace: LangfuseTraceClient | null,
   name: string,
-  input: SpanInput,
-): LangfuseSpanClient | null {
+  input: GenerationInput,
+): LangfuseGenerationClient | null {
   if (!trace) return null;
 
-  return trace.span({
+  return trace.generation({
     name,
+    model: input.model,
     input: input.input,
+    modelParameters: input.modelParameters,
     metadata: {
       ...input.metadata,
       type: 'image-generation',
@@ -196,27 +203,49 @@ export function createImageSpan(
 }
 
 /**
- * End an image generation span with cost
+ * Default fallback costs when model not found in pricing list
  */
-export function endImageSpan(
-  span: LangfuseSpanClient | null,
+const FALLBACK_COSTS = {
+  image: 0.02, // $0.02 per image
+  video: 0.05, // $0.05 per second
+  transcription: 0.005, // $0.005 per minute
+  music: 0.05, // $0.05 per minute
+};
+
+/**
+ * End an image generation with proper cost tracking
+ * Cost is passed via usage.totalCost which Langfuse properly aggregates
+ */
+export function endImageGeneration(
+  generation: LangfuseGenerationClient | null,
   model: string,
-  output: SpanOutput & { imageCount?: number },
+  output: {
+    output?: unknown;
+    statusMessage?: string;
+    level?: 'DEBUG' | 'DEFAULT' | 'WARNING' | 'ERROR';
+    imageCount?: number;
+  },
 ): void {
-  if (!span) return;
+  if (!generation) return;
 
-  const perImageCost = calculateImageCost(model);
-  const totalCost = perImageCost ? perImageCost * (output.imageCount || 1) : undefined;
+  const imageCount = output.imageCount || 1;
+  const calculatedCost = calculateImageCost(model, imageCount);
+  // Use fallback if model not in pricing list
+  const totalCost = calculatedCost ?? (FALLBACK_COSTS.image * imageCount);
 
-  span.end({
+  generation.end({
     output: output.output,
     statusMessage: output.statusMessage,
     level: output.level,
+    usage: {
+      unit: 'IMAGES',
+      total: imageCount,
+      totalCost,
+    },
     metadata: {
       model,
-      imageCount: output.imageCount || 1,
-      costPerImage: perImageCost,
-      totalCost,
+      imageCount,
+      costSource: calculatedCost !== undefined ? 'pricing-list' : 'fallback',
     },
   });
 }
@@ -226,18 +255,21 @@ export function endImageSpan(
 // ============================================================
 
 /**
- * Create a span for video generation
+ * Create a generation for video generation
+ * Using Generation allows Langfuse to properly aggregate costs via usage.totalCost
  */
-export function createVideoSpan(
+export function createVideoGeneration(
   trace: LangfuseTraceClient | null,
   name: string,
-  input: SpanInput,
-): LangfuseSpanClient | null {
+  input: GenerationInput,
+): LangfuseGenerationClient | null {
   if (!trace) return null;
 
-  return trace.span({
+  return trace.generation({
     name,
+    model: input.model,
     input: input.input,
+    modelParameters: input.modelParameters,
     metadata: {
       ...input.metadata,
       type: 'video-generation',
@@ -246,27 +278,41 @@ export function createVideoSpan(
 }
 
 /**
- * End a video generation span with cost
+ * End a video generation with proper cost tracking
+ * Cost is passed via usage.totalCost which Langfuse properly aggregates
  */
-export function endVideoSpan(
-  span: LangfuseSpanClient | null,
+export function endVideoGeneration(
+  generation: LangfuseGenerationClient | null,
   model: string,
-  output: SpanOutput & { durationSeconds?: number },
+  output: {
+    output?: unknown;
+    statusMessage?: string;
+    level?: 'DEBUG' | 'DEFAULT' | 'WARNING' | 'ERROR';
+    durationSeconds?: number;
+  },
 ): void {
-  if (!span) return;
+  if (!generation) return;
 
-  const cost = output.durationSeconds
-    ? calculateVideoCost(model, output.durationSeconds)
+  const durationSeconds = output.durationSeconds || 0;
+  const calculatedCost = durationSeconds > 0
+    ? calculateVideoCost(model, durationSeconds)
     : undefined;
+  // Use fallback if model not in pricing list
+  const totalCost = calculatedCost ?? (durationSeconds > 0 ? FALLBACK_COSTS.video * durationSeconds : 0);
 
-  span.end({
+  generation.end({
     output: output.output,
     statusMessage: output.statusMessage,
     level: output.level,
+    usage: {
+      unit: 'SECONDS',
+      total: durationSeconds,
+      totalCost,
+    },
     metadata: {
       model,
-      durationSeconds: output.durationSeconds,
-      totalCost: cost,
+      durationSeconds,
+      costSource: calculatedCost !== undefined ? 'pricing-list' : 'fallback',
     },
   });
 }
@@ -276,18 +322,21 @@ export function endVideoSpan(
 // ============================================================
 
 /**
- * Create a span for audio transcription
+ * Create a generation for audio transcription
+ * Using Generation allows Langfuse to properly aggregate costs via usage.totalCost
  */
-export function createTranscriptionSpan(
+export function createTranscriptionGeneration(
   trace: LangfuseTraceClient | null,
   name: string,
-  input: SpanInput,
-): LangfuseSpanClient | null {
+  input: GenerationInput,
+): LangfuseGenerationClient | null {
   if (!trace) return null;
 
-  return trace.span({
+  return trace.generation({
     name,
+    model: input.model,
     input: input.input,
+    modelParameters: input.modelParameters,
     metadata: {
       ...input.metadata,
       type: 'transcription',
@@ -296,27 +345,42 @@ export function createTranscriptionSpan(
 }
 
 /**
- * End a transcription span with cost
+ * End a transcription generation with proper cost tracking
+ * Cost is passed via usage.totalCost which Langfuse properly aggregates
  */
-export function endTranscriptionSpan(
-  span: LangfuseSpanClient | null,
+export function endTranscriptionGeneration(
+  generation: LangfuseGenerationClient | null,
   model: string,
-  output: SpanOutput & { durationMinutes?: number },
+  output: {
+    output?: unknown;
+    statusMessage?: string;
+    level?: 'DEBUG' | 'DEFAULT' | 'WARNING' | 'ERROR';
+    durationMinutes?: number;
+  },
 ): void {
-  if (!span) return;
+  if (!generation) return;
 
-  const cost = output.durationMinutes
-    ? calculateTranscriptionCost(model, output.durationMinutes)
+  const durationMinutes = output.durationMinutes || 0;
+  const durationSeconds = durationMinutes * 60;
+  const calculatedCost = durationMinutes > 0
+    ? calculateTranscriptionCost(model, durationMinutes)
     : undefined;
+  // Use fallback if model not in pricing list
+  const totalCost = calculatedCost ?? (durationMinutes > 0 ? FALLBACK_COSTS.transcription * durationMinutes : 0);
 
-  span.end({
+  generation.end({
     output: output.output,
     statusMessage: output.statusMessage,
     level: output.level,
+    usage: {
+      unit: 'SECONDS',
+      total: durationSeconds,
+      totalCost,
+    },
     metadata: {
       model,
-      durationMinutes: output.durationMinutes,
-      totalCost: cost,
+      durationMinutes,
+      costSource: calculatedCost !== undefined ? 'pricing-list' : 'fallback',
     },
   });
 }
@@ -326,18 +390,21 @@ export function endTranscriptionSpan(
 // ============================================================
 
 /**
- * Create a span for music generation
+ * Create a generation for music generation
+ * Using Generation allows Langfuse to properly aggregate costs via usage.totalCost
  */
-export function createMusicSpan(
+export function createMusicGeneration(
   trace: LangfuseTraceClient | null,
   name: string,
-  input: SpanInput,
-): LangfuseSpanClient | null {
+  input: GenerationInput,
+): LangfuseGenerationClient | null {
   if (!trace) return null;
 
-  return trace.span({
+  return trace.generation({
     name,
+    model: input.model,
     input: input.input,
+    modelParameters: input.modelParameters,
     metadata: {
       ...input.metadata,
       type: 'music-generation',
@@ -346,27 +413,42 @@ export function createMusicSpan(
 }
 
 /**
- * End a music generation span with cost
+ * End a music generation with proper cost tracking
+ * Cost is passed via usage.totalCost which Langfuse properly aggregates
  */
-export function endMusicSpan(
-  span: LangfuseSpanClient | null,
+export function endMusicGeneration(
+  generation: LangfuseGenerationClient | null,
   model: string,
-  output: SpanOutput & { durationMinutes?: number },
+  output: {
+    output?: unknown;
+    statusMessage?: string;
+    level?: 'DEBUG' | 'DEFAULT' | 'WARNING' | 'ERROR';
+    durationMinutes?: number;
+  },
 ): void {
-  if (!span) return;
+  if (!generation) return;
 
-  const cost = output.durationMinutes
-    ? calculateMusicCost(model, output.durationMinutes)
+  const durationMinutes = output.durationMinutes || 0;
+  const durationSeconds = durationMinutes * 60;
+  const calculatedCost = durationMinutes > 0
+    ? calculateMusicCost(model, durationMinutes)
     : undefined;
+  // Use fallback if model not in pricing list
+  const totalCost = calculatedCost ?? (durationMinutes > 0 ? FALLBACK_COSTS.music * durationMinutes : 0);
 
-  span.end({
+  generation.end({
     output: output.output,
     statusMessage: output.statusMessage,
     level: output.level,
+    usage: {
+      unit: 'SECONDS',
+      total: durationSeconds,
+      totalCost,
+    },
     metadata: {
       model,
-      durationMinutes: output.durationMinutes,
-      totalCost: cost,
+      durationMinutes,
+      costSource: calculatedCost !== undefined ? 'pricing-list' : 'fallback',
     },
   });
 }

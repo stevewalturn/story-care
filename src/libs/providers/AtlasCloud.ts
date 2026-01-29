@@ -5,16 +5,15 @@
  * Includes Langfuse tracing for observability and cost tracking
  */
 
+import type { TraceMetadata } from '../LangfuseTracing';
 import { flushLangfuse } from '../Langfuse';
 import {
-  calculateImageCost,
-  calculateVideoCost,
-  createImageSpan,
+  createImageGeneration,
   createTrace,
-  createVideoSpan,
-  endImageSpan,
-  endVideoSpan,
-  type TraceMetadata,
+  createVideoGeneration,
+  endImageGeneration,
+  endVideoGeneration,
+
 } from '../LangfuseTracing';
 
 export type AtlasImageModel
@@ -1937,11 +1936,10 @@ export async function generateImageWithAtlas(
     });
   }
 
-  const span = createImageSpan(trace, 'generate-image', {
-    name: 'atlascloud-image-generation',
+  const generation = createImageGeneration(trace, 'generate-image', {
+    model,
     input: {
       prompt: options.prompt,
-      model,
       size: options.size,
       numImages: options.numImages || 1,
       referenceImageCount: options.referenceImages?.length || 0,
@@ -1993,8 +1991,8 @@ export async function generateImageWithAtlas(
       });
       const errorMessage = `Atlas Cloud error: ${error.msg || generateResponse.statusText}`;
 
-      // End span with error
-      endImageSpan(span, model, {
+      // End generation with error
+      endImageGeneration(generation, model, {
         output: null,
         statusMessage: errorMessage,
         level: 'ERROR',
@@ -2018,7 +2016,7 @@ export async function generateImageWithAtlas(
       console.error('[AtlasCloud] Non-200 code in response:', generateResult);
       const errorMessage = `Atlas Cloud error: ${generateResult.msg}`;
 
-      endImageSpan(span, model, {
+      endImageGeneration(generation, model, {
         output: null,
         statusMessage: errorMessage,
         level: 'ERROR',
@@ -2038,23 +2036,18 @@ export async function generateImageWithAtlas(
 
     console.log('[AtlasCloud] Image generation successful:', imageUrl);
 
-    // Calculate cost and end span
+    // End generation with success (cost is calculated in endImageGeneration)
     const imageCount = options.numImages || 1;
-    const cost = calculateImageCost(model, imageCount);
 
-    endImageSpan(span, model, {
+    endImageGeneration(generation, model, {
       output: { imageUrl, predictionId },
       imageCount,
     });
 
-    // Update trace with output and cost
+    // Update trace with output
     if (trace) {
       trace.update({
         output: { imageUrl: '[generated image URL]', model },
-        metadata: {
-          ...options.traceMetadata?.metadata,
-          calculatedCost: cost,
-        },
       });
     }
 
@@ -2066,9 +2059,9 @@ export async function generateImageWithAtlas(
       model,
     };
   } catch (error) {
-    // Ensure span is ended on unexpected errors
-    if (span) {
-      endImageSpan(span, model, {
+    // Ensure generation is ended on unexpected errors
+    if (generation) {
+      endImageGeneration(generation, model, {
         output: null,
         statusMessage: error instanceof Error ? error.message : 'Unknown error',
         level: 'ERROR',
@@ -2360,11 +2353,10 @@ export async function generateVideoWithAtlas(
     });
   }
 
-  const span = createVideoSpan(trace, 'generate-video', {
-    name: 'atlascloud-video-generation',
+  const generation = createVideoGeneration(trace, 'generate-video', {
+    model,
     input: {
       prompt: options.prompt,
-      model,
       duration: durationSeconds,
       hasReferenceImage: !!options.referenceImage,
     },
@@ -2420,8 +2412,8 @@ export async function generateVideoWithAtlas(
       }
       const errorMessage = `Atlas Cloud error: ${error.msg || generateResponse.statusText}`;
 
-      // End span with error
-      endVideoSpan(span, model, {
+      // End generation with error
+      endVideoGeneration(generation, model, {
         output: null,
         statusMessage: errorMessage,
         level: 'ERROR',
@@ -2438,7 +2430,7 @@ export async function generateVideoWithAtlas(
       const errorMsg = generateResult.msg || generateResult.data?.error || 'Video generation failed';
       const errorMessage = `Atlas Cloud error: ${errorMsg}`;
 
-      endVideoSpan(span, model, {
+      endVideoGeneration(generation, model, {
         output: null,
         statusMessage: errorMessage,
         level: 'ERROR',
@@ -2454,22 +2446,16 @@ export async function generateVideoWithAtlas(
     // Step 2: Poll for result
     const videoUrl = await pollAtlasStatus(predictionId, apiKey, 'video');
 
-    // Calculate cost and end span
-    const cost = calculateVideoCost(model, durationSeconds);
-
-    endVideoSpan(span, model, {
+    // End generation with success (cost is calculated in endVideoGeneration)
+    endVideoGeneration(generation, model, {
       output: { videoUrl, predictionId },
       durationSeconds,
     });
 
-    // Update trace with output and cost
+    // Update trace with output
     if (trace) {
       trace.update({
         output: { videoUrl: '[generated video URL]', model },
-        metadata: {
-          ...options.traceMetadata?.metadata,
-          calculatedCost: cost,
-        },
       });
     }
 
@@ -2481,9 +2467,9 @@ export async function generateVideoWithAtlas(
       model,
     };
   } catch (error) {
-    // Ensure span is ended on unexpected errors
-    if (span) {
-      endVideoSpan(span, model, {
+    // Ensure generation is ended on unexpected errors
+    if (generation) {
+      endVideoGeneration(generation, model, {
         output: null,
         statusMessage: error instanceof Error ? error.message : 'Unknown error',
         level: 'ERROR',

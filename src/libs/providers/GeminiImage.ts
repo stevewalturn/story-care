@@ -6,13 +6,13 @@
  */
 
 import type { ImageGenerationResult } from '../ImageGeneration';
+import type { TraceMetadata } from '../LangfuseTracing';
 import { flushLangfuse } from '../Langfuse';
 import {
-  calculateImageCost,
-  createImageSpan,
+  createImageGeneration,
   createTrace,
-  endImageSpan,
-  type TraceMetadata,
+  endImageGeneration,
+
 } from '../LangfuseTracing';
 
 export type GeminiImageModel = 'gemini-2.5-flash-image';
@@ -62,7 +62,7 @@ export async function generateImageWithGemini(
 
   const { model, prompt, referenceImage, traceMetadata } = options;
 
-  // Create Langfuse trace and span
+  // Create Langfuse trace and generation
   const trace = createTrace('gemini-image', {
     ...traceMetadata,
     tags: ['gemini', 'vertex-ai', 'image-generation', model, ...(traceMetadata?.tags || [])],
@@ -75,11 +75,10 @@ export async function generateImageWithGemini(
     });
   }
 
-  const span = createImageSpan(trace, 'generate-image', {
-    name: 'gemini-image-generation',
+  const generation = createImageGeneration(trace, 'generate-image', {
+    model,
     input: {
       prompt,
-      model,
       hasReferenceImage: !!referenceImage,
     },
     metadata: {
@@ -90,7 +89,7 @@ export async function generateImageWithGemini(
   // Gemini Image requires a reference image for image-to-image
   if (!referenceImage) {
     const errorMessage = 'Reference image is required for Gemini image-to-image generation';
-    endImageSpan(span, model, {
+    endImageGeneration(generation, model, {
       output: null,
       statusMessage: errorMessage,
       level: 'ERROR',
@@ -131,7 +130,7 @@ export async function generateImageWithGemini(
   if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
     try {
       credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
-    } catch (error) {
+    } catch {
       throw new Error('Invalid GOOGLE_SERVICE_ACCOUNT_KEY format. Must be valid JSON.');
     }
   }
@@ -209,7 +208,7 @@ export async function generateImageWithGemini(
       const error = await response.json().catch(() => ({ error: 'Unknown error' }));
       const errorMessage = `Gemini Image error: ${JSON.stringify(error)}`;
 
-      endImageSpan(span, model, {
+      endImageGeneration(generation, model, {
         output: null,
         statusMessage: errorMessage,
         level: 'ERROR',
@@ -232,7 +231,7 @@ export async function generateImageWithGemini(
       console.error('No image found in response. Full result:', JSON.stringify(result, null, 2));
       const errorMessage = 'No image returned from Gemini';
 
-      endImageSpan(span, model, {
+      endImageGeneration(generation, model, {
         output: null,
         statusMessage: errorMessage,
         level: 'ERROR',
@@ -251,22 +250,16 @@ export async function generateImageWithGemini(
     // Convert the base64 image data to a data URL
     const imageUrl = `data:${generatedMimeType};base64,${base64Data}`;
 
-    // Calculate cost and end span
-    const cost = calculateImageCost(model, 1);
-
-    endImageSpan(span, model, {
+    // End generation with success (cost is calculated in endImageGeneration)
+    endImageGeneration(generation, model, {
       output: { imageUrl: '[base64 image]' },
       imageCount: 1,
     });
 
-    // Update trace with output and cost
+    // Update trace with output
     if (trace) {
       trace.update({
         output: { imageUrl: '[base64 image generated]', model },
-        metadata: {
-          ...traceMetadata?.metadata,
-          calculatedCost: cost,
-        },
       });
     }
 
@@ -278,8 +271,8 @@ export async function generateImageWithGemini(
       model,
     };
   } catch (error) {
-    if (span) {
-      endImageSpan(span, model, {
+    if (generation) {
+      endImageGeneration(generation, model, {
         output: null,
         statusMessage: error instanceof Error ? error.message : 'Unknown error',
         level: 'ERROR',

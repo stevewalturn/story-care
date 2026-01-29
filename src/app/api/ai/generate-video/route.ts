@@ -231,10 +231,9 @@ async function generateVideoAsync(params: VideoGenParams) {
   } catch (error) {
     console.error(`[VIDEO GEN] Failed task ${taskId}:`, error);
     VideoTaskService.failTask(taskId, (error as Error).message);
-    // Mark media as failed
+    // Delete the placeholder record since video generation failed
     await db
-      .update(mediaLibrary)
-      .set({ status: 'failed' })
+      .delete(mediaLibrary)
       .where(eq(mediaLibrary.id, mediaId))
       .catch(console.error);
   }

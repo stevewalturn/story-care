@@ -5,13 +5,13 @@
  * Includes Langfuse tracing for observability and cost tracking
  */
 
+import type { TraceMetadata } from '../LangfuseTracing';
 import { flushLangfuse } from '../Langfuse';
 import {
-  calculateImageCost,
-  createImageSpan,
+  createImageGeneration,
   createTrace,
-  endImageSpan,
-  type TraceMetadata,
+  endImageGeneration,
+
 } from '../LangfuseTracing';
 
 export type FalModel
@@ -45,7 +45,7 @@ export async function generateImageWithFal(
 
   const model = options.model || 'flux-pro';
 
-  // Create Langfuse trace and span
+  // Create Langfuse trace and generation
   const trace = createTrace('fal-image', {
     ...options.traceMetadata,
     tags: ['fal-ai', 'image-generation', model, ...(options.traceMetadata?.tags || [])],
@@ -58,11 +58,10 @@ export async function generateImageWithFal(
     });
   }
 
-  const span = createImageSpan(trace, 'generate-image', {
-    name: 'fal-image-generation',
+  const generation = createImageGeneration(trace, 'generate-image', {
+    model,
     input: {
       prompt: options.prompt,
-      model,
       width: options.width || 1024,
       height: options.height || 1024,
     },
@@ -110,7 +109,7 @@ export async function generateImageWithFal(
       const error = await response.json().catch(() => ({ message: 'Unknown error' }));
       const errorMessage = `FAL.AI error: ${error.message || response.statusText}`;
 
-      endImageSpan(span, model, {
+      endImageGeneration(generation, model, {
         output: null,
         statusMessage: errorMessage,
         level: 'ERROR',
@@ -127,7 +126,7 @@ export async function generateImageWithFal(
     if (!result.images || result.images.length === 0) {
       const errorMessage = 'No images generated';
 
-      endImageSpan(span, model, {
+      endImageGeneration(generation, model, {
         output: null,
         statusMessage: errorMessage,
         level: 'ERROR',
@@ -138,22 +137,16 @@ export async function generateImageWithFal(
       throw new Error(errorMessage);
     }
 
-    // Calculate cost and end span
-    const cost = calculateImageCost(model, 1);
-
-    endImageSpan(span, model, {
+    // End generation with success (cost is calculated in endImageGeneration)
+    endImageGeneration(generation, model, {
       output: { imageUrl: result.images[0].url },
       imageCount: 1,
     });
 
-    // Update trace with output and cost
+    // Update trace with output
     if (trace) {
       trace.update({
         output: { imageUrl: result.images[0].url, model },
-        metadata: {
-          ...options.traceMetadata?.metadata,
-          calculatedCost: cost,
-        },
       });
     }
 
@@ -165,8 +158,8 @@ export async function generateImageWithFal(
       model,
     };
   } catch (error) {
-    if (span) {
-      endImageSpan(span, model, {
+    if (generation) {
+      endImageGeneration(generation, model, {
         output: null,
         statusMessage: error instanceof Error ? error.message : 'Unknown error',
         level: 'ERROR',

@@ -59,6 +59,9 @@ export default function PublicRecordingPage() {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Therapist-initiated stop
+  const [stoppedByTherapist, setStoppedByTherapist] = useState(false);
+
   // Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -441,6 +444,29 @@ export default function PublicRecordingPage() {
     }
   };
 
+  // Poll for therapist stop signal while recording
+  useEffect(() => {
+    if (recordingState !== 'recording' && recordingState !== 'paused') return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/record/${token}/status`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.stoppedByTherapist) {
+            setStoppedByTherapist(true);
+            // Auto-stop recording
+            stopRecording();
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check status:', error);
+      }
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [recordingState, token, stopRecording]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -503,13 +529,24 @@ export default function PublicRecordingPage() {
             <CheckCircle2 className="h-10 w-10 text-white" />
           </div>
           <h1 className="mb-2 text-2xl font-bold text-white">Recording Complete!</h1>
-          <p className="mb-4 text-white/80">
-            Your recording has been saved successfully.
-            {' '}
-            {linkData?.therapistName}
-            {' '}
-            will be notified.
-          </p>
+
+          {stoppedByTherapist
+            ? (
+                <div className="mb-4 rounded-lg bg-blue-500/30 p-4">
+                  <p className="font-medium text-white">Recording stopped by your therapist</p>
+                  <p className="mt-1 text-sm text-white/80">Your recording has been saved.</p>
+                </div>
+              )
+            : (
+                <p className="mb-4 text-white/80">
+                  Your recording has been saved successfully.
+                  {' '}
+                  {linkData?.therapistName}
+                  {' '}
+                  will be notified.
+                </p>
+              )}
+
           <p className="text-lg text-white">
             Duration:
             {' '}
