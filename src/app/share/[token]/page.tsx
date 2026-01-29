@@ -276,7 +276,7 @@ export default function PublicSharePage({ params }: Props) {
               {pageData.page.patientName}
             </span>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-800 sm:text-4xl md:text-5xl">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-800 sm:text-3xl md:text-4xl">
             {pageData.page.title}
           </h1>
           {pageData.page.description && (
