@@ -21,6 +21,15 @@ export async function POST(
     // Verify user has access to this media
     const user = await requireMediaAccess(request, id);
 
+    // Parse request body for optional sessionId
+    let sessionId: string | undefined;
+    try {
+      const body = await request.json();
+      sessionId = body.sessionId;
+    } catch {
+      // Body is optional, ignore parse errors
+    }
+
     // Get the video media item
     const [media] = await db
       .select()
@@ -65,6 +74,7 @@ export async function POST(
         progress: 0,
         inputData: {
           mediaId: id,
+          sessionId,
           videoUrl: videoPresignedUrl,
           sourceVideoTitle: media.title,
           patientId: media.patientId,

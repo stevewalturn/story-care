@@ -53,8 +53,25 @@ export async function PATCH(
       );
     }
 
-    // Check if already deleted
-    if (therapist.deletedAt) {
+    // Check if already deleted - check both deletedAt and status for consistency
+    const isDeletedByTimestamp = !!therapist.deletedAt;
+    const isDeletedByStatus = therapist.status === 'deleted';
+
+    // Auto-fix inconsistency if needed
+    if (isDeletedByTimestamp && !isDeletedByStatus) {
+      await db
+        .update(users)
+        .set({ status: 'deleted', updatedAt: new Date() })
+        .where(eq(users.id, id));
+    }
+    if (isDeletedByStatus && !isDeletedByTimestamp) {
+      await db
+        .update(users)
+        .set({ deletedAt: new Date(), updatedAt: new Date() })
+        .where(eq(users.id, id));
+    }
+
+    if (isDeletedByTimestamp || isDeletedByStatus) {
       return NextResponse.json(
         { error: 'Cannot modify status of a deleted therapist' },
         { status: 400 },

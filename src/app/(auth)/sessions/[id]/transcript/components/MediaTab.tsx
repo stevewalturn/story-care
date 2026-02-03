@@ -445,10 +445,14 @@ export function MediaTab({
 
     const response = await authenticatedFetch(`/api/media/${extractingMedia.id}/extract-frame`, user, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId }),
     });
 
     if (response.ok) {
       const data = await response.json();
+      // Immediately refresh frame extraction tasks to show progress
+      loadInProgressFrameExtractionTasks();
       // Refresh media list to show new image
       if (onTaskComplete) {
         onTaskComplete();
