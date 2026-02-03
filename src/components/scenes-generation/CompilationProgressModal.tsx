@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 type CompilationProgressModalProps = {
   isOpen: boolean;
   onClose: () => void;
+  onNavigateAway?: () => void; // Called when user navigates away (closes entire modal chain)
   status: 'processing' | 'completed' | 'failed';
   currentStep: string;
   progress: number;
@@ -17,6 +18,7 @@ type CompilationProgressModalProps = {
 export function CompilationProgressModal({
   isOpen,
   onClose,
+  onNavigateAway,
   status,
   currentStep,
   progress,
@@ -28,6 +30,8 @@ export function CompilationProgressModal({
   if (!isOpen) return null;
 
   const handleGoToScenes = () => {
+    // Close entire modal chain before navigation
+    onNavigateAway?.();
     if (sceneId) {
       // Navigate directly to the scene if we have an ID
       router.push(`/scenes?sceneId=${sceneId}`);
@@ -38,6 +42,8 @@ export function CompilationProgressModal({
   };
 
   const handleViewScene = () => {
+    // Close entire modal chain before navigation
+    onNavigateAway?.();
     if (sceneId) {
       router.push(`/scenes?sceneId=${sceneId}`);
     } else {

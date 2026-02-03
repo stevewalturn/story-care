@@ -1,11 +1,12 @@
 /**
  * Therapist Detail Header Component
  * Displays therapist info and action buttons
+ * Management actions (Edit, Deactivate/Activate, Delete) are always visible
  */
 
 'use client';
 
-import { ArrowLeft, Download, Pencil, Send, Trash2, User, UserCheck, UserPlus, UserX } from 'lucide-react';
+import { ArrowLeft, Download, Pencil, Send, Settings, Trash2, User, UserCheck, UserPlus, UserX } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 
@@ -40,20 +41,23 @@ export function TherapistDetailHeader({
 }: TherapistHeaderProps) {
   const router = useRouter();
 
+  const canToggleStatus = therapist.status !== 'invited';
+  const isActive = therapist.status === 'active';
+
   return (
-    <div>
+    <div className="space-y-6">
       {/* Back Button */}
       <button
         type="button"
         onClick={() => router.push('/org-admin/therapists')}
-        className="mb-4 flex items-center text-sm text-gray-600 hover:text-gray-900"
+        className="flex items-center text-sm text-gray-600 hover:text-gray-900"
       >
         <ArrowLeft className="mr-1 h-4 w-4" />
         Back to Therapists
       </button>
 
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start">
           {/* Avatar */}
           <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-purple-100">
@@ -104,9 +108,8 @@ export function TherapistDetailHeader({
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Primary Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Primary Actions */}
           {therapist.status === 'invited' && onResendInvitation && (
             <Button variant="secondary" onClick={onResendInvitation}>
               <Send className="mr-2 h-4 w-4" />
@@ -125,25 +128,40 @@ export function TherapistDetailHeader({
               Generate Report
             </Button>
           )}
+        </div>
+      </div>
 
-          {/* Management Actions */}
+      {/* Management Actions Section - Always visible, prominent */}
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+          <Settings className="h-4 w-4" />
+          Manage Therapist
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          {/* Edit Details - Always visible */}
           {onEdit && (
-            <Button variant="secondary" onClick={onEdit}>
+            <Button
+              variant="secondary"
+              onClick={onEdit}
+              className="border-gray-300 bg-white"
+            >
               <Pencil className="mr-2 h-4 w-4" />
-              Edit
+              Edit Details
             </Button>
           )}
 
-          {/* Status Toggle - only for active/inactive users */}
-          {onToggleStatus && therapist.status !== 'invited' && (
+          {/* Status Toggle - Only for active/inactive users, not invited */}
+          {onToggleStatus && canToggleStatus && (
             <Button
               variant="secondary"
               onClick={onToggleStatus}
-              className={therapist.status === 'active'
-                ? 'border-amber-300 text-amber-600 hover:bg-amber-50'
-                : 'border-green-300 text-green-600 hover:bg-green-50'}
+              className={
+                isActive
+                  ? 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                  : 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100'
+              }
             >
-              {therapist.status === 'active'
+              {isActive
                 ? (
                     <>
                       <UserX className="mr-2 h-4 w-4" />
@@ -159,21 +177,32 @@ export function TherapistDetailHeader({
             </Button>
           )}
 
-          {/* Delete Button */}
+          {/* Delete Button - Always visible */}
           {onDelete && (
             <Button
               variant="secondary"
               onClick={onDelete}
-              className="border-red-300 text-red-600 hover:bg-red-50"
+              className="border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
               title={patientCount > 0
-                ? `Cannot delete: ${patientCount} patient(s) assigned`
+                ? `Warning: ${patientCount} patient(s) assigned. Deletion will require reassigning patients.`
                 : 'Delete therapist'}
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Delete
+              Delete Therapist
             </Button>
           )}
         </div>
+
+        {/* Warning for patients assigned */}
+        {patientCount > 0 && (
+          <p className="mt-3 text-xs text-amber-600">
+            This therapist has
+            {' '}
+            {patientCount}
+            {' '}
+            patient(s) assigned. Deleting will require reassigning them to another therapist.
+          </p>
+        )}
       </div>
     </div>
   );

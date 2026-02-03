@@ -7,6 +7,9 @@ import { requireMediaAccess } from '@/middleware/RBACMiddleware';
 import { mediaLibrary, videoProcessingJobs } from '@/models/Schema';
 import { handleAuthError } from '@/utils/AuthHelpers';
 
+// Stuck job detection threshold (2 minutes)
+const STUCK_JOB_THRESHOLD_MS = 2 * 60 * 1000;
+
 // GET /api/media/[id]/extract-frame/status
 // Poll for frame extraction job status
 // Uses same pattern as scene assembly polling
@@ -63,7 +66,45 @@ export async function GET(
       jobId: job.id,
       mediaId,
       status: job.status,
+      currentStep: job.currentStep,
+      startedAt: job.startedAt,
     });
+
+    // Detect stuck jobs: processing for too long in Initializing state
+    if (job.status === 'processing' || job.status === 'pending') {
+      const isInitializing = !job.currentStep
+        || job.currentStep === 'Initializing'
+        || job.currentStep === 'Initializing frame extraction';
+      const jobStartTime = job.startedAt || job.createdAt;
+      const timeSinceStart = Date.now() - new Date(jobStartTime).getTime();
+
+      if (isInitializing && timeSinceStart > STUCK_JOB_THRESHOLD_MS) {
+        console.warn('[Extract Frame Status] Detected stuck job:', {
+          jobId: job.id,
+          timeSinceStartMs: timeSinceStart,
+          currentStep: job.currentStep,
+        });
+
+        // Auto-mark as failed
+        await db
+          .update(videoProcessingJobs)
+          .set({
+            status: 'failed',
+            errorMessage: 'The processing server failed to start. This can happen due to temporary infrastructure issues. Please try again.',
+            completedAt: new Date(),
+          })
+          .where(eq(videoProcessingJobs.id, job.id));
+
+        return NextResponse.json({
+          success: false,
+          status: 'failed',
+          jobId: job.id,
+          error: 'The processing server failed to start. This can happen due to temporary infrastructure issues. Please try again.',
+          progress: 0,
+          currentStep: job.currentStep,
+        });
+      }
+    }
 
     // Build response based on job status
     if (job.status === 'completed') {

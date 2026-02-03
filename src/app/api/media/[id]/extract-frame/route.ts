@@ -102,6 +102,7 @@ export async function POST(
       console.log(`🖼️ Triggering Cloud Run Job: ${jobPath}`);
 
       // Execute the job with environment variables (same pattern as scene assembly)
+      console.log(`🖼️ Executing Cloud Run Job with credentials for project: ${Env.GCS_PROJECT_ID}`);
       const [operation] = await client.runJob({
         name: jobPath,
         overrides: {
@@ -122,7 +123,11 @@ export async function POST(
 
       // Get execution name from operation
       const executionName = operation.name;
-      console.log(`✅ Job ${job.id} execution started: ${executionName}`);
+      console.log(`✅ Job ${job.id} execution started: ${executionName}`, {
+        jobPath,
+        operationName: operation.name,
+        operationDone: operation.done,
+      });
 
       // Update job with Cloud Run execution info
       await db
@@ -146,7 +151,12 @@ export async function POST(
         { status: 202 },
       );
     } catch (cloudRunError: any) {
-      console.error(`❌ Failed to trigger Cloud Run Job for ${job.id}:`, cloudRunError);
+      console.error(`❌ Failed to trigger Cloud Run Job for ${job.id}:`, {
+        error: cloudRunError.message,
+        code: cloudRunError.code,
+        details: cloudRunError.details,
+        stack: cloudRunError.stack,
+      });
 
       // Mark job as failed
       await db

@@ -74,9 +74,14 @@ export function MediaTab({
   const [inProgressVideoTasks, setInProgressVideoTasks] = useState<any[]>([]);
   const [isLoadingVideoTasks, setIsLoadingVideoTasks] = useState(false);
 
+  // Frame extraction polling state
+  const [inProgressFrameExtractionTasks, setInProgressFrameExtractionTasks] = useState<any[]>([]);
+  const [isLoadingFrameExtractionTasks, setIsLoadingFrameExtractionTasks] = useState(false);
+
   // Track previous tasks to detect completion
   const prevTasksRef = useRef<any[]>([]);
   const prevVideoTasksRef = useRef<any[]>([]);
+  const prevFrameExtractionTasksRef = useRef<any[]>([]);
 
   // Delete state
   const [deletingMedia, setDeletingMedia] = useState<any | null>(null);
@@ -272,6 +277,69 @@ export function MediaTab({
 
     return () => clearInterval(interval);
   }, [inProgressVideoTasks.length, selectedPatient, user]);
+
+  // Load in-progress frame extraction tasks
+  const loadInProgressFrameExtractionTasks = async () => {
+    if (!user) return;
+
+    try {
+      setIsLoadingFrameExtractionTasks(true);
+
+      // Fetch in-progress frame extraction tasks for this session
+      const params = new URLSearchParams({
+        sessionId,
+        status: 'pending,processing',
+      });
+
+      const response = await authenticatedFetch(`/api/ai/frame-extraction-tasks?${params.toString()}`, user);
+      if (response.ok) {
+        const data = await response.json();
+        const currentTasks = data.tasks || [];
+
+        // Detect if any tasks completed
+        if (onTaskComplete && prevFrameExtractionTasksRef.current.length > 0) {
+          const currentTaskIds = new Set(currentTasks.map((t: any) => t.id));
+          const completedTasks = prevFrameExtractionTasksRef.current.filter(
+            (prevTask: any) => !currentTaskIds.has(prevTask.id),
+          );
+
+          // If tasks disappeared (completed), refresh media
+          if (completedTasks.length > 0) {
+            console.log(`[MediaTab] ${completedTasks.length} frame extraction task(s) completed, refreshing media...`);
+            onTaskComplete();
+          }
+        }
+
+        // Update state and ref
+        prevFrameExtractionTasksRef.current = currentTasks;
+        setInProgressFrameExtractionTasks(currentTasks);
+      }
+    } catch (error) {
+      console.error('Error loading in-progress frame extraction tasks:', error);
+    } finally {
+      setIsLoadingFrameExtractionTasks(false);
+    }
+  };
+
+  // Poll for in-progress frame extraction tasks
+  useEffect(() => {
+    // Initial load to check for any in-progress frame extraction tasks
+    loadInProgressFrameExtractionTasks();
+  }, [sessionId, user, refreshKey]);
+
+  // Set up polling for frame extraction tasks when there are active tasks
+  useEffect(() => {
+    // Only poll if we have active frame extraction tasks
+    if (inProgressFrameExtractionTasks.length === 0) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      loadInProgressFrameExtractionTasks();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [inProgressFrameExtractionTasks.length, sessionId, user]);
 
   // Helper function to calculate time elapsed for tasks
   const getTimeElapsed = (createdAt: string) => {
@@ -630,6 +698,102 @@ export function MediaTab({
                       </span>
                     </div>
                   </div>
+
+                  {/* Time with clock icon */}
+                  <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>
+                      Started
+                      {' '}
+                      {getTimeElapsed(task.createdAt)}
+                      {' '}
+                      ago
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* In-Progress Frame Extraction Tasks */}
+      {inProgressFrameExtractionTasks.length > 0 && (
+        <>
+          {/* Subtle Header */}
+          <div className="mb-3 flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <Image className="h-3.5 w-3.5 text-emerald-500" />
+              <span className="text-xs font-medium text-gray-600">
+                Extracting frame
+              </span>
+            </div>
+            <button
+              onClick={loadInProgressFrameExtractionTasks}
+              disabled={isLoadingFrameExtractionTasks}
+              className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3 w-3 ${isLoadingFrameExtractionTasks ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+
+          {/* Gradient Progress Cards */}
+          <div className="mb-6 space-y-4">
+            {inProgressFrameExtractionTasks.map(task => (
+              <div
+                key={task.id}
+                className="animate-pulse-subtle relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-green-50 to-emerald-50 p-4 shadow-md shadow-emerald-100 transition-all duration-500"
+              >
+                {/* Shimmer overlay when processing */}
+                <div className="animate-shimmer absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+
+                <div className="relative z-10">
+                  {/* Title with circular icon */}
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
+                        <Image className="h-4 w-4 text-emerald-600" />
+                      </div>
+                      <h4 className="text-lg font-semibold text-gray-900">
+                        {task.title || 'Extracting Frame'}
+                      </h4>
+                    </div>
+
+                    {/* Glass morphism badge */}
+                    <span className={`flex-shrink-0 rounded-full px-3 py-1 text-xs font-semibold backdrop-blur-sm ${
+                      task.status === 'pending'
+                        ? 'bg-white/80 text-amber-700 ring-1 ring-amber-200'
+                        : 'bg-white/80 text-emerald-700 ring-1 ring-emerald-200'
+                    }`}
+                    >
+                      {task.status === 'pending' ? 'Pending' : 'Processing'}
+                    </span>
+                  </div>
+
+                  {/* Large progress bar with % inside */}
+                  <div className="relative mb-3">
+                    <div className="h-3 w-full overflow-hidden rounded-full bg-emerald-100">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-green-500 transition-all duration-1000 ease-out"
+                        style={{ width: `${task.progress || 0}%` }}
+                      />
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-end pr-2">
+                      <span className="text-xs font-bold text-gray-700">
+                        {task.progress || 0}
+                        %
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Current step */}
+                  {task.currentStep && (
+                    <p className="mb-2 text-xs text-emerald-600">
+                      {task.currentStep}
+                    </p>
+                  )}
 
                   {/* Time with clock icon */}
                   <div className="flex items-center gap-1.5 text-xs text-gray-600">

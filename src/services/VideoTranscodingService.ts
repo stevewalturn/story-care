@@ -49,13 +49,7 @@ export class VideoTranscodingService {
     },
   });
 
-  private static runClient = new JobsClient({
-    projectId: Env.GCS_PROJECT_ID,
-    credentials: {
-      client_email: Env.GCS_CLIENT_EMAIL,
-      private_key: Env.GCS_PRIVATE_KEY,
-    },
-  });
+  private static runClient = new JobsClient();
 
   private static executionsClient = new ExecutionsClient({
     projectId: Env.GCS_PROJECT_ID,

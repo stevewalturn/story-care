@@ -1572,6 +1572,11 @@ export function SceneGenerationLayout({
       <CompilationProgressModal
         isOpen={showProgressModal}
         onClose={() => setShowProgressModal(false)}
+        onNavigateAway={() => {
+          // Close progress modal and parent layout when navigating away
+          setShowProgressModal(false);
+          onClose();
+        }}
         status={compilationProgress.status}
         currentStep={compilationProgress.step}
         progress={compilationProgress.progress}
