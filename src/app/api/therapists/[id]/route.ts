@@ -425,8 +425,37 @@ export async function DELETE(
       );
     }
 
-    // Already deleted check
-    if (therapist.deletedAt) {
+    // Already deleted check - check both deletedAt and status for consistency
+    const isDeletedByTimestamp = !!therapist.deletedAt;
+    const isDeletedByStatus = therapist.status === 'deleted';
+
+    // Auto-fix inconsistency: if deletedAt is set but status isn't 'deleted', fix it
+    if (isDeletedByTimestamp && !isDeletedByStatus) {
+      await db
+        .update(users)
+        .set({ status: 'deleted', updatedAt: new Date() })
+        .where(eq(users.id, id));
+
+      return NextResponse.json(
+        { error: 'Therapist has already been deleted (status synced)' },
+        { status: 400 },
+      );
+    }
+
+    // Auto-fix reverse inconsistency: if status is 'deleted' but deletedAt isn't set, fix it
+    if (isDeletedByStatus && !isDeletedByTimestamp) {
+      await db
+        .update(users)
+        .set({ deletedAt: new Date(), updatedAt: new Date() })
+        .where(eq(users.id, id));
+
+      return NextResponse.json(
+        { error: 'Therapist has already been deleted (timestamp synced)' },
+        { status: 400 },
+      );
+    }
+
+    if (isDeletedByTimestamp || isDeletedByStatus) {
       return NextResponse.json(
         { error: 'Therapist has already been deleted' },
         { status: 400 },

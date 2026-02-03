@@ -5,7 +5,7 @@
  */
 
 import type { NextRequest } from 'next/server';
-import { and, count, eq, ilike } from 'drizzle-orm';
+import { and, count, eq, ilike, isNull, ne } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { Env } from '@/libs/Env';
@@ -34,7 +34,12 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
 
     // Build query conditions
-    const conditions = [eq(users.role, 'therapist')];
+    // Exclude deleted therapists - check both status AND deletedAt for consistency
+    const conditions = [
+      eq(users.role, 'therapist'),
+      ne(users.status, 'deleted'),
+      isNull(users.deletedAt),
+    ];
 
     // Organization boundary enforcement
     if (authUser.role === 'org_admin') {
