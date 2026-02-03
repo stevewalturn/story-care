@@ -186,17 +186,51 @@ async function downloadFile(url, destPath) {
 function formatPrivateKey(key) {
   if (!key) return key;
 
-  // Handle different escape scenarios:
-  // 1. Double-escaped: \\n -> \n -> actual newline
-  // 2. Single-escaped: \n -> actual newline
-  // 3. Already has newlines: leave as is
+  // Debug: log key format info (safe - doesn't log the actual key)
+  console.log('🔑 Private key debug:');
+  console.log(`  - Original length: ${key.length}`);
+  console.log(`  - Contains literal \\\\n (4 chars): ${key.includes('\\\\n')}`);
+  console.log(`  - Starts with BEGIN: ${key.startsWith('-----BEGIN')}`);
+
   let formatted = key;
 
-  // First, replace double-escaped newlines (\\n as 4 chars)
-  formatted = formatted.replace(/\\\\n/g, '\n');
+  // Handle triple-escaped (from some CI/CD systems)
+  if (formatted.includes('\\\\\\n')) {
+    console.log('  - Detected triple-escaped newlines');
+    formatted = formatted.replace(/\\\\\\n/g, '\n');
+  }
 
-  // Then, replace single-escaped newlines (\n as 2 chars)
-  formatted = formatted.replace(/\\n/g, '\n');
+  // Handle double-escaped (\\n as 4 characters in the string)
+  if (formatted.includes('\\\\n')) {
+    console.log('  - Detected double-escaped newlines');
+    formatted = formatted.replace(/\\\\n/g, '\n');
+  }
+
+  // Handle single-escaped (\n as 2 characters: backslash + n)
+  // This regex matches literal backslash followed by 'n'
+  if (/\\n/.test(formatted) && !formatted.includes('\n')) {
+    console.log('  - Detected single-escaped newlines (no actual newlines yet)');
+    formatted = formatted.replace(/\\n/g, '\n');
+  }
+
+  // Handle URL-encoded newlines
+  if (formatted.includes('%0A')) {
+    console.log('  - Detected URL-encoded newlines');
+    formatted = formatted.replace(/%0A/g, '\n');
+  }
+
+  // Validate PEM format
+  if (!formatted.includes('-----BEGIN')) {
+    console.error('❌ Private key missing PEM header!');
+  }
+  if (!formatted.includes('-----END')) {
+    console.error('❌ Private key missing PEM footer!');
+  }
+
+  const newlineCount = (formatted.match(/\n/g) || []).length;
+  console.log(`  - Final length: ${formatted.length}`);
+  console.log(`  - Newline count: ${newlineCount}`);
+  console.log(`  - Key format looks valid: ${newlineCount > 20 ? 'YES' : 'NO (should have 25+ newlines)'}`);
 
   return formatted;
 }
