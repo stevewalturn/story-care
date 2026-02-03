@@ -180,16 +180,40 @@ async function downloadFile(url, destPath) {
 }
 
 /**
+ * Format private key for Google Cloud authentication
+ * Handles various escaping scenarios from environment variables
+ */
+function formatPrivateKey(key) {
+  if (!key) return key;
+
+  // Handle different escape scenarios:
+  // 1. Double-escaped: \\n -> \n -> actual newline
+  // 2. Single-escaped: \n -> actual newline
+  // 3. Already has newlines: leave as is
+  let formatted = key;
+
+  // First, replace double-escaped newlines (\\n as 4 chars)
+  formatted = formatted.replace(/\\\\n/g, '\n');
+
+  // Then, replace single-escaped newlines (\n as 2 chars)
+  formatted = formatted.replace(/\\n/g, '\n');
+
+  return formatted;
+}
+
+/**
  * Upload file to GCS
  */
 async function uploadToGCS(localPath, gcsPath) {
   const { Storage } = require('@google-cloud/storage');
 
+  const privateKey = formatPrivateKey(process.env.GCS_PRIVATE_KEY);
+
   const storage = new Storage({
     projectId: process.env.GCS_PROJECT_ID,
     credentials: {
       client_email: process.env.GCS_CLIENT_EMAIL,
-      private_key: process.env.GCS_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      private_key: privateKey,
     },
   });
 
@@ -246,11 +270,13 @@ function extractLastFrame(videoPath, outputPath) {
 async function downloadFromGCS(gcsPath, destPath) {
   const { Storage } = require('@google-cloud/storage');
 
+  const privateKey = formatPrivateKey(process.env.GCS_PRIVATE_KEY);
+
   const storage = new Storage({
     projectId: process.env.GCS_PROJECT_ID,
     credentials: {
       client_email: process.env.GCS_CLIENT_EMAIL,
-      private_key: process.env.GCS_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      private_key: privateKey,
     },
   });
 
