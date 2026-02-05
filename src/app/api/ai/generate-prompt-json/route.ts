@@ -10,6 +10,7 @@ import { generateText } from '@/libs/TextGeneration';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 import { validatePromptJSON } from '@/utils/PromptJSONValidator';
 import { aiRateLimit, checkRateLimit, getClientIP } from '@/utils/RateLimiter';
+import { buildTraceMetadata } from '@/utils/TraceMetadataBuilder';
 
 // POST /api/ai/generate-prompt-json - Generate JSON structure from description
 export async function POST(request: NextRequest) {
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. AUTHENTICATION: Verify user is a therapist or admin
-    await requireTherapist(request);
+    const user = await requireTherapist(request);
 
     // 3. VALIDATE INPUT
     const body = await request.json();
@@ -84,6 +85,12 @@ ${examplesText}
       ? `Generate a JSON structure of type "${schemaType}" for: ${description.trim()}`
       : `Generate an appropriate JSON structure for: ${description.trim()}`;
 
+    // Build trace metadata for observability
+    const traceMetadata = buildTraceMetadata({
+      user,
+      additionalTags: ['generate-prompt-json', 'gpt-4o-mini'],
+    });
+
     // 5. CALL AI TO GENERATE JSON
     const aiResponse = await generateText({
       messages: [
@@ -93,6 +100,7 @@ ${examplesText}
       model: 'gpt-4o-mini', // Fast and cost-effective for JSON generation
       temperature: 0.7, // Balance creativity and consistency
       maxTokens: 8000, // Increased from 2000 to support larger JSON schemas
+      traceMetadata,
     });
 
     // 6. EXTRACT AND VALIDATE JSON

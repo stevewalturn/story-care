@@ -4,8 +4,9 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/libs/DB';
 import { generateSunoMusic } from '@/libs/SunoAI';
-import { musicGenerationTasksSchema, sessionsSchema } from '@/models/Schema';
+import { musicGenerationTasksSchema, sessionsSchema, users } from '@/models/Schema';
 import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
+import { buildTraceMetadata } from '@/utils/TraceMetadataBuilder';
 
 const requestSchema = z.object({
   sessionId: z.string().optional(),
@@ -84,12 +85,36 @@ export async function POST(request: NextRequest) {
 
     // Call Suno API to start music generation
     try {
+      // Fetch patient name for tracing
+      let patientName: string | undefined;
+      if (patientId) {
+        try {
+          const patient = await db.query.users.findFirst({
+            where: eq(users.id, patientId),
+            columns: { name: true },
+          });
+          patientName = patient?.name || undefined;
+        } catch (error) {
+          console.error('Error fetching patient name:', error);
+        }
+      }
+
+      // Build trace metadata for observability
+      const traceMetadata = buildTraceMetadata({
+        user,
+        sessionId: validated.sessionId,
+        patientId,
+        patientName,
+        additionalTags: ['generate-music', validated.model],
+      });
+
       const sunoOptions = {
         prompt: validated.prompt,
         title: validated.title,
         customMode: false,
         instrumental: validated.instrumental,
         model: validated.model as any,
+        traceMetadata,
       };
 
       console.log(`[Generate Music] Calling Suno API for task ${task.id}`, sunoOptions);

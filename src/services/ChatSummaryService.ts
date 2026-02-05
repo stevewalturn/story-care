@@ -3,11 +3,16 @@
  * Manages conversation summaries for AI context caching
  */
 
+import type { TraceMetadata } from '@/libs/LangfuseTracing';
 import type { ChatMessage } from '@/libs/TextGeneration';
 import { and, desc, eq, ne, or } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { generateText } from '@/libs/TextGeneration';
 import { aiChatMessagesSchema } from '@/models/Schema';
+
+export type GenerateChatSummaryOptions = {
+  traceMetadata?: TraceMetadata;
+};
 
 /**
  * Check if a new conversation summary should be generated
@@ -85,10 +90,12 @@ export async function shouldGenerateChatSummary(
  * Generate a conversation summary
  * @param sessionId - Session ID
  * @param therapistId - Therapist ID who initiated the summary
+ * @param options - Optional trace metadata for observability
  */
 export async function generateChatSummary(
   sessionId: string,
   therapistId: string,
+  options?: GenerateChatSummaryOptions,
 ): Promise<string> {
   // TODO: Implement latest summary check for context continuity
   // const latestSummary = await db.query.aiChatMessages.findFirst({
@@ -150,12 +157,26 @@ ${conversationTranscript}`;
     },
   ];
 
+  // Build enhanced trace metadata with session context
+  const traceMetadata = options?.traceMetadata
+    ? {
+        ...options.traceMetadata,
+        sessionId,
+        tags: [
+          ...(options.traceMetadata.tags || []),
+          'chat-summary',
+          'gpt-4o-mini',
+        ],
+      }
+    : undefined;
+
   // Generate summary using GPT-4o-mini
   const result = await generateText({
     messages: summaryMessages,
     model: 'gpt-4o-mini',
     temperature: 0.2,
     maxTokens: 800,
+    traceMetadata,
   });
 
   // Get the last message ID for tracking

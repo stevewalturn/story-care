@@ -6,8 +6,9 @@ import { db } from '@/libs/DB';
 import { generatePresignedUrl, uploadFile } from '@/libs/GCS';
 import { generateImage } from '@/libs/ImageGeneration';
 import { parseAtlasError } from '@/libs/providers/AtlasCloud';
-import { mediaLibrary, sessions } from '@/models/Schema';
+import { mediaLibrary, sessions, users } from '@/models/Schema';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
+import { buildTraceMetadata } from '@/utils/TraceMetadataBuilder';
 
 /**
  * Parse image generation errors into user-friendly messages
@@ -139,6 +140,43 @@ export async function POST(request: NextRequest) {
 
     console.log('[API /api/ai/generate-image] Calling generateImage with model:', model);
 
+    // Fetch patient info for tracing (if sessionId provided)
+    let tracePatientId: string | undefined;
+    let tracePatientName: string | undefined;
+    if (sessionId) {
+      try {
+        const sessionWithPatient = await db.query.sessions.findFirst({
+          where: eq(sessions.id, sessionId),
+          with: { patient: { columns: { id: true, name: true } } },
+        });
+        tracePatientId = sessionWithPatient?.patientId || undefined;
+        const sessionPatient = sessionWithPatient?.patient;
+        tracePatientName = sessionPatient && !Array.isArray(sessionPatient) ? sessionPatient.name : undefined;
+      } catch (error) {
+        console.error('Error fetching patient info for trace:', error);
+      }
+    } else if (patientId) {
+      tracePatientId = patientId;
+      try {
+        const patientUser = await db.query.users.findFirst({
+          where: eq(users.id, patientId),
+          columns: { name: true },
+        });
+        tracePatientName = patientUser?.name || undefined;
+      } catch (error) {
+        console.error('Error fetching patient name for trace:', error);
+      }
+    }
+
+    // Build trace metadata for observability
+    const traceMetadata = buildTraceMetadata({
+      user,
+      sessionId,
+      patientId: tracePatientId,
+      patientName: tracePatientName,
+      additionalTags: ['generate-image', model],
+    });
+
     // Generate image using the unified service
     const { imageUrl, model: usedModel } = await generateImage({
       prompt,
@@ -151,6 +189,7 @@ export async function POST(request: NextRequest) {
       quality,
       style,
       referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
+      traceMetadata,
     });
 
     console.log('[API /api/ai/generate-image] Image generated successfully:', {

@@ -3,6 +3,7 @@
  * Generates and manages AI-powered session summaries for context caching
  */
 
+import type { TraceMetadata } from '@/libs/LangfuseTracing';
 import type { ChatMessage } from '@/libs/TextGeneration';
 import { eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
@@ -26,10 +27,17 @@ function formatTime(seconds: number): string {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
+export type GenerateSessionSummaryOptions = {
+  traceMetadata?: TraceMetadata;
+};
+
 /**
  * Generate a comprehensive session summary for AI context
  */
-export async function generateSessionSummary(sessionId: string): Promise<string> {
+export async function generateSessionSummary(
+  sessionId: string,
+  options?: GenerateSessionSummaryOptions,
+): Promise<string> {
   // Fetch session data
   const [session] = await db
     .select()
@@ -152,12 +160,28 @@ ${formattedTranscript}`;
     },
   ];
 
+  // Build enhanced trace metadata with session context
+  const traceMetadata = options?.traceMetadata
+    ? {
+        ...options.traceMetadata,
+        sessionId,
+        patientId: patient?.id,
+        patientName: patient?.name || group?.name,
+        tags: [
+          ...(options.traceMetadata.tags || []),
+          'session-summary',
+          'gpt-4o-mini',
+        ],
+      }
+    : undefined;
+
   // Generate summary using GPT-4o-mini (good quality, lower cost)
   const result = await generateText({
     messages,
     model: 'gpt-4o-mini',
     temperature: 0.3, // Lower temperature for consistent summaries
     maxTokens: 500, // Brief summary without quotes (200-300 words)
+    traceMetadata,
   });
 
   // Build final formatted summary
@@ -186,7 +210,10 @@ ${result.message}`;
 /**
  * Get session summary, generating if it doesn't exist
  */
-export async function getOrCreateSessionSummary(sessionId: string): Promise<string> {
+export async function getOrCreateSessionSummary(
+  sessionId: string,
+  options?: GenerateSessionSummaryOptions,
+): Promise<string> {
   // Check if summary already exists
   const session = await db.query.sessions.findFirst({
     where: eq(sessionsSchema.id, sessionId),
@@ -205,12 +232,15 @@ export async function getOrCreateSessionSummary(sessionId: string): Promise<stri
   }
 
   // Generate new summary
-  return await generateSessionSummary(sessionId);
+  return await generateSessionSummary(sessionId, options);
 }
 
 /**
  * Regenerate session summary (force refresh)
  */
-export async function regenerateSessionSummary(sessionId: string): Promise<string> {
-  return await generateSessionSummary(sessionId);
+export async function regenerateSessionSummary(
+  sessionId: string,
+  options?: GenerateSessionSummaryOptions,
+): Promise<string> {
+  return await generateSessionSummary(sessionId, options);
 }

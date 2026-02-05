@@ -3,6 +3,7 @@
  * Consolidates all video generation providers into a single interface
  */
 
+import type { TraceMetadata } from './LangfuseTracing';
 import type { AtlasVideoModel } from './providers/AtlasCloud';
 
 // All available video models
@@ -15,6 +16,7 @@ export type VideoGenerationOptions = {
   duration?: number; // seconds
   fps?: number;
   seed?: number;
+  traceMetadata?: TraceMetadata;
 };
 
 export type VideoGenerationResult = {
@@ -40,6 +42,7 @@ export async function generateVideo(
     duration: options.duration,
     fps: options.fps,
     seed: options.seed,
+    traceMetadata: options.traceMetadata,
   });
 }
 

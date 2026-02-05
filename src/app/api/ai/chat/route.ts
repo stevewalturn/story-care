@@ -15,6 +15,7 @@ import {
 import { getOrCreateSessionSummary } from '@/services/SessionSummaryService';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 import { aiRateLimit, checkRateLimit, getClientIP } from '@/utils/RateLimiter';
+import { buildTraceMetadata } from '@/utils/TraceMetadataBuilder';
 
 // POST /api/ai/chat - Chat with AI assistant
 // HIPAA COMPLIANCE: Requires authentication, rate limiting, and audit logging
@@ -75,13 +76,40 @@ export async function POST(request: NextRequest) {
       await requireSessionAccess(request, sessionId);
     }
 
+    // 4.5. FETCH PATIENT INFO for tracing (if sessionId provided)
+    let patientId: string | undefined;
+    let patientName: string | undefined;
+    if (sessionId) {
+      try {
+        const sessionWithPatient = await db.query.sessions.findFirst({
+          where: eq(sessions.id, sessionId),
+          with: { patient: { columns: { id: true, name: true } } },
+        });
+        patientId = sessionWithPatient?.patientId || undefined;
+        const patient = sessionWithPatient?.patient;
+        patientName = patient && !Array.isArray(patient) ? patient.name : undefined;
+      } catch (error) {
+        console.error('Error fetching patient info:', error);
+        // Continue without patient info
+      }
+    }
+
+    // Build trace metadata for observability (early for service calls)
+    const traceMetadata = buildTraceMetadata({
+      user,
+      sessionId,
+      patientId,
+      patientName,
+      additionalTags: ['ai-chat', model],
+    });
+
     // 5. BUILD INTELLIGENT CONTEXT (5-Part Strategy for Prompt Caching)
     const contextParts: ChatMessage[] = [];
 
     // PART 1: Session Summary (CACHED - static, generated once)
     if (sessionId) {
       try {
-        const sessionSummary = await getOrCreateSessionSummary(sessionId);
+        const sessionSummary = await getOrCreateSessionSummary(sessionId, { traceMetadata });
         contextParts.push({
           role: 'system',
           content: sessionSummary,
@@ -189,7 +217,7 @@ Remember: PLAIN TEXT ONLY. NO JSON.`;
       try {
         // Check if we should generate a new summary
         if (await shouldGenerateChatSummary(sessionId, 10)) {
-          await generateChatSummary(sessionId, user.dbUserId);
+          await generateChatSummary(sessionId, user.dbUserId, { traceMetadata });
         }
 
         const chatSummary = await getLatestChatSummary(sessionId);
@@ -246,6 +274,7 @@ Remember: PLAIN TEXT ONLY. NO JSON.`;
       messages: fullMessages,
       model: model as TextGenModel,
       maxTokens: 8000, // Increased from 2000 to support larger JSON schemas
+      traceMetadata,
     });
 
     // 6. SAVE TO DATABASE: Store chat history

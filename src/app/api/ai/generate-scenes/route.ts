@@ -2,7 +2,10 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
+import { flushLangfuse } from '@/libs/Langfuse';
+import { createTextGeneration, createTrace, endTextGeneration } from '@/libs/LangfuseTracing';
 import { openai } from '@/libs/OpenAI';
+import { buildTraceMetadata } from '@/utils/TraceMetadataBuilder';
 
 const requestSchema = z.object({
   transcriptSelection: z.string().min(50, 'Transcript selection too short'),
@@ -26,8 +29,9 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
+    let user;
     try {
-      await verifyIdToken(token);
+      user = await verifyIdToken(token);
     } catch (error) {
       return NextResponse.json(
         { error: 'Invalid token' },
@@ -104,6 +108,38 @@ Focus on moments of:
 
 Create vivid, cinematic image prompts that would be therapeutic for the patient to see.`;
 
+    // Build trace metadata for observability
+    const traceMetadata = buildTraceMetadata({
+      user,
+      patientId: validated.patientId,
+      patientName: validated.patientName,
+      additionalTags: ['generate-scenes', validated.model],
+    });
+
+    // Create Langfuse trace and generation
+    const trace = createTrace('openai-generate-scenes', {
+      ...traceMetadata,
+      tags: ['openai', 'generate-scenes', validated.model, ...(traceMetadata.tags || [])],
+    });
+
+    if (trace) {
+      trace.update({
+        input: { systemPrompt, userPrompt },
+      });
+    }
+
+    const generation = createTextGeneration(trace, 'chat-completion', {
+      model: validated.model,
+      input: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      modelParameters: {
+        temperature: 0.7,
+        maxTokens: 2000,
+      },
+    });
+
     const completion = await openai.chat.completions.create({
       model: validated.model,
       messages: [
@@ -117,8 +153,32 @@ Create vivid, cinematic image prompts that would be therapeutic for the patient 
 
     const responseText = completion.choices[0]?.message.content;
     if (!responseText) {
+      endTextGeneration(generation, {
+        output: null,
+        statusMessage: 'No response from AI',
+      });
+      await flushLangfuse();
       throw new Error('No response from AI');
     }
+
+    // End generation with success
+    endTextGeneration(generation, {
+      output: responseText,
+      usage: {
+        inputTokens: completion.usage?.prompt_tokens,
+        outputTokens: completion.usage?.completion_tokens,
+        totalTokens: completion.usage?.total_tokens,
+      },
+    });
+
+    if (trace) {
+      trace.update({
+        output: responseText,
+      });
+    }
+
+    // Flush asynchronously
+    flushLangfuse().catch(console.error);
 
     const sceneData = JSON.parse(responseText);
 

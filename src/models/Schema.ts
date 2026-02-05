@@ -218,6 +218,33 @@ export const recordingLinkStatusEnum = pgEnum('recording_link_status', [
   'revoked', // Link manually revoked
 ]);
 
+// AI Model Management Enums
+export const modelCategoryEnum = pgEnum('model_category', [
+  'text_to_image',
+  'image_to_image',
+  'image_to_text',
+  'text_to_text',
+  'text_to_video',
+  'image_to_video',
+  'music_generation',
+  'transcription',
+]);
+
+export const modelStatusEnum = pgEnum('model_status', [
+  'active',
+  'hidden',
+  'deprecated',
+  'disabled',
+]);
+
+export const pricingUnitEnum = pgEnum('pricing_unit', [
+  'per_image',
+  'per_second',
+  'per_minute',
+  'per_1k_tokens',
+  'per_request',
+]);
+
 // ============================================================================
 // ORGANIZATIONS
 // ============================================================================
@@ -1621,6 +1648,39 @@ export const uploadedRecordingsSchema = pgTable('uploaded_recordings', {
 }));
 
 // ============================================================================
+// AI MODEL MANAGEMENT
+// ============================================================================
+
+export const aiModelsSchema = pgTable('ai_models', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  modelId: varchar('model_id', { length: 100 }).unique().notNull(),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
+  description: text('description'),
+  category: modelCategoryEnum('category').notNull(),
+  provider: varchar('provider', { length: 100 }).notNull(),
+  providerGroup: varchar('provider_group', { length: 100 }),
+  status: modelStatusEnum('status').default('active').notNull(),
+  sortOrder: integer('sort_order').default(0).notNull(),
+  costPerUnit: decimal('cost_per_unit', { precision: 10, scale: 6 }),
+  pricingUnit: pricingUnitEnum('pricing_unit'),
+  capabilities: jsonb('capabilities').$type<{
+    supportsReference?: boolean;
+    maxReferenceImages?: number;
+    supportsPrompt?: boolean;
+    maxOutputDuration?: number;
+    maxResolution?: string;
+  }>().default({}),
+  apiModelId: varchar('api_model_id', { length: 255 }),
+  apiProvider: varchar('api_provider', { length: 100 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, table => ({
+  categoryIdx: index('ai_models_category_idx').on(table.category),
+  statusIdx: index('ai_models_status_idx').on(table.status),
+  providerIdx: index('ai_models_provider_idx').on(table.provider),
+}));
+
+// ============================================================================
 // ENGAGEMENT TRACKING
 // ============================================================================
 
@@ -1694,6 +1754,7 @@ export const auditLogs = auditLogsSchema;
 export const platformSettings = platformSettingsSchema;
 export const recordingLinks = recordingLinksSchema;
 export const uploadedRecordings = uploadedRecordingsSchema;
+export const aiModels = aiModelsSchema;
 
 // ============================================================================
 // DRIZZLE RELATIONS (Required for .with() query syntax)
@@ -1903,6 +1964,14 @@ export type NewRecordingLink = typeof recordingLinksSchema.$inferInsert;
 
 export type UploadedRecording = typeof uploadedRecordingsSchema.$inferSelect;
 export type NewUploadedRecording = typeof uploadedRecordingsSchema.$inferInsert;
+
+export type AiModel = typeof aiModelsSchema.$inferSelect;
+export type NewAiModel = typeof aiModelsSchema.$inferInsert;
+
+// Model category type from enum
+export type ModelCategory = typeof modelCategoryEnum.enumValues[number];
+export type ModelStatus = typeof modelStatusEnum.enumValues[number];
+export type PricingUnit = typeof pricingUnitEnum.enumValues[number];
 
 // Audio chunk type for uploadedRecordings.audioChunks
 export type AudioChunk = {

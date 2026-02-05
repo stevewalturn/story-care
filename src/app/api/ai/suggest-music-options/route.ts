@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { generateText } from '@/libs/TextGeneration';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
+import { buildTraceMetadata } from '@/utils/TraceMetadataBuilder';
 
 /**
  * POST /api/ai/suggest-music-options
@@ -10,7 +11,7 @@ import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 export async function POST(request: NextRequest) {
   try {
     // Authenticate
-    await requireTherapist(request);
+    const user = await requireTherapist(request);
 
     const body = await request.json();
     const { scenePrompts, patientName } = body;
@@ -57,6 +58,12 @@ ${promptContext}
 
 Create both an instrumental option (calming, therapeutic background music) and a lyrical option (song with meaningful lyrics) that would complement these scenes. Consider the emotional journey, key themes, and therapeutic goals implied by the scenes.`;
 
+    // Build trace metadata for observability
+    const traceMetadata = buildTraceMetadata({
+      user,
+      additionalTags: ['suggest-music-options', 'gpt-4o-mini'],
+    });
+
     const response = await generateText({
       model: 'gpt-4o-mini',
       messages: [
@@ -65,6 +72,7 @@ Create both an instrumental option (calming, therapeutic background music) and a
       ],
       temperature: 0.7,
       maxTokens: 1000,
+      traceMetadata,
     });
 
     // Parse JSON response

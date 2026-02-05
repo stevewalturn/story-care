@@ -25,9 +25,15 @@ import {
 // ============================================================
 
 export type TraceMetadata = {
-  userId?: string;
-  sessionId?: string;
+  userId?: string; // Database UUID (dbUserId)
+  firebaseUid?: string; // Firebase UID for cross-reference
+  userEmail?: string; // User's email for filtering
+  userName?: string; // Display name
+  userRole?: 'super_admin' | 'org_admin' | 'therapist' | 'patient';
   organizationId?: string;
+  patientId?: string; // Patient's database UUID
+  patientName?: string; // Patient's name
+  sessionId?: string; // Therapy session ID
   tags?: string[];
   metadata?: Record<string, unknown>;
 };
@@ -123,7 +129,13 @@ export function createTrace(
     tags: options?.tags,
     metadata: {
       ...options?.metadata,
+      firebaseUid: options?.firebaseUid,
+      userEmail: options?.userEmail,
+      userName: options?.userName,
+      userRole: options?.userRole,
       organizationId: options?.organizationId,
+      patientId: options?.patientId,
+      patientName: options?.patientName,
     },
   });
 }

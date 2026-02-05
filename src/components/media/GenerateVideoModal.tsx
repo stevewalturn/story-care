@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
-import { VIDEO_GENERATION_MODELS } from '@/libs/ModelMetadata';
+import { useVideoModels } from '@/hooks/useAiModels';
 
 type ReferenceImage = {
   id: string;
@@ -43,16 +43,7 @@ const MOTION_TYPES = [
   { id: 'dynamic', label: 'Dynamic', description: 'Energetic, engaging' },
 ];
 
-// Helper to find a video model by value across all categories
-function findVideoModel(modelValue: string) {
-  for (const [category, models] of Object.entries(VIDEO_GENERATION_MODELS)) {
-    const model = models.find(m => m.value === modelValue);
-    if (model) {
-      return { ...model, category };
-    }
-  }
-  return null;
-}
+// Helper function moved to component to access hook data
 
 export function GenerateVideoModal({
   isOpen,
@@ -66,13 +57,23 @@ export function GenerateVideoModal({
 }: GenerateVideoModalProps) {
   const { user } = useAuth();
 
+  // Get video models from database
+  const { models: videoModels, allModels: allVideoModels, findModel } = useVideoModels();
+
   // Form state
   const [prompt, setPrompt] = useState(initialPrompt);
-  const [selectedModel, setSelectedModel] = useState('seedance-v1.5-pro-i2v');
+  const [selectedModel, setSelectedModel] = useState('sora-2-i2v-pro'); // Default to best model
   const [duration, setDuration] = useState('5');
   const [style, setStyle] = useState('cinematic');
   const [motion, setMotion] = useState('medium');
   const [showModelDropdown, setShowModelDropdown] = useState(false);
+
+  // Set default model when models load
+  useEffect(() => {
+    if (allVideoModels.length > 0 && !allVideoModels.find(m => m.modelId === selectedModel)) {
+      setSelectedModel(allVideoModels[0]?.modelId || 'sora-2-i2v-pro');
+    }
+  }, [allVideoModels, selectedModel]);
 
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false);
@@ -376,7 +377,7 @@ export function GenerateVideoModal({
     return null;
   }
 
-  const currentModel = findVideoModel(selectedModel);
+  const currentModel = findModel(selectedModel);
 
   return (
     <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black p-4">
@@ -527,7 +528,7 @@ export function GenerateVideoModal({
                   className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-left text-sm transition-colors hover:border-gray-300"
                 >
                   <div>
-                    <span className="font-medium text-gray-900">{currentModel?.label}</span>
+                    <span className="font-medium text-gray-900">{currentModel?.displayName || selectedModel}</span>
                     <span className="ml-2 text-xs text-gray-500">{currentModel?.description}</span>
                   </div>
                   <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${showModelDropdown ? 'rotate-180' : ''}`} />
@@ -537,28 +538,28 @@ export function GenerateVideoModal({
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setShowModelDropdown(false)} />
                     <div className="absolute top-full right-0 left-0 z-20 mt-1 max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
-                      {Object.entries(VIDEO_GENERATION_MODELS).map(([category, models]) => (
-                        <div key={category}>
+                      {Object.entries(videoModels).map(([provider, models]) => (
+                        <div key={provider}>
                           <div className="sticky top-0 border-b border-gray-100 bg-gray-50 px-3 py-1.5 text-xs font-semibold tracking-wide text-gray-500 uppercase">
-                            {category}
+                            {provider}
                           </div>
                           {models.map(model => (
                             <button
-                              key={model.value}
+                              key={model.modelId}
                               type="button"
                               onClick={() => {
-                                setSelectedModel(model.value);
+                                setSelectedModel(model.modelId);
                                 setShowModelDropdown(false);
                               }}
                               className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50 ${
-                                model.value === selectedModel ? 'bg-purple-50' : ''
+                                model.modelId === selectedModel ? 'bg-purple-50' : ''
                               }`}
                             >
                               <div>
-                                <span className="font-medium text-gray-900">{model.label}</span>
+                                <span className="font-medium text-gray-900">{model.displayName}</span>
                                 <span className="ml-2 text-xs text-gray-500">{model.description}</span>
                               </div>
-                              {model.value === selectedModel && <Check className="h-4 w-4 text-purple-600" />}
+                              {model.modelId === selectedModel && <Check className="h-4 w-4 text-purple-600" />}
                             </button>
                           ))}
                         </div>

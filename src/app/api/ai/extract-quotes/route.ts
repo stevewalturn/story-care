@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { generateText } from '@/libs/TextGeneration';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 import { aiRateLimit, checkRateLimit, getClientIP } from '@/utils/RateLimiter';
+import { buildTraceMetadata } from '@/utils/TraceMetadataBuilder';
 
 export type ExtractedQuote = {
   quoteText: string;
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Authentication
-    await requireTherapist(request);
+    const user = await requireTherapist(request);
 
     // Validate input
     const body = await request.json();
@@ -78,10 +79,17 @@ Return ONLY a valid JSON array, no other text:
       { role: 'user', content: `Extract all quotes from the following text:\n\n${text}` },
     ];
 
+    // Build trace metadata for observability
+    const traceMetadata = buildTraceMetadata({
+      user,
+      additionalTags: ['extract-quotes', model],
+    });
+
     const result = await generateText({
       messages,
       model: model as TextGenModel,
       maxTokens: 4000,
+      traceMetadata,
     });
 
     // Parse the response as JSON

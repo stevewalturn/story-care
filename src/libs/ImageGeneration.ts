@@ -3,6 +3,7 @@
  * Consolidates all image generation providers into a single interface
  */
 
+import type { TraceMetadata } from './LangfuseTracing';
 import type { AtlasImageModel } from './providers/AtlasCloud';
 import type { FalModel } from './providers/FalAI';
 import type { GeminiImageModel } from './providers/GeminiImage';
@@ -26,6 +27,7 @@ export type ImageGenerationOptions = {
   quality?: 'standard' | 'hd';
   style?: 'natural' | 'vivid';
   referenceImages?: string[]; // Array of Base64 or URLs for image-to-image (supports multiple)
+  traceMetadata?: TraceMetadata;
 };
 
 export type ImageGenerationResult = {
@@ -59,6 +61,7 @@ export async function generateImage(
       prompt,
       model,
       referenceImage: options.referenceImages?.[0], // Gemini only supports single image
+      traceMetadata: options.traceMetadata,
     });
   }
 
@@ -76,6 +79,7 @@ export async function generateImage(
       negativePrompt: options.negativePrompt,
       aspectRatio: options.aspectRatio,
       seed: options.seed,
+      traceMetadata: options.traceMetadata,
     });
   }
 
@@ -231,6 +235,7 @@ export async function generateImage(
       size,
       seed: options.seed,
       referenceImages: options.referenceImages, // Pass reference images array for image-to-image models
+      traceMetadata: options.traceMetadata,
     });
   }
 
@@ -249,6 +254,7 @@ export async function generateImage(
       height: options.height,
       seed: options.seed,
       negativePrompt: options.negativePrompt,
+      traceMetadata: options.traceMetadata,
     });
   }
 

@@ -3,7 +3,7 @@
 import { Check, ChevronDown, HelpCircle, Info, Loader2, Play, Redo, Undo } from 'lucide-react';
 import { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { getAllImageModelsFlat, getAvailableVideoModels, getFilteredImageModels } from '@/libs/ModelMetadata';
+import { useImageModels, useVideoModels } from '@/hooks/useAiModels';
 
 type Patient = {
   id: string;
@@ -92,19 +92,23 @@ export function SceneGenerationTopBar({
     }, 150);
   };
 
+  // Get models from database
+  const { models: textToImageModels, findModel: findTextToImageModel } = useImageModels(false);
+  const { models: imageToImageModels, findModel: findImageToImageModel } = useImageModels(true);
+  const { models: videoModels } = useVideoModels();
+
   // Get filtered image models based on useReference toggle
-  const imageModels = getFilteredImageModels(useReference);
-  const videoModels = getAvailableVideoModels();
+  const imageModels = useReference ? imageToImageModels : textToImageModels;
 
   // Check if selected image model supports prompts
-  const selectedModelMeta = getAllImageModelsFlat().find(m => m.value === selectedImageModel);
-  const modelSupportsPrompt = selectedModelMeta?.supportsPrompt ?? true;
+  const selectedModelMeta = findTextToImageModel(selectedImageModel) || findImageToImageModel(selectedImageModel);
+  const modelSupportsPrompt = selectedModelMeta?.capabilities?.supportsPrompt ?? true;
 
   // Get display label for selected image model
   const getImageModelLabel = (value: string) => {
     for (const providerModels of Object.values(imageModels)) {
-      const model = providerModels.find(m => m.value === value);
-      if (model) return model.label.split(' - ')[0]; // Get short name without price
+      const model = providerModels.find(m => m.modelId === value);
+      if (model) return model.displayName.split(' - ')[0]; // Get short name without price
     }
     return value;
   };
@@ -112,8 +116,8 @@ export function SceneGenerationTopBar({
   // Get display label for selected video model
   const getVideoModelLabel = (value: string) => {
     for (const providerModels of Object.values(videoModels)) {
-      const model = providerModels.find(m => m.value === value);
-      if (model) return model.label.split(' - ')[0]; // Get short name without price
+      const model = providerModels.find(m => m.modelId === value);
+      if (model) return model.displayName.split(' - ')[0]; // Get short name without price
     }
     return value;
   };
@@ -249,24 +253,24 @@ export function SceneGenerationTopBar({
                     </div>
                     {providerModels.map(model => (
                       <button
-                        key={model.value}
+                        key={model.modelId}
                         onClick={() => {
-                          onImageModelChange(model.value);
+                          onImageModelChange(model.modelId);
                           setShowImageModelDropdown(false);
                         }}
                         className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50 ${
-                          model.value === selectedImageModel ? 'bg-purple-50 font-medium text-purple-600' : 'text-gray-700'
+                          model.modelId === selectedImageModel ? 'bg-purple-50 font-medium text-purple-600' : 'text-gray-700'
                         }`}
                       >
-                        <span>{model.label}</span>
-                        {model.supportsReference && model.maxReferenceImages > 0 && (
+                        <span>{model.displayName}</span>
+                        {model.capabilities?.supportsReference && (model.capabilities?.maxReferenceImages ?? 0) > 0 && (
                           <span className={`ml-2 rounded px-1.5 py-0.5 text-xs ${
-                            model.maxReferenceImages === 1
+                            (model.capabilities?.maxReferenceImages ?? 0) === 1
                               ? 'bg-amber-100 text-amber-700'
                               : 'bg-green-100 text-green-700'
                           }`}
                           >
-                            {model.maxReferenceImages === 1 ? '1 ref' : `${model.maxReferenceImages}+ refs`}
+                            {(model.capabilities?.maxReferenceImages ?? 0) === 1 ? '1 ref' : `${model.capabilities?.maxReferenceImages}+ refs`}
                           </span>
                         )}
                       </button>
@@ -318,17 +322,17 @@ export function SceneGenerationTopBar({
                     </div>
                     {providerModels.map(model => (
                       <button
-                        key={model.value}
+                        key={model.modelId}
                         onClick={() => {
-                          onVideoModelChange(model.value);
+                          onVideoModelChange(model.modelId);
                           setShowVideoModelDropdown(false);
                         }}
                         className={`w-full px-3 py-2 text-left transition-colors hover:bg-gray-50 ${
-                          model.value === selectedVideoModel ? 'bg-purple-50 font-medium text-purple-600' : 'text-gray-700'
+                          model.modelId === selectedVideoModel ? 'bg-purple-50 font-medium text-purple-600' : 'text-gray-700'
                         }`}
                       >
-                        <div className="text-sm">{model.label}</div>
-                        {'description' in model && model.description && (
+                        <div className="text-sm">{model.displayName}</div>
+                        {model.description && (
                           <div className="text-xs text-gray-500">{model.description}</div>
                         )}
                       </button>
@@ -387,8 +391,8 @@ export function SceneGenerationTopBar({
                                 const currentSelected = selectedReferenceImageIds || referenceImages.map(i => i.id);
 
                                 // Get current model's max reference images
-                                const modelMeta = getAllImageModelsFlat().find(m => m.value === selectedImageModel);
-                                const maxRefs = modelMeta?.maxReferenceImages || 4;
+                                const modelMeta = findTextToImageModel(selectedImageModel) || findImageToImageModel(selectedImageModel);
+                                const maxRefs = modelMeta?.capabilities?.maxReferenceImages ?? 4;
 
                                 if (isSelected) {
                                   // Deselecting - ensure at least one remains
@@ -399,7 +403,7 @@ export function SceneGenerationTopBar({
                                 } else {
                                   // Selecting - check if we're at the limit
                                   if (currentSelected.length >= maxRefs) {
-                                    toast(`${modelMeta?.label || 'This model'} only supports ${maxRefs} reference image${maxRefs === 1 ? '' : 's'}`, {
+                                    toast(`${modelMeta?.displayName || 'This model'} only supports ${maxRefs} reference image${maxRefs === 1 ? '' : 's'}`, {
                                       icon: '⚠️',
                                     });
                                     return;

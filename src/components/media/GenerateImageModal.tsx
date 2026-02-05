@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAllImageModelsFlat, getFilteredImageModels } from '@/libs/ModelMetadata';
+import { useImageModels } from '@/hooks/useAiModels';
 
 type Patient = {
   id: string;
@@ -80,17 +80,21 @@ export function GenerateImageModal({
   const [savingAsReference, setSavingAsReference] = useState(false);
   // Default to text-to-image when a prompt is provided (so prompt is used), otherwise image-to-image
   const [useReference, setUseReference] = useState(!initialPrompt);
+  const [selectedModel, setSelectedModel] = useState('flux-schnell');
 
-  // Get available models based on useReference toggle - filtered by category
-  const imageModels = getFilteredImageModels(useReference);
-  const allAvailableModels = Object.values(imageModels).flat();
-  const [selectedModel, setSelectedModel] = useState(() => {
-    // Default based on mode: flux-schnell for text-to-image, flux-redux-dev for image-to-image
-    const preferredModel = useReference
-      ? allAvailableModels.find(m => m.value === 'flux-redux-dev')
-      : allAvailableModels.find(m => m.value === 'flux-schnell');
-    return preferredModel?.value || allAvailableModels[0]?.value || 'flux-schnell';
-  });
+  // Get available models from database based on useReference toggle
+  const { models: imageModels, allModels: allAvailableModels, findModel } = useImageModels(useReference);
+
+  // Set default model when models load
+  useEffect(() => {
+    if (allAvailableModels.length > 0 && !allAvailableModels.find(m => m.modelId === selectedModel)) {
+      // Default based on mode: flux-schnell for text-to-image, flux-redux-pro for image-to-image
+      const preferredModel = useReference
+        ? allAvailableModels.find(m => m.modelId === 'flux-redux-pro')
+        : allAvailableModels.find(m => m.modelId === 'flux-schnell');
+      setSelectedModel(preferredModel?.modelId || allAvailableModels[0]?.modelId || 'flux-schnell');
+    }
+  }, [allAvailableModels, useReference, selectedModel]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -118,8 +122,8 @@ export function GenerateImageModal({
   const hasGeneratedImages = generatedImages.length > 0 || generatingSlots.length > 0;
 
   // Get current model metadata for reference image limits
-  const currentModelMeta = getAllImageModelsFlat().find(m => m.value === selectedModel);
-  const maxReferenceImages = currentModelMeta?.maxReferenceImages ?? 0;
+  const currentModelMeta = findModel(selectedModel);
+  const maxReferenceImages = currentModelMeta?.capabilities?.maxReferenceImages ?? 0;
 
   // Update state when initial props change (when modal opens with new data from JSON actions)
   useEffect(() => {
@@ -134,19 +138,7 @@ export function GenerateImageModal({
     }
   }, [isOpen, initialPrompt, initialTitle, initialDescription, initialSourceQuote, initialStyle]);
 
-  // Switch model when useReference changes
-  useEffect(() => {
-    const filteredModels = getFilteredImageModels(useReference);
-    const allModels = Object.values(filteredModels).flat();
-    // If current model is not in new list, switch to preferred or first available
-    if (!allModels.find(m => m.value === selectedModel)) {
-      // Prefer appropriate model based on mode
-      const preferredModel = useReference
-        ? allModels.find(m => m.value === 'flux-redux-dev')
-        : allModels.find(m => m.value === 'flux-schnell');
-      setSelectedModel(preferredModel?.value || allModels[0]?.value || 'flux-schnell');
-    }
-  }, [useReference, selectedModel]);
+  // Switch model when useReference changes - handled in the useEffect above that watches allAvailableModels
 
   // Fetch reference images for the patient (transcript page)
   useEffect(() => {
@@ -754,8 +746,8 @@ export function GenerateImageModal({
   }
 
   // Get additional model info for UI display
-  const currentModelLabel = currentModelMeta?.label || selectedModel;
-  const modelSupportsPrompt = currentModelMeta?.supportsPrompt ?? true;
+  const currentModelLabel = currentModelMeta?.displayName || selectedModel;
+  const modelSupportsPrompt = currentModelMeta?.capabilities?.supportsPrompt ?? true;
 
   return (
     <Modal
@@ -1119,14 +1111,14 @@ export function GenerateImageModal({
               >
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-gray-900">{currentModelLabel}</span>
-                  {currentModelMeta?.supportsReference && currentModelMeta.maxReferenceImages > 0 && (
+                  {currentModelMeta?.capabilities?.supportsReference && (currentModelMeta.capabilities?.maxReferenceImages ?? 0) > 0 && (
                     <span className={`rounded px-1.5 py-0.5 text-xs ${
-                      currentModelMeta.maxReferenceImages === 1
+                      (currentModelMeta.capabilities?.maxReferenceImages ?? 0) === 1
                         ? 'bg-amber-100 text-amber-700'
                         : 'bg-green-100 text-green-700'
                     }`}
                     >
-                      {currentModelMeta.maxReferenceImages === 1 ? '1 ref' : `${currentModelMeta.maxReferenceImages}+ refs`}
+                      {(currentModelMeta.capabilities?.maxReferenceImages ?? 0) === 1 ? '1 ref' : `${currentModelMeta.capabilities?.maxReferenceImages}+ refs`}
                     </span>
                   )}
                 </div>
@@ -1154,29 +1146,29 @@ export function GenerateImageModal({
                         </div>
                         {providerModels.map(model => (
                           <button
-                            key={model.value}
+                            key={model.modelId}
                             type="button"
                             onClick={() => {
-                              setSelectedModel(model.value);
+                              setSelectedModel(model.modelId);
                               setShowModelDropdown(false);
                             }}
                             className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50 ${
-                              model.value === selectedModel ? 'bg-purple-50 font-medium text-purple-600' : 'text-gray-700'
+                              model.modelId === selectedModel ? 'bg-purple-50 font-medium text-purple-600' : 'text-gray-700'
                             }`}
                           >
-                            <span>{model.label}</span>
+                            <span>{model.displayName}</span>
                             <div className="flex items-center gap-2">
-                              {model.supportsReference && model.maxReferenceImages > 0 && (
+                              {model.capabilities?.supportsReference && (model.capabilities?.maxReferenceImages ?? 0) > 0 && (
                                 <span className={`rounded px-1.5 py-0.5 text-xs ${
-                                  model.maxReferenceImages === 1
+                                  (model.capabilities?.maxReferenceImages ?? 0) === 1
                                     ? 'bg-amber-100 text-amber-700'
                                     : 'bg-green-100 text-green-700'
                                 }`}
                                 >
-                                  {model.maxReferenceImages === 1 ? '1 ref' : `${model.maxReferenceImages}+ refs`}
+                                  {(model.capabilities?.maxReferenceImages ?? 0) === 1 ? '1 ref' : `${model.capabilities?.maxReferenceImages}+ refs`}
                                 </span>
                               )}
-                              {model.value === selectedModel && (
+                              {model.modelId === selectedModel && (
                                 <Check className="h-4 w-4 text-purple-600" />
                               )}
                             </div>

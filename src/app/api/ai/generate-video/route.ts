@@ -1,13 +1,15 @@
 import type { NextRequest } from 'next/server';
+import type { TraceMetadata } from '@/libs/LangfuseTracing';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { uploadFile } from '@/libs/GCS';
 import { generateVideo } from '@/libs/VideoGeneration';
-import { mediaLibrary } from '@/models/Schema';
+import { mediaLibrary, users } from '@/models/Schema';
 import { VideoService } from '@/services/VideoService';
 import { VideoTaskService } from '@/services/VideoTaskService';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
+import { buildTraceMetadata } from '@/utils/TraceMetadataBuilder';
 
 // POST /api/ai/generate-video - Generate video
 export async function POST(request: NextRequest) {
@@ -36,14 +38,29 @@ export async function POST(request: NextRequest) {
 
     // 2. GET PATIENT ID from session if not provided
     let finalPatientId = patientId;
+    let patientName: string | undefined;
     let groupId = null;
 
     if (!finalPatientId && sessionId) {
       const session = await db.query.sessions.findFirst({
         where: (sessions, { eq }) => eq(sessions.id, sessionId),
+        with: { patient: { columns: { id: true, name: true } } },
       });
       finalPatientId = session?.patientId;
+      const sessionPatient = session?.patient;
+      patientName = sessionPatient && !Array.isArray(sessionPatient) ? sessionPatient.name : undefined;
       groupId = session?.groupId;
+    } else if (finalPatientId) {
+      // Fetch patient name if we have patient ID
+      try {
+        const patient = await db.query.users.findFirst({
+          where: eq(users.id, finalPatientId),
+          columns: { name: true },
+        });
+        patientName = patient?.name || undefined;
+      } catch (error) {
+        console.error('Error fetching patient name:', error);
+      }
     }
 
     // For group sessions, patientId can be null - media belongs to the group/session
@@ -83,6 +100,15 @@ export async function POST(request: NextRequest) {
       .returning();
     const placeholderMedia = (placeholderResult as any[])[0];
 
+    // Build trace metadata for observability
+    const traceMetadata = buildTraceMetadata({
+      user,
+      sessionId,
+      patientId: finalPatientId,
+      patientName,
+      additionalTags: ['generate-video', model],
+    });
+
     // 6. START ASYNC VIDEO GENERATION (non-blocking)
     generateVideoAsync({
       taskId,
@@ -92,10 +118,12 @@ export async function POST(request: NextRequest) {
       duration,
       fps,
       patientId: finalPatientId,
+      patientName,
       sessionId,
       title,
       therapistId: user.dbUserId,
       mediaId: placeholderMedia.id, // Pass placeholder ID to update later
+      traceMetadata,
     }).catch((error) => {
       console.error('Video generation async error:', error);
       VideoTaskService.failTask(taskId, error.message);
@@ -131,14 +159,16 @@ type VideoGenParams = {
   duration: number;
   fps: number;
   patientId: string;
+  patientName?: string;
   sessionId?: string;
   title: string;
   therapistId: string;
   mediaId: string; // Placeholder media ID to update
+  traceMetadata?: TraceMetadata;
 };
 
 async function generateVideoAsync(params: VideoGenParams) {
-  const { taskId, prompt, model, referenceImage, duration, fps, mediaId } = params;
+  const { taskId, prompt, model, referenceImage, duration, fps, mediaId, traceMetadata } = params;
 
   try {
     // Update task status to processing
@@ -163,6 +193,7 @@ async function generateVideoAsync(params: VideoGenParams) {
       referenceImage,
       duration,
       fps,
+      traceMetadata,
     });
 
     const videoUrl = result.videoUrl;

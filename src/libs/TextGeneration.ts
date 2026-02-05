@@ -3,6 +3,7 @@
  * Consolidates all chat/text generation providers into a single interface
  */
 
+import type { TraceMetadata } from './LangfuseTracing';
 import type { GeminiChatModel } from './providers/GeminiChat';
 import type { OpenAIChatModel } from './providers/OpenAIChat';
 
@@ -18,6 +19,7 @@ export type TextGenerationOptions = {
   model: TextGenModel;
   temperature?: number;
   maxTokens?: number;
+  traceMetadata?: TraceMetadata;
 };
 
 export type TextGenerationResult = {
@@ -31,7 +33,7 @@ export type TextGenerationResult = {
 export async function generateText(
   options: TextGenerationOptions,
 ): Promise<TextGenerationResult> {
-  const { model, messages, temperature, maxTokens } = options;
+  const { model, messages, temperature, maxTokens, traceMetadata } = options;
 
   // Route to OpenAI
   if (
@@ -55,6 +57,7 @@ export async function generateText(
       model: model as OpenAIChatModel,
       temperature,
       maxTokens,
+      traceMetadata,
     });
     return { message, model };
   }
@@ -75,6 +78,7 @@ export async function generateText(
       model: model as GeminiChatModel,
       temperature,
       maxTokens,
+      traceMetadata,
     });
     return { message, model };
   }

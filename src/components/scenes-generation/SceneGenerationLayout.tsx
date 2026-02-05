@@ -7,8 +7,8 @@ import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { AssetPickerModal } from '@/components/pages/AssetPickerModal';
 import { useAuth } from '@/contexts/AuthContext';
+import { useImageModels, useVideoModels } from '@/hooks/useAiModels';
 import { useVideoJobPolling } from '@/hooks/useVideoJobPolling';
-import { getAllImageModelsFlat, getFilteredImageModels, isValidVideoModel } from '@/libs/ModelMetadata';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 import { generateSceneDescription, generateSceneTitle } from '@/utils/SceneHelpers';
 import { CompilationProgressModal } from './CompilationProgressModal';
@@ -69,6 +69,11 @@ export function SceneGenerationLayout({
 }: SceneGenerationLayoutProps) {
   const { user } = useAuth();
 
+  // Get models from database
+  const { allModels: allImageModels, findModel: findImageModel } = useImageModels(false);
+  const { allModels: allImageToImageModels, findModel: findImageToImageModel } = useImageModels(true);
+  useVideoModels(); // Preload video models for TopBar component
+
   // Patient state - use prop if provided, otherwise allow selection
   const [patient, setPatient] = useState<Patient | undefined>(patientProp);
   const [availablePatients, setAvailablePatients] = useState<Patient[]>([]);
@@ -87,19 +92,12 @@ export function SceneGenerationLayout({
     return 'flux-dev';
   });
   const [selectedVideoModel, setSelectedVideoModel] = useState(() => {
-    const defaultModel = 'seedance-v1.5-pro-i2v';
+    const defaultModel = 'sora-2-i2v-pro';
     // Load persisted video model from localStorage
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('sceneGeneration_videoModel');
-      // Validate saved model - if invalid (e.g., old 'seedance-1-lite'), use default
-      if (saved && isValidVideoModel(saved)) {
-        return saved;
-      }
-      // Clear invalid model from localStorage
-      if (saved) {
-        console.warn(`[SceneGeneration] Invalid saved video model: "${saved}", resetting to default`);
-        localStorage.removeItem('sceneGeneration_videoModel');
-      }
+      // We'll validate against database models after they load
+      return saved || defaultModel;
     }
     return defaultModel;
   });
@@ -415,17 +413,16 @@ export function SceneGenerationLayout({
 
   // Always reset to first available model when useReference changes
   useEffect(() => {
-    const imageModels = getFilteredImageModels(useReference);
-    const allAvailableModels = Object.values(imageModels).flat();
+    const currentModels = useReference ? allImageToImageModels : allImageModels;
 
     // Always reset to first model when useReference changes
-    if (allAvailableModels.length > 0) {
-      const firstModel = allAvailableModels[0];
-      if (firstModel && firstModel.value !== selectedImageModel) {
-        setSelectedImageModel(firstModel.value);
+    if (currentModels.length > 0) {
+      const firstModel = currentModels[0];
+      if (firstModel && firstModel.modelId !== selectedImageModel) {
+        setSelectedImageModel(firstModel.modelId);
       }
     }
-  }, [useReference]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [useReference, allImageModels, allImageToImageModels]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch patient reference images from API
   useEffect(() => {
@@ -489,21 +486,22 @@ export function SceneGenerationLayout({
 
   // Auto-limit selected reference images when switching to a model with fewer maxReferenceImages
   useEffect(() => {
-    const modelMeta = getAllImageModelsFlat().find(m => m.value === selectedImageModel);
-    if (modelMeta && modelMeta.maxReferenceImages > 0) {
+    const modelMeta = findImageModel(selectedImageModel) || findImageToImageModel(selectedImageModel);
+    const maxRefs = modelMeta?.capabilities?.maxReferenceImages ?? 0;
+    if (modelMeta && maxRefs > 0) {
       // Trim selection if it exceeds model's max
-      if (selectedReferenceImageIds.length > modelMeta.maxReferenceImages) {
-        setSelectedReferenceImageIds(prev => prev.slice(0, modelMeta.maxReferenceImages));
-        toast(`${modelMeta.label} supports ${modelMeta.maxReferenceImages} reference image${modelMeta.maxReferenceImages === 1 ? '' : 's'}. Selection trimmed.`, {
+      if (selectedReferenceImageIds.length > maxRefs) {
+        setSelectedReferenceImageIds(prev => prev.slice(0, maxRefs));
+        toast(`${modelMeta.displayName} supports ${maxRefs} reference image${maxRefs === 1 ? '' : 's'}. Selection trimmed.`, {
           icon: 'ℹ️',
         });
       }
     }
-  }, [selectedImageModel]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedImageModel, findImageModel, findImageToImageModel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check if selected image model supports prompts
-  const selectedModelMeta = getAllImageModelsFlat().find(m => m.value === selectedImageModel);
-  const selectedModelSupportsPrompt = selectedModelMeta?.supportsPrompt ?? true;
+  const selectedModelMeta = findImageModel(selectedImageModel) || findImageToImageModel(selectedImageModel);
+  const selectedModelSupportsPrompt = selectedModelMeta?.capabilities?.supportsPrompt ?? true;
 
   // Poll for music generation task status (every 5 seconds)
   useEffect(() => {
