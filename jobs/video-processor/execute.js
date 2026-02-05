@@ -210,8 +210,9 @@ function formatPrivateKey(key) {
 
   // Handle single-escaped (\n as 2 characters: backslash + n)
   // This regex matches literal backslash followed by 'n'
-  if (/\\n/.test(formatted) && !formatted.includes('\n')) {
-    console.log('  - Detected single-escaped newlines (no actual newlines yet)');
+  // Always convert these - a mix of literal \n and actual newlines can occur
+  if (/\\n/.test(formatted)) {
+    console.log('  - Detected single-escaped newlines, converting...');
     formatted = formatted.replace(/\\n/g, '\n');
   }
 
