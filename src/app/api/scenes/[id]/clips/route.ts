@@ -92,6 +92,9 @@ export async function POST(
       );
     }
 
+    // Default duration for clips without explicit endTimeSeconds (e.g., images)
+    const DEFAULT_CLIP_DURATION_SECONDS = '10';
+
     // Insert new clip
     const [newClip] = await db
       .insert(sceneClips)
@@ -100,7 +103,7 @@ export async function POST(
         mediaId,
         sequenceNumber,
         startTimeSeconds: startTimeSeconds || '0',
-        endTimeSeconds: endTimeSeconds || null,
+        endTimeSeconds: endTimeSeconds || DEFAULT_CLIP_DURATION_SECONDS,
       })
       .returning();
 
@@ -134,14 +137,17 @@ export async function PUT(
     // Delete all existing clips for this scene
     await db.delete(sceneClips).where(eq(sceneClips.sceneId, sceneId));
 
+    // Default duration for clips without explicit endTimeSeconds (e.g., images)
+    const DEFAULT_CLIP_DURATION_SECONDS = '10';
+
     // Insert new clips
     if (clips.length > 0) {
       const newClips = clips.map((clip: any) => ({
         sceneId,
         mediaId: clip.mediaId,
         sequenceNumber: clip.sequenceNumber,
-        startTimeSeconds: clip.startTimeSeconds,
-        endTimeSeconds: clip.endTimeSeconds,
+        startTimeSeconds: clip.startTimeSeconds || '0',
+        endTimeSeconds: clip.endTimeSeconds || DEFAULT_CLIP_DURATION_SECONDS,
       }));
 
       await db.insert(sceneClips).values(newClips);

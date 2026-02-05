@@ -1440,74 +1440,76 @@ export function SceneGenerationLayout({
               onPromptChange={setMusicPrompt}
             />
           </div>
+
+          {/* Compiled Video Player - shown when scene is completed */}
+          {completedVideoUrl && (
+            <div className="mb-8">
+              <div className="mx-auto max-w-4xl overflow-hidden rounded-xl border border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowCompiledVideo(!showCompiledVideo)}
+                  className="flex w-full items-center gap-2 border-b border-gray-200 bg-gray-50 px-4 py-2 transition-colors hover:bg-gray-100"
+                >
+                  <PlayCircle className="h-4 w-4 text-green-600" />
+                  <h3 className="text-sm font-medium text-gray-700">Compiled Video</h3>
+                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                    Ready to view
+                  </span>
+                  <span className="ml-auto">
+                    {showCompiledVideo ? (
+                      <ChevronUp className="h-4 w-4 text-gray-500" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-gray-500" />
+                    )}
+                  </span>
+                </button>
+                {showCompiledVideo && (
+                  <div className="relative h-80 bg-black">
+                    {videoLoading && !videoError && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-white" />
+                      </div>
+                    )}
+                    {videoError ? (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+                        <p className="mb-2 text-sm">Failed to load video</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setVideoError(false);
+                            setVideoLoading(true);
+                          }}
+                          className="rounded bg-white/20 px-3 py-1 text-xs hover:bg-white/30"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    ) : (
+                      <video
+                        key={completedVideoUrl}
+                        src={completedVideoUrl}
+                        controls
+                        controlsList="nodownload"
+                        preload="metadata"
+                        className="h-full w-full object-contain"
+                        playsInline
+                        onLoadedData={() => setVideoLoading(false)}
+                        onError={(e) => {
+                          console.error('[Video Player] Error loading video:', e);
+                          setVideoError(true);
+                          setVideoLoading(false);
+                        }}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Bottom Action Bar */}
         <div className="border-t border-gray-200 bg-white px-8 py-4">
-          {/* Compiled Video Player - shown when scene is completed */}
-          {completedVideoUrl && (
-            <div className="mx-auto mb-4 max-w-4xl overflow-hidden rounded-xl border border-gray-200">
-              <button
-                type="button"
-                onClick={() => setShowCompiledVideo(!showCompiledVideo)}
-                className="flex w-full items-center gap-2 border-b border-gray-200 bg-gray-50 px-4 py-2 transition-colors hover:bg-gray-100"
-              >
-                <PlayCircle className="h-4 w-4 text-green-600" />
-                <h3 className="text-sm font-medium text-gray-700">Compiled Video</h3>
-                <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                  Ready to view
-                </span>
-                <span className="ml-auto">
-                  {showCompiledVideo ? (
-                    <ChevronUp className="h-4 w-4 text-gray-500" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 text-gray-500" />
-                  )}
-                </span>
-              </button>
-              {showCompiledVideo && (
-                <div className="relative h-80 bg-black">
-                  {videoLoading && !videoError && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-white" />
-                    </div>
-                  )}
-                  {videoError ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-                      <p className="mb-2 text-sm">Failed to load video</p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setVideoError(false);
-                          setVideoLoading(true);
-                        }}
-                        className="rounded bg-white/20 px-3 py-1 text-xs hover:bg-white/30"
-                      >
-                        Retry
-                      </button>
-                    </div>
-                  ) : (
-                    <video
-                      key={completedVideoUrl}
-                      src={completedVideoUrl}
-                      controls
-                      controlsList="nodownload"
-                      preload="metadata"
-                      className="h-full w-full object-contain"
-                      playsInline
-                      onLoadedData={() => setVideoLoading(false)}
-                      onError={(e) => {
-                        console.error('[Video Player] Error loading video:', e);
-                        setVideoError(true);
-                        setVideoLoading(false);
-                      }}
-                    />
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
           <div className="flex items-center justify-between">
             {/* Back Button - Gray outline style (always enabled, compilation runs async) */}
             <button

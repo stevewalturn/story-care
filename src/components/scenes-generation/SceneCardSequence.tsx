@@ -72,7 +72,7 @@ function SortableSceneCard({
   return (
     <div
       className="flex-shrink-0"
-      style={{ width: '380px' }}
+      style={{ width: '480px' }}
     >
       <SceneCard
         ref={setNodeRef}
@@ -167,7 +167,7 @@ export function SceneCardSequence({
               {canAddMore && onAddScene && (
                 <div
                   className="flex-shrink-0"
-                  style={{ width: '380px' }}
+                  style={{ width: '480px' }}
                 >
                   <button
                     onClick={onAddScene}

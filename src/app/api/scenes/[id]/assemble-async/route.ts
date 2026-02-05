@@ -52,6 +52,9 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       );
     }
 
+    // Default duration for clips without explicit endTimeSeconds (e.g., images)
+    const DEFAULT_CLIP_DURATION_SECONDS = 10;
+
     // Transform clips for video service with presigned URLs
     const videoClips = await Promise.all(
       clips.map(async (c) => {
@@ -67,12 +70,19 @@ export async function POST(_request: NextRequest, context: RouteContext) {
         // Generate presigned URL (24 hour expiry for Cloud Run processing)
         const presignedUrl = await generatePresignedUrl(gcsPath, 24);
 
+        // Calculate duration with fallback for images or clips without endTimeSeconds
+        const startTime = Number.parseFloat(c.clip.startTimeSeconds || '0');
+        const endTime = Number.parseFloat(c.clip.endTimeSeconds || '0');
+        const calculatedDuration = endTime - startTime;
+
+        // Use default duration if calculated duration is 0 or negative
+        // This handles images and cases where endTimeSeconds is null/missing
+        const duration = calculatedDuration > 0 ? calculatedDuration : DEFAULT_CLIP_DURATION_SECONDS;
+
         return {
           mediaUrl: presignedUrl,
-          startTime: Number.parseFloat(c.clip.startTimeSeconds || '0'),
-          duration:
-            Number.parseFloat(c.clip.endTimeSeconds || '0')
-            - Number.parseFloat(c.clip.startTimeSeconds || '0'),
+          startTime,
+          duration,
           type: (c.media.mediaType === 'video' ? 'video' : 'image') as 'video' | 'image',
         };
       }),
