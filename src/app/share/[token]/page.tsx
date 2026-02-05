@@ -6,8 +6,8 @@
 
 'use client';
 
-import { Heart, Pause, Play, Send, Sparkles, Volume2, VolumeX } from 'lucide-react';
-import { use, useEffect, useRef, useState } from 'react';
+import { Heart, Music, Send, Sparkles } from 'lucide-react';
+import { use, useEffect, useState } from 'react';
 import { HTMLContent } from '@/components/ui/HTMLContent';
 import { markdownToHTML } from '@/utils/MarkdownToHTML';
 
@@ -33,7 +33,6 @@ type PageData = {
     description: string | null;
     status: string;
     patientName: string;
-    backgroundMusicUrl?: string | null;
   };
   blocks: any[];
   reflectionQuestions: any[];
@@ -57,11 +56,6 @@ export default function PublicSharePage({ params }: Props) {
   const [surveyAnswers, setSurveyAnswers] = useState<Record<string, string | number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
-
-  // Background music state
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
     fetchPageData();
@@ -384,6 +378,26 @@ export default function PublicSharePage({ params }: Props) {
                 </div>
               )}
 
+              {/* Audio Block */}
+              {block.blockType === 'audio' && block.settings?.mediaUrl && (
+                <div className="my-10 sm:my-14">
+                  <div className="rounded-2xl border border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 p-6">
+                    <div className="mb-4 flex items-center gap-2 text-green-700">
+                      <Music className="h-5 w-5" />
+                      <span className="text-sm font-medium">Audio</span>
+                    </div>
+                    <audio
+                      src={block.settings.mediaUrl}
+                      controls
+                      className="w-full"
+                    />
+                    {block.textContent && (
+                      <p className="mt-4 text-sm leading-relaxed text-gray-600">{block.textContent}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Reflection Block - Intimate & Inviting */}
               {block.blockType === 'reflection' && blockQuestions.length > 0 && (
                 <section className="my-12 sm:my-16">
@@ -561,50 +575,6 @@ export default function PublicSharePage({ params }: Props) {
           </div>
         )}
       </main>
-
-      {/* Floating Audio Player for Background Music */}
-      {pageData.page.backgroundMusicUrl && (
-        <>
-          <audio
-            ref={audioRef}
-            src={pageData.page.backgroundMusicUrl}
-            loop
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-          />
-          <div className="fixed right-4 bottom-4 z-50 flex items-center gap-2 rounded-full bg-white px-4 py-3 shadow-lg sm:right-6 sm:bottom-6">
-            <button
-              onClick={() => {
-                if (audioRef.current) {
-                  if (isPlaying) {
-                    audioRef.current.pause();
-                  } else {
-                    audioRef.current.play();
-                  }
-                }
-              }}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-600 text-white transition-all hover:bg-purple-700 active:scale-95"
-              type="button"
-              title={isPlaying ? 'Pause music' : 'Play music'}
-            >
-              {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="ml-0.5 h-5 w-5" />}
-            </button>
-            <button
-              onClick={() => {
-                if (audioRef.current) {
-                  audioRef.current.muted = !isMuted;
-                  setIsMuted(!isMuted);
-                }
-              }}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100"
-              type="button"
-              title={isMuted ? 'Unmute' : 'Mute'}
-            >
-              {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            </button>
-          </div>
-        </>
-      )}
     </div>
   );
 }

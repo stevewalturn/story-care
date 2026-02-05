@@ -196,6 +196,20 @@ export function StoryPageViewer({ pageId, isPublicShare: _isPublicShare = false 
               </div>
             )}
 
+            {/* Audio Block */}
+            {block.blockType === 'audio' && block.mediaUrl && (
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                <audio
+                  src={block.mediaUrl}
+                  controls
+                  className="w-full"
+                />
+                {block.textContent && (
+                  <p className="mt-3 text-sm text-gray-600">{block.textContent}</p>
+                )}
+              </div>
+            )}
+
             {/* Quote Block */}
             {block.blockType === 'quote' && (
               <blockquote className="border-l-4 border-purple-500 bg-purple-50 px-6 py-4 text-gray-800 italic">

@@ -11,7 +11,6 @@ type StoryPage = {
   videoUrl?: string;
   text: string;
   narrationAudioUrl?: string;
-  backgroundMusicUrl?: string;
 };
 
 type Story = {
@@ -52,7 +51,6 @@ export default function StoryViewPage({ params }: { params: Promise<{ storyId: s
             imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&h=800&fit=crop',
             text: 'In a world of constant noise, Emma found herself searching for silence. Not the absence of sound, but the presence of peace.',
             narrationAudioUrl: '/audio/narration1.mp3',
-            backgroundMusicUrl: '/audio/ambient1.mp3',
           },
           {
             id: '2',

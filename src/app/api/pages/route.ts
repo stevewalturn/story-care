@@ -125,22 +125,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { patientId, title, blocks, backgroundMusicUrl } = body;
+    const { patientId, title, blocks } = body;
 
     if (!patientId || !title) {
       return NextResponse.json(
         { error: 'patientId and title are required' },
         { status: 400 },
       );
-    }
-
-    // Extract GCS path from background music URL if present
-    let musicUrl = backgroundMusicUrl || null;
-    if (musicUrl) {
-      const gcsPath = extractGcsPath(musicUrl);
-      if (gcsPath) {
-        musicUrl = gcsPath;
-      }
     }
 
     // Create page
@@ -151,7 +142,6 @@ export async function POST(request: NextRequest) {
         patientId,
         title,
         status: 'draft',
-        backgroundMusicUrl: musicUrl,
       })
       .returning();
 

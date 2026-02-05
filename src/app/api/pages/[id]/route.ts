@@ -2,7 +2,8 @@ import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { extractGcsPath, generatePresignedUrl } from '@/libs/GCS';
+import { generatePresignedUrl } from '@/libs/GCS';
+import { extractGcsPath } from '@/utils/GCSUtils';
 import { pageBlocks, patientPageInteractions, reflectionQuestions, reflectionResponses, scenes, storyPages, surveyQuestions, surveyResponses } from '@/models/Schema';
 
 type RouteContext = {
@@ -23,16 +24,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     if (!page) {
       return NextResponse.json({ error: 'Page not found' }, { status: 404 });
-    }
-
-    // Generate presigned URL for background music if present
-    let backgroundMusicSignedUrl = null;
-    if (page.backgroundMusicUrl) {
-      try {
-        backgroundMusicSignedUrl = await generatePresignedUrl(page.backgroundMusicUrl, 1);
-      } catch (error) {
-        console.error('Error generating presigned URL for background music:', error);
-      }
     }
 
     const blocks = await db
@@ -126,10 +117,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       }
 
       return NextResponse.json({
-        page: {
-          ...page,
-          backgroundMusicUrl: backgroundMusicSignedUrl || page.backgroundMusicUrl,
-        },
+        page,
         blocks: blocksWithSignedUrls,
         reflectionQuestions: allReflectionQuestions,
         surveyQuestions: allSurveyQuestions,
@@ -137,10 +125,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     return NextResponse.json({
-      page: {
-        ...page,
-        backgroundMusicUrl: backgroundMusicSignedUrl || page.backgroundMusicUrl,
-      },
+      page,
       blocks: blocksWithSignedUrls,
     });
   } catch (error) {
@@ -157,7 +142,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
     const body = await request.json();
-    const { title, blocks, status, patientId, backgroundMusicUrl } = body;
+    const { title, blocks, status, patientId } = body;
 
     // Update page
     const updateData: any = { updatedAt: new Date() };
@@ -172,17 +157,6 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     }
     if (patientId !== undefined) {
       updateData.patientId = patientId;
-    }
-    if (backgroundMusicUrl !== undefined) {
-      // Extract GCS path if needed
-      let musicUrl = backgroundMusicUrl;
-      if (musicUrl) {
-        const gcsPath = extractGcsPath(musicUrl);
-        if (gcsPath) {
-          musicUrl = gcsPath;
-        }
-      }
-      updateData.backgroundMusicUrl = musicUrl;
     }
 
     const [page] = await db

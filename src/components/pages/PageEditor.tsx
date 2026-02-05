@@ -17,7 +17,7 @@ import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { extractGcsPath } from '@/utils/GCSUtils';
 import { markdownToHTML } from '@/utils/MarkdownToHTML';
 
-type BlockType = 'text' | 'image' | 'video' | 'quote' | 'note' | 'scene' | 'reflection' | 'survey';
+type BlockType = 'text' | 'image' | 'video' | 'audio' | 'quote' | 'note' | 'scene' | 'reflection' | 'survey';
 
 type QuestionType = 'open_text' | 'scale' | 'multiple_choice' | 'yes_no';
 
@@ -99,11 +99,10 @@ type PageEditorProps = {
   initialTitle?: string;
   initialBlocks?: ContentBlock[];
   initialPatientId?: string;
-  initialBackgroundMusicUrl?: string;
-  initialBackgroundMusicTitle?: string;
   patients?: Patient[];
-  onSave: (title: string, blocks: ContentBlock[], patientId: string | null, backgroundMusicUrl?: string | null) => void;
+  onSave: (title: string, blocks: ContentBlock[], patientId: string | null) => void;
   onClose?: () => void;
+  isSaving?: boolean;
 };
 
 /**
@@ -128,11 +127,10 @@ export function PageEditor({
   initialTitle = 'Untitled Page',
   initialBlocks = [],
   initialPatientId,
-  initialBackgroundMusicUrl,
-  initialBackgroundMusicTitle,
   patients = [],
   onSave,
   onClose: _onClose,
+  isSaving = false,
 }: PageEditorProps) {
   const { user } = useAuth();
   const [title, setTitle] = useState(initialTitle);
@@ -141,10 +139,9 @@ export function PageEditor({
   const [showPreview, setShowPreview] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(initialPatientId || null);
 
-  // Background music
-  const [backgroundMusicUrl, setBackgroundMusicUrl] = useState<string | null>(initialBackgroundMusicUrl || null);
-  const [backgroundMusicTitle, setBackgroundMusicTitle] = useState<string | null>(initialBackgroundMusicTitle || null);
-  const [showMusicPicker, setShowMusicPicker] = useState(false);
+  // Audio picker for audio blocks
+  const [showAudioPicker, setShowAudioPicker] = useState(false);
+  const [audioPickerBlockId, setAudioPickerBlockId] = useState<string | null>(null);
 
   // Template selection
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -170,6 +167,7 @@ export function PageEditor({
     { value: 'text', label: 'Text', icon: Type },
     { value: 'image', label: 'Image', icon: ImageIcon },
     { value: 'video', label: 'Video', icon: Video },
+    { value: 'audio', label: 'Audio', icon: Music, iconColor: 'text-green-600' },
     { value: 'quote', label: 'Quote', icon: FileText },
     { value: 'note', label: 'Note', icon: StickyNote, iconColor: 'text-amber-600' },
     { value: 'scene', label: 'Scene', icon: Clapperboard },
@@ -525,6 +523,48 @@ export function PageEditor({
             </Button>
           </div>
         );
+      case 'audio':
+        return (
+          <div className="space-y-2">
+            {(block.content.displayUrl || block.content.mediaUrl) && (
+              <div className="relative rounded-lg border border-green-200 bg-green-50 p-4">
+                <div className="flex items-center gap-3">
+                  <Music className="h-5 w-5 text-green-600" />
+                  <audio
+                    src={block.content.displayUrl || block.content.mediaUrl}
+                    controls
+                    className="flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => updateBlockContent(block.id, { mediaUrl: undefined, displayUrl: undefined })}
+                    className="rounded-full p-1 text-green-600 transition-colors hover:bg-green-100"
+                    title="Remove audio"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+            <PageBlockEditor
+              content={block.content.text || ''}
+              onChange={html => updateBlockContent(block.id, { text: html })}
+              placeholder="Add a caption (optional)..."
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setAudioPickerBlockId(block.id);
+                setShowAudioPicker(true);
+              }}
+              className="w-full"
+            >
+              <Music className="mr-2 h-4 w-4" />
+              {(block.content.displayUrl || block.content.mediaUrl) ? 'Change Audio' : 'Browse Library'}
+            </Button>
+          </div>
+        );
       case 'quote':
         return (
           <div className="space-y-2">
@@ -856,35 +896,6 @@ export function PageEditor({
               ))}
             </select>
           </div>
-          {/* Background Music Picker */}
-          {backgroundMusicUrl ? (
-            <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
-              <Music className="h-4 w-4 text-green-600" />
-              <span className="max-w-[120px] truncate text-sm font-medium text-green-700">
-                {backgroundMusicTitle || 'Background Music'}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setBackgroundMusicUrl(null);
-                  setBackgroundMusicTitle(null);
-                }}
-                className="rounded p-0.5 text-green-600 hover:bg-green-100"
-                title="Remove background music"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          ) : (
-            <Button
-              variant="ghost"
-              onClick={() => setShowMusicPicker(true)}
-              className="border border-gray-200"
-            >
-              <Music className="mr-2 h-4 w-4" />
-              Add Music
-            </Button>
-          )}
           <Button
             variant={showPreview ? 'secondary' : 'ghost'}
             onClick={() => setShowPreview(!showPreview)}
@@ -895,8 +906,9 @@ export function PageEditor({
           </Button>
           <Button
             variant="primary"
-            onClick={() => onSave(title, blocks, selectedPatientId, backgroundMusicUrl)}
-            disabled={blocks.length === 0 || !selectedPatientId}
+            onClick={() => onSave(title, blocks, selectedPatientId)}
+            disabled={blocks.length === 0 || !selectedPatientId || isSaving}
+            isLoading={isSaving}
           >
             Save Page
           </Button>
@@ -1018,6 +1030,10 @@ export function PageEditor({
                             <div className="flex h-10 w-10 items-center justify-center rounded bg-gray-800">
                               <Video className="h-4 w-4 text-white" />
                             </div>
+                          ) : block.type === 'audio' ? (
+                            <div className="flex h-10 w-10 items-center justify-center rounded bg-green-100">
+                              <Music className="h-4 w-4 text-green-600" />
+                            </div>
                           ) : null}
                         </div>
                       )}
@@ -1092,6 +1108,23 @@ export function PageEditor({
                         controls
                         className="h-auto w-full"
                       />
+                    </div>
+                  )}
+                  {block.type === 'audio' && (block.content.displayUrl || block.content.mediaUrl) && (
+                    <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                      <div className="flex items-center gap-3">
+                        <Music className="h-5 w-5 text-green-600" />
+                        <audio
+                          src={block.content.displayUrl || block.content.mediaUrl}
+                          controls
+                          className="flex-1"
+                        />
+                      </div>
+                      {block.content.text && (
+                        <div className="mt-3 text-sm text-gray-700">
+                          <HTMLContent html={renderContent(block.content.text)} />
+                        </div>
+                      )}
                     </div>
                   )}
                   {block.type === 'quote' && block.content.text && (
@@ -1341,19 +1374,25 @@ export function PageEditor({
         patientId={selectedPatientId || undefined}
       />
 
-      {/* Music Picker Modal */}
+      {/* Audio Picker Modal (for audio blocks) */}
       <AssetPickerModal
-        isOpen={showMusicPicker}
-        onClose={() => setShowMusicPicker(false)}
+        isOpen={showAudioPicker}
+        onClose={() => {
+          setShowAudioPicker(false);
+          setAudioPickerBlockId(null);
+        }}
         onSelect={(asset) => {
-          if (asset.type === 'media') {
+          if (asset.type === 'media' && audioPickerBlockId) {
             const mediaAsset = asset.data as { mediaUrl: string; title: string | null };
             // Extract GCS path from presigned URL for saving
             const gcsPath = extractGcsPath(mediaAsset.mediaUrl);
-            setBackgroundMusicUrl(gcsPath || mediaAsset.mediaUrl);
-            setBackgroundMusicTitle(mediaAsset.title || 'Background Music');
+            updateBlockContent(audioPickerBlockId, {
+              mediaUrl: gcsPath || mediaAsset.mediaUrl,
+              displayUrl: mediaAsset.mediaUrl,
+            });
           }
-          setShowMusicPicker(false);
+          setShowAudioPicker(false);
+          setAudioPickerBlockId(null);
         }}
         mediaOnly={true}
         mediaTypeDefault="audio"

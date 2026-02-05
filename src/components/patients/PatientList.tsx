@@ -1,9 +1,9 @@
 'use client';
 
 import type { PatientReferenceImage } from '@/models/Schema';
-import { ArrowRight, BookOpen, ChevronLeft, ChevronRight, FileText, Filter, Mail, MessageSquare, Plus, Search, User, Video } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowRight, BookOpen, ChevronLeft, ChevronRight, FileText, Filter, Mail, MessageSquare, MoreVertical, Plus, Search, Trash2, User, Video } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -30,13 +30,24 @@ type PatientListProps = {
   onAddClick: () => void;
   onEditClick: (patient: Patient) => void;
   onDeleteClick: (patientId: string) => void;
+  // Archive functionality
+  view?: 'active' | 'archived';
+  onViewChange?: (view: 'active' | 'archived') => void;
+  onArchiveClick?: (patientId: string) => Promise<void>;
+  onUnarchiveClick?: (patientId: string) => Promise<void>;
+  userRole?: string;
 };
 
 export function PatientList({
   patients,
   onAddClick,
   onEditClick: _onEditClick,
-  onDeleteClick: _onDeleteClick,
+  onDeleteClick,
+  view = 'active',
+  onViewChange,
+  onArchiveClick,
+  onUnarchiveClick,
+  userRole,
 }: PatientListProps) {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,6 +56,14 @@ export function PatientList({
   const [hoveredPatientId, setHoveredPatientId] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [resendSuccess, setResendSuccess] = useState<string | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [archiveConfirmId, setArchiveConfirmId] = useState<string | null>(null);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const isTherapist = userRole === 'therapist';
+  const isAdmin = userRole === 'org_admin' || userRole === 'super_admin';
+  const canArchive = isTherapist && !!onArchiveClick && !!onUnarchiveClick;
 
   const filteredPatients = patients.filter(patient =>
     patient.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -78,6 +97,29 @@ export function PatientList({
     }
   };
 
+  const handleArchiveConfirm = async (patientId: string) => {
+    if (!onArchiveClick) return;
+    setArchivingId(patientId);
+    try {
+      await onArchiveClick(patientId);
+    } finally {
+      setArchivingId(null);
+      setArchiveConfirmId(null);
+      setOpenDropdownId(null);
+    }
+  };
+
+  const handleUnarchive = async (patientId: string) => {
+    if (!onUnarchiveClick) return;
+    setArchivingId(patientId);
+    try {
+      await onUnarchiveClick(patientId);
+    } finally {
+      setArchivingId(null);
+      setOpenDropdownId(null);
+    }
+  };
+
   return (
     <div>
       {/* Header */}
@@ -94,10 +136,40 @@ export function PatientList({
         </Button>
       </div>
 
+      {/* Archive Tabs (only for therapists) */}
+      {canArchive && onViewChange && (
+        <div className="mb-4 flex gap-2">
+          <button
+            type="button"
+            onClick={() => onViewChange('active')}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              view === 'active'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Active
+          </button>
+          <button
+            type="button"
+            onClick={() => onViewChange('archived')}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              view === 'archived'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Archived
+          </button>
+        </div>
+      )}
+
       {/* Patients Table Card */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">All Patients</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            {view === 'archived' ? 'Archived Patients' : 'All Patients'}
+          </h2>
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -255,12 +327,97 @@ export function PatientList({
 
                           {/* Actions */}
                           <td className="px-4 py-4 whitespace-nowrap">
-                            <Link
-                              href={`/admin/patients/${patient.id}`}
-                              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-                            >
-                              <ArrowRight className="h-4 w-4" />
-                            </Link>
+                            <div className="flex items-center gap-1">
+                              <Link
+                                href={`/admin/patients/${patient.id}`}
+                                className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                              >
+                                <ArrowRight className="h-4 w-4" />
+                              </Link>
+
+                              {/* Actions dropdown (for therapists: archive/unarchive, for admins: delete) */}
+                              {(canArchive || isAdmin) && (
+                                <div className="relative" ref={openDropdownId === patient.id ? dropdownRef : null}>
+                                  <button
+                                    type="button"
+                                    onClick={() => setOpenDropdownId(openDropdownId === patient.id ? null : patient.id)}
+                                    className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                                  >
+                                    <MoreVertical className="h-4 w-4" />
+                                  </button>
+
+                                  {openDropdownId === patient.id && (
+                                    <div className="absolute right-0 z-10 mt-1 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                                      {/* Archive/Unarchive option (therapists only) */}
+                                      {canArchive && view === 'active' && (
+                                        archiveConfirmId === patient.id
+                                          ? (
+                                              <div className="px-3 py-2">
+                                                <p className="mb-2 text-xs text-gray-600">
+                                                  This removes the patient from your list only. No data is deleted.
+                                                </p>
+                                                <div className="flex gap-2">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleArchiveConfirm(patient.id)}
+                                                    disabled={archivingId === patient.id}
+                                                    className="flex-1 rounded bg-amber-500 px-2 py-1 text-xs font-medium text-white hover:bg-amber-600 disabled:opacity-50"
+                                                  >
+                                                    {archivingId === patient.id ? 'Archiving...' : 'Confirm'}
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => setArchiveConfirmId(null)}
+                                                    className="flex-1 rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
+                                                  >
+                                                    Cancel
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            )
+                                          : (
+                                              <button
+                                                type="button"
+                                                onClick={() => setArchiveConfirmId(patient.id)}
+                                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                                              >
+                                                <Archive className="h-4 w-4" />
+                                                Archive from my list
+                                              </button>
+                                            )
+                                      )}
+
+                                      {canArchive && view === 'archived' && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleUnarchive(patient.id)}
+                                          disabled={archivingId === patient.id}
+                                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                                        >
+                                          <ArchiveRestore className="h-4 w-4" />
+                                          {archivingId === patient.id ? 'Restoring...' : 'Unarchive'}
+                                        </button>
+                                      )}
+
+                                      {/* Delete option (admins only) */}
+                                      {isAdmin && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setOpenDropdownId(null);
+                                            onDeleteClick(patient.id);
+                                          }}
+                                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                          Delete patient
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );

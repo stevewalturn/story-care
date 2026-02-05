@@ -42,13 +42,12 @@ export default function NewPagePage() {
     }
   }, [user, fetchPatients]);
 
-  const handleSavePage = async (title: string, blocks: any[], patientId: string | null, backgroundMusicUrl?: string | null) => {
+  const handleSavePage = async (title: string, blocks: any[], patientId: string | null) => {
     try {
       const response = await authenticatedPost('/api/pages', user, {
         title,
         blocks,
         patientId,
-        backgroundMusicUrl,
       });
 
       if (!response.ok) {

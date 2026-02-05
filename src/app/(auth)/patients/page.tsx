@@ -32,10 +32,12 @@ export default function PatientsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | undefined>();
+  const [view, setView] = useState<'active' | 'archived'>('active');
 
   const isOrgAdmin = dbUser?.role === 'org_admin';
+  const isTherapist = dbUser?.role === 'therapist';
 
-  // Fetch patients from API when user is available
+  // Fetch patients from API when user is available or view changes
   useEffect(() => {
     if (user?.uid) {
       fetchPatients();
@@ -43,7 +45,7 @@ export default function PatientsPage() {
         fetchTherapists();
       }
     }
-  }, [user, isOrgAdmin]);
+  }, [user, isOrgAdmin, view]);
 
   const fetchPatients = async () => {
     if (!user?.uid) {
@@ -52,7 +54,9 @@ export default function PatientsPage() {
 
     try {
       setLoading(true);
-      const response = await authenticatedFetch('/api/patients', user);
+      // Include view parameter for therapists (archive filtering)
+      const url = isTherapist ? `/api/patients?view=${view}` : '/api/patients';
+      const response = await authenticatedFetch(url, user);
       if (response.ok) {
         const data = await response.json();
         setPatients(data.patients || []);
@@ -146,6 +150,36 @@ export default function PatientsPage() {
     }
   };
 
+  const handleArchive = async (patientId: string) => {
+    try {
+      const response = await authenticatedPost(`/api/patients/${patientId}/archive`, user, {});
+      if (response.ok) {
+        await fetchPatients();
+      } else {
+        console.error('Failed to archive patient');
+      }
+    } catch (error) {
+      console.error('Error archiving patient:', error);
+    }
+  };
+
+  const handleUnarchive = async (patientId: string) => {
+    try {
+      const response = await authenticatedDelete(`/api/patients/${patientId}/archive`, user);
+      if (response.ok) {
+        await fetchPatients();
+      } else {
+        console.error('Failed to unarchive patient');
+      }
+    } catch (error) {
+      console.error('Error unarchiving patient:', error);
+    }
+  };
+
+  const handleViewChange = (newView: 'active' | 'archived') => {
+    setView(newView);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       {loading
@@ -161,6 +195,11 @@ export default function PatientsPage() {
               onAddClick={handleAddClick}
               onEditClick={handleEditClick}
               onDeleteClick={handleDelete}
+              view={view}
+              onViewChange={handleViewChange}
+              onArchiveClick={handleArchive}
+              onUnarchiveClick={handleUnarchive}
+              userRole={dbUser?.role}
             />
           )}
 

@@ -5,7 +5,7 @@
  */
 
 import type { NextRequest } from 'next/server';
-import { and, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, inArray, isNull, notInArray, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { Env } from '@/libs/Env';
@@ -17,6 +17,7 @@ import {
   sessions as sessionsSchema,
   storyPages as storyPagesSchema,
   surveyResponses as surveyResponsesSchema,
+  therapistPatientArchives,
   users,
 } from '@/models/Schema';
 import { sendPatientInvitationEmail } from '@/services/EmailService';
@@ -30,10 +31,11 @@ import { invitePatientSchema } from '@/validations/UserValidation';
  * Query Parameters:
  * - search: Filter by name (optional)
  * - therapistId: Filter by therapist Firebase UID (optional)
+ * - view: 'active' | 'archived' - Filter by archive status (therapists only, default: 'active')
  *
  * Access Control:
  * - Org admins: See all patients in their organization
- * - Therapists: See only their assigned patients
+ * - Therapists: See only their assigned patients (with archive filtering)
  * - Super admins: See all patients across all organizations
  */
 export async function GET(request: NextRequest) {
@@ -44,6 +46,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const therapistFirebaseUid = searchParams.get('therapistId');
+    const view = searchParams.get('view') || 'active'; // 'active' | 'archived'
 
     // Build query conditions
     const conditions = [
@@ -64,6 +67,29 @@ export async function GET(request: NextRequest) {
     } else if (authUser.role === 'therapist') {
       // Therapists can only see their assigned patients
       conditions.push(eq(users.therapistId, authUser.dbUserId));
+
+      // Archive filtering for therapists only
+      // Get list of archived patient IDs for this therapist
+      const archivedPatientIds = await db
+        .select({ patientId: therapistPatientArchives.patientId })
+        .from(therapistPatientArchives)
+        .where(eq(therapistPatientArchives.therapistId, authUser.dbUserId));
+
+      const archivedIds = archivedPatientIds.map(row => row.patientId);
+
+      if (view === 'active') {
+        // Show only non-archived patients
+        if (archivedIds.length > 0) {
+          conditions.push(notInArray(users.id, archivedIds));
+        }
+      } else if (view === 'archived') {
+        // Show only archived patients
+        if (archivedIds.length === 0) {
+          // No archived patients - return empty list
+          return NextResponse.json({ patients: [] });
+        }
+        conditions.push(inArray(users.id, archivedIds));
+      }
 
       // If therapist also filters by therapistId, ensure it's their own ID
       if (therapistFirebaseUid && therapistFirebaseUid !== authUser.uid) {

@@ -13,16 +13,13 @@ import {
   FileText,
   Heart,
   Loader2,
-  Pause,
-  Play,
+  Music,
   Send,
   Sparkles,
   StickyNote,
-  Volume2,
-  VolumeX,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { use, useEffect, useRef, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { HTMLContent } from '@/components/ui/HTMLContent';
 import { useAuth } from '@/contexts/AuthContext';
 import { markdownToHTML } from '@/utils/MarkdownToHTML';
@@ -49,7 +46,6 @@ type PageData = {
     description: string | null;
     status: string;
     patientName: string;
-    backgroundMusicUrl?: string | null;
   };
   blocks: any[];
   reflectionQuestions: any[];
@@ -71,11 +67,6 @@ export default function PatientStoryPage({ params }: Props) {
   const [surveyAnswers, setSurveyAnswers] = useState<Record<string, string | number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
-
-  // Background music state
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
     fetchPageData();
@@ -376,6 +367,34 @@ export default function PatientStoryPage({ params }: Props) {
                 </div>
               )}
 
+              {/* Audio Block - Clean & Accessible */}
+              {block.blockType === 'audio' && block.settings?.mediaUrl && (
+                <div className="my-10 sm:my-14">
+                  <div className="flex items-start gap-4 rounded-2xl bg-green-50 p-6">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-green-100">
+                      <Music className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div className="flex-1 space-y-3">
+                      <audio
+                        src={block.settings.mediaUrl}
+                        controls
+                        controlsList="nodownload"
+                        preload="metadata"
+                        className="w-full"
+                      >
+                        Your browser does not support the audio tag.
+                      </audio>
+                      {block.textContent && (
+                        <HTMLContent
+                          html={renderContent(block.textContent)}
+                          className="prose prose-base max-w-none leading-relaxed text-gray-700"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Quote Block - Striking & Personal */}
               {block.blockType === 'quote' && block.textContent && (
                 <blockquote className="relative my-12 py-8 sm:my-16">
@@ -645,49 +664,6 @@ export default function PatientStoryPage({ params }: Props) {
         )}
       </main>
 
-      {/* Floating Audio Player for Background Music */}
-      {pageData.page.backgroundMusicUrl && (
-        <>
-          <audio
-            ref={audioRef}
-            src={pageData.page.backgroundMusicUrl}
-            loop
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-          />
-          <div className="fixed right-4 bottom-20 z-50 flex items-center gap-2 rounded-full bg-white px-4 py-3 shadow-lg md:right-6 md:bottom-6">
-            <button
-              onClick={() => {
-                if (audioRef.current) {
-                  if (isPlaying) {
-                    audioRef.current.pause();
-                  } else {
-                    audioRef.current.play();
-                  }
-                }
-              }}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-600 text-white transition-all hover:bg-purple-700 active:scale-95"
-              type="button"
-              title={isPlaying ? 'Pause music' : 'Play music'}
-            >
-              {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="ml-0.5 h-5 w-5" />}
-            </button>
-            <button
-              onClick={() => {
-                if (audioRef.current) {
-                  audioRef.current.muted = !isMuted;
-                  setIsMuted(!isMuted);
-                }
-              }}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100"
-              type="button"
-              title={isMuted ? 'Unmute' : 'Mute'}
-            >
-              {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            </button>
-          </div>
-        </>
-      )}
     </div>
   );
 }
