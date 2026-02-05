@@ -198,14 +198,21 @@ export function StoryPageViewer({ pageId, isPublicShare: _isPublicShare = false 
 
             {/* Audio Block */}
             {block.blockType === 'audio' && block.mediaUrl && (
-              <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+              <div className="rounded-lg border border-green-200 bg-green-50 p-6">
+                <div className="mb-4 flex items-center gap-2 text-green-700">
+                  <span className="text-sm font-medium">{block.settings?.title || 'Audio'}</span>
+                </div>
                 <audio
                   src={block.mediaUrl}
                   controls
                   className="w-full"
                 />
                 {block.textContent && (
-                  <p className="mt-3 text-sm text-gray-600">{block.textContent}</p>
+                  <div className="prose prose-sm mt-3 max-w-none text-gray-600">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {block.textContent}
+                    </ReactMarkdown>
+                  </div>
                 )}
               </div>
             )}

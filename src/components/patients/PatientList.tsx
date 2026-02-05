@@ -7,6 +7,7 @@ import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import { ConfirmDialog } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -57,8 +58,9 @@ export function PatientList({
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [resendSuccess, setResendSuccess] = useState<string | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-  const [archiveConfirmId, setArchiveConfirmId] = useState<string | null>(null);
+  const [archiveModalPatient, setArchiveModalPatient] = useState<Patient | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
+  const [deleteModalPatient, setDeleteModalPatient] = useState<Patient | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isTherapist = userRole === 'therapist';
@@ -97,14 +99,14 @@ export function PatientList({
     }
   };
 
-  const handleArchiveConfirm = async (patientId: string) => {
-    if (!onArchiveClick) return;
-    setArchivingId(patientId);
+  const handleArchiveConfirm = async () => {
+    if (!onArchiveClick || !archiveModalPatient) return;
+    setArchivingId(archiveModalPatient.id);
     try {
-      await onArchiveClick(patientId);
+      await onArchiveClick(archiveModalPatient.id);
     } finally {
       setArchivingId(null);
-      setArchiveConfirmId(null);
+      setArchiveModalPatient(null);
       setOpenDropdownId(null);
     }
   };
@@ -193,7 +195,7 @@ export function PatientList({
         <CardBody className="p-0">
 
           {/* Table */}
-          <div className="overflow-x-auto">
+          <div>
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
@@ -347,44 +349,20 @@ export function PatientList({
                                   </button>
 
                                   {openDropdownId === patient.id && (
-                                    <div className="absolute right-0 z-10 mt-1 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                                      {/* Archive/Unarchive option (therapists only) */}
+                                    <div className="absolute right-0 z-10 mt-1 w-64 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                                      {/* Archive option (therapists only) */}
                                       {canArchive && view === 'active' && (
-                                        archiveConfirmId === patient.id
-                                          ? (
-                                              <div className="px-3 py-2">
-                                                <p className="mb-2 text-xs text-gray-600">
-                                                  This removes the patient from your list only. No data is deleted.
-                                                </p>
-                                                <div className="flex gap-2">
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => handleArchiveConfirm(patient.id)}
-                                                    disabled={archivingId === patient.id}
-                                                    className="flex-1 rounded bg-amber-500 px-2 py-1 text-xs font-medium text-white hover:bg-amber-600 disabled:opacity-50"
-                                                  >
-                                                    {archivingId === patient.id ? 'Archiving...' : 'Confirm'}
-                                                  </button>
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => setArchiveConfirmId(null)}
-                                                    className="flex-1 rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
-                                                  >
-                                                    Cancel
-                                                  </button>
-                                                </div>
-                                              </div>
-                                            )
-                                          : (
-                                              <button
-                                                type="button"
-                                                onClick={() => setArchiveConfirmId(patient.id)}
-                                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                                              >
-                                                <Archive className="h-4 w-4" />
-                                                Archive from my list
-                                              </button>
-                                            )
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setArchiveModalPatient(patient);
+                                            setOpenDropdownId(null);
+                                          }}
+                                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                                        >
+                                          <Archive className="h-4 w-4" />
+                                          Archive from my list
+                                        </button>
                                       )}
 
                                       {canArchive && view === 'archived' && (
@@ -404,8 +382,8 @@ export function PatientList({
                                         <button
                                           type="button"
                                           onClick={() => {
+                                            setDeleteModalPatient(patient);
                                             setOpenDropdownId(null);
-                                            onDeleteClick(patient.id);
                                           }}
                                           className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
                                         >
@@ -517,6 +495,36 @@ export function PatientList({
           )}
         </CardBody>
       </Card>
+
+      {/* Archive Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={!!archiveModalPatient}
+        onClose={() => setArchiveModalPatient(null)}
+        onConfirm={handleArchiveConfirm}
+        title="Archive Patient"
+        description={`This removes "${archiveModalPatient?.name}" from your list only. No data will be deleted.`}
+        confirmText="Archive"
+        cancelText="Cancel"
+        variant="warning"
+        isLoading={archivingId === archiveModalPatient?.id}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={!!deleteModalPatient}
+        onClose={() => setDeleteModalPatient(null)}
+        onConfirm={() => {
+          if (deleteModalPatient) {
+            onDeleteClick(deleteModalPatient.id);
+            setDeleteModalPatient(null);
+          }
+        }}
+        title="Delete Patient"
+        description={`Are you sure you want to delete "${deleteModalPatient?.name}"? This will permanently delete all their data including sessions, story pages, media, and responses. This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   );
 }

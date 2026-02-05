@@ -7,7 +7,15 @@ import { generatePresignedUrl } from '@/libs/GCS';
 import { requirePatientAccess } from '@/middleware/RBACMiddleware';
 import {
   groupMembers,
+  mediaLibrary,
+  musicGenerationTasks,
+  notes,
+  pageBlocks,
+  patientPageInteractions,
+  patientReferenceImages,
+  quotes,
   reflectionResponses,
+  scenes,
   sessions,
   storyPages,
   surveyResponses,
@@ -309,7 +317,7 @@ export async function PUT(
   }
 }
 
-// DELETE /api/patients/[id] - Soft delete patient (HIPAA-compliant)
+// DELETE /api/patients/[id] - Delete patient and all associated data
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -328,32 +336,115 @@ export async function DELETE(
       );
     }
 
-    // Soft delete: Set deleted_at timestamp instead of hard delete
-    // This preserves audit trails and related records for HIPAA compliance
-    const [deletedPatient] = await db
-      .update(users)
-      .set({
-        deletedAt: new Date(),
-        updatedAt: new Date(),
-      })
+    // Check if patient exists and is not already deleted
+    const [existingPatient] = await db
+      .select({ id: users.id })
+      .from(users)
       .where(and(
         eq(users.id, id),
-        isNull(users.deletedAt), // Only delete if not already deleted
+        isNull(users.deletedAt),
       ))
-      .returning();
+      .limit(1);
 
-    if (!deletedPatient) {
+    if (!existingPatient) {
       return NextResponse.json({ error: 'Patient not found or already deleted' }, { status: 404 });
     }
 
-    // Log PHI deletion (soft delete)
+    const now = new Date();
+
+    // Delete all patient-related data in order (respecting FK constraints)
+
+    // 1. Hard delete patient page interactions (no FK constraints)
+    await db.delete(patientPageInteractions)
+      .where(eq(patientPageInteractions.patientId, id));
+
+    // 2. Hard delete reflection responses (before story pages)
+    await db.delete(reflectionResponses)
+      .where(eq(reflectionResponses.patientId, id));
+
+    // 3. Hard delete survey responses (before story pages)
+    await db.delete(surveyResponses)
+      .where(eq(surveyResponses.patientId, id));
+
+    // 4. Hard delete story pages (pageBlocks, reflectionQuestions, surveyQuestions cascade)
+    await db.delete(storyPages)
+      .where(eq(storyPages.patientId, id));
+
+    // 4a. Get all scene IDs for this patient
+    const patientScenes = await db
+      .select({ id: scenes.id })
+      .from(scenes)
+      .where(eq(scenes.patientId, id));
+    const patientSceneIds = patientScenes.map(s => s.id);
+
+    // 4b. NULL out sceneId references in pageBlocks (may belong to other patients' pages)
+    if (patientSceneIds.length > 0) {
+      await db.update(pageBlocks)
+        .set({ sceneId: null })
+        .where(inArray(pageBlocks.sceneId, patientSceneIds));
+    }
+
+    // 5. Hard delete scenes (sceneClips, sceneAudioTracks cascade)
+    await db.delete(scenes)
+      .where(eq(scenes.patientId, id));
+
+    // 6. Hard delete music generation tasks
+    await db.delete(musicGenerationTasks)
+      .where(eq(musicGenerationTasks.patientId, id));
+
+    // 7. Hard delete quotes
+    await db.delete(quotes)
+      .where(eq(quotes.patientId, id));
+
+    // 8. Hard delete notes
+    await db.delete(notes)
+      .where(eq(notes.patientId, id));
+
+    // 9. Soft delete media library (has deletedAt)
+    await db.update(mediaLibrary)
+      .set({ deletedAt: now, updatedAt: now })
+      .where(eq(mediaLibrary.patientId, id));
+
+    // 10. Soft delete sessions (has deletedAt, transcripts cascade)
+    await db.update(sessions)
+      .set({ deletedAt: now, updatedAt: now })
+      .where(eq(sessions.patientId, id));
+
+    // 11. Soft delete patient reference images (has deletedAt)
+    await db.update(patientReferenceImages)
+      .set({ deletedAt: now, updatedAt: now })
+      .where(eq(patientReferenceImages.patientId, id));
+
+    // 12. Finally, soft delete the patient user record
+    await db
+      .update(users)
+      .set({
+        deletedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(users.id, id));
+
+    // Log PHI deletion
     const { logPHIDelete } = await import('@/libs/AuditLogger');
     await logPHIDelete(user.dbUserId, 'user', id, request, {
       deletedBy: user.email,
-      softDelete: true,
+      softDelete: false, // This is now a comprehensive delete
+      deletedRelatedData: [
+        'patientPageInteractions',
+        'reflectionResponses',
+        'surveyResponses',
+        'storyPages',
+        'scenes',
+        'musicGenerationTasks',
+        'quotes',
+        'notes',
+        'mediaLibrary',
+        'sessions',
+        'patientReferenceImages',
+      ],
     });
 
-    return NextResponse.json({ message: 'Patient deleted successfully' });
+    return NextResponse.json({ message: 'Patient and all associated data deleted successfully' });
   } catch (error) {
     if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('Forbidden'))) {
       return handleAuthError(error);

@@ -16,6 +16,7 @@ export default function NewPagePage() {
   const { user } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   const fetchPatients = useCallback(async () => {
     if (!user) return;
@@ -43,6 +44,7 @@ export default function NewPagePage() {
   }, [user, fetchPatients]);
 
   const handleSavePage = async (title: string, blocks: any[], patientId: string | null) => {
+    setIsSaving(true);
     try {
       const response = await authenticatedPost('/api/pages', user, {
         title,
@@ -58,6 +60,8 @@ export default function NewPagePage() {
     } catch (error) {
       console.error('Failed to create page:', error);
       alert('Failed to create page. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -82,6 +86,7 @@ export default function NewPagePage() {
         patients={patients}
         onSave={handleSavePage}
         onClose={handleClose}
+        isSaving={isSaving}
       />
     </div>
   );

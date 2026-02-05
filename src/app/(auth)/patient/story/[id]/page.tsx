@@ -369,28 +369,26 @@ export default function PatientStoryPage({ params }: Props) {
 
               {/* Audio Block - Clean & Accessible */}
               {block.blockType === 'audio' && block.settings?.mediaUrl && (
-                <div className="my-10 sm:my-14">
-                  <div className="flex items-start gap-4 rounded-2xl bg-green-50 p-6">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-green-100">
-                      <Music className="h-5 w-5 text-green-600" />
+                <div className="my-6 sm:my-8">
+                  <div className="rounded-2xl border border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 p-6">
+                    <div className="mb-4 flex items-center gap-2 text-green-700">
+                      <Music className="h-5 w-5" />
+                      <span className="text-sm font-medium">{block.settings?.title || 'Audio'}</span>
                     </div>
-                    <div className="flex-1 space-y-3">
-                      <audio
-                        src={block.settings.mediaUrl}
-                        controls
-                        controlsList="nodownload"
-                        preload="metadata"
-                        className="w-full"
-                      >
-                        Your browser does not support the audio tag.
-                      </audio>
-                      {block.textContent && (
-                        <HTMLContent
-                          html={renderContent(block.textContent)}
-                          className="prose prose-base max-w-none leading-relaxed text-gray-700"
-                        />
-                      )}
-                    </div>
+                    <audio
+                      src={block.settings.mediaUrl}
+                      controls
+                      controlsList="nodownload"
+                      preload="metadata"
+                      className="w-full"
+                    >
+                      Your browser does not support the audio tag.
+                    </audio>
+                    {block.textContent && (
+                      <div className="mt-4 text-sm leading-relaxed text-gray-600">
+                        <HTMLContent html={renderContent(block.textContent)} />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

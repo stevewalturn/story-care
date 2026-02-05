@@ -380,11 +380,11 @@ export default function PublicSharePage({ params }: Props) {
 
               {/* Audio Block */}
               {block.blockType === 'audio' && block.settings?.mediaUrl && (
-                <div className="my-10 sm:my-14">
+                <div className="my-6 sm:my-8">
                   <div className="rounded-2xl border border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 p-6">
                     <div className="mb-4 flex items-center gap-2 text-green-700">
                       <Music className="h-5 w-5" />
-                      <span className="text-sm font-medium">Audio</span>
+                      <span className="text-sm font-medium">{block.settings?.title || 'Audio'}</span>
                     </div>
                     <audio
                       src={block.settings.mediaUrl}
@@ -392,7 +392,9 @@ export default function PublicSharePage({ params }: Props) {
                       className="w-full"
                     />
                     {block.textContent && (
-                      <p className="mt-4 text-sm leading-relaxed text-gray-600">{block.textContent}</p>
+                      <div className="mt-4 text-sm leading-relaxed text-gray-600">
+                        <HTMLContent html={renderContent(block.textContent)} />
+                      </div>
                     )}
                   </div>
                 </div>

@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { and, count, eq, gte, lte } from 'drizzle-orm';
+import { and, count, eq, gte, isNull, lte } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { getClientInfo, logAudit } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
@@ -53,14 +53,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Count active patients (patients with therapistId)
+    // Count active patients (patients with therapistId who are active and not deleted)
     const activePatientsResult = await db
       .select({ count: count() })
       .from(users)
       .where(
         therapistDbId
-          ? and(eq(users.role, 'patient'), eq(users.therapistId, therapistDbId))
-          : eq(users.role, 'patient'),
+          ? and(
+              eq(users.role, 'patient'),
+              eq(users.therapistId, therapistDbId),
+              eq(users.status, 'active'),
+              isNull(users.deletedAt),
+            )
+          : and(
+              eq(users.role, 'patient'),
+              eq(users.status, 'active'),
+              isNull(users.deletedAt),
+            ),
       );
 
     const activePatients = activePatientsResult[0]?.count || 0;

@@ -107,7 +107,8 @@ export function PagesClient() {
     if (!user) return;
 
     try {
-      const response = await authenticatedFetch('/api/patients', user);
+      // Fetch only active (non-archived) patients for the filter dropdown
+      const response = await authenticatedFetch('/api/patients?view=active', user);
       if (!response.ok) {
         throw new Error('Failed to fetch patients');
       }

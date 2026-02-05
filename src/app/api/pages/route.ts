@@ -1,10 +1,10 @@
 import type { NextRequest } from 'next/server';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, notInArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
 import { extractGcsPath } from '@/libs/GCS';
-import { pageBlocks, reflectionQuestions, storyPages, surveyQuestions, users } from '@/models/Schema';
+import { pageBlocks, reflectionQuestions, storyPages, surveyQuestions, therapistPatientArchives, users } from '@/models/Schema';
 
 // GET /api/pages - List story pages
 export async function GET(request: NextRequest) {
@@ -14,11 +14,13 @@ export async function GET(request: NextRequest) {
     const therapistFirebaseUid = searchParams.get('therapistId');
     const patientView = searchParams.get('patientView');
 
+    // Get auth token to determine if this is a therapist request
+    const authHeader = request.headers.get('Authorization');
+
     let query = db.select().from(storyPages);
 
     // Patient view: show only published pages assigned to current patient
     if (patientView === 'true') {
-      const authHeader = request.headers.get('Authorization');
       if (!authHeader?.startsWith('Bearer ')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
@@ -60,6 +62,47 @@ export async function GET(request: NextRequest) {
         // If therapist not found, return empty array
         return NextResponse.json({ pages: [] });
       }
+    } else if (authHeader?.startsWith('Bearer ')) {
+      // Default behavior for authenticated therapist users:
+      // Show only their own pages and exclude pages for archived patients
+      const token = authHeader.substring(7);
+      const decodedToken = await verifyIdToken(token);
+
+      // Find current user
+      const [currentUser] = await db
+        .select({ id: users.id, role: users.role })
+        .from(users)
+        .where(eq(users.firebaseUid, decodedToken.uid))
+        .limit(1);
+
+      if (!currentUser) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+
+      // Only apply therapist-specific filtering for therapist role
+      if (currentUser.role === 'therapist') {
+        // Get archived patient IDs for the current therapist
+        const archivedPatientRows = await db
+          .select({ patientId: therapistPatientArchives.patientId })
+          .from(therapistPatientArchives)
+          .where(eq(therapistPatientArchives.therapistId, currentUser.id));
+
+        const archivedPatientIds = archivedPatientRows.map(row => row.patientId);
+
+        // Filter: pages created by this therapist AND not for archived patients
+        if (archivedPatientIds.length > 0) {
+          query = query.where(
+            and(
+              eq(storyPages.createdByTherapistId, currentUser.id),
+              notInArray(storyPages.patientId, archivedPatientIds),
+            ),
+          ) as any;
+        } else {
+          // No archived patients, just filter by therapist
+          query = query.where(eq(storyPages.createdByTherapistId, currentUser.id)) as any;
+        }
+      }
+      // For org_admin and super_admin, show all pages (no filtering)
     }
 
     const pages = await query.orderBy(desc(storyPages.updatedAt));
