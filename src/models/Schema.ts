@@ -691,6 +691,7 @@ export const musicGenerationTasksSchema: any = pgTable('music_generation_tasks',
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
   completedAt: timestamp('completed_at'),
+  dismissedAt: timestamp('dismissed_at'),
 });
 
 // ============================================================================

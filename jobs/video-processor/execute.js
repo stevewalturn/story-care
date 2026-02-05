@@ -757,6 +757,8 @@ async function executeJob() {
         outputPath,
         '-i',
         audioPath,
+        '-map', '0:v:0',  // Take video from first input (concatenated video)
+        '-map', '1:a:0',  // Take audio from second input (selected music)
         '-c:v',
         'copy',
         '-c:a',

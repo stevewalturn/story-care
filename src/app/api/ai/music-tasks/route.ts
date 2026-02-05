@@ -4,7 +4,7 @@
  */
 
 import type { NextRequest } from 'next/server';
-import { and, desc, eq, gte, inArray } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/libs/DB';
@@ -205,6 +205,9 @@ export async function GET(request: NextRequest) {
       filters.push(gte(musicGenerationTasksSchema.createdAt, oneHourAgo));
     }
 
+    // Filter out dismissed failed tasks
+    filters.push(isNull(musicGenerationTasksSchema.dismissedAt));
+
     // Fetch tasks
     const tasks = await db
       .select()
@@ -351,6 +354,63 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ tasks });
   } catch (error: any) {
     console.error('[Music Tasks API] Error fetching tasks:', error);
+    return handleAuthError(error);
+  }
+}
+
+/**
+ * Request body validation schema for PATCH
+ */
+const dismissTaskSchema = z.object({
+  taskId: z.string().uuid('Invalid task ID'),
+});
+
+/**
+ * PATCH /api/ai/music-tasks
+ * Dismiss a failed music generation task (mark as dismissed so it won't reappear)
+ */
+export async function PATCH(request: NextRequest) {
+  try {
+    // Authenticate user
+    await requireAuth(request);
+
+    // Parse and validate request body
+    const body = await request.json();
+    const validated = dismissTaskSchema.parse(body);
+
+    console.log('[Music Tasks] Dismissing task:', validated.taskId);
+
+    // Update dismissedAt timestamp
+    const result = await db
+      .update(musicGenerationTasksSchema)
+      .set({
+        dismissedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(musicGenerationTasksSchema.id, validated.taskId))
+      .returning();
+
+    if (!result || result.length === 0) {
+      return NextResponse.json(
+        { error: 'Task not found' },
+        { status: 404 },
+      );
+    }
+
+    console.log('[Music Tasks] Task dismissed successfully:', validated.taskId);
+
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    console.error('[Music Tasks API] Error dismissing task:', error);
+
+    // Handle Zod validation errors
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation error', details: error.issues },
+        { status: 400 },
+      );
+    }
+
     return handleAuthError(error);
   }
 }

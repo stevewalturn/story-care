@@ -381,9 +381,22 @@ export function MediaTab({
     return () => clearInterval(interval);
   }, [inProgressFrameExtractionTasks.length, sessionId, user]);
 
-  // Dismiss a failed music task notification
-  const dismissFailedTask = (taskId: string) => {
+  // Dismiss a failed music task notification (persists to database)
+  const dismissFailedTask = async (taskId: string) => {
+    // Optimistically remove from UI
     setFailedMusicTasks(prev => prev.filter(t => t.id !== taskId));
+
+    // Persist to database
+    try {
+      await authenticatedFetch('/api/ai/music-tasks', user, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskId }),
+      });
+    } catch (error) {
+      console.error('Failed to dismiss task:', error);
+      // Task already removed from UI, no need to re-add on error
+    }
   };
 
   // Helper function to calculate time elapsed for tasks
