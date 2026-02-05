@@ -587,22 +587,11 @@ export function PageEditor({
       case 'note':
         return (
           <div className="space-y-2">
-            <textarea
-              value={block.content.text || ''}
-              onChange={e => updateBlockContent(block.id, { text: e.target.value })}
-              placeholder="Enter note text (supports Markdown)..."
-              className="h-24 w-full resize-none rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+            <PageBlockEditor
+              content={block.content.text || ''}
+              onChange={html => updateBlockContent(block.id, { text: html })}
+              placeholder="Enter note text..."
             />
-            {block.content.text && (
-              <div className="rounded-lg border-l-4 border-amber-500 bg-amber-50 p-3">
-                <p className="mb-2 text-xs font-medium text-amber-600">Preview:</p>
-                <div className="prose prose-sm max-w-none">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {block.content.text}
-                  </ReactMarkdown>
-                </div>
-              </div>
-            )}
             <Button
               variant="ghost"
               size="sm"

@@ -175,7 +175,7 @@ export function QuotesTab({ sessionId, user, refreshKey, selectedPatient, onEdit
                 <div className="mb-2 flex items-start justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-medium text-gray-700">
-                      {quote.speakerName || quote.speakerType || 'Unknown'}
+                      {quote.speakerName || quote.speakerLabel || quote.speakerType || 'Unknown'}
                     </span>
                     {quote.startTimeSeconds && (
                       <>

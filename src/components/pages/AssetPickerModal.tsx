@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/Button';
+import { HTMLContent } from '@/components/ui/HTMLContent';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
@@ -44,6 +45,8 @@ type QuoteAsset = {
   context: string | null;
   tags: string[];
   createdAt: string;
+  speakerName: string | null;
+  speakerLabel: string | null;
 };
 
 type NoteAsset = {
@@ -76,6 +79,15 @@ type AssetPickerModalProps = {
   /** Default media type filter (only used when mediaOnly is true) */
   mediaTypeDefault?: MediaTypeFilter;
 };
+
+/**
+ * Helper to detect if content is likely HTML rather than Markdown
+ */
+function isLikelyHTML(content: string): boolean {
+  if (!content) return false;
+  const trimmed = content.trim();
+  return trimmed.startsWith('<') || /<[a-z][\s\S]*>/i.test(trimmed);
+}
 
 export function AssetPickerModal({
   isOpen,
@@ -254,13 +266,13 @@ export function AssetPickerModal({
   });
 
   const filteredQuoteAssets = quoteAssets.filter((asset) => {
-    if (filterType !== 'all' && filterType !== 'text') return false;
+    if (filterType !== 'all' && filterType !== 'quote' && filterType !== 'text') return false;
     if (!search) return true;
     return asset.quoteText.toLowerCase().includes(search.toLowerCase());
   });
 
   const filteredNoteAssets = noteAssets.filter((asset) => {
-    if (filterType !== 'all' && filterType !== 'text') return false;
+    if (filterType !== 'all' && filterType !== 'note' && filterType !== 'text') return false;
     if (!search) return true;
     return asset.content.toLowerCase().includes(search.toLowerCase())
       || asset.title?.toLowerCase().includes(search.toLowerCase());
@@ -592,6 +604,13 @@ export function AssetPickerModal({
                       {`"${asset.quoteText}"`}
                     </ReactMarkdown>
                   </div>
+                  {(asset.speakerName || asset.speakerLabel) && (
+                    <p className="mt-2 text-sm font-medium text-purple-600">
+                      —
+                      {' '}
+                      {asset.speakerName || asset.speakerLabel}
+                    </p>
+                  )}
                   {asset.context && (
                     <p className="mt-2 text-xs text-gray-600">{asset.context}</p>
                   )}
@@ -636,9 +655,13 @@ export function AssetPickerModal({
                     </div>
                   )}
                   <div className="prose prose-sm line-clamp-6 max-w-none text-gray-900 prose-gray">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {asset.content}
-                    </ReactMarkdown>
+                    {isLikelyHTML(asset.content) ? (
+                      <HTMLContent html={asset.content} className="line-clamp-6" />
+                    ) : (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {asset.content}
+                      </ReactMarkdown>
+                    )}
                   </div>
                   {asset.tags && asset.tags.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">

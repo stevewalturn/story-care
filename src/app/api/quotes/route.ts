@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
         sessionId: quotes.sessionId,
         speakerId: quotes.speakerId,
         speakerName: speakers.speakerName,
+        speakerLabel: speakers.speakerLabel,
         speakerType: speakers.speakerType,
         sessionTitle: sessions.title,
         createdByTherapistId: quotes.createdByTherapistId,
