@@ -191,6 +191,8 @@ function formatPrivateKey(key) {
   console.log(`  - Original length: ${key.length}`);
   console.log(`  - Contains literal \\\\n (4 chars): ${key.includes('\\\\n')}`);
   console.log(`  - Starts with BEGIN: ${key.startsWith('-----BEGIN')}`);
+  console.log(`  - First 50 chars: ${key.substring(0, 50)}`);
+  console.log(`  - Last 30 chars: ${key.substring(key.length - 30)}`);
 
   let formatted = key;
 
