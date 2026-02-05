@@ -595,27 +595,31 @@ export default function PatientStoryPage({ params }: Props) {
           );
         })}
 
-        {/* Submit Button - Feels Complete */}
+        {/* Submit Button - Sticky on mobile for keyboard visibility */}
         {(pageData.reflectionQuestions.length > 0 || pageData.surveyQuestions.length > 0) && !submitSuccess && (
-          <div className="mt-16 mb-20 flex justify-center">
-            <button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="group rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 px-10 py-4 text-lg font-semibold text-white shadow-xl shadow-purple-500/25 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-purple-500/30 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50"
-              type="button"
-            >
-              {isSubmitting ? (
-                <span className="flex items-center gap-3">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Submitting...
-                </span>
-              ) : (
-                <span className="flex items-center gap-3">
-                  Submit My Responses
-                  <Send className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-                </span>
-              )}
-            </button>
+          <div className="mt-16 pb-6 md:mb-20 md:pb-0">
+            <div className="pb-safe sticky bottom-0 -mx-4 bg-gradient-to-t from-white via-white to-transparent px-4 pt-4 md:static md:mx-0 md:bg-transparent md:p-0">
+              <div className="flex justify-center">
+                <button
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="w-full max-w-md rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 px-10 py-4 text-lg font-semibold text-white shadow-xl shadow-purple-500/25 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-purple-500/30 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
+                  type="button"
+                >
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center gap-3">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Submitting...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-3">
+                      Submit My Responses
+                      <Send className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -651,7 +655,7 @@ export default function PatientStoryPage({ params }: Props) {
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
           />
-          <div className="fixed right-4 bottom-4 z-50 flex items-center gap-2 rounded-full bg-white px-4 py-3 shadow-lg sm:right-6 sm:bottom-6">
+          <div className="fixed right-4 bottom-20 z-50 flex items-center gap-2 rounded-full bg-white px-4 py-3 shadow-lg md:right-6 md:bottom-6">
             <button
               onClick={() => {
                 if (audioRef.current) {

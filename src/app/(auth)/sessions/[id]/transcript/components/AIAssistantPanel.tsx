@@ -662,11 +662,8 @@ ${userText}`;
     setPrompt('');
     setIsLoading(true);
 
-    // Clear system prompt and selected text after sending
-    setSelectedSystemPrompt(null);
-    setSelectedPromptId('');
-    setSelectedPromptName(null);
-    onPromptSent(); // Clear parent's selected text state
+    // Clear parent's selected text state (prompt selection persists)
+    onPromptSent();
 
     try {
       // Send full prompt (with system instructions) to AI

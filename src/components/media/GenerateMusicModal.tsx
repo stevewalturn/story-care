@@ -28,6 +28,18 @@ type GenerateMusicModalProps = {
   onComplete?: () => void;
 };
 
+// Helper to normalize lyrics that may be string or object
+function normalizeLyrics(lyrics: string | object | undefined): string {
+  if (!lyrics) return '';
+  if (typeof lyrics === 'string') return lyrics;
+  if (typeof lyrics === 'object') {
+    return Object.entries(lyrics)
+      .map(([key, value]) => `[${key.replace(/_/g, ' ')}]\n${value}`)
+      .join('\n\n');
+  }
+  return String(lyrics);
+}
+
 export function GenerateMusicModal({
   isOpen,
   onClose,
@@ -45,9 +57,13 @@ export function GenerateMusicModal({
     title: string;
     status: string;
   } | null>(null);
-  const [customPrompt, setCustomPrompt] = useState('');
   const [customDuration, setCustomDuration] = useState(120);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Editable fields for custom mode
+  const [editableLyrics, setEditableLyrics] = useState('');
+  const [editableStyle, setEditableStyle] = useState('');
+  const [editableTitle, setEditableTitle] = useState('');
 
   // Cleanup interval on unmount
   useEffect(() => {
@@ -58,6 +74,27 @@ export function GenerateMusicModal({
     };
   }, []);
 
+  // Initialize editable fields when modal opens or option changes
+  const isInstrumental = !!instrumentalOption;
+  const option = instrumentalOption || lyricalOption;
+
+  useEffect(() => {
+    if (!isOpen || !option) return;
+
+    // Initialize lyrics from lyrical option
+    if (!isInstrumental && lyricalOption?.suggested_lyrics) {
+      setEditableLyrics(normalizeLyrics(lyricalOption.suggested_lyrics));
+    } else {
+      setEditableLyrics('');
+    }
+
+    // Initialize style from style_prompt or music_description
+    setEditableStyle(option.style_prompt || option.music_description || '');
+
+    // Initialize title
+    setEditableTitle(option.title || '');
+  }, [isOpen, isInstrumental, option, lyricalOption]);
+
   const handleClose = () => {
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
@@ -66,16 +103,14 @@ export function GenerateMusicModal({
     setIsGenerating(false);
     setError(null);
     setGenerationResult(null);
-    setCustomPrompt('');
+    setEditableLyrics('');
+    setEditableStyle('');
+    setEditableTitle('');
     setCustomDuration(120);
     onClose();
   };
 
   const handleGenerateMusic = async () => {
-    // Simplified - determine option from props
-    const option = instrumentalOption || lyricalOption;
-    const isInstrumental = !!instrumentalOption;
-
     if (!option) return;
 
     // Validation: require either sessionId or patientId
@@ -85,24 +120,40 @@ export function GenerateMusicModal({
       return;
     }
 
+    // Validation for lyrical mode: require lyrics
+    if (!isInstrumental && !editableLyrics.trim()) {
+      setError('Lyrics are required for lyrical songs');
+      toast.error('Please enter lyrics for the song');
+      return;
+    }
+
+    // Validation: require style
+    if (!editableStyle.trim()) {
+      setError('Music style is required');
+      toast.error('Please enter a music style description');
+      return;
+    }
+
     setIsGenerating(true);
     setError(null);
     setGenerationResult(null);
 
     try {
-      // Build final prompt by combining base prompt with custom prompt
-      const basePrompt = option.style_prompt || option.music_description;
-      const finalPrompt = customPrompt.trim()
-        ? `${basePrompt}\n\nAdditional details: ${customPrompt.trim()}`
-        : basePrompt;
+      // Use customMode=true when we have explicit lyrics for lyrical songs
+      // This ensures Suno uses our exact lyrics instead of generating its own
+      const useCustomMode = !isInstrumental && editableLyrics.trim().length > 0;
 
       // Start the music generation
       const response = await authenticatedPost('/api/ai/generate-music', user, {
         sessionId,
         patientId,
         instrumental: isInstrumental,
-        prompt: finalPrompt,
-        title: option.title,
+        customMode: useCustomMode,
+        // For customMode: prompt = lyrics, style = style description
+        // For non-customMode: prompt = description (style)
+        prompt: useCustomMode ? editableLyrics.trim() : editableStyle.trim(),
+        style: useCustomMode ? editableStyle.trim() : undefined,
+        title: editableTitle.trim() || option.title,
         model: 'V4_5',
         duration: customDuration,
       });
@@ -131,13 +182,13 @@ export function GenerateMusicModal({
       }
       const errorMsg = err instanceof Error ? err.message : 'An unexpected error occurred';
       setError(errorMsg);
-      toast.error(errorMsg);
+      // Show error with longer duration so user can read it
+      toast.error(`Music generation failed: ${errorMsg}`, { duration: 8000 });
       setIsGenerating(false);
     }
   };
 
   const renderSelectedOption = () => {
-    const option = instrumentalOption || lyricalOption;
     const type = instrumentalOption ? 'instrumental' : 'lyrical';
 
     if (!option) return null;
@@ -167,8 +218,25 @@ export function GenerateMusicModal({
           )}
         </div>
 
-        {/* Title */}
-        <h3 className="mb-2 text-lg font-semibold text-gray-900">{option.title}</h3>
+        {/* Title - Editable */}
+        <div className="mb-3">
+          <label className="mb-1 block text-xs font-medium text-gray-700">
+            Title
+          </label>
+          <input
+            type="text"
+            value={editableTitle}
+            onChange={e => setEditableTitle(e.target.value)}
+            maxLength={100}
+            disabled={isGenerating}
+            placeholder="Enter song title..."
+            className="focus:ring-opacity-20 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-900 placeholder-gray-400 transition-colors focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none disabled:bg-gray-50 disabled:text-gray-500"
+          />
+          <div className="mt-1 text-right text-xs text-gray-400">
+            {editableTitle.length}
+            /100
+          </div>
+        </div>
 
         {/* Mood */}
         {option.mood && (
@@ -186,27 +254,9 @@ export function GenerateMusicModal({
           </div>
         )}
 
-        {/* Music description or lyrics preview */}
-        {type === 'instrumental' && option.music_description && (
-          <p className="mb-3 line-clamp-3 text-xs text-gray-600">{option.music_description}</p>
-        )}
-        {type === 'lyrical' && option.suggested_lyrics && (
-          <div className="mb-3 rounded bg-white/60 p-2">
-            <p className="line-clamp-4 text-xs whitespace-pre-wrap text-gray-600 italic">
-              {typeof option.suggested_lyrics === 'string'
-                ? option.suggested_lyrics
-                : typeof option.suggested_lyrics === 'object'
-                  ? Object.entries(option.suggested_lyrics)
-                      .map(([key, value]) => `[${key.replace(/_/g, ' ')}]\n${value}`)
-                      .join('\n\n')
-                  : String(option.suggested_lyrics)}
-            </p>
-          </div>
-        )}
-
         {/* Rationale */}
         {option.rationale && (
-          <p className="text-xs text-gray-500">{option.rationale}</p>
+          <p className="mb-3 text-xs text-gray-500">{option.rationale}</p>
         )}
       </div>
     );
@@ -261,28 +311,56 @@ export function GenerateMusicModal({
 
       {/* Custom Inputs Section */}
       <div className="mb-6 space-y-4">
-        {/* Custom Prompt */}
+        {/* Editable Lyrics - Only for lyrical mode */}
+        {!isInstrumental && (
+          <div>
+            <label htmlFor="editableLyrics" className="mb-1.5 block text-sm font-medium text-gray-700">
+              Lyrics
+              {' '}
+              <span className="font-normal text-gray-400">(editable)</span>
+            </label>
+            <textarea
+              id="editableLyrics"
+              value={editableLyrics}
+              onChange={e => setEditableLyrics(e.target.value)}
+              maxLength={5000}
+              rows={6}
+              disabled={isGenerating}
+              placeholder="Enter or edit lyrics for the song..."
+              className="focus:ring-opacity-20 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none disabled:bg-gray-50 disabled:text-gray-500"
+            />
+            <div className="mt-1.5 flex items-center justify-between text-xs text-gray-500">
+              <span>These exact lyrics will be used in the generated song</span>
+              <span className={editableLyrics.length > 4500 ? 'font-medium text-amber-600' : ''}>
+                {editableLyrics.length}
+                /5000
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Editable Style - For both modes */}
         <div>
-          <label htmlFor="customPrompt" className="mb-1.5 block text-sm font-medium text-gray-700">
-            Custom Music Prompt
+          <label htmlFor="editableStyle" className="mb-1.5 block text-sm font-medium text-gray-700">
+            Music Style
             {' '}
-            <span className="font-normal text-gray-400">(Optional)</span>
+            <span className="font-normal text-gray-400">(editable)</span>
           </label>
           <textarea
-            id="customPrompt"
-            value={customPrompt}
-            onChange={e => setCustomPrompt(e.target.value)}
-            maxLength={500}
+            id="editableStyle"
+            value={editableStyle}
+            onChange={e => setEditableStyle(e.target.value)}
+            maxLength={1000}
             rows={3}
             disabled={isGenerating}
-            placeholder="Add specific details to enhance the generated music. Example: 'with gentle piano and warm strings, building gradually'"
+            placeholder="Describe the music style, genre, instruments, tempo..."
             className="focus:ring-opacity-20 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none disabled:bg-gray-50 disabled:text-gray-500"
           />
           <div className="mt-1.5 flex items-center justify-between text-xs text-gray-500">
-            <span>Add specific instruments, mood, tempo, or style details</span>
-            <span className={customPrompt.length > 450 ? 'font-medium text-amber-600' : ''}>
-              {customPrompt.length}
-              /500
+            <span>Style description for music generation</span>
+            <span className={editableStyle.length > 900 ? 'font-medium text-amber-600' : ''}>
+              {editableStyle.length}
+              /1000
             </span>
           </div>
         </div>

@@ -25,6 +25,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:seed-superadmin": "node --env-file=.env.local scripts/seed-superadmin.mjs",
+    "db:create-superadmin": "node --env-file=.env.local scripts/create-superadmin.mjs",
     "db:seed-modules": "NODE_ENV=development node --env-file=.env.local -r esbuild-register scripts/seed-treatment-modules.ts",
     "db:seed-templates": "NODE_ENV=development node --env-file=.env.local -r esbuild-register scripts/seed-templates.ts",
     "db:seed-prompts": "NODE_ENV=development node --env-file=.env.local -r esbuild-register scripts/seed-system-prompts.ts",

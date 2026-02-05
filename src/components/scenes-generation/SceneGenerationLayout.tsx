@@ -565,7 +565,13 @@ export function SceneGenerationLayout({
           setIsGeneratingMusic(false);
           setCurrentMusicTaskId(null);
           setMusicGenerationStatus('failed');
-          toast.error('Music generation failed', { id: 'music' });
+
+          // Show CLEAR error message to user - use task.error from API
+          const errorMsg = task.error || 'Music generation failed';
+          toast.error(`Music generation failed: ${errorMsg}`, {
+            id: 'music',
+            duration: 8000, // Keep visible longer so user can read
+          });
         }
       } catch (error) {
         console.error('[Music Polling] Error:', error);
@@ -934,6 +940,9 @@ export function SceneGenerationLayout({
     title: string;
     instrumental: boolean;
     duration: number;
+    customMode: boolean;
+    style?: string;
+    lyrics?: string;
   }) => {
     if (!user) {
       toast.error('Please sign in to generate music');
@@ -948,7 +957,8 @@ export function SceneGenerationLayout({
     setIsGeneratingMusic(true);
     setMusicGenerationProgress(0);
     setMusicGenerationStatus('pending');
-    setMusicPrompt(params.prompt); // Store prompt in state so textarea displays it
+    // Store the style/prompt in state for display (not the lyrics)
+    setMusicPrompt(params.style || params.prompt);
     toast.loading('Generating music with Suno AI...', { id: 'music' });
 
     try {
@@ -956,13 +966,12 @@ export function SceneGenerationLayout({
       const response = await authenticatedPost('/api/ai/music-tasks', user, {
         patientId: patient.id,
         sessionId,
-        prompt: params.prompt,
+        prompt: params.prompt, // Lyrics if customMode, otherwise style description
         title: params.title,
-        style: 'therapeutic ambient',
+        style: params.style, // Style description (required for customMode)
         model: 'V4_5',
-        customMode: false,
+        customMode: params.customMode,
         instrumental: params.instrumental,
-        duration: params.duration,
       });
 
       if (!response.ok) {

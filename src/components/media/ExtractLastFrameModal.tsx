@@ -23,12 +23,12 @@ type ExtractLastFrameModalProps = {
   } | null;
   onExtract: () => Promise<any>;
   onFrameExtracted?: (newMedia: any) => void;
+  onCloseWhileExtracting?: (jobInfo: { jobId: string; mediaId: string; title: string }) => void;
   user: User | null;
 };
 
 // Timeout constants
 const POLL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes total timeout
-const STALE_PROGRESS_TIMEOUT_MS = 60 * 1000; // 60 seconds without progress change
 
 // Map backend step descriptions to human-friendly labels
 function getHumanReadableStep(step: string): string {
@@ -53,6 +53,7 @@ export function ExtractLastFrameModal({
   video,
   onExtract,
   onFrameExtracted,
+  onCloseWhileExtracting,
   user,
 }: ExtractLastFrameModalProps) {
   const [isExtracting, setIsExtracting] = useState(false);
@@ -67,6 +68,9 @@ export function ExtractLastFrameModal({
   const pollStartTimeRef = useRef<number | null>(null);
   const lastProgressRef = useRef<number>(0);
   const lastProgressTimeRef = useRef<number | null>(null);
+
+  // Current job tracking ref (for notifying parent when closing during extraction)
+  const currentJobRef = useRef<{ jobId: string; mediaId: string; title: string } | null>(null);
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -100,6 +104,9 @@ export function ExtractLastFrameModal({
 
         const { jobId, mediaId } = result;
 
+        // Store job info for notifying parent when closing during extraction
+        currentJobRef.current = { jobId, mediaId, title: video.title };
+
         // Poll for job completion using authenticated fetch
         pollIntervalRef.current = setInterval(async () => {
           try {
@@ -127,23 +134,10 @@ export function ExtractLastFrameModal({
             const stepDescription = getHumanReadableStep(statusData.currentStep || '');
             setCurrentStep(stepDescription);
 
-            // Check for stale progress (stuck at same step)
+            // Track progress for UI updates
             if (progressValue !== lastProgressRef.current) {
               lastProgressRef.current = progressValue;
               lastProgressTimeRef.current = Date.now();
-            } else if (lastProgressTimeRef.current && Date.now() - lastProgressTimeRef.current > STALE_PROGRESS_TIMEOUT_MS) {
-              // Progress hasn't changed for 60 seconds while in Initializing/Starting state
-              const isInitializing = stepDescription.includes('Starting') || (statusData.currentStep || '').includes('Initializing');
-              if (isInitializing && progressValue < 10) {
-                clearInterval(pollIntervalRef.current!);
-                pollIntervalRef.current = null;
-                setError('Frame extraction appears to be stuck. The processing server may have failed to start. Please try again.');
-                setIsExtracting(false);
-                setStatusMessage('');
-                setProgress(0);
-                setCurrentStep('');
-                return;
-              }
             }
 
             if (statusData.status === 'completed') {
@@ -206,6 +200,10 @@ export function ExtractLastFrameModal({
   };
 
   const handleClose = () => {
+    // If extraction is in progress, notify parent before closing
+    if (isExtracting && currentJobRef.current) {
+      onCloseWhileExtracting?.(currentJobRef.current);
+    }
     // Clean up polling if active (but job continues in background)
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
@@ -215,6 +213,8 @@ export function ExtractLastFrameModal({
     pollStartTimeRef.current = null;
     lastProgressRef.current = 0;
     lastProgressTimeRef.current = null;
+    // Reset current job ref
+    currentJobRef.current = null;
     // Reset UI state
     setExtractedFrame(null);
     setError(null);
@@ -341,7 +341,7 @@ export function ExtractLastFrameModal({
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 border-t border-gray-200 px-6 py-4">
           <Button variant="secondary" onClick={handleClose}>
-            {extractedFrame ? 'Done' : 'Cancel'}
+            {extractedFrame ? 'Done' : 'Close'}
           </Button>
           {!extractedFrame && (
             <Button

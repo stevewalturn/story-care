@@ -12,8 +12,10 @@ const requestSchema = z.object({
   sessionId: z.string().optional(),
   patientId: z.string().optional(),
   instrumental: z.boolean().default(true),
-  prompt: z.string(),
-  title: z.string(),
+  customMode: z.boolean().default(false),
+  prompt: z.string().max(5000), // Lyrics when customMode=true (max 5000), description otherwise (max 500)
+  style: z.string().max(1000).optional(), // Required when customMode=true
+  title: z.string().max(100),
   model: z.string().default('V4_5'),
   duration: z.number().min(30).max(300).default(120),
 });
@@ -33,6 +35,23 @@ export async function POST(request: NextRequest) {
         { error: 'Either sessionId or patientId is required' },
         { status: 400 },
       );
+    }
+
+    // Validate customMode requirements
+    if (validated.customMode) {
+      if (!validated.style) {
+        return NextResponse.json(
+          { error: 'Style is required when customMode is true' },
+          { status: 400 },
+        );
+      }
+      // For lyrical songs in custom mode, prompt contains lyrics
+      if (!validated.instrumental && !validated.prompt) {
+        return NextResponse.json(
+          { error: 'Prompt (lyrics) is required for lyrical songs in custom mode' },
+          { status: 400 },
+        );
+      }
     }
 
     // If patientId is not provided but sessionId is, fetch it from the session
@@ -111,7 +130,8 @@ export async function POST(request: NextRequest) {
       const sunoOptions = {
         prompt: validated.prompt,
         title: validated.title,
-        customMode: false,
+        style: validated.style,
+        customMode: validated.customMode,
         instrumental: validated.instrumental,
         model: validated.model as any,
         traceMetadata,

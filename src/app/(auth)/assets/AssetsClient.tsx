@@ -143,6 +143,16 @@ export function AssetsClient() {
   const [inProgressTasks, setInProgressTasks] = useState<any[]>([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
 
+  // Background frame extraction jobs state
+  const [backgroundFrameJobs, setBackgroundFrameJobs] = useState<Array<{
+    jobId: string;
+    mediaId: string;
+    title: string;
+    progress: number;
+    currentStep: string;
+    status: string;
+  }>>([]);
+
   // Handle click outside for Create Media dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -199,6 +209,63 @@ export function AssetsClient() {
 
     return undefined;
   }, [selectedPatient, activeTab]);
+
+  // Poll for background frame extraction jobs
+  useEffect(() => {
+    if (backgroundFrameJobs.length === 0) return undefined;
+
+    const pollBackgroundJobs = async () => {
+      if (!user) return;
+
+      const updatedJobs = await Promise.all(
+        backgroundFrameJobs.map(async (job) => {
+          try {
+            const response = await authenticatedFetch(
+              `/api/media/${job.mediaId}/extract-frame/status?jobId=${job.jobId}`,
+              user,
+            );
+            if (response.ok) {
+              const data = await response.json();
+              return {
+                ...job,
+                progress: data.progress || 0,
+                currentStep: data.currentStep || 'Processing...',
+                status: data.status || 'processing',
+              };
+            }
+          } catch (error) {
+            console.error('Error polling frame extraction job:', error);
+          }
+          return job;
+        }),
+      );
+
+      // Separate jobs by status
+      const stillProcessing = updatedJobs.filter(j => j.status === 'processing' || j.status === 'pending');
+      const completed = updatedJobs.filter(j => j.status === 'completed');
+      const failed = updatedJobs.filter(j => j.status === 'failed');
+
+      // Show toast for completed jobs
+      if (completed.length > 0) {
+        loadMedia(); // Refresh to show new extracted frames
+        completed.forEach((job) => {
+          toast.success(`Frame extracted from "${job.title}"`);
+        });
+      }
+
+      // Show toast for failed jobs
+      if (failed.length > 0) {
+        failed.forEach((job) => {
+          toast.error(`Failed to extract frame from "${job.title}"`);
+        });
+      }
+
+      setBackgroundFrameJobs(stillProcessing);
+    };
+
+    const interval = setInterval(pollBackgroundJobs, 5000);
+    return () => clearInterval(interval);
+  }, [backgroundFrameJobs, user]);
 
   const loadPatients = async () => {
     if (!user) {
@@ -597,6 +664,16 @@ export function AssetsClient() {
     }
 
     return response.json();
+  };
+
+  // Handler for when frame extraction modal closes while extraction is in progress
+  const handleFrameExtractionBackground = (jobInfo: { jobId: string; mediaId: string; title: string }) => {
+    setBackgroundFrameJobs(prev => [...prev, {
+      ...jobInfo,
+      progress: 0,
+      currentStep: 'Processing...',
+      status: 'processing',
+    }]);
   };
 
   // Generate New Version handler
@@ -1260,6 +1337,58 @@ export function AssetsClient() {
                     </div>
                     <div className="mt-1 text-right text-xs text-gray-600">
                       {task.progress || 0}
+                      %
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Background Frame Extraction Jobs */}
+          {backgroundFrameJobs.length > 0 && (
+            <div className="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-50 px-6 py-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5 animate-pulse text-blue-600" />
+                  <h3 className="text-sm font-semibold text-gray-900">
+                    Extracting Frames (
+                    {backgroundFrameJobs.length}
+                    {' '}
+                    in progress)
+                  </h3>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {backgroundFrameJobs.map(job => (
+                  <div
+                    key={job.jobId}
+                    className="rounded-lg border border-blue-200 bg-white p-4 shadow-sm"
+                  >
+                    <div className="mb-2 flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="text-sm font-medium text-gray-900">
+                          {job.title}
+                        </h4>
+                        <div className="mt-1 flex items-center gap-2">
+                          <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                            🖼️
+                            {' '}
+                            {job.currentStep}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="relative h-2 overflow-hidden rounded-full bg-gray-200">
+                      <div
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-500 to-blue-500 transition-all duration-500 ease-out"
+                        style={{ width: `${job.progress}%` }}
+                      />
+                    </div>
+                    <div className="mt-1 text-right text-xs text-gray-600">
+                      {job.progress}
                       %
                     </div>
                   </div>
@@ -2302,6 +2431,7 @@ export function AssetsClient() {
           onFrameExtracted={(newMedia) => {
             setMedia(prev => [newMedia, ...prev]);
           }}
+          onCloseWhileExtracting={handleFrameExtractionBackground}
         />
       )}
     </div>

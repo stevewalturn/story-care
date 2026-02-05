@@ -42,9 +42,9 @@ function mapSunoStatus(sunoStatus: string): { status: string; progress: number }
 const createMusicTaskSchema = z.object({
   patientId: z.string(),
   sessionId: z.string().optional().nullable(),
-  prompt: z.string().min(1, 'Prompt is required'),
-  title: z.string().min(1, 'Title is required'),
-  style: z.string().optional(),
+  prompt: z.string().min(1, 'Prompt is required').max(5000), // Lyrics when customMode=true (max 5000)
+  title: z.string().min(1, 'Title is required').max(100),
+  style: z.string().max(1000).optional(), // Required when customMode=true
   model: z.enum(['V4', 'V4_5', 'V4_5PLUS', 'V4_5ALL', 'V5']).default('V4_5'),
   customMode: z.boolean().default(false),
   instrumental: z.boolean().default(true),
@@ -62,6 +62,23 @@ export async function POST(request: NextRequest) {
     // Parse and validate request body
     const body = await request.json();
     const validated = createMusicTaskSchema.parse(body);
+
+    // Validate customMode requirements
+    if (validated.customMode) {
+      if (!validated.style) {
+        return NextResponse.json(
+          { error: 'Style is required when customMode is true' },
+          { status: 400 },
+        );
+      }
+      // For lyrical songs in custom mode, prompt contains lyrics
+      if (!validated.instrumental && !validated.prompt) {
+        return NextResponse.json(
+          { error: 'Prompt (lyrics) is required for lyrical songs in custom mode' },
+          { status: 400 },
+        );
+      }
+    }
 
     console.log('[Music Tasks] Creating new task:', {
       patientId: validated.patientId,
@@ -224,11 +241,31 @@ export async function GET(request: NextRequest) {
                   // Map Suno status to our status
                   const { status, progress } = mapSunoStatus(sunoData.data.status);
 
-                  // Extract error information if failed
-                  const error
-                    = status === 'failed'
-                      ? sunoData.data.errorMessage || 'Generation failed'
-                      : null;
+                  // Log the actual Suno status for debugging
+                  console.log(`[Music Tasks] Suno status for ${task.id}:`, {
+                    sunoStatus: sunoData.data.status,
+                    errorMessage: sunoData.data.errorMessage,
+                    mappedStatus: status,
+                  });
+
+                  // Extract error information with CLEAR human-readable messages
+                  let error = null;
+                  if (status === 'failed') {
+                    const sunoStatus = sunoData.data.status;
+                    const errorMessages: Record<string, string> = {
+                      SENSITIVE_WORD_ERROR: 'Content flagged by Suno moderation. Please modify lyrics to remove sensitive words (medical terms, "war", "symptoms", etc. may be flagged).',
+                      CREATE_TASK_FAILED: 'Failed to create music task. Please try again.',
+                      GENERATE_AUDIO_FAILED: 'Audio generation failed. Please try different lyrics or style.',
+                      CALLBACK_EXCEPTION: 'Server error during generation. Please try again.',
+                    };
+                    error = errorMessages[sunoStatus] || sunoData.data.errorMessage || 'Music generation failed';
+
+                    console.error(`[Music Tasks] Task ${task.id} FAILED:`, {
+                      sunoStatus,
+                      errorMessage: error,
+                      fullResponse: sunoData.data,
+                    });
+                  }
 
                   // If completed and no mediaId, download and save audio
                   if (status === 'completed' && !task.mediaId && sunoData.data.response?.sunoData?.[0]) {

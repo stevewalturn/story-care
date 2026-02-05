@@ -44,14 +44,14 @@ function SignInForm() {
       color: 'bg-blue-100 text-blue-700 border-blue-300',
     },
     {
-      email: 'akbarandriawanakak@gmail.com',
-      password: 'securepassword',
+      email: 'ok632559@gmail.com',
+      password: '',
       role: 'Therapist',
       color: 'bg-green-100 text-green-700 border-green-300',
     },
     {
-      email: 'zharfan@student.undip.ac.id',
-      password: 'securepassword',
+      email: 'haloyah7@gmail.com',
+      password: '',
       role: 'Patient',
       color: 'bg-orange-100 text-orange-700 border-orange-300',
     },

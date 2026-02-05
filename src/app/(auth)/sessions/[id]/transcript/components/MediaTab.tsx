@@ -20,6 +20,7 @@ import {
   RefreshCw,
   Sparkles,
   Trash2,
+  X,
   XCircle,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -69,6 +70,11 @@ export function MediaTab({
   // Music generation polling state
   const [inProgressTasks, setInProgressTasks] = useState<any[]>([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+  const [failedMusicTasks, setFailedMusicTasks] = useState<Array<{
+    id: string;
+    title: string;
+    error: string;
+  }>>([]);
 
   // Video generation polling state
   const [inProgressVideoTasks, setInProgressVideoTasks] = useState<any[]>([]);
@@ -154,22 +160,56 @@ export function MediaTab({
     try {
       setIsLoadingTasks(true);
 
-      // Fetch in-progress tasks for this session (optimized - single API call)
+      // Fetch in-progress and failed tasks for this session (optimized - single API call)
       const params = new URLSearchParams({
         sessionId,
-        status: 'pending,processing',
+        status: 'pending,processing,failed',
       });
 
       const response = await authenticatedFetch(`/api/ai/music-tasks?${params.toString()}`, user);
       if (response.ok) {
         const data = await response.json();
-        const currentTasks = data.tasks || [];
+        const allTasks = data.tasks || [];
+
+        // Separate in-progress and failed tasks
+        const inProgress = allTasks.filter((t: any) => t.status === 'pending' || t.status === 'processing');
+        const failedTasks = allTasks.filter((t: any) => t.status === 'failed');
+
+        // Check for newly failed tasks and add them to failedMusicTasks
+        if (failedTasks.length > 0) {
+          setFailedMusicTasks((prev) => {
+            // Deduplicate by title+error combination (not ID) to avoid showing
+            // multiple identical notifications for repeated failures
+            const existingKeys = new Set(prev.map(t => `${t.title}::${t.error}`));
+            const newFailed = failedTasks
+              .filter((t: any) => {
+                const key = `${t.title || 'Untitled Track'}::${t.error || 'Music generation failed'}`;
+                return !existingKeys.has(key);
+              })
+              .map((t: any) => ({
+                id: t.id,
+                title: t.title || 'Untitled Track',
+                error: t.error || 'Music generation failed',
+              }));
+
+            // Only keep one notification per unique title+error from the new batch
+            const seenKeys = new Set<string>();
+            const deduped = newFailed.filter((t: { id: string; title: string; error: string }) => {
+              const key = `${t.title}::${t.error}`;
+              if (seenKeys.has(key)) return false;
+              seenKeys.add(key);
+              return true;
+            });
+
+            return [...prev, ...deduped];
+          });
+        }
 
         // Detect if any tasks completed (disappeared from in-progress list)
         if (onTaskComplete && prevTasksRef.current.length > 0) {
-          const currentTaskIds = new Set(currentTasks.map((t: any) => t.id));
+          const currentTaskIds = new Set(inProgress.map((t: any) => t.id));
           const completedTasks = prevTasksRef.current.filter(
-            (prevTask: any) => !currentTaskIds.has(prevTask.id),
+            (prevTask: any) => !currentTaskIds.has(prevTask.id) && prevTask.status !== 'failed',
           );
 
           // If tasks disappeared (completed or timed out), refresh media
@@ -179,9 +219,9 @@ export function MediaTab({
           }
         }
 
-        // Update state and ref
-        prevTasksRef.current = currentTasks;
-        setInProgressTasks(currentTasks);
+        // Update state and ref (only track in-progress tasks in prevTasksRef)
+        prevTasksRef.current = inProgress;
+        setInProgressTasks(inProgress);
       }
     } catch (error) {
       console.error('Error loading in-progress tasks:', error);
@@ -340,6 +380,11 @@ export function MediaTab({
 
     return () => clearInterval(interval);
   }, [inProgressFrameExtractionTasks.length, sessionId, user]);
+
+  // Dismiss a failed music task notification
+  const dismissFailedTask = (taskId: string) => {
+    setFailedMusicTasks(prev => prev.filter(t => t.id !== taskId));
+  };
 
   // Helper function to calculate time elapsed for tasks
   const getTimeElapsed = (createdAt: string) => {
@@ -531,6 +576,36 @@ export function MediaTab({
 
   return (
     <>
+      {/* Failed Music Task Alerts */}
+      {failedMusicTasks.length > 0 && (
+        <div className="mb-4 space-y-2">
+          {failedMusicTasks.map(task => (
+            <div
+              key={task.id}
+              className="flex items-start justify-between rounded-lg border border-red-200 bg-red-50 p-3"
+            >
+              <div className="flex items-start gap-3">
+                <XCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500" />
+                <div>
+                  <p className="text-sm font-medium text-red-800">
+                    Failed to generate "
+                    {task.title}
+                    "
+                  </p>
+                  <p className="mt-1 text-sm text-red-600">{task.error}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => dismissFailedTask(task.id)}
+                className="ml-4 flex-shrink-0 rounded p-1 text-red-400 hover:bg-red-100 hover:text-red-600"
+                aria-label="Dismiss"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* In-Progress Music Tasks */}
       {inProgressTasks.length > 0 && (
