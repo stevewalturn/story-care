@@ -51,6 +51,7 @@ export function buildTraceMetadata(context: TraceContext): TraceMetadata {
     sessionId,
     tags: [
       user.role,
+      ...(user.email ? [`email:${user.email}`] : []),
       ...(user.organizationId ? [`org:${user.organizationId}`] : []),
       ...additionalTags,
     ],

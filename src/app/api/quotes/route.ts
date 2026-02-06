@@ -173,12 +173,15 @@ export async function POST(request: NextRequest) {
       });
 
       if (sessionTranscript) {
+        // Search by speakerName or speakerLabel
         const matchingSpeaker = await db.query.speakers.findFirst({
           where: and(
             eq(speakers.transcriptId, sessionTranscript.id),
             or(
               eq(speakers.speakerName, speaker),
               ilike(speakers.speakerName, speaker),
+              eq(speakers.speakerLabel, speaker),
+              ilike(speakers.speakerLabel, speaker),
             ),
           ),
           columns: { id: true },
@@ -186,6 +189,26 @@ export async function POST(request: NextRequest) {
 
         if (matchingSpeaker) {
           resolvedSpeakerId = matchingSpeaker.id;
+        } else {
+          // Fallback: search by linked user name
+          const matchingSpeakerByUser = await db
+            .select({ id: speakers.id })
+            .from(speakers)
+            .leftJoin(users, eq(speakers.userId, users.id))
+            .where(
+              and(
+                eq(speakers.transcriptId, sessionTranscript.id),
+                or(
+                  eq(users.name, speaker),
+                  ilike(users.name, speaker),
+                ),
+              ),
+            )
+            .limit(1);
+
+          if (matchingSpeakerByUser.length > 0 && matchingSpeakerByUser[0]) {
+            resolvedSpeakerId = matchingSpeakerByUser[0].id;
+          }
         }
       }
     }

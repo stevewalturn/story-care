@@ -42,7 +42,7 @@ function getBreadcrumbs(pathname: string): { label: string; href: string }[] {
       'new': 'New Session',
       'dashboard': 'Dashboard',
       'patients': 'Patients',
-      'assets': 'Assets',
+      'assets': 'Content Library',
       'scenes': 'Scenes',
       'pages': 'Story Pages',
       'transcript': 'Transcript',

@@ -3,8 +3,6 @@
 import type { TreatmentModule } from '@/models/Schema';
 import { Clapperboard, Eye, FileText, GripVertical, Image as ImageIcon, ListChecks, MessageCircle, Music, Sparkles, StickyNote, Trash2, Type, Video, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { AssetPickerModal } from '@/components/pages/AssetPickerModal';
 import { BrowseSceneModal } from '@/components/pages/BrowseSceneModal';
 import { ModulePageGenerator } from '@/components/pages/ModulePageGenerator';
@@ -55,6 +53,9 @@ type ContentBlock = {
     questions?: ReflectionQuestion[]; // For reflection blocks
     surveyQuestions?: SurveyQuestion[]; // For survey blocks
     templateId?: string;
+    speakerName?: string; // For quote blocks - speaker attribution
+    startTimeSeconds?: number; // For quote blocks - timestamp
+    endTimeSeconds?: number; // For quote blocks - timestamp
   };
 };
 
@@ -335,8 +336,13 @@ export function PageEditor({
         displayUrl: presignedUrl, // Presigned URL for display
       });
     } else if (asset.type === 'quotes') {
-      // Quote asset
-      updateBlockContent(assetPickerBlockId, { text: asset.data.quoteText });
+      // Quote asset - include speaker attribution and timestamps
+      updateBlockContent(assetPickerBlockId, {
+        text: asset.data.quoteText,
+        speakerName: asset.data.speakerName || asset.data.speakerLabel || undefined,
+        startTimeSeconds: asset.data.startTimeSeconds ? Number(asset.data.startTimeSeconds) : undefined,
+        endTimeSeconds: asset.data.endTimeSeconds ? Number(asset.data.endTimeSeconds) : undefined,
+      });
     } else if (asset.type === 'notes') {
       // Note asset
       updateBlockContent(assetPickerBlockId, { text: asset.data.content });
@@ -1119,6 +1125,34 @@ export function PageEditor({
                   {block.type === 'quote' && block.content.text && (
                     <blockquote className="border-l-4 border-purple-500 bg-purple-50 px-6 py-4 text-gray-800 italic">
                       <HTMLContent html={renderContent(block.content.text)} />
+                      {(block.content.speakerName || block.content.startTimeSeconds != null) && (
+                        <footer className="mt-3 text-sm not-italic text-purple-700">
+                          {block.content.speakerName && (
+                            <span>
+                              --
+                              {' '}
+                              {block.content.speakerName}
+                            </span>
+                          )}
+                          {block.content.startTimeSeconds != null && (
+                            <span className="ml-1 text-xs text-purple-500">
+                              (
+                              {Math.floor(block.content.startTimeSeconds / 60)}
+                              :
+                              {(block.content.startTimeSeconds % 60).toFixed(0).padStart(2, '0')}
+                              {block.content.endTimeSeconds != null && (
+                                <>
+                                  {' - '}
+                                  {Math.floor(block.content.endTimeSeconds / 60)}
+                                  :
+                                  {(block.content.endTimeSeconds % 60).toFixed(0).padStart(2, '0')}
+                                </>
+                              )}
+                              )
+                            </span>
+                          )}
+                        </footer>
+                      )}
                     </blockquote>
                   )}
                   {block.type === 'note' && block.content.text && (
@@ -1128,9 +1162,7 @@ export function PageEditor({
                         <span className="text-xs font-medium text-amber-600">Note</span>
                       </div>
                       <div className="prose prose-lg max-w-none">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                          {block.content.text}
-                        </ReactMarkdown>
+                        <HTMLContent html={renderContent(block.content.text)} />
                       </div>
                     </div>
                   )}

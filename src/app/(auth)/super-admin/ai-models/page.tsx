@@ -8,6 +8,9 @@
 import type { AiModel, ModelCategory, ModelStatus } from '@/models/Schema';
 import {
   AlertCircle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   Check,
   ChevronDown,
   Cpu,
@@ -22,7 +25,7 @@ import {
   Video,
   X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -65,6 +68,7 @@ export default function SuperAdminAiModelsPage() {
   const [selectedModels, setSelectedModels] = useState<Set<string>>(() => new Set());
   const [editingModel, setEditingModel] = useState<AiModel | null>(null);
   const [bulkStatus, setBulkStatus] = useState<ModelStatus | ''>('');
+  const [priceSortDirection, setPriceSortDirection] = useState<'asc' | 'desc' | null>(null);
 
   // Fetch models
   const fetchModels = async () => {
@@ -194,6 +198,23 @@ export default function SuperAdminAiModelsPage() {
     const cost = Number.parseFloat(model.costPerUnit);
     const unit = model.pricingUnit?.replace('per_', '/').replace('_', ' ') || '';
     return `$${cost.toFixed(4)}${unit}`;
+  };
+
+  // Sort models by price when sort is active
+  const sortedModels = useMemo(() => {
+    if (!priceSortDirection) return models;
+    return [...models].sort((a, b) => {
+      const costA = a.costPerUnit ? Number.parseFloat(a.costPerUnit) : 0;
+      const costB = b.costPerUnit ? Number.parseFloat(b.costPerUnit) : 0;
+      return priceSortDirection === 'asc' ? costA - costB : costB - costA;
+    });
+  }, [models, priceSortDirection]);
+
+  // Toggle price sort: asc -> desc -> null
+  const togglePriceSort = () => {
+    setPriceSortDirection(prev =>
+      prev === null ? 'asc' : prev === 'asc' ? 'desc' : null,
+    );
   };
 
   return (
@@ -353,7 +374,20 @@ export default function SuperAdminAiModelsPage() {
                     Category
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                    Price
+                    <button
+                      type="button"
+                      onClick={togglePriceSort}
+                      className="inline-flex items-center gap-1 hover:text-gray-900"
+                    >
+                      Price
+                      {priceSortDirection === 'asc' ? (
+                        <ArrowUp className="h-3 w-3" />
+                      ) : priceSortDirection === 'desc' ? (
+                        <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 text-gray-300" />
+                      )}
+                    </button>
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                     Status
@@ -364,7 +398,7 @@ export default function SuperAdminAiModelsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
-                {models.map(model => (
+                {sortedModels.map(model => (
                   <tr key={model.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <input

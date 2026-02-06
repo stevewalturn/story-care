@@ -4,7 +4,7 @@
  */
 
 import type { ModelCategory, ModelStatus } from '@/models/Schema';
-import { and, asc, eq, ilike, or } from 'drizzle-orm';
+import { and, asc, eq, ilike, ne, or } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { aiModelsSchema } from '@/models/Schema';
 
@@ -225,6 +225,28 @@ export async function updateAiModel(
     apiProvider?: string | null;
   },
 ) {
+  // Enforce single-active constraint for transcription models
+  if (updates.status === 'active') {
+    const [model] = await db
+      .select()
+      .from(aiModelsSchema)
+      .where(eq(aiModelsSchema.id, id))
+      .limit(1);
+
+    if (model?.category === 'transcription') {
+      await db
+        .update(aiModelsSchema)
+        .set({ status: 'hidden', updatedAt: new Date() })
+        .where(
+          and(
+            eq(aiModelsSchema.category, 'transcription'),
+            ne(aiModelsSchema.id, id),
+            eq(aiModelsSchema.status, 'active'),
+          ),
+        );
+    }
+  }
+
   const [updated] = await db
     .update(aiModelsSchema)
     .set({
@@ -244,6 +266,76 @@ export async function bulkUpdateModelStatus(
   modelIds: string[],
   status: ModelStatus,
 ) {
+  // Enforce single-active constraint for transcription models
+  if (status === 'active' && modelIds.length > 0) {
+    const transcriptionModels = await db
+      .select({ id: aiModelsSchema.id })
+      .from(aiModelsSchema)
+      .where(
+        and(
+          eq(aiModelsSchema.category, 'transcription'),
+          or(...modelIds.map(id => eq(aiModelsSchema.id, id)))!,
+        ),
+      );
+
+    if (transcriptionModels.length > 0) {
+      // Only allow the first transcription model to be active; rest stay as-is
+      const activeTranscriptionId = transcriptionModels[0]!.id;
+      const nonTranscriptionIds = modelIds.filter(
+        id => !transcriptionModels.some(tm => tm.id === id),
+      );
+      const skippedTranscriptionIds = transcriptionModels
+        .slice(1)
+        .map(tm => tm.id);
+
+      // Deactivate all other currently-active transcription models
+      await db
+        .update(aiModelsSchema)
+        .set({ status: 'hidden', updatedAt: new Date() })
+        .where(
+          and(
+            eq(aiModelsSchema.category, 'transcription'),
+            ne(aiModelsSchema.id, activeTranscriptionId),
+            eq(aiModelsSchema.status, 'active'),
+          ),
+        );
+
+      // Activate the chosen transcription model
+      await db
+        .update(aiModelsSchema)
+        .set({ status: 'active', updatedAt: new Date() })
+        .where(eq(aiModelsSchema.id, activeTranscriptionId));
+
+      // Set skipped transcription models to hidden
+      if (skippedTranscriptionIds.length > 0) {
+        await db
+          .update(aiModelsSchema)
+          .set({ status: 'hidden', updatedAt: new Date() })
+          .where(
+            or(...skippedTranscriptionIds.map(id => eq(aiModelsSchema.id, id)))!,
+          );
+      }
+
+      // Update non-transcription models normally
+      if (nonTranscriptionIds.length > 0) {
+        await db
+          .update(aiModelsSchema)
+          .set({ status, updatedAt: new Date() })
+          .where(
+            or(...nonTranscriptionIds.map(id => eq(aiModelsSchema.id, id)))!,
+          );
+      }
+
+      // Return all updated models
+      const updated = await db
+        .select()
+        .from(aiModelsSchema)
+        .where(or(...modelIds.map(id => eq(aiModelsSchema.id, id)))!);
+
+      return updated;
+    }
+  }
+
   const updated = await db
     .update(aiModelsSchema)
     .set({

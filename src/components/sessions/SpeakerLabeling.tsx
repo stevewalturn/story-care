@@ -141,12 +141,55 @@ export function SpeakerLabeling({
   const [mergeMode, setMergeMode] = useState(false);
   const [selectedForMerge, setSelectedForMerge] = useState<string[]>([]);
   const [loadingAudio, setLoadingAudio] = useState<string | null>(null);
+  const [utteranceIndexes, setUtteranceIndexes] = useState<Record<string, number>>({});
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
   const [isRetrying, setIsRetrying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const handleImageError = (speakerId: string) => {
     setImageErrors(prev => new Set(prev).add(speakerId));
+  };
+
+  const handleUtteranceNav = async (speaker: Speaker, direction: 'prev' | 'next') => {
+    const currentIndex = utteranceIndexes[speaker.id] || 0;
+    const newIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+
+    if (newIndex < 0 || newIndex >= speaker.utteranceCount) return;
+
+    // Stop any playing audio for this speaker
+    if (playingId === speaker.id && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = '';
+      audioRef.current = null;
+      setPlayingId(null);
+    }
+
+    // Update index immediately for responsive UI
+    setUtteranceIndexes(prev => ({ ...prev, [speaker.id]: newIndex }));
+
+    try {
+      setLoadingAudio(speaker.id);
+      const response = await authenticatedFetch(
+        `/api/sessions/${sessionId}/speakers/${speaker.id}/audio?index=${newIndex}`,
+        user,
+      );
+      if (!response.ok) throw new Error('Failed to fetch utterance');
+      const data = await response.json();
+
+      setSpeakers(prev =>
+        prev.map(s =>
+          s.id === speaker.id
+            ? { ...s, sampleText: data.utterance.text, sampleAudioUrl: data.audioUrl }
+            : s,
+        ),
+      );
+    } catch (error) {
+      console.error('Error fetching utterance:', error);
+      // Revert index on error
+      setUtteranceIndexes(prev => ({ ...prev, [speaker.id]: currentIndex }));
+    } finally {
+      setLoadingAudio(null);
+    }
   };
 
   const speakerTypeOptions = [
@@ -304,7 +347,8 @@ export function SpeakerLabeling({
       // Generate sample audio URL from API if not provided
       try {
         setLoadingAudio(speakerId);
-        const response = await authenticatedFetch(`/api/sessions/${sessionId}/speakers/${speakerId}/audio`, user);
+        const currentIndex = utteranceIndexes[speakerId] || 0;
+        const response = await authenticatedFetch(`/api/sessions/${sessionId}/speakers/${speakerId}/audio?index=${currentIndex}`, user);
 
         if (!response.ok) {
           throw new Error('Failed to fetch audio sample');
@@ -619,9 +663,13 @@ export function SpeakerLabeling({
                         {/* Previous Button */}
                         <button
                           type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUtteranceNav(speaker, 'prev');
+                          }}
                           className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
                           title="Previous segment"
-                          disabled
+                          disabled={(utteranceIndexes[speaker.id] || 0) === 0 || loadingAudio === speaker.id}
                         >
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -655,9 +703,13 @@ export function SpeakerLabeling({
                         {/* Next Button */}
                         <button
                           type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUtteranceNav(speaker, 'next');
+                          }}
                           className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
                           title="Next segment"
-                          disabled
+                          disabled={(utteranceIndexes[speaker.id] || 0) >= speaker.utteranceCount - 1 || loadingAudio === speaker.id}
                         >
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

@@ -9,6 +9,7 @@ import type { QuotesTabProps } from '../types/transcript.types';
 import { Pencil, Play, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
+import { HTMLContent } from '@/components/ui/HTMLContent';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 
 export function QuotesTab({ sessionId, user, refreshKey, selectedPatient, onEditQuote, onDeleteQuote, onJumpToTimestamp }: QuotesTabProps) {
@@ -225,9 +226,7 @@ export function QuotesTab({ sessionId, user, refreshKey, selectedPatient, onEdit
                 </div>
 
                 {/* Quote Text */}
-                <p className="text-sm leading-relaxed whitespace-pre-wrap text-gray-700">
-                  {quote.quoteText}
-                </p>
+                <HTMLContent html={quote.quoteText} className="text-sm leading-relaxed text-gray-700" />
 
                 {/* Tags */}
                 {quote.tags && quote.tags.length > 0 && (

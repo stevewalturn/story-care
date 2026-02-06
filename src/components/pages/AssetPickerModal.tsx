@@ -47,6 +47,8 @@ type QuoteAsset = {
   createdAt: string;
   speakerName: string | null;
   speakerLabel: string | null;
+  startTimeSeconds: string | null;
+  endTimeSeconds: string | null;
 };
 
 type NoteAsset = {
@@ -305,7 +307,7 @@ export function AssetPickerModal({
       <div className="flex h-[80vh] w-full max-w-4xl flex-col rounded-xl bg-white shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-900">Browse Assets Library</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Browse Content Library</h2>
           <button
             type="button"
             onClick={onClose}
@@ -604,11 +606,30 @@ export function AssetPickerModal({
                       {`"${asset.quoteText}"`}
                     </ReactMarkdown>
                   </div>
-                  {(asset.speakerName || asset.speakerLabel) && (
+                  {(asset.speakerName || asset.speakerLabel || asset.startTimeSeconds) && (
                     <p className="mt-2 text-sm font-medium text-purple-600">
-                      —
-                      {' '}
-                      {asset.speakerName || asset.speakerLabel}
+                      {(asset.speakerName || asset.speakerLabel) && (
+                        <span>
+                          —
+                          {' '}
+                          {asset.speakerName || asset.speakerLabel}
+                        </span>
+                      )}
+                      {asset.startTimeSeconds && (
+                        <span className="ml-2 text-xs font-normal text-gray-500">
+                          {Math.floor(Number(asset.startTimeSeconds) / 60)}
+                          :
+                          {(Number(asset.startTimeSeconds) % 60).toFixed(0).padStart(2, '0')}
+                          {asset.endTimeSeconds && (
+                            <>
+                              {' - '}
+                              {Math.floor(Number(asset.endTimeSeconds) / 60)}
+                              :
+                              {(Number(asset.endTimeSeconds) % 60).toFixed(0).padStart(2, '0')}
+                            </>
+                          )}
+                        </span>
+                      )}
                     </p>
                   )}
                   {asset.context && (

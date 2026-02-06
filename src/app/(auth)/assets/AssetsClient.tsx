@@ -58,7 +58,6 @@ export function AssetsClient() {
   const [isLoadingQuotes, setIsLoadingQuotes] = useState(false);
   const [isLoadingNotes, setIsLoadingNotes] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterSource, setFilterSource] = useState('all');
   const [filterType, setFilterType] = useState<'all' | 'image' | 'video' | 'audio'>('all');
 
   // Quote edit/delete state
@@ -1197,25 +1196,6 @@ export function AssetsClient() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
-              <select
-                value={filterSource}
-                onChange={e => setFilterSource(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none"
-              >
-                <option value="all">All Sources</option>
-                <option value="generated">Generated</option>
-                <option value="uploaded">Uploaded</option>
-              </select>
-              <select
-                value={filterType}
-                onChange={e => setFilterType(e.target.value as any)}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none"
-              >
-                <option value="all">All Types</option>
-                <option value="image">Images</option>
-                <option value="video">Videos</option>
-                <option value="audio">Audio</option>
-              </select>
             </div>
 
             {/* Type Filters */}

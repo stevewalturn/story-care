@@ -8,6 +8,7 @@ import {
   BookOpen,
   Building2,
   ClipboardList,
+  Cpu,
   FileText,
   Film,
   Folder,
@@ -69,6 +70,12 @@ export const navigationConfig: NavigationConfig = {
       href: '/super-admin/prompts',
       icon: Sparkles,
       description: 'Manage system-wide AI prompts',
+    },
+    {
+      name: 'AI Models',
+      href: '/super-admin/ai-models',
+      icon: Cpu,
+      description: 'Manage AI model availability and pricing',
     },
     {
       name: 'Organizations',
@@ -175,7 +182,7 @@ export const navigationConfig: NavigationConfig = {
       description: 'Manage voice recordings and shareable links',
     },
     {
-      name: 'Assets',
+      name: 'Content Library',
       href: '/assets',
       icon: Image,
       description: 'Media library (images, videos)',

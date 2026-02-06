@@ -427,6 +427,7 @@ export function TranscriptViewerClient({
     const quote = {
       quote_text: data.selectedText,
       speaker: data.speakerName,
+      speaker_id: data.speakerId,
       patient_name: data.speakerName, // For auto-matching patient
       start_time_seconds: data.startTime,
       end_time_seconds: data.endTime,
@@ -603,6 +604,7 @@ export function TranscriptViewerClient({
             patientId,
             sessionId,
             quoteText: quote.quote_text || quote.text,
+            speakerId: quote.speaker_id || undefined,
             speaker: quote.speaker || 'Unknown',
             tags: quote.tags || [],
             notes: quote.context || quote.significance || '',

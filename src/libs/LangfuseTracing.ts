@@ -9,9 +9,12 @@
  * IMPORTANT: All media generation (image, video, music, transcription) uses
  * Generation objects (not Spans) to properly track costs in Langfuse's
  * Total Cost column via the usage.totalCost field.
+ *
+ * Cost lookup priority: DB (ai_models table) -> static ModelPricing.ts -> fallback
  */
 
 import type { LangfuseGenerationClient, LangfuseSpanClient, LangfuseTraceClient } from 'langfuse';
+import { getModelCost } from '@/services/AiModelService';
 import { getLangfuse } from './Langfuse';
 import {
   getImageCost,
@@ -68,43 +71,79 @@ export type SpanOutput = {
 };
 
 // ============================================================
-// Cost Calculation (for custom models not auto-detected by Langfuse)
+// DB Cost Lookup (primary source of truth)
+// ============================================================
+
+/**
+ * Fetch cost per unit from the DB ai_models table.
+ * Returns null if not found or on error.
+ */
+async function getDbModelCost(modelId: string): Promise<number | null> {
+  try {
+    return await getModelCost(modelId);
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================
+// Cost Calculation (DB -> static fallback -> undefined)
 // ============================================================
 
 /**
  * Calculate cost for image generation
+ * Tries DB first, falls back to static ModelPricing.ts
  */
-export function calculateImageCost(model: string, imageCount: number = 1): number | undefined {
-  const perImageCost = getImageCost(model);
-  if (!perImageCost) return undefined;
-  return perImageCost * imageCount;
+export async function calculateImageCost(model: string, imageCount: number = 1): Promise<number | undefined> {
+  const dbCost = await getDbModelCost(model);
+  if (dbCost !== null) return dbCost * imageCount;
+
+  const staticCost = getImageCost(model);
+  if (staticCost) return staticCost * imageCount;
+
+  return undefined;
 }
 
 /**
  * Calculate cost for video generation (per second)
+ * Tries DB first, falls back to static ModelPricing.ts
  */
-export function calculateVideoCost(model: string, durationSeconds: number): number | undefined {
-  const perSecondCost = getVideoCostPerSecond(model);
-  if (!perSecondCost) return undefined;
-  return perSecondCost * durationSeconds;
+export async function calculateVideoCost(model: string, durationSeconds: number): Promise<number | undefined> {
+  const dbCost = await getDbModelCost(model);
+  if (dbCost !== null) return dbCost * durationSeconds;
+
+  const staticCost = getVideoCostPerSecond(model);
+  if (staticCost) return staticCost * durationSeconds;
+
+  return undefined;
 }
 
 /**
  * Calculate cost for audio transcription (per minute)
+ * Tries DB first, falls back to static ModelPricing.ts
  */
-export function calculateTranscriptionCost(model: string, durationMinutes: number): number | undefined {
-  const perMinuteCost = getTranscriptionCostPerMinute(model);
-  if (!perMinuteCost) return undefined;
-  return perMinuteCost * durationMinutes;
+export async function calculateTranscriptionCost(model: string, durationMinutes: number): Promise<number | undefined> {
+  const dbCost = await getDbModelCost(model);
+  if (dbCost !== null) return dbCost * durationMinutes;
+
+  const staticCost = getTranscriptionCostPerMinute(model);
+  if (staticCost) return staticCost * durationMinutes;
+
+  return undefined;
 }
 
 /**
  * Calculate cost for music generation (per minute)
+ * Tries DB first, falls back to static ModelPricing.ts
  */
-export function calculateMusicCost(model: string, durationMinutes: number): number | undefined {
-  const perMinuteCost = getMusicCostPerMinute(model);
-  if (!perMinuteCost) return undefined;
-  return perMinuteCost * durationMinutes;
+export async function calculateMusicCost(model: string, durationMinutes: number): Promise<number | undefined> {
+  const dbCost = await getDbModelCost(model);
+  if (dbCost !== null) return dbCost * durationMinutes;
+
+  const staticCost = getMusicCostPerMinute(model);
+  if (staticCost) return staticCost * durationMinutes;
+
+  return undefined;
 }
 
 // ============================================================
@@ -226,9 +265,10 @@ const FALLBACK_COSTS = {
 
 /**
  * End an image generation with proper cost tracking
- * Cost is passed via usage.totalCost which Langfuse properly aggregates
+ * Cost is fetched from DB, falls back to static pricing, then fallback defaults.
+ * This is async but callers don't need to await it (fire-and-forget tracing).
  */
-export function endImageGeneration(
+export async function endImageGeneration(
   generation: LangfuseGenerationClient | null,
   model: string,
   output: {
@@ -237,11 +277,11 @@ export function endImageGeneration(
     level?: 'DEBUG' | 'DEFAULT' | 'WARNING' | 'ERROR';
     imageCount?: number;
   },
-): void {
+): Promise<void> {
   if (!generation) return;
 
   const imageCount = output.imageCount || 1;
-  const calculatedCost = calculateImageCost(model, imageCount);
+  const calculatedCost = await calculateImageCost(model, imageCount);
   // Use fallback if model not in pricing list
   const totalCost = calculatedCost ?? (FALLBACK_COSTS.image * imageCount);
 
@@ -257,7 +297,7 @@ export function endImageGeneration(
     metadata: {
       model,
       imageCount,
-      costSource: calculatedCost !== undefined ? 'pricing-list' : 'fallback',
+      costSource: calculatedCost !== undefined ? 'db-or-static' : 'fallback',
     },
   });
 }
@@ -291,9 +331,9 @@ export function createVideoGeneration(
 
 /**
  * End a video generation with proper cost tracking
- * Cost is passed via usage.totalCost which Langfuse properly aggregates
+ * Cost is fetched from DB, falls back to static pricing, then fallback defaults.
  */
-export function endVideoGeneration(
+export async function endVideoGeneration(
   generation: LangfuseGenerationClient | null,
   model: string,
   output: {
@@ -302,12 +342,12 @@ export function endVideoGeneration(
     level?: 'DEBUG' | 'DEFAULT' | 'WARNING' | 'ERROR';
     durationSeconds?: number;
   },
-): void {
+): Promise<void> {
   if (!generation) return;
 
   const durationSeconds = output.durationSeconds || 0;
   const calculatedCost = durationSeconds > 0
-    ? calculateVideoCost(model, durationSeconds)
+    ? await calculateVideoCost(model, durationSeconds)
     : undefined;
   // Use fallback if model not in pricing list
   const totalCost = calculatedCost ?? (durationSeconds > 0 ? FALLBACK_COSTS.video * durationSeconds : 0);
@@ -324,7 +364,7 @@ export function endVideoGeneration(
     metadata: {
       model,
       durationSeconds,
-      costSource: calculatedCost !== undefined ? 'pricing-list' : 'fallback',
+      costSource: calculatedCost !== undefined ? 'db-or-static' : 'fallback',
     },
   });
 }
@@ -358,9 +398,9 @@ export function createTranscriptionGeneration(
 
 /**
  * End a transcription generation with proper cost tracking
- * Cost is passed via usage.totalCost which Langfuse properly aggregates
+ * Cost is fetched from DB, falls back to static pricing, then fallback defaults.
  */
-export function endTranscriptionGeneration(
+export async function endTranscriptionGeneration(
   generation: LangfuseGenerationClient | null,
   model: string,
   output: {
@@ -369,13 +409,13 @@ export function endTranscriptionGeneration(
     level?: 'DEBUG' | 'DEFAULT' | 'WARNING' | 'ERROR';
     durationMinutes?: number;
   },
-): void {
+): Promise<void> {
   if (!generation) return;
 
   const durationMinutes = output.durationMinutes || 0;
   const durationSeconds = durationMinutes * 60;
   const calculatedCost = durationMinutes > 0
-    ? calculateTranscriptionCost(model, durationMinutes)
+    ? await calculateTranscriptionCost(model, durationMinutes)
     : undefined;
   // Use fallback if model not in pricing list
   const totalCost = calculatedCost ?? (durationMinutes > 0 ? FALLBACK_COSTS.transcription * durationMinutes : 0);
@@ -392,7 +432,7 @@ export function endTranscriptionGeneration(
     metadata: {
       model,
       durationMinutes,
-      costSource: calculatedCost !== undefined ? 'pricing-list' : 'fallback',
+      costSource: calculatedCost !== undefined ? 'db-or-static' : 'fallback',
     },
   });
 }
@@ -426,9 +466,9 @@ export function createMusicGeneration(
 
 /**
  * End a music generation with proper cost tracking
- * Cost is passed via usage.totalCost which Langfuse properly aggregates
+ * Cost is fetched from DB, falls back to static pricing, then fallback defaults.
  */
-export function endMusicGeneration(
+export async function endMusicGeneration(
   generation: LangfuseGenerationClient | null,
   model: string,
   output: {
@@ -437,13 +477,13 @@ export function endMusicGeneration(
     level?: 'DEBUG' | 'DEFAULT' | 'WARNING' | 'ERROR';
     durationMinutes?: number;
   },
-): void {
+): Promise<void> {
   if (!generation) return;
 
   const durationMinutes = output.durationMinutes || 0;
   const durationSeconds = durationMinutes * 60;
   const calculatedCost = durationMinutes > 0
-    ? calculateMusicCost(model, durationMinutes)
+    ? await calculateMusicCost(model, durationMinutes)
     : undefined;
   // Use fallback if model not in pricing list
   const totalCost = calculatedCost ?? (durationMinutes > 0 ? FALLBACK_COSTS.music * durationMinutes : 0);
@@ -460,7 +500,7 @@ export function endMusicGeneration(
     metadata: {
       model,
       durationMinutes,
-      costSource: calculatedCost !== undefined ? 'pricing-list' : 'fallback',
+      costSource: calculatedCost !== undefined ? 'db-or-static' : 'fallback',
     },
   });
 }
