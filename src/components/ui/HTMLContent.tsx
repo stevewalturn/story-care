@@ -12,15 +12,15 @@ type HTMLContentProps = {
 const proseModifiers = [
   // Headings
   'prose-headings:font-bold',
-  'prose-h1:mt-6 prose-h1:mb-4 prose-h1:text-xl prose-h1:text-gray-900',
-  'prose-h2:mt-5 prose-h2:mb-3 prose-h2:text-lg prose-h2:text-gray-900',
-  'prose-h3:mt-4 prose-h3:mb-2 prose-h3:text-base prose-h3:font-semibold prose-h3:text-gray-900',
+  'prose-h1:mt-6 prose-h1:mb-4 prose-h1:text-2xl prose-h1:text-gray-900',
+  'prose-h2:mt-5 prose-h2:mb-3 prose-h2:text-xl prose-h2:text-gray-900',
+  'prose-h3:mt-4 prose-h3:mb-2 prose-h3:text-lg prose-h3:font-semibold prose-h3:text-gray-900',
   // Paragraphs
-  'prose-p:mb-3 prose-p:text-[15px] prose-p:leading-relaxed prose-p:text-gray-700',
+  'prose-p:mb-3 prose-p:text-base prose-p:leading-relaxed prose-p:text-gray-700',
   // Lists
   'prose-ul:mb-3 prose-ul:ml-4 prose-ul:list-disc prose-ul:text-gray-700',
   'prose-ol:mb-3 prose-ol:ml-4 prose-ol:list-decimal prose-ol:text-gray-700',
-  'prose-li:text-[15px] prose-li:leading-relaxed',
+  'prose-li:text-base prose-li:leading-relaxed',
   // Links
   'prose-a:font-medium prose-a:text-purple-600 prose-a:underline prose-a:decoration-purple-300 prose-a:decoration-2 prose-a:underline-offset-2 hover:prose-a:text-purple-700',
   // Blockquotes
@@ -46,7 +46,7 @@ const proseModifiers = [
 export function HTMLContent({ html, className = '' }: HTMLContentProps) {
   return (
     <div
-      className={`prose prose-sm max-w-none ${proseModifiers} ${className}`}
+      className={`prose max-w-none ${proseModifiers} ${className}`}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

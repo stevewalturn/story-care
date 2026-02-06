@@ -579,6 +579,23 @@ export function PageEditor({
               onChange={html => updateBlockContent(block.id, { text: html })}
               placeholder="Enter quote text..."
             />
+            {(block.content.speakerName || block.content.startTimeSeconds != null) && (
+              <div className="flex items-center gap-2 rounded-lg bg-purple-50 px-3 py-2 text-sm">
+                {block.content.speakerName && (
+                  <span className="font-medium text-purple-700">
+                    — {block.content.speakerName}
+                  </span>
+                )}
+                {block.content.startTimeSeconds != null && (
+                  <span className="text-xs text-purple-500">
+                    {Math.floor(block.content.startTimeSeconds / 60)}:{String(Math.floor(block.content.startTimeSeconds % 60)).padStart(2, '0')}
+                    {block.content.endTimeSeconds != null && (
+                      <> - {Math.floor(block.content.endTimeSeconds / 60)}:{String(Math.floor(block.content.endTimeSeconds % 60)).padStart(2, '0')}</>
+                    )}
+                  </span>
+                )}
+              </div>
+            )}
             <Button
               variant="ghost"
               size="sm"

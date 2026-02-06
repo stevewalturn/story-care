@@ -346,6 +346,11 @@ export default function PatientStoryPage({ params }: Props) {
                       className="w-full transition-transform duration-700 hover:scale-[1.02]"
                     />
                   </div>
+                  {block.settings?.caption && (
+                    <figcaption className="mt-4 px-4 text-center text-sm text-gray-500 italic sm:px-0">
+                      {block.settings.caption}
+                    </figcaption>
+                  )}
                 </figure>
               )}
 
@@ -403,6 +408,11 @@ export default function PatientStoryPage({ params }: Props) {
                       <HTMLContent html={renderContent(block.textContent)} className="inline" />
                       "
                     </div>
+                    {block.settings?.attribution && (
+                      <footer className="mt-6 text-sm font-medium text-gray-500">
+                        — {block.settings.attribution}
+                      </footer>
+                    )}
                   </div>
                 </blockquote>
               )}
