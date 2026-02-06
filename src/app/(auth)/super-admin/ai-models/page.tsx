@@ -18,9 +18,6 @@ import {
   Eye,
   EyeOff,
   Image,
-  MessageSquare,
-  Mic,
-  Music,
   Search,
   Video,
   X,
@@ -31,14 +28,13 @@ import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
 type Category = 'all' | ModelCategory;
 
+const VISIBLE_CATEGORIES = new Set<ModelCategory>(['text_to_image', 'image_to_image', 'image_to_video']);
+
 const CATEGORIES: { id: Category; label: string; icon: React.ReactNode }[] = [
   { id: 'all', label: 'All Models', icon: <Cpu className="h-4 w-4" /> },
   { id: 'text_to_image', label: 'Text to Image', icon: <Image className="h-4 w-4" /> },
   { id: 'image_to_image', label: 'Image to Image', icon: <Image className="h-4 w-4" /> },
   { id: 'image_to_video', label: 'Image to Video', icon: <Video className="h-4 w-4" /> },
-  { id: 'text_to_text', label: 'Text (Chat)', icon: <MessageSquare className="h-4 w-4" /> },
-  { id: 'music_generation', label: 'Music', icon: <Music className="h-4 w-4" /> },
-  { id: 'transcription', label: 'Transcription', icon: <Mic className="h-4 w-4" /> },
 ];
 
 const STATUS_COLORS: Record<ModelStatus, string> = {
@@ -65,6 +61,7 @@ export default function SuperAdminAiModelsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProvider, setSelectedProvider] = useState<string>('');
+  const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [selectedModels, setSelectedModels] = useState<Set<string>>(() => new Set());
   const [editingModel, setEditingModel] = useState<AiModel | null>(null);
   const [bulkStatus, setBulkStatus] = useState<ModelStatus | ''>('');
@@ -86,6 +83,9 @@ export default function SuperAdminAiModelsPage() {
       if (selectedProvider) {
         params.set('provider', selectedProvider);
       }
+      if (selectedStatus) {
+        params.set('status', selectedStatus);
+      }
 
       const endpoint = `/api/super-admin/ai-models?${params.toString()}`;
       const response = await authenticatedFetch(endpoint, user);
@@ -95,7 +95,7 @@ export default function SuperAdminAiModelsPage() {
       }
 
       const data = await response.json();
-      setModels(data.models || []);
+      setModels((data.models || []).filter((m: AiModel) => VISIBLE_CATEGORIES.has(m.category)));
       setCounts(data.counts || {});
       setProviders(data.providers || []);
     } catch (err) {
@@ -108,7 +108,7 @@ export default function SuperAdminAiModelsPage() {
   useEffect(() => {
     fetchModels();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, activeCategory, searchQuery, selectedProvider]);
+  }, [user, activeCategory, searchQuery, selectedProvider, selectedStatus]);
 
   // Clear selection when category changes
   useEffect(() => {
@@ -118,7 +118,9 @@ export default function SuperAdminAiModelsPage() {
   // Get category count
   const getCategoryCount = (category: Category) => {
     if (category === 'all') {
-      return Object.values(counts).reduce((sum, c) => sum + c.total, 0);
+      return Object.entries(counts)
+        .filter(([key]) => VISIBLE_CATEGORIES.has(key as ModelCategory))
+        .reduce((sum, [, c]) => sum + c.total, 0);
     }
     return counts[category]?.total || 0;
   };
@@ -292,6 +294,21 @@ export default function SuperAdminAiModelsPage() {
             <ChevronDown className="pointer-events-none absolute top-1/2 right-2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           </div>
 
+          {/* Status Filter */}
+          <div className="relative">
+            <select
+              value={selectedStatus}
+              onChange={e => setSelectedStatus(e.target.value)}
+              className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pr-8 pl-3 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
+            >
+              <option value="">All Statuses</option>
+              {STATUS_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute top-1/2 right-2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          </div>
+
           {/* Bulk Actions */}
           {selectedModels.size > 0 && (
             <div className="flex items-center gap-2 rounded-lg bg-purple-50 px-3 py-2">
@@ -346,7 +363,7 @@ export default function SuperAdminAiModelsPage() {
             <Cpu className="mx-auto mb-3 h-12 w-12 text-gray-400" />
             <h3 className="mb-1 text-lg font-semibold text-gray-900">No models found</h3>
             <p className="text-sm text-gray-600">
-              {searchQuery || selectedProvider
+              {searchQuery || selectedProvider || selectedStatus
                 ? 'Try adjusting your filters'
                 : 'Run the seed script to populate AI models'}
             </p>

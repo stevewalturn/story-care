@@ -36,7 +36,8 @@ type PageData = {
 
 export default function StoryViewerPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
-  const { user } = useAuth();
+  const { user, dbUser } = useAuth();
+  const isPatient = dbUser?.role === 'patient';
   const [pageData, setPageData] = useState<PageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -188,7 +189,7 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-purple-50/20 to-white">
       {/* Success Banner */}
-      {submitSuccess && (
+      {isPatient && submitSuccess && (
         <div className="border-b border-green-200 bg-gradient-to-r from-emerald-50 to-green-50 px-4 py-4">
           <div className="mx-auto max-w-2xl">
             <p className="flex items-center justify-center gap-3 text-green-800">
@@ -365,7 +366,7 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
                           placeholder="Write your thoughts here..."
                           className="min-h-[140px] w-full rounded-2xl border-2 border-gray-100 bg-white px-5 py-4 text-lg leading-relaxed text-gray-700 transition-all duration-200 placeholder:text-gray-400 focus:border-purple-300 focus:ring-4 focus:ring-purple-50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                           rows={5}
-                          disabled={submitSuccess}
+                          disabled={submitSuccess || !isPatient}
                         />
                       </div>
                     ))}
@@ -392,7 +393,7 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
                             placeholder="Type your answer here..."
                             className="min-h-[120px] w-full rounded-2xl border-2 border-gray-100 bg-white px-5 py-4 text-lg leading-relaxed text-gray-700 transition-all duration-200 placeholder:text-gray-400 focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                             rows={4}
-                            disabled={submitSuccess}
+                            disabled={submitSuccess || !isPatient}
                           />
                         )}
 
@@ -412,12 +413,12 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
                                     key={value}
                                     type="button"
                                     onClick={() => setSurveyAnswers({ ...surveyAnswers, [q.id]: value })}
-                                    disabled={submitSuccess}
+                                    disabled={submitSuccess || !isPatient}
                                     className={`h-14 w-14 rounded-2xl text-lg font-semibold transition-all duration-200 ${
                                       isSelected
                                         ? 'scale-110 bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
                                         : 'bg-gray-100 text-gray-600 hover:bg-emerald-50 hover:text-emerald-700'
-                                    } ${submitSuccess ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                                    } ${submitSuccess || !isPatient ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                                   >
                                     {value}
                                   </button>
@@ -441,12 +442,12 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
                                 key={emotion.value}
                                 type="button"
                                 onClick={() => setSurveyAnswers({ ...surveyAnswers, [q.id]: emotion.value })}
-                                disabled={submitSuccess}
+                                disabled={submitSuccess || !isPatient}
                                 className={`flex flex-1 flex-col items-center rounded-2xl py-4 transition-all duration-200 ${
                                   surveyAnswers[q.id] === emotion.value
                                     ? 'scale-105 bg-emerald-50 ring-2 ring-emerald-400'
                                     : 'bg-gray-50 hover:bg-gray-100'
-                                } ${submitSuccess ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                                } ${submitSuccess || !isPatient ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                               >
                                 <span className="text-3xl sm:text-4xl">{emotion.emoji}</span>
                                 <span className="mt-1 text-xs text-gray-500">{emotion.label}</span>
@@ -463,12 +464,12 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
                                 key={optIndex}
                                 type="button"
                                 onClick={() => setSurveyAnswers({ ...surveyAnswers, [q.id]: option })}
-                                disabled={submitSuccess}
+                                disabled={submitSuccess || !isPatient}
                                 className={`w-full rounded-2xl px-5 py-4 text-left font-medium transition-all duration-200 ${
                                   surveyAnswers[q.id] === option
                                     ? 'bg-emerald-500 text-white'
                                     : 'bg-gray-50 text-gray-700 hover:bg-emerald-50'
-                                } ${submitSuccess ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                                } ${submitSuccess || !isPatient ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                               >
                                 {option}
                               </button>
@@ -485,7 +486,7 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
         })}
 
         {/* Submit Button */}
-        {hasQuestions && !submitSuccess && (
+        {isPatient && hasQuestions && !submitSuccess && (
           <div className="mt-16 mb-20 flex justify-center">
             <button
               onClick={handleSubmit}
@@ -512,7 +513,7 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
         )}
 
         {/* Success Message */}
-        {submitSuccess && (
+        {isPatient && submitSuccess && (
           <div className="mt-12 mb-20 rounded-3xl bg-gradient-to-r from-emerald-50 to-green-50 p-8 text-center sm:p-12">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
               <svg className="h-8 w-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">

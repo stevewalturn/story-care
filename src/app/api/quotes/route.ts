@@ -99,6 +99,45 @@ export async function GET(request: NextRequest) {
 
     const quotesList = await query.orderBy(desc(quotes.createdAt));
 
+    // Resolve speaker display names using the same fallback as the transcript API:
+    // 1) speakers.speakerName, 2) linked users.name, 3) speakers.speakerLabel
+    const speakerIdsNeedingResolution = [
+      ...new Set(
+        quotesList
+          .filter(q => q.speakerId && (!q.speakerName || !q.speakerName.trim()))
+          .map(q => q.speakerId!),
+      ),
+    ];
+
+    let speakerUserNameMap: Record<string, string> = {};
+    if (speakerIdsNeedingResolution.length > 0) {
+      const speakerUsers = await db
+        .select({
+          speakerId: speakers.id,
+          userName: users.name,
+        })
+        .from(speakers)
+        .leftJoin(users, eq(speakers.userId, users.id))
+        .where(inArray(speakers.id, speakerIdsNeedingResolution));
+
+      speakerUserNameMap = Object.fromEntries(
+        speakerUsers
+          .filter(su => su.userName && su.userName.trim())
+          .map(su => [su.speakerId, su.userName!.trim()]),
+      );
+    }
+
+    const enrichedQuotes = quotesList.map((q) => {
+      if (q.speakerName && q.speakerName.trim()) {
+        return q;
+      }
+      const resolvedName = q.speakerId ? speakerUserNameMap[q.speakerId] : undefined;
+      if (resolvedName) {
+        return { ...q, speakerName: resolvedName };
+      }
+      return q;
+    });
+
     // HIPAA: Log PHI access
     await logAudit({
       userId: user.dbUserId,
@@ -106,10 +145,10 @@ export async function GET(request: NextRequest) {
       resourceType: 'quote',
       resourceId: 'list',
       ...getClientInfo(request),
-      metadata: { count: quotesList.length, patientId, sessionId },
+      metadata: { count: enrichedQuotes.length, patientId, sessionId },
     });
 
-    return NextResponse.json({ quotes: quotesList });
+    return NextResponse.json({ quotes: enrichedQuotes });
   } catch (error) {
     if (error instanceof Error && error.message.includes('Unauthorized')) {
       return handleAuthError(error);
