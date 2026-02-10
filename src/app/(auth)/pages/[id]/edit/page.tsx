@@ -257,7 +257,7 @@ export default function EditPagePage({ params }: { params: Promise<{ id: string 
   }
 
   return (
-    <div className="h-screen overflow-hidden">
+    <div className="h-full">
       <PageEditor
         pageId={resolvedParams.id}
         initialTitle={pageData.title}

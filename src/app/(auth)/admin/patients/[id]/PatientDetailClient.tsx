@@ -6,13 +6,14 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
+import { AssessmentsTab } from './tabs/AssessmentsTab';
 import { GeneralInformationTab } from './tabs/GeneralInformationTab';
 import { PagesTab } from './tabs/PagesTab';
 import { ReflectionsTab } from './tabs/ReflectionsTab';
 import { SessionsTab } from './tabs/SessionsTab';
 import { SurveyResponsesTab } from './tabs/SurveyResponsesTab';
 
-type Tab = 'sessions' | 'pages' | 'survey-responses' | 'reflections' | 'general-info';
+type Tab = 'sessions' | 'pages' | 'survey-responses' | 'reflections' | 'assessments' | 'general-info';
 
 type PatientDetailClientProps = {
   patientId: string;
@@ -107,6 +108,7 @@ export function PatientDetailClient({ patientId }: PatientDetailClientProps) {
     { id: 'pages', label: 'Pages' },
     { id: 'survey-responses', label: 'Survey Responses' },
     { id: 'reflections', label: 'Reflections' },
+    { id: 'assessments', label: 'Assessments' },
     { id: 'general-info', label: 'General Information' },
   ];
 
@@ -200,6 +202,7 @@ export function PatientDetailClient({ patientId }: PatientDetailClientProps) {
         {activeTab === 'pages' && <PagesTab patientId={patientId} />}
         {activeTab === 'survey-responses' && <SurveyResponsesTab patientId={patientId} />}
         {activeTab === 'reflections' && <ReflectionsTab patientId={patientId} />}
+        {activeTab === 'assessments' && <AssessmentsTab patientId={patientId} />}
         {activeTab === 'general-info' && <GeneralInformationTab patientId={patientId} />}
       </div>
     </div>

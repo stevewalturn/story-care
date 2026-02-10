@@ -9,10 +9,10 @@
  *   node scripts/create-superadmin.mjs noah.hendler@entryway.health securepassword "Noah Hendler"
  */
 
-import admin from 'firebase-admin';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { pgEnum, pgTable, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+import admin from 'firebase-admin';
 import pg from 'pg';
 import 'dotenv/config';
 

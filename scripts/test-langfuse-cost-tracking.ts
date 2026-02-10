@@ -43,7 +43,7 @@ async function testAtlasCloudImage() {
 
     console.log('✅ AtlasCloud Image Success:', {
       model: result.model,
-      imageUrl: result.imageUrl.substring(0, 50) + '...',
+      imageUrl: `${result.imageUrl.substring(0, 50)}...`,
     });
     return true;
   } catch (error) {
@@ -79,7 +79,7 @@ async function testAtlasCloudVideo() {
 
     console.log('✅ AtlasCloud Video Success:', {
       model: result.model,
-      videoUrl: result.videoUrl.substring(0, 50) + '...',
+      videoUrl: `${result.videoUrl.substring(0, 50)}...`,
     });
     return true;
   } catch (error) {
@@ -107,7 +107,7 @@ async function testFalAI() {
 
     console.log('✅ FalAI Success:', {
       model: result.model,
-      imageUrl: result.imageUrl.substring(0, 50) + '...',
+      imageUrl: `${result.imageUrl.substring(0, 50)}...`,
     });
     return true;
   } catch (error) {
@@ -195,7 +195,7 @@ async function testDeepgram() {
     console.log('✅ Deepgram Success:', {
       textLength: result.text.length,
       duration: result.duration,
-      text: result.text.substring(0, 100) + '...',
+      text: `${result.text.substring(0, 100)}...`,
     });
     return true;
   } catch (error) {

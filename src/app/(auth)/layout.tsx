@@ -69,7 +69,7 @@ function AuthLayoutContent({ children }: { children: React.ReactNode }) {
   // Patient on mobile - simplified layout without sidebar
   if (isPatientOnMobile) {
     return (
-      <div className="flex min-h-screen flex-col bg-gray-50">
+      <div className="flex min-h-screen flex-col overflow-x-hidden bg-gray-50">
         {toasterConfig}
         <MobileHeader />
         <main className="flex-1">{children}</main>
@@ -80,7 +80,7 @@ function AuthLayoutContent({ children }: { children: React.ReactNode }) {
   // Mobile layout for non-patients - show mobile header, hide sidebar
   if (isMobile) {
     return (
-      <div className="flex min-h-screen flex-col bg-gray-50">
+      <div className="flex min-h-screen flex-col overflow-x-hidden bg-gray-50">
         {toasterConfig}
         <MobileHeader />
         <main className="flex-1 overflow-y-auto">{children}</main>

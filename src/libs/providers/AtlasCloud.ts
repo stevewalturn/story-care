@@ -188,6 +188,7 @@ export type AtlasVideoModel
     | 'ltx-2-fast-i2v'
     | 'ltx-video-097-i2v'
     | 'seedance-v1-pro-fast-i2v'
+    | 'seedance-v1-lite-i2v-720p'
     | 'hailuo-2.3-fast-i2v'
     | 'kling-effects'
   // Video Effects

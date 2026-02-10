@@ -4,13 +4,14 @@
  * Includes Langfuse tracing for observability and cost tracking
  */
 
+import type { TraceMetadata } from '../LangfuseTracing';
 import type { ChatMessage } from '../TextGeneration';
 import { flushLangfuse } from '../Langfuse';
 import {
   createTextGeneration,
   createTrace,
   endTextGeneration,
-  type TraceMetadata,
+
 } from '../LangfuseTracing';
 
 export type GeminiChatModel

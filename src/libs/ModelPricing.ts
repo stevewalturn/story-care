@@ -208,6 +208,7 @@ export const VIDEO_MODEL_PRICING: Record<string, number> = {
   'magi-1-24b': 0.32,
 
   // Budget tier
+  'seedance-v1-lite-i2v-720p': 0.0272,
   'wan-2.6-i2v': 0.07,
   'wan-2.5-i2v': 0.035,
   'wan-2.5-fast-i2v': 0.068,

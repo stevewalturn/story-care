@@ -558,7 +558,7 @@ export function AssetPickerModal({
                   ) : (
                     <div className="flex h-full flex-col items-center justify-center bg-gray-100">
                       <Music className="h-12 w-12 text-gray-400" />
-                      <span className="mt-2 text-xs text-gray-500">Audio</span>
+                      <span className="mt-2 line-clamp-2 px-2 text-center text-xs text-gray-500">{asset.title || 'Audio'}</span>
                     </div>
                   )}
                   <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-all group-hover:bg-black/50">

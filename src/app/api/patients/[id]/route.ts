@@ -6,6 +6,7 @@ import { db } from '@/libs/DB';
 import { generatePresignedUrl } from '@/libs/GCS';
 import { requirePatientAccess } from '@/middleware/RBACMiddleware';
 import {
+  assessmentSessions,
   groupMembers,
   mediaLibrary,
   musicGenerationTasks,
@@ -354,6 +355,10 @@ export async function DELETE(
 
     // Delete all patient-related data in order (respecting FK constraints)
 
+    // 0. Hard delete assessment sessions (assessment_responses cascade via FK)
+    await db.delete(assessmentSessions)
+      .where(eq(assessmentSessions.patientId, id));
+
     // 1. Hard delete patient page interactions (no FK constraints)
     await db.delete(patientPageInteractions)
       .where(eq(patientPageInteractions.patientId, id));
@@ -430,6 +435,7 @@ export async function DELETE(
       deletedBy: user.email,
       softDelete: false, // This is now a comprehensive delete
       deletedRelatedData: [
+        'assessmentSessions',
         'patientPageInteractions',
         'reflectionResponses',
         'surveyResponses',

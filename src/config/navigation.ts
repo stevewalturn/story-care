@@ -9,6 +9,7 @@ import {
   Building2,
   ClipboardList,
   Cpu,
+  FileCheck,
   FileText,
   Film,
   Folder,
@@ -76,6 +77,12 @@ export const navigationConfig: NavigationConfig = {
       href: '/super-admin/ai-models',
       icon: Cpu,
       description: 'Manage AI model availability and pricing',
+    },
+    {
+      name: 'Form Registry',
+      href: '/super-admin/form-registry',
+      icon: FileCheck,
+      description: 'Manage clinical assessment instruments',
     },
     {
       name: 'Organizations',

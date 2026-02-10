@@ -3,7 +3,7 @@
  * Sets 5 models per category as 'active', rest as 'hidden'
  */
 
-import { eq, inArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { aiModelsSchema } from '@/models/Schema';
 

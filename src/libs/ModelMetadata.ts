@@ -275,6 +275,7 @@ export const VIDEO_GENERATION_MODELS = {
     { value: 'ltx-2-fast-i2v', label: 'LTX-2 Fast', description: 'Smooth, coherent motion' },
     { value: 'ltx-video-097-i2v', label: 'LTX Video 0.97', description: '720p output' },
     { value: 'seedance-v1-pro-fast-i2v', label: 'Seedance v1 Pro Fast', description: 'Cinematic motion, low cost' },
+    { value: 'seedance-v1-lite-i2v-720p', label: 'Seedance v1 Lite i2v', description: 'Lite model, low latency, 720p' },
     { value: 'hailuo-2.3-fast-i2v', label: 'Hailuo 2.3 Fast', description: 'Rapid generation' },
     { value: 'kling-effects', label: 'Kling Effects', description: 'Special effects' },
   ],
@@ -423,6 +424,7 @@ export function getAtlasCloudVideoModelId(internalId: string): string {
     'ltx-2-fast-i2v': 'lightricks/ltx-2-fast/image-to-video',
     'ltx-video-097-i2v': 'atlascloud/ltx-video-v097/i2v-720p',
     'seedance-v1-pro-fast-i2v': 'bytedance/seedance-v1-pro-fast/image-to-video',
+    'seedance-v1-lite-i2v-720p': 'bytedance/seedance-v1-lite-i2v-720p',
     'hailuo-2.3-fast-i2v': 'minimax/hailuo-2.3/fast',
     'kling-effects': 'kwaivgi/kling-effects',
 

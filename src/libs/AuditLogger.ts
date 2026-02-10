@@ -51,7 +51,10 @@ export type ResourceType
     | 'group'
     | 'auth'
     | 'recording'
-    | 'recording_link';
+    | 'recording_link'
+    | 'assessment_instrument'
+    | 'assessment_session'
+    | 'assessment_response';
 
 /**
  * Data structure for audit log entries

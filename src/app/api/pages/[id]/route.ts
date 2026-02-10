@@ -3,8 +3,8 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { generatePresignedUrl } from '@/libs/GCS';
-import { extractGcsPath } from '@/utils/GCSUtils';
 import { pageBlocks, patientPageInteractions, reflectionQuestions, reflectionResponses, scenes, storyPages, surveyQuestions, surveyResponses } from '@/models/Schema';
+import { extractGcsPath } from '@/utils/GCSUtils';
 
 type RouteContext = {
   params: Promise<{ id: string }>;

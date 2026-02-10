@@ -50,6 +50,7 @@ type ContentBlock = {
     displayUrl?: string; // Presigned URL for display (not saved to DB)
     sceneId?: string;
     sceneTitle?: string;
+    title?: string; // For audio/media blocks - asset name
     questions?: ReflectionQuestion[]; // For reflection blocks
     surveyQuestions?: SurveyQuestion[]; // For survey blocks
     templateId?: string;
@@ -334,6 +335,7 @@ export function PageEditor({
       updateBlockContent(assetPickerBlockId, {
         mediaUrl: gcsPath || presignedUrl, // Raw path for database
         displayUrl: presignedUrl, // Presigned URL for display
+        title: asset.data.title || undefined,
       });
     } else if (asset.type === 'quotes') {
       // Quote asset - include speaker attribution and timestamps
@@ -536,6 +538,9 @@ export function PageEditor({
               <div className="relative rounded-lg border border-green-200 bg-green-50 p-4">
                 <div className="flex items-center gap-3">
                   <Music className="h-5 w-5 text-green-600" />
+                  {block.content.title && (
+                    <span className="text-sm font-medium text-green-700">{block.content.title}</span>
+                  )}
                   <audio
                     src={block.content.displayUrl || block.content.mediaUrl}
                     controls
@@ -583,14 +588,24 @@ export function PageEditor({
               <div className="flex items-center gap-2 rounded-lg bg-purple-50 px-3 py-2 text-sm">
                 {block.content.speakerName && (
                   <span className="font-medium text-purple-700">
-                    — {block.content.speakerName}
+                    —
+                    {' '}
+                    {block.content.speakerName}
                   </span>
                 )}
                 {block.content.startTimeSeconds != null && (
                   <span className="text-xs text-purple-500">
-                    {Math.floor(block.content.startTimeSeconds / 60)}:{String(Math.floor(block.content.startTimeSeconds % 60)).padStart(2, '0')}
+                    {Math.floor(block.content.startTimeSeconds / 60)}
+                    :
+                    {String(Math.floor(block.content.startTimeSeconds % 60)).padStart(2, '0')}
                     {block.content.endTimeSeconds != null && (
-                      <> - {Math.floor(block.content.endTimeSeconds / 60)}:{String(Math.floor(block.content.endTimeSeconds % 60)).padStart(2, '0')}</>
+                      <>
+                        {' '}
+                        -
+                        {Math.floor(block.content.endTimeSeconds / 60)}
+                        :
+                        {String(Math.floor(block.content.endTimeSeconds % 60)).padStart(2, '0')}
+                      </>
                     )}
                   </span>
                 )}
@@ -1126,6 +1141,7 @@ export function PageEditor({
                     <div className="rounded-lg border border-green-200 bg-green-50 p-4">
                       <div className="flex items-center gap-3">
                         <Music className="h-5 w-5 text-green-600" />
+                        <span className="text-sm font-medium text-green-700">{block.content.title || 'Audio'}</span>
                         <audio
                           src={block.content.displayUrl || block.content.mediaUrl}
                           controls
@@ -1143,7 +1159,7 @@ export function PageEditor({
                     <blockquote className="border-l-4 border-purple-500 bg-purple-50 px-6 py-4 text-gray-800 italic">
                       <HTMLContent html={renderContent(block.content.text)} />
                       {(block.content.speakerName || block.content.startTimeSeconds != null) && (
-                        <footer className="mt-3 text-sm not-italic text-purple-700">
+                        <footer className="mt-3 text-sm text-purple-700 not-italic">
                           {block.content.speakerName && (
                             <span>
                               --
@@ -1427,6 +1443,7 @@ export function PageEditor({
             updateBlockContent(audioPickerBlockId, {
               mediaUrl: gcsPath || mediaAsset.mediaUrl,
               displayUrl: mediaAsset.mediaUrl,
+              title: mediaAsset.title || undefined,
             });
           }
           setShowAudioPicker(false);

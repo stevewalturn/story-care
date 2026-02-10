@@ -344,12 +344,14 @@ export default function PublicSharePage({ params }: Props) {
                 <blockquote className="relative my-12 py-8 sm:my-16">
                   <div className="absolute top-0 bottom-0 left-0 w-1 rounded-full bg-gradient-to-b from-purple-400 to-purple-600" />
                   <div className="pl-8 sm:pl-12">
-                    <div className="text-2xl leading-relaxed font-light text-gray-800 [&_p:first-of-type]:before:content-['\201C'] [&_p:last-of-type]:after:content-['\201D'] sm:text-3xl">
+                    <div className="text-2xl leading-relaxed font-light text-gray-800 sm:text-3xl [&_p:first-of-type]:before:content-['\201C'] [&_p:last-of-type]:after:content-['\201D']">
                       <HTMLContent html={renderContent(block.textContent)} />
                     </div>
                     {block.settings?.speakerName && (
                       <footer className="mt-6 text-sm font-medium text-gray-500">
-                        — {block.settings.speakerName}
+                        —
+                        {' '}
+                        {block.settings.speakerName}
                       </footer>
                     )}
                   </div>

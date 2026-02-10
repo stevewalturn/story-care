@@ -219,6 +219,45 @@ export const recordingLinkStatusEnum = pgEnum('recording_link_status', [
   'revoked', // Link manually revoked
 ]);
 
+// Clinical Assessment Enums
+export const instrumentTypeEnum = pgEnum('instrument_type', [
+  'ptsd',
+  'depression',
+  'schizophrenia',
+  'substance_use',
+  'anxiety',
+  'enrollment',
+  'general',
+]);
+export const assessmentTimepointEnum = pgEnum('assessment_timepoint', [
+  'screening',
+  'baseline',
+  'mid_treatment',
+  'post_treatment',
+  'follow_up_1m',
+  'follow_up_3m',
+  'follow_up_6m',
+  'follow_up_12m',
+  'other',
+]);
+export const assessmentSessionStatusEnum = pgEnum('assessment_session_status', [
+  'in_progress',
+  'completed',
+  'abandoned',
+]);
+export const instrumentStatusEnum = pgEnum('instrument_status', [
+  'active',
+  'inactive',
+]);
+export const assessmentItemTypeEnum = pgEnum('assessment_item_type', [
+  'likert',
+  'multi_choice',
+  'open_text',
+  'select',
+  'number',
+  'date',
+]);
+
 // AI Model Management Enums
 export const modelCategoryEnum = pgEnum('model_category', [
   'text_to_image',
@@ -1735,6 +1774,119 @@ export const patientPageInteractionsSchema = pgTable('patient_page_interactions'
 });
 
 // ============================================================================
+// CLINICAL ASSESSMENTS
+// ============================================================================
+
+export const assessmentInstrumentsSchema = pgTable('assessment_instruments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 50 }).notNull(), // Short name: "PCL-5"
+  fullName: varchar('full_name', { length: 255 }).notNull(), // "PTSD Checklist for DSM-5"
+  instrumentType: instrumentTypeEnum('instrument_type').notNull(),
+  description: text('description'),
+  instructions: text('instructions'),
+
+  // Scale configuration (defaults for all items)
+  scaleMin: integer('scale_min').notNull().default(0),
+  scaleMax: integer('scale_max').notNull().default(4),
+  scaleLabels: jsonb('scale_labels'), // {"0":"Not at all", "4":"Extremely"}
+
+  // Scoring configuration
+  scoringMethod: varchar('scoring_method', { length: 50 }).notNull().default('sum'),
+  totalScoreRange: jsonb('total_score_range'), // {"min":0, "max":80}
+  subscales: jsonb('subscales'), // [{"name":"Cluster B","items":[1,2,3,4,5]}]
+  clinicalCutoffs: jsonb('clinical_cutoffs'), // [{"min":0,"max":7,"label":"Normal"}]
+
+  itemCount: integer('item_count').notNull().default(0),
+  status: instrumentStatusEnum('status').notNull().default('active'),
+  createdBy: uuid('created_by').references(() => usersSchema.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const assessmentInstrumentItemsSchema = pgTable('assessment_instrument_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  instrumentId: uuid('instrument_id')
+    .references(() => assessmentInstrumentsSchema.id, { onDelete: 'cascade' })
+    .notNull(),
+  itemNumber: integer('item_number').notNull(),
+  questionText: text('question_text').notNull(),
+  itemType: assessmentItemTypeEnum('item_type').notNull().default('likert'),
+
+  // Per-item scale overrides (for instruments like HAM-D with varying scales)
+  scaleMin: integer('scale_min'),
+  scaleMax: integer('scale_max'),
+  scaleLabels: jsonb('scale_labels'),
+
+  options: jsonb('options'), // For multi_choice/select items
+  isReverseScored: boolean('is_reverse_scored').notNull().default(false),
+  subscaleName: varchar('subscale_name', { length: 100 }),
+  isRequired: boolean('is_required').notNull().default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, table => ({
+  instrumentItemIdx: index('assessment_items_instrument_idx').on(table.instrumentId),
+  itemNumberIdx: index('assessment_items_number_idx').on(table.instrumentId, table.itemNumber),
+}));
+
+export const assessmentSessionsSchema = pgTable('assessment_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  patientId: uuid('patient_id')
+    .references(() => usersSchema.id)
+    .notNull(),
+  therapistId: uuid('therapist_id')
+    .references(() => usersSchema.id)
+    .notNull(),
+  organizationId: uuid('organization_id')
+    .references(() => organizationsSchema.id)
+    .notNull(),
+  instrumentId: uuid('instrument_id')
+    .references(() => assessmentInstrumentsSchema.id)
+    .notNull(),
+
+  timepoint: assessmentTimepointEnum('timepoint').notNull(),
+  status: assessmentSessionStatusEnum('status').notNull().default('in_progress'),
+
+  // Scoring
+  totalScore: decimal('total_score', { precision: 10, scale: 2 }),
+  subscaleScores: jsonb('subscale_scores'), // {"Cluster B": 12, "Cluster C": 5}
+  percentComplete: integer('percent_complete').notNull().default(0),
+
+  lastItemNumber: integer('last_item_number').default(0),
+  sessionId: uuid('session_id').references(() => sessionsSchema.id), // Optional link to therapy session
+
+  clinicianNotes: text('clinician_notes'),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, table => ({
+  patientIdx: index('assessment_sessions_patient_idx').on(table.patientId),
+  therapistIdx: index('assessment_sessions_therapist_idx').on(table.therapistId),
+  orgIdx: index('assessment_sessions_org_idx').on(table.organizationId),
+  instrumentIdx: index('assessment_sessions_instrument_idx').on(table.instrumentId),
+  statusIdx: index('assessment_sessions_status_idx').on(table.status),
+}));
+
+export const assessmentResponsesSchema = pgTable('assessment_responses', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  sessionId: uuid('session_id')
+    .references(() => assessmentSessionsSchema.id, { onDelete: 'cascade' })
+    .notNull(),
+  itemId: uuid('item_id')
+    .references(() => assessmentInstrumentItemsSchema.id)
+    .notNull(),
+
+  responseNumeric: integer('response_numeric'),
+  responseText: text('response_text'),
+  responseValue: varchar('response_value', { length: 255 }),
+  scoredValue: decimal('scored_value', { precision: 10, scale: 2 }),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, table => ({
+  sessionItemUnique: unique('assessment_response_session_item').on(table.sessionId, table.itemId),
+  sessionIdx: index('assessment_responses_session_idx').on(table.sessionId),
+}));
+
+// ============================================================================
 // TABLE ALIASES (for convenience)
 // ============================================================================
 
@@ -1781,6 +1933,10 @@ export const platformSettings = platformSettingsSchema;
 export const recordingLinks = recordingLinksSchema;
 export const uploadedRecordings = uploadedRecordingsSchema;
 export const aiModels = aiModelsSchema;
+export const assessmentInstruments = assessmentInstrumentsSchema;
+export const assessmentInstrumentItems = assessmentInstrumentItemsSchema;
+export const assessmentSessions = assessmentSessionsSchema;
+export const assessmentResponses = assessmentResponsesSchema;
 
 // ============================================================================
 // DRIZZLE RELATIONS (Required for .with() query syntax)
@@ -1862,6 +2018,59 @@ export const groupMembersRelations = relations(groupMembers, ({ one }) => ({
   patient: one(users, {
     fields: [groupMembers.patientId],
     references: [users.id],
+  }),
+}));
+
+export const assessmentInstrumentsRelations = relations(assessmentInstruments, ({ one, many }) => ({
+  items: many(assessmentInstrumentItems),
+  sessions: many(assessmentSessions),
+  createdByUser: one(users, {
+    fields: [assessmentInstruments.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export const assessmentInstrumentItemsRelations = relations(assessmentInstrumentItems, ({ one }) => ({
+  instrument: one(assessmentInstruments, {
+    fields: [assessmentInstrumentItems.instrumentId],
+    references: [assessmentInstruments.id],
+  }),
+}));
+
+export const assessmentSessionsRelations = relations(assessmentSessions, ({ one, many }) => ({
+  patient: one(users, {
+    fields: [assessmentSessions.patientId],
+    references: [users.id],
+    relationName: 'assessmentPatient',
+  }),
+  therapist: one(users, {
+    fields: [assessmentSessions.therapistId],
+    references: [users.id],
+    relationName: 'assessmentTherapist',
+  }),
+  organization: one(organizations, {
+    fields: [assessmentSessions.organizationId],
+    references: [organizations.id],
+  }),
+  instrument: one(assessmentInstruments, {
+    fields: [assessmentSessions.instrumentId],
+    references: [assessmentInstruments.id],
+  }),
+  therapySession: one(sessions, {
+    fields: [assessmentSessions.sessionId],
+    references: [sessions.id],
+  }),
+  responses: many(assessmentResponses),
+}));
+
+export const assessmentResponsesRelations = relations(assessmentResponses, ({ one }) => ({
+  session: one(assessmentSessions, {
+    fields: [assessmentResponses.sessionId],
+    references: [assessmentSessions.id],
+  }),
+  item: one(assessmentInstrumentItems, {
+    fields: [assessmentResponses.itemId],
+    references: [assessmentInstrumentItems.id],
   }),
 }));
 
@@ -2017,3 +2226,22 @@ export type RecordingDeviceInfo = {
 
 export type TherapistPatientArchive = typeof therapistPatientArchivesSchema.$inferSelect;
 export type NewTherapistPatientArchive = typeof therapistPatientArchivesSchema.$inferInsert;
+
+// Clinical Assessment types
+export type AssessmentInstrument = typeof assessmentInstrumentsSchema.$inferSelect;
+export type NewAssessmentInstrument = typeof assessmentInstrumentsSchema.$inferInsert;
+
+export type AssessmentInstrumentItem = typeof assessmentInstrumentItemsSchema.$inferSelect;
+export type NewAssessmentInstrumentItem = typeof assessmentInstrumentItemsSchema.$inferInsert;
+
+export type AssessmentSession = typeof assessmentSessionsSchema.$inferSelect;
+export type NewAssessmentSession = typeof assessmentSessionsSchema.$inferInsert;
+
+export type AssessmentResponse = typeof assessmentResponsesSchema.$inferSelect;
+export type NewAssessmentResponse = typeof assessmentResponsesSchema.$inferInsert;
+
+export type InstrumentType = typeof instrumentTypeEnum.enumValues[number];
+export type AssessmentTimepoint = typeof assessmentTimepointEnum.enumValues[number];
+export type AssessmentSessionStatus = typeof assessmentSessionStatusEnum.enumValues[number];
+export type InstrumentStatus = typeof instrumentStatusEnum.enumValues[number];
+export type AssessmentItemType = typeof assessmentItemTypeEnum.enumValues[number];
