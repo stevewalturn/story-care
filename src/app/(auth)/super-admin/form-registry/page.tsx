@@ -156,190 +156,194 @@ export default function FormRegistryPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-            <FileCheck className="h-7 w-7 text-indigo-600" />
-            Form Registry
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Manage clinical assessment instruments available to therapists
-          </p>
-        </div>
-        <Button onClick={handleCreate}>
-          <Plus className="mr-1.5 h-4 w-4" />
-          Add Instrument
-        </Button>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="relative max-w-md min-w-[200px] flex-1">
-          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search instruments..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
-          />
-        </div>
-        <select
-          value={typeFilter}
-          onChange={e => setTypeFilter(e.target.value)}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
-        >
-          {TYPE_FILTER_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Error state */}
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
-          {error}
-        </div>
-      )}
-
-      {/* Loading state */}
-      {loading
-        ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-indigo-600">
+              <FileCheck className="h-5 w-5 text-white" />
             </div>
-          )
-        : (
-            <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      Form Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      Instrument Type
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      Items
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      Added
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {instruments.length === 0
-                    ? (
-                        <tr>
-                          <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
-                            No instruments found. Click &quot;Add Instrument&quot; to create one.
-                          </td>
-                        </tr>
-                      )
-                    : (
-                        instruments.map(instrument => (
-                          <tr key={instrument.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4">
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">
-                                  {instrument.name}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  {instrument.fullName}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <InstrumentTypeBadge type={instrument.instrumentType} />
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-700">
-                              {instrument.itemCount}
-                            </td>
-                            <td className="px-6 py-4">
-                              <button
-                                type="button"
-                                onClick={() => toggleStatus(instrument.id, instrument.status)}
-                                disabled={togglingId === instrument.id}
-                                className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:opacity-50"
-                                style={{
-                                  backgroundColor: instrument.status === 'active' ? '#4F46E5' : '#D1D5DB',
-                                }}
-                              >
-                                <span
-                                  className="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
-                                  style={{
-                                    transform: instrument.status === 'active' ? 'translateX(20px)' : 'translateX(0px)',
-                                  }}
-                                />
-                              </button>
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-500">
-                              {formatDate(instrument.createdAt)}
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => handleEdit(instrument)}
-                                  className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-indigo-600"
-                                  title="Edit instrument"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteClick(instrument)}
-                                  className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-red-600"
-                                  title="Delete instrument"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Form Registry</h1>
+              <p className="text-sm text-gray-600">
+                Manage clinical assessment instruments available to therapists
+              </p>
+            </div>
+          </div>
+          <Button onClick={handleCreate}>
+            <Plus className="mr-1.5 h-4 w-4" />
+            Add Instrument
+          </Button>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="relative max-w-md min-w-[200px] flex-1">
+            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search instruments..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+            />
+          </div>
+          <select
+            value={typeFilter}
+            onChange={e => setTypeFilter(e.target.value)}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+          >
+            {TYPE_FILTER_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Error state */}
+        {error && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+            {error}
+          </div>
+        )}
+
+        {/* Loading state */}
+        {loading
+          ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+              </div>
+            )
+          : (
+              <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                        Form Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                        Instrument Type
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                        Items
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                        Added
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {instruments.length === 0
+                      ? (
+                          <tr>
+                            <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
+                              No instruments found. Click &quot;Add Instrument&quot; to create one.
                             </td>
                           </tr>
-                        ))
-                      )}
-                </tbody>
-              </table>
-            </div>
-          )}
+                        )
+                      : (
+                          instruments.map(instrument => (
+                            <tr key={instrument.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4">
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {instrument.name}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    {instrument.fullName}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <InstrumentTypeBadge type={instrument.instrumentType} />
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-700">
+                                {instrument.itemCount}
+                              </td>
+                              <td className="px-6 py-4">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleStatus(instrument.id, instrument.status)}
+                                  disabled={togglingId === instrument.id}
+                                  className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:opacity-50"
+                                  style={{
+                                    backgroundColor: instrument.status === 'active' ? '#4F46E5' : '#D1D5DB',
+                                  }}
+                                >
+                                  <span
+                                    className="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                                    style={{
+                                      transform: instrument.status === 'active' ? 'translateX(20px)' : 'translateX(0px)',
+                                    }}
+                                  />
+                                </button>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-500">
+                                {formatDate(instrument.createdAt)}
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEdit(instrument)}
+                                    className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-indigo-600"
+                                    title="Edit instrument"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteClick(instrument)}
+                                    className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-red-600"
+                                    title="Delete instrument"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-      {/* Create/Edit Modal */}
-      <InstrumentFormModal
-        isOpen={showFormModal}
-        onClose={() => {
-          setShowFormModal(false);
-          setEditingInstrument(null);
-        }}
-        onSuccess={fetchInstruments}
-        instrument={editingInstrument ? { ...editingInstrument, items: [] } as any : null}
-      />
+        {/* Create/Edit Modal */}
+        <InstrumentFormModal
+          isOpen={showFormModal}
+          onClose={() => {
+            setShowFormModal(false);
+            setEditingInstrument(null);
+          }}
+          onSuccess={fetchInstruments}
+          instrument={editingInstrument ? { ...editingInstrument, items: [] } as any : null}
+        />
 
-      {/* Delete Confirmation */}
-      <ConfirmDialog
-        isOpen={showDeleteConfirm}
-        onClose={() => {
-          setShowDeleteConfirm(false);
-          setDeletingInstrument(null);
-        }}
-        onConfirm={handleDeleteConfirm}
-        title="Delete Instrument"
-        description={`Are you sure you want to delete "${deletingInstrument?.name}"? This cannot be undone. Instruments with existing assessment sessions cannot be deleted.`}
-        confirmText="Delete"
-        variant="danger"
-        isLoading={isDeleting}
-      />
+        {/* Delete Confirmation */}
+        <ConfirmDialog
+          isOpen={showDeleteConfirm}
+          onClose={() => {
+            setShowDeleteConfirm(false);
+            setDeletingInstrument(null);
+          }}
+          onConfirm={handleDeleteConfirm}
+          title="Delete Instrument"
+          description={`Are you sure you want to delete "${deletingInstrument?.name}"? This cannot be undone. Instruments with existing assessment sessions cannot be deleted.`}
+          confirmText="Delete"
+          variant="danger"
+          isLoading={isDeleting}
+        />
+      </div>
     </div>
   );
 }
