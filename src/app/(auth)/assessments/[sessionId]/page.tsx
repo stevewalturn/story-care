@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, ArrowRight, Check, ChevronLeft } from 'lucide-react';
+import { Check, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -83,7 +83,6 @@ export default function ActiveAssessmentPage() {
   const [session, setSession] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
   const [completing, setCompleting] = useState(false);
@@ -110,19 +109,6 @@ export default function ActiveAssessmentPage() {
           }
         }
         setAnswers(existingAnswers);
-
-        // Resume from last answered question
-        if (data.session.status === 'in_progress' && data.session.lastItemNumber > 0) {
-          const items = data.session.instrument?.items || [];
-          const idx = items.findIndex(
-            (i: InstrumentItem) => i.itemNumber === data.session.lastItemNumber,
-          );
-          if (idx >= 0 && idx < items.length - 1) {
-            setCurrentIndex(idx + 1);
-          } else if (idx >= 0) {
-            setCurrentIndex(idx);
-          }
-        }
 
         // If completed, show results
         if (data.session.status === 'completed') {
@@ -165,15 +151,7 @@ export default function ActiveAssessmentPage() {
   const handleSelect = useCallback((itemId: string, value: number) => {
     setAnswers(prev => ({ ...prev, [itemId]: value }));
     saveResponse(itemId, value);
-
-    // Auto-advance after a brief delay
-    setTimeout(() => {
-      const items = session?.instrument?.items || [];
-      if (currentIndex < items.length - 1) {
-        setCurrentIndex(prev => prev + 1);
-      }
-    }, 300);
-  }, [currentIndex, session, saveResponse]);
+  }, [saveResponse]);
 
   const handleComplete = async () => {
     if (!user?.uid || completing) return;
@@ -229,7 +207,6 @@ export default function ActiveAssessmentPage() {
   }
 
   const items = session.instrument?.items || [];
-  const currentItem = items[currentIndex];
   const answeredCount = Object.keys(answers).length;
   const allAnswered = answeredCount >= items.length;
   const isCompleted = session.status === 'completed' || completionResult != null;
@@ -250,49 +227,63 @@ export default function ActiveAssessmentPage() {
     }
 
     return (
-      <div className="mx-auto max-w-2xl space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <Link
-            href={`/admin/patients/${session.patientId}`}
-            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Back to Patient
-          </Link>
+      <div>
+        {/* Sticky sub-header */}
+        <div className="sticky top-0 z-10 border-b border-gray-200 bg-white">
+          <div className="mx-auto max-w-2xl px-6 py-3">
+            <div className="flex items-center gap-3">
+              <Link
+                href={`/admin/patients/${session.patientId}`}
+                className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Back to Patient
+              </Link>
+              <div className="h-4 w-px bg-gray-300" />
+              <InstrumentTypeBadge type={session.instrument.instrumentType} />
+              <span className="text-sm font-medium text-gray-900">{session.instrument.name}</span>
+              <div className="h-4 w-px bg-gray-300" />
+              <span className="text-xs text-gray-500">
+                Timepoint:
+                {' '}
+                {TIMEPOINT_LABELS[session.timepoint]}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
-          <div className="mb-6 flex items-center gap-3">
-            <InstrumentTypeBadge type={session.instrument.instrumentType} />
-            <h1 className="text-xl font-bold text-gray-900">{session.instrument.fullName}</h1>
-          </div>
+        <div className="mx-auto max-w-2xl space-y-6 px-6 py-6">
+          <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
+            <div className="mb-6 flex items-center gap-3">
+              <h1 className="text-xl font-bold text-gray-900">{session.instrument.fullName}</h1>
+            </div>
 
-          <div className="mb-6 flex items-center gap-4 text-sm text-gray-500">
-            <span>
-              Patient:
-              {' '}
-              {session.patient?.name}
-            </span>
-            <span>
-              Timepoint:
-              {' '}
-              {TIMEPOINT_LABELS[session.timepoint]}
-            </span>
-          </div>
+            <div className="mb-6 flex items-center gap-4 text-sm text-gray-500">
+              <span>
+                Patient:
+                {' '}
+                {session.patient?.name}
+              </span>
+              <span>
+                Timepoint:
+                {' '}
+                {TIMEPOINT_LABELS[session.timepoint]}
+              </span>
+            </div>
 
-          <div className="mb-6 flex items-center gap-2 rounded-lg bg-green-50 px-4 py-3 text-sm font-medium text-green-800">
-            <Check className="h-4 w-4" />
-            Assessment Completed
-          </div>
+            <div className="mb-6 flex items-center gap-2 rounded-lg bg-green-50 px-4 py-3 text-sm font-medium text-green-800">
+              <Check className="h-4 w-4" />
+              Assessment Completed
+            </div>
 
-          <ScoreSummary
-            totalScore={totalScore}
-            totalScoreRange={session.instrument.totalScoreRange}
-            subscaleScores={completionResult.subscaleScores}
-            clinicalCutoffs={session.instrument.clinicalCutoffs}
-            interpretation={interpretation}
-          />
+            <ScoreSummary
+              totalScore={totalScore}
+              totalScoreRange={session.instrument.totalScoreRange}
+              subscaleScores={completionResult.subscaleScores}
+              clinicalCutoffs={session.instrument.clinicalCutoffs}
+              interpretation={interpretation}
+            />
+          </div>
         </div>
       </div>
     );
@@ -300,96 +291,83 @@ export default function ActiveAssessmentPage() {
 
   // Active form view
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      {/* Header bar */}
-      <div className="flex items-center gap-3">
-        <Link
-          href={`/admin/patients/${session.patientId}`}
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Back to History
-        </Link>
-        <div className="h-4 w-px bg-gray-300" />
-        <InstrumentTypeBadge type={session.instrument.instrumentType} />
-        <span className="text-sm font-medium text-gray-900">{session.instrument.name}</span>
-        <div className="h-4 w-px bg-gray-300" />
-        <span className="text-xs text-gray-500">
-          Timepoint:
-          {' '}
-          {TIMEPOINT_LABELS[session.timepoint]}
-        </span>
-      </div>
-
-      {/* Progress */}
-      <AssessmentProgressBar current={answeredCount} total={items.length} />
-
-      {/* Form card */}
-      <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
-        {/* Form header */}
-        <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-900">{session.instrument.fullName}</h1>
-          <div className="mt-1 flex items-center gap-3 text-sm text-gray-500">
-            <span>
-              Patient:
+    <div>
+      {/* Sticky sub-header */}
+      <div className="sticky top-0 z-10 border-b border-gray-200 bg-white">
+        <div className="mx-auto max-w-2xl px-6 py-3">
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/admin/patients/${session.patientId}`}
+              className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Back to History
+            </Link>
+            <div className="h-4 w-px bg-gray-300" />
+            <InstrumentTypeBadge type={session.instrument.instrumentType} />
+            <span className="text-sm font-medium text-gray-900">{session.instrument.name}</span>
+            <div className="h-4 w-px bg-gray-300" />
+            <span className="text-xs text-gray-500">
+              Timepoint:
               {' '}
-              {session.patient?.name}
+              {TIMEPOINT_LABELS[session.timepoint]}
             </span>
-            <span>
-              Administered by:
-              {' '}
-              {session.therapist?.name}
-            </span>
+          </div>
+          <div className="mt-2">
+            <AssessmentProgressBar current={answeredCount} total={items.length} />
           </div>
         </div>
+      </div>
 
-        {/* Instructions */}
-        {session.instrument.instructions && currentIndex === 0 && (
-          <div className="mb-6 rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-800">
-            {session.instrument.instructions}
+      <div className="mx-auto max-w-2xl space-y-6 px-6 py-6">
+        {/* Form card */}
+        <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
+          {/* Form header */}
+          <div className="mb-4">
+            <h1 className="text-xl font-bold text-gray-900">{session.instrument.fullName}</h1>
+            <div className="mt-1 flex items-center gap-3 text-sm text-gray-500">
+              <span>
+                Patient:
+                {' '}
+                {session.patient?.name}
+              </span>
+              <span>
+                Administered by:
+                {' '}
+                {session.therapist?.name}
+              </span>
+            </div>
           </div>
-        )}
 
-        {/* Current question */}
-        {currentItem && (
-          <QuestionStepper
-            item={currentItem}
-            defaultScaleMin={session.instrument.scaleMin}
-            defaultScaleMax={session.instrument.scaleMax}
-            defaultScaleLabels={session.instrument.scaleLabels}
-            selectedValue={answers[currentItem.id] ?? null}
-            onSelect={handleSelect}
-          />
-        )}
+          {/* Instructions */}
+          {session.instrument.instructions && (
+            <div className="mb-6 rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-800">
+              {session.instrument.instructions}
+            </div>
+          )}
 
-        {/* Navigation */}
-        <div className="mt-8 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
-            disabled={currentIndex === 0}
-            className="flex items-center gap-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Previous
-          </button>
+          {/* All questions */}
+          <div className="space-y-6">
+            {items.map(item => (
+              <QuestionStepper
+                key={item.id}
+                item={item}
+                defaultScaleMin={session.instrument.scaleMin}
+                defaultScaleMax={session.instrument.scaleMax}
+                defaultScaleLabels={session.instrument.scaleLabels}
+                selectedValue={answers[item.id] ?? null}
+                onSelect={handleSelect}
+              />
+            ))}
+          </div>
 
-          <span className="text-xs text-gray-400">
-            {saving ? 'Saving...' : 'Auto-saved'}
-          </span>
+          {/* Footer */}
+          <div className="mt-8 flex items-center justify-between border-t border-gray-100 pt-6">
+            <span className="text-xs text-gray-400">
+              {saving ? 'Saving...' : 'Auto-saved'}
+            </span>
 
-          {currentIndex < items.length - 1
-            ? (
-                <button
-                  type="button"
-                  onClick={() => setCurrentIndex(prev => Math.min(items.length - 1, prev + 1))}
-                  className="flex items-center gap-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Next
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              )
-            : allAnswered
+            {allAnswered
               ? (
                   <button
                     type="button"
@@ -406,6 +384,7 @@ export default function ActiveAssessmentPage() {
                     Answer all questions to complete
                   </div>
                 )}
+          </div>
         </div>
       </div>
     </div>

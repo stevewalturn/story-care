@@ -1,9 +1,13 @@
 'use client';
 
 import type { InstrumentStatus, InstrumentType } from '@/models/Schema';
-import { FileCheck, Search } from 'lucide-react';
+import { FileCheck, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+import { InstrumentFormModal } from '@/components/assessments/InstrumentFormModal';
 import { InstrumentTypeBadge } from '@/components/assessments/InstrumentTypeBadge';
+import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -36,6 +40,13 @@ export default function FormRegistryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  // Modal state
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [editingInstrument, setEditingInstrument] = useState<Instrument | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingInstrument, setDeletingInstrument] = useState<Instrument | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchInstruments = async () => {
     if (!user?.uid) return;
@@ -94,6 +105,48 @@ export default function FormRegistryPage() {
     }
   };
 
+  const handleEdit = (instrument: Instrument) => {
+    setEditingInstrument(instrument);
+    setShowFormModal(true);
+  };
+
+  const handleCreate = () => {
+    setEditingInstrument(null);
+    setShowFormModal(true);
+  };
+
+  const handleDeleteClick = (instrument: Instrument) => {
+    setDeletingInstrument(instrument);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!user?.uid || !deletingInstrument) return;
+    setIsDeleting(true);
+
+    try {
+      const response = await authenticatedFetch(
+        `/api/super-admin/assessment-instruments/${deletingInstrument.id}`,
+        user,
+        { method: 'DELETE' },
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete instrument');
+      }
+
+      toast.success('Instrument deleted');
+      setShowDeleteConfirm(false);
+      setDeletingInstrument(null);
+      fetchInstruments();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete instrument');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -115,6 +168,10 @@ export default function FormRegistryPage() {
             Manage clinical assessment instruments available to therapists
           </p>
         </div>
+        <Button onClick={handleCreate}>
+          <Plus className="mr-1.5 h-4 w-4" />
+          Add Instrument
+        </Button>
       </div>
 
       {/* Filters */}
@@ -176,14 +233,17 @@ export default function FormRegistryPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                       Added
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {instruments.length === 0
                     ? (
                         <tr>
-                          <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-500">
-                            No instruments found. Run the seed script to add clinical assessments.
+                          <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
+                            No instruments found. Click &quot;Add Instrument&quot; to create one.
                           </td>
                         </tr>
                       )
@@ -227,6 +287,26 @@ export default function FormRegistryPage() {
                             <td className="px-6 py-4 text-sm text-gray-500">
                               {formatDate(instrument.createdAt)}
                             </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleEdit(instrument)}
+                                  className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-indigo-600"
+                                  title="Edit instrument"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteClick(instrument)}
+                                  className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-red-600"
+                                  title="Delete instrument"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         ))
                       )}
@@ -234,6 +314,32 @@ export default function FormRegistryPage() {
               </table>
             </div>
           )}
+
+      {/* Create/Edit Modal */}
+      <InstrumentFormModal
+        isOpen={showFormModal}
+        onClose={() => {
+          setShowFormModal(false);
+          setEditingInstrument(null);
+        }}
+        onSuccess={fetchInstruments}
+        instrument={editingInstrument ? { ...editingInstrument, items: [] } as any : null}
+      />
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeletingInstrument(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Instrument"
+        description={`Are you sure you want to delete "${deletingInstrument?.name}"? This cannot be undone. Instruments with existing assessment sessions cannot be deleted.`}
+        confirmText="Delete"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

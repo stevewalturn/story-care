@@ -145,6 +145,91 @@ export async function createInstrument(data: {
   });
 }
 
+export async function updateInstrument(
+  id: string,
+  data: {
+    name?: string;
+    fullName?: string;
+    instrumentType?: InstrumentType;
+    description?: string | null;
+    instructions?: string | null;
+    scaleMin?: number;
+    scaleMax?: number;
+    scaleLabels?: Record<string, string> | null;
+    scoringMethod?: string;
+    totalScoreRange?: { min: number; max: number } | null;
+    subscales?: Array<{ name: string; items: number[] }> | null;
+    clinicalCutoffs?: Array<{ min: number; max: number; label: string; severity?: string }> | null;
+    status?: InstrumentStatus;
+    items?: Array<{
+      itemNumber: number;
+      questionText: string;
+      itemType?: string;
+      scaleMin?: number | null;
+      scaleMax?: number | null;
+      scaleLabels?: Record<string, string> | null;
+      options?: Array<{ value: string; label: string }> | null;
+      isReverseScored?: boolean;
+      subscaleName?: string | null;
+      isRequired?: boolean;
+    }>;
+  },
+) {
+  const { items, ...instrumentFields } = data;
+
+  return db.transaction(async (tx) => {
+    // Update instrument fields if any provided
+    const hasInstrumentFields = Object.keys(instrumentFields).length > 0 || items;
+    if (!hasInstrumentFields) return null;
+
+    const updateSet: Record<string, unknown> = { updatedAt: new Date() };
+    for (const [key, value] of Object.entries(instrumentFields)) {
+      if (value !== undefined) {
+        updateSet[key] = value;
+      }
+    }
+
+    if (items) {
+      updateSet.itemCount = items.length;
+    }
+
+    const [updated] = await tx
+      .update(assessmentInstrumentsSchema)
+      .set(updateSet)
+      .where(eq(assessmentInstrumentsSchema.id, id))
+      .returning();
+
+    if (!updated) return null;
+
+    // Replace items if provided
+    if (items) {
+      await tx
+        .delete(assessmentInstrumentItemsSchema)
+        .where(eq(assessmentInstrumentItemsSchema.instrumentId, id));
+
+      if (items.length > 0) {
+        await tx.insert(assessmentInstrumentItemsSchema).values(
+          items.map(item => ({
+            instrumentId: id,
+            itemNumber: item.itemNumber,
+            questionText: item.questionText,
+            itemType: (item.itemType as any) || 'likert',
+            scaleMin: item.scaleMin ?? null,
+            scaleMax: item.scaleMax ?? null,
+            scaleLabels: item.scaleLabels ?? null,
+            options: item.options ?? null,
+            isReverseScored: item.isReverseScored ?? false,
+            subscaleName: item.subscaleName ?? null,
+            isRequired: item.isRequired ?? true,
+          })),
+        );
+      }
+    }
+
+    return updated;
+  });
+}
+
 export async function updateInstrumentStatus(id: string, status: InstrumentStatus) {
   const [updated] = await db
     .update(assessmentInstrumentsSchema)

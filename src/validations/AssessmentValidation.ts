@@ -92,6 +92,33 @@ export const updateInstrumentStatusSchema = z.object({
 
 export type UpdateInstrumentStatusInput = z.infer<typeof updateInstrumentStatusSchema>;
 
+export const updateInstrumentSchema = z.object({
+  name: z.string().min(1).max(50).optional(),
+  fullName: z.string().min(1).max(255).optional(),
+  instrumentType: instrumentTypeSchema.optional(),
+  description: z.string().optional().nullable(),
+  instructions: z.string().optional().nullable(),
+  scaleMin: z.number().int().optional(),
+  scaleMax: z.number().int().optional(),
+  scaleLabels: z.record(z.string(), z.string()).optional().nullable(),
+  scoringMethod: z.string().max(50).optional(),
+  totalScoreRange: z.object({ min: z.number(), max: z.number() }).optional().nullable(),
+  subscales: z.array(z.object({
+    name: z.string(),
+    items: z.array(z.number().int()),
+  })).optional().nullable(),
+  clinicalCutoffs: z.array(z.object({
+    min: z.number(),
+    max: z.number(),
+    label: z.string(),
+    severity: z.string().optional(),
+  })).optional().nullable(),
+  items: z.array(instrumentItemSchema).optional(),
+  status: instrumentStatusSchema.optional(),
+});
+
+export type UpdateInstrumentInput = z.infer<typeof updateInstrumentSchema>;
+
 export const createAssessmentSessionSchema = z.object({
   instrumentId: z.string().uuid(),
   timepoint: assessmentTimepointSchema,

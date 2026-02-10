@@ -7,9 +7,9 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { deleteInstrument, getInstrument, updateInstrumentStatus } from '@/services/AssessmentService';
+import { deleteInstrument, getInstrument, updateInstrument, updateInstrumentStatus } from '@/services/AssessmentService';
 import { handleAuthError, requireRole } from '@/utils/AuthHelpers';
-import { updateInstrumentStatusSchema } from '@/validations/AssessmentValidation';
+import { updateInstrumentSchema, updateInstrumentStatusSchema } from '@/validations/AssessmentValidation';
 
 export async function GET(
   request: NextRequest,
@@ -43,8 +43,25 @@ export async function PATCH(
     const { id } = await params;
 
     const body = await request.json();
-    const validation = updateInstrumentStatusSchema.safeParse(body);
 
+    // Try status-only update first (backwards compatible)
+    const statusOnly = updateInstrumentStatusSchema.safeParse(body);
+    if (statusOnly.success && Object.keys(body).length === 1) {
+      const updated = await updateInstrumentStatus(id, statusOnly.data.status);
+      if (!updated) {
+        return NextResponse.json({ error: 'Instrument not found' }, { status: 404 });
+      }
+
+      const { logPHIUpdate } = await import('@/libs/AuditLogger');
+      await logPHIUpdate(user.dbUserId, 'assessment_instrument', id, request, {
+        changedFields: ['status'],
+      });
+
+      return NextResponse.json({ instrument: updated });
+    }
+
+    // Full instrument update
+    const validation = updateInstrumentSchema.safeParse(body);
     if (!validation.success) {
       return NextResponse.json(
         { error: 'Invalid request body', details: validation.error.issues },
@@ -52,14 +69,15 @@ export async function PATCH(
       );
     }
 
-    const updated = await updateInstrumentStatus(id, validation.data.status);
+    const updated = await updateInstrument(id, validation.data);
     if (!updated) {
       return NextResponse.json({ error: 'Instrument not found' }, { status: 404 });
     }
 
     const { logPHIUpdate } = await import('@/libs/AuditLogger');
+    const changedFields = Object.keys(validation.data).filter(k => validation.data[k as keyof typeof validation.data] !== undefined);
     await logPHIUpdate(user.dbUserId, 'assessment_instrument', id, request, {
-      changedFields: ['status'],
+      changedFields,
     });
 
     return NextResponse.json({ instrument: updated });
