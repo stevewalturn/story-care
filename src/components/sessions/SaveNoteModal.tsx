@@ -1,7 +1,8 @@
 'use client';
 
-import { Check, ChevronDown, Copy, Save, X } from 'lucide-react';
+import { Check, ChevronDown, Copy, Download, Save, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { downloadAsTextFile, htmlToMarkdown } from '@/utils/FileDownloadHelpers';
 import { Button } from '../ui/Button';
 import { TipTapEditor } from '../ui/TipTapEditor';
 
@@ -87,25 +88,27 @@ export function SaveNoteModal({
     }
   };
 
-  // Copy note content to clipboard - preserves newlines
+  // Copy note content to clipboard as markdown
   const handleCopyContent = async () => {
     try {
-      // Convert HTML to plain text while preserving newlines
-      const plainContent = content
-        .replace(/<br\s*\/?>/gi, '\n') // Convert <br> to newline
-        .replace(/<\/p>/gi, '\n\n') // Convert </p> to double newline
-        .replace(/<\/div>/gi, '\n') // Convert </div> to newline
-        .replace(/<\/li>/gi, '\n') // Convert </li> to newline
-        .replace(/<[^>]*>/g, '') // Strip remaining HTML tags
-        .replace(/\n{3,}/g, '\n\n') // Collapse multiple newlines to max 2
-        .trim();
-      const fullText = title.trim() ? `${title.trim()}\n\n${plainContent}` : plainContent;
+      const markdownContent = htmlToMarkdown(content);
+      const fullText = title.trim() ? `# ${title.trim()}\n\n${markdownContent}` : markdownContent;
       await navigator.clipboard.writeText(fullText);
       setCopiedContent(true);
       setTimeout(() => setCopiedContent(false), 2000);
     } catch (error) {
       console.error('Failed to copy:', error);
     }
+  };
+
+  // Download note content as .txt file
+  const handleDownloadContent = () => {
+    const markdownContent = htmlToMarkdown(content);
+    const fullText = title.trim() ? `# ${title.trim()}\n\n${markdownContent}` : markdownContent;
+    const prefix = title.trim()
+      ? title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+      : 'clinical-note';
+    downloadAsTextFile(fullText, prefix);
   };
 
   const handleSave = async () => {
@@ -345,24 +348,33 @@ export function SaveNoteModal({
 
         {/* Footer */}
         <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
-          <Button
-            variant="secondary"
-            onClick={handleCopyContent}
-            disabled={!content.replace(/<[^>]*>/g, '').trim()}
-            className="mr-auto"
-          >
-            {copiedContent ? (
-              <>
-                <Check className="mr-1.5 h-4 w-4 text-green-600" />
-                Copied!
-              </>
-            ) : (
-              <>
-                <Copy className="mr-1.5 h-4 w-4" />
-                Copy Content
-              </>
-            )}
-          </Button>
+          <div className="mr-auto flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={handleCopyContent}
+              disabled={!content.replace(/<[^>]*>/g, '').trim()}
+            >
+              {copiedContent ? (
+                <>
+                  <Check className="mr-1.5 h-4 w-4 text-green-600" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="mr-1.5 h-4 w-4" />
+                  Copy Content
+                </>
+              )}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={handleDownloadContent}
+              disabled={!content.replace(/<[^>]*>/g, '').trim()}
+            >
+              <Download className="mr-1.5 h-4 w-4" />
+              Download
+            </Button>
+          </div>
           <Button variant="ghost" onClick={onClose} disabled={isSaving}>
             Cancel
           </Button>

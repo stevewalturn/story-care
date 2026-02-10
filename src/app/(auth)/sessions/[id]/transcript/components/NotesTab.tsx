@@ -7,12 +7,13 @@
 
 import type { NotesTabProps } from '../types/transcript.types';
 import type { PatientOption } from '@/components/sessions/SaveNoteModal';
-import { Check, Copy, Edit2, Trash2 } from 'lucide-react';
+import { Check, Copy, Download, Edit2, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SaveNoteModal } from '@/components/sessions/SaveNoteModal';
 import { HTMLContent } from '@/components/ui/HTMLContent';
 import { Modal } from '@/components/ui/Modal';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
+import { downloadAsTextFile, htmlToMarkdown } from '@/utils/FileDownloadHelpers';
 
 export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKey, selectedPatient }: NotesTabProps) {
   const [notes, setNotes] = useState<any[]>([]);
@@ -24,25 +25,27 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
   const [showEditNoteModal, setShowEditNoteModal] = useState(false);
   const [copiedNoteId, setCopiedNoteId] = useState<string | null>(null);
 
-  // Handle copy note content - converts HTML to plain text preserving newlines
+  // Handle copy note content - converts HTML to markdown
   const handleCopyNote = async (note: any) => {
     try {
-      // Convert HTML to plain text while preserving newlines
-      const plainContent = note.content
-        .replace(/<br\s*\/?>/gi, '\n') // Convert <br> to newline
-        .replace(/<\/p>/gi, '\n\n') // Convert </p> to double newline
-        .replace(/<\/div>/gi, '\n') // Convert </div> to newline
-        .replace(/<\/li>/gi, '\n') // Convert </li> to newline
-        .replace(/<[^>]*>/g, '') // Strip remaining HTML tags
-        .replace(/\n{3,}/g, '\n\n') // Collapse multiple newlines to max 2
-        .trim();
-      const fullText = note.title ? `${note.title}\n\n${plainContent}` : plainContent;
+      const markdownContent = htmlToMarkdown(note.content);
+      const fullText = note.title ? `# ${note.title}\n\n${markdownContent}` : markdownContent;
       await navigator.clipboard.writeText(fullText);
       setCopiedNoteId(note.id);
       setTimeout(() => setCopiedNoteId(null), 2000);
     } catch (error) {
       console.error('Failed to copy:', error);
     }
+  };
+
+  // Handle download note as .txt file
+  const handleDownloadNote = (note: any) => {
+    const markdownContent = htmlToMarkdown(note.content);
+    const fullText = note.title ? `# ${note.title}\n\n${markdownContent}` : markdownContent;
+    const prefix = note.title
+      ? note.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+      : 'clinical-note';
+    downloadAsTextFile(fullText, prefix);
   };
 
   // Load notes for this session (refreshes when refreshKey changes)
@@ -393,6 +396,14 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
                       Copy
                     </>
                   )}
+                </button>
+                {/* Download button */}
+                <button
+                  onClick={() => handleDownloadNote(viewingNote)}
+                  className="flex items-center gap-1 rounded px-2 py-1 text-xs text-gray-600 transition-colors hover:bg-gray-100"
+                >
+                  <Download className="h-3 w-3" />
+                  Download
                 </button>
                 {/* Edit button */}
                 <button

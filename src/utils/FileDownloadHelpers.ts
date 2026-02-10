@@ -37,6 +37,61 @@ export function downloadAsTextFile(
 }
 
 /**
+ * Convert HTML (from TipTap editor) to well-formatted Markdown
+ * Handles common TipTap output elements for clean copy/paste into Notion, docs, etc.
+ *
+ * @param html - HTML string from TipTap editor
+ * @returns Markdown-formatted string
+ */
+export function htmlToMarkdown(html: string): string {
+  return (
+    html
+      // Headings - must come before generic tag stripping
+      .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
+      .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n')
+      .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n')
+      .replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n')
+      .replace(/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n\n')
+      .replace(/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n\n')
+      // Blockquotes
+      .replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gi, '> $1\n\n')
+      // Links
+      .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
+      // Bold
+      .replace(/<(strong|b)>(.*?)<\/\1>/gi, '**$2**')
+      // Italic
+      .replace(/<(em|i)>(.*?)<\/\1>/gi, '*$2*')
+      // Inline code
+      .replace(/<code>(.*?)<\/code>/gi, '`$1`')
+      // Ordered list items - add numbered prefix
+      .replace(/<li>/gi, '- ')
+      .replace(/<\/li>/gi, '\n')
+      // Remove list wrappers
+      .replace(/<\/?(ul|ol)[^>]*>/gi, '\n')
+      // Line breaks
+      .replace(/<br\s*\/?>/gi, '\n')
+      // Paragraphs
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<p[^>]*>/gi, '')
+      // Divs
+      .replace(/<\/div>/gi, '\n')
+      .replace(/<div[^>]*>/gi, '')
+      // Strip any remaining HTML tags
+      .replace(/<[^>]*>/g, '')
+      // Decode common HTML entities
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, '\'')
+      .replace(/&nbsp;/g, ' ')
+      // Clean up extra whitespace
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  );
+}
+
+/**
  * Strip markdown formatting from content for plain text download
  * Preserves clinical information while removing formatting
  *
