@@ -9,7 +9,7 @@ import type {
   InstrumentStatus,
   InstrumentType,
 } from '@/models/Schema';
-import { and, asc, count, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import {
   assessmentInstrumentItemsSchema,
@@ -203,6 +203,18 @@ export async function updateInstrument(
 
     // Replace items if provided
     if (items) {
+      // Delete responses referencing existing items first (FK constraint)
+      const existingItemIds = await tx
+        .select({ id: assessmentInstrumentItemsSchema.id })
+        .from(assessmentInstrumentItemsSchema)
+        .where(eq(assessmentInstrumentItemsSchema.instrumentId, id));
+
+      if (existingItemIds.length > 0) {
+        await tx
+          .delete(assessmentResponsesSchema)
+          .where(inArray(assessmentResponsesSchema.itemId, existingItemIds.map(i => i.id)));
+      }
+
       await tx
         .delete(assessmentInstrumentItemsSchema)
         .where(eq(assessmentInstrumentItemsSchema.instrumentId, id));
