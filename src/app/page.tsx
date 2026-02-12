@@ -62,13 +62,6 @@ export default function LandingPage() {
               >
                 Sign in
               </Link>
-              <Link
-                href="/sign-in"
-                className="group relative overflow-hidden rounded-full bg-gradient-to-r from-purple-600 to-violet-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 transition-all hover:shadow-xl hover:shadow-purple-500/40"
-              >
-                <span className="relative z-10">Get Started</span>
-                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-              </Link>
             </div>
           </div>
         </div>
@@ -129,10 +122,7 @@ export default function LandingPage() {
                 href="/sign-in"
                 className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-purple-600 to-violet-600 px-10 py-5 text-lg font-semibold text-white shadow-2xl shadow-purple-500/30 transition-all hover:-translate-y-1 hover:shadow-purple-500/50"
               >
-                <span className="relative z-10 flex items-center gap-2">
-                  Start Free Trial
-                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-                </span>
+                <span className="relative z-10">Sign In</span>
                 <div className="absolute inset-0 -z-10 bg-gradient-to-r from-purple-700 to-violet-700 opacity-0 transition-opacity group-hover:opacity-100" />
                 <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
               </Link>
@@ -140,19 +130,10 @@ export default function LandingPage() {
 
             {/* Trust Badges */}
             <div className={`mt-12 flex flex-wrap items-center justify-center gap-8 transition-all delay-600 duration-700 ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-              {[
-                { icon: Shield, text: 'HIPAA Compliant', color: 'text-green-500' },
-                { icon: Zap, text: '14-Day Free Trial', color: 'text-amber-500' },
-                { icon: Heart, text: 'No Credit Card', color: 'text-pink-500' },
-              ].map(badge => (
-                <div
-                  key={badge.text}
-                  className="flex items-center gap-2 text-sm text-gray-500"
-                >
-                  <badge.icon className={`h-4 w-4 ${badge.color}`} />
-                  {badge.text}
-                </div>
-              ))}
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Shield className="h-4 w-4 text-green-500" />
+                HIPAA Compliant
+              </div>
             </div>
           </div>
 
@@ -354,15 +335,9 @@ export default function LandingPage() {
                 href="/sign-in"
                 className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-white px-10 py-5 text-lg font-semibold text-purple-600 shadow-2xl transition-all hover:-translate-y-1 hover:shadow-white/25"
               >
-                <span className="relative z-10 flex items-center gap-2">
-                  Start Your Free Trial
-                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-                </span>
+                <span className="relative z-10">Sign In</span>
                 <div className="absolute inset-0 -z-10 bg-gradient-to-r from-purple-50 to-violet-50 opacity-0 transition-opacity group-hover:opacity-100" />
               </Link>
-              <p className="mt-8 text-sm text-purple-200">
-                14-day free trial • No credit card required • Cancel anytime
-              </p>
             </div>
           </div>
         </div>
