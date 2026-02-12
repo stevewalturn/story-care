@@ -78,6 +78,7 @@ export async function GET(
         and(
           eq(users.role, 'patient'),
           eq(users.therapistId, therapist.id),
+          isNull(users.deletedAt),
         ),
       );
     const totalPatients = Number(totalPatientsResult[0]?.count || 0);
@@ -133,6 +134,7 @@ export async function GET(
         and(
           eq(users.role, 'patient'),
           eq(users.therapistId, therapist.id),
+          isNull(users.deletedAt),
         ),
       )
       .orderBy(desc(users.createdAt))

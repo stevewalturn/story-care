@@ -11,6 +11,7 @@ export type TraceContext = {
   sessionId?: string;
   patientId?: string;
   patientName?: string;
+  patientEmail?: string;
   additionalTags?: string[];
   additionalMetadata?: Record<string, unknown>;
 };
@@ -35,6 +36,7 @@ export function buildTraceMetadata(context: TraceContext): TraceMetadata {
     sessionId,
     patientId,
     patientName,
+    patientEmail,
     additionalTags = [],
     additionalMetadata = {},
   } = context;
@@ -48,10 +50,12 @@ export function buildTraceMetadata(context: TraceContext): TraceMetadata {
     organizationId: user.organizationId || undefined,
     patientId,
     patientName,
+    patientEmail,
     sessionId,
     tags: [
       user.role,
       ...(user.email ? [`email:${user.email}`] : []),
+      ...(patientEmail ? [`patient-email:${patientEmail}`] : []),
       ...(user.organizationId ? [`org:${user.organizationId}`] : []),
       ...additionalTags,
     ],

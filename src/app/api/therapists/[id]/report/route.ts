@@ -5,7 +5,7 @@
  */
 
 import type { NextRequest } from 'next/server';
-import { and, count, desc, eq } from 'drizzle-orm';
+import { and, count, desc, eq, isNull } from 'drizzle-orm';
 import { jsPDF as JsPDF } from 'jspdf';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
@@ -82,6 +82,7 @@ export async function GET(
         and(
           eq(users.role, 'patient'),
           eq(users.therapistId, therapist.id),
+          isNull(users.deletedAt),
         ),
       );
     const totalPatients = Number(totalPatientsResult[0]?.count || 0);
@@ -121,6 +122,7 @@ export async function GET(
         and(
           eq(users.role, 'patient'),
           eq(users.therapistId, therapist.id),
+          isNull(users.deletedAt),
         ),
       )
       .orderBy(desc(users.createdAt))

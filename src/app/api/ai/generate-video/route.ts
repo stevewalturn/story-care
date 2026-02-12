@@ -39,27 +39,32 @@ export async function POST(request: NextRequest) {
     // 2. GET PATIENT ID from session if not provided
     let finalPatientId = patientId;
     let patientName: string | undefined;
+    let patientEmail: string | undefined;
     let groupId = null;
 
     if (!finalPatientId && sessionId) {
       const session = await db.query.sessions.findFirst({
         where: (sessions, { eq }) => eq(sessions.id, sessionId),
-        with: { patient: { columns: { id: true, name: true } } },
+        with: { patient: { columns: { id: true, name: true, email: true } } },
       });
       finalPatientId = session?.patientId;
       const sessionPatient = session?.patient;
-      patientName = sessionPatient && !Array.isArray(sessionPatient) ? sessionPatient.name : undefined;
+      if (sessionPatient && !Array.isArray(sessionPatient)) {
+        patientName = sessionPatient.name;
+        patientEmail = sessionPatient.email || undefined;
+      }
       groupId = session?.groupId;
     } else if (finalPatientId) {
-      // Fetch patient name if we have patient ID
+      // Fetch patient info if we have patient ID
       try {
         const patient = await db.query.users.findFirst({
           where: eq(users.id, finalPatientId),
-          columns: { name: true },
+          columns: { name: true, email: true },
         });
         patientName = patient?.name || undefined;
+        patientEmail = patient?.email || undefined;
       } catch (error) {
-        console.error('Error fetching patient name:', error);
+        console.error('Error fetching patient info:', error);
       }
     }
 
@@ -106,6 +111,7 @@ export async function POST(request: NextRequest) {
       sessionId,
       patientId: finalPatientId,
       patientName,
+      patientEmail,
       additionalTags: ['generate-video', model],
     });
 

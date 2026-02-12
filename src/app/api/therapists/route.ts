@@ -91,6 +91,7 @@ export async function GET(request: NextRequest) {
             and(
               eq(users.role, 'patient'),
               eq(users.therapistId, therapist.id),
+              isNull(users.deletedAt),
             ),
           );
 

@@ -79,15 +79,19 @@ export async function POST(request: NextRequest) {
     // 4.5. FETCH PATIENT INFO for tracing (if sessionId provided)
     let patientId: string | undefined;
     let patientName: string | undefined;
+    let patientEmail: string | undefined;
     if (sessionId) {
       try {
         const sessionWithPatient = await db.query.sessions.findFirst({
           where: eq(sessions.id, sessionId),
-          with: { patient: { columns: { id: true, name: true } } },
+          with: { patient: { columns: { id: true, name: true, email: true } } },
         });
         patientId = sessionWithPatient?.patientId || undefined;
         const patient = sessionWithPatient?.patient;
-        patientName = patient && !Array.isArray(patient) ? patient.name : undefined;
+        if (patient && !Array.isArray(patient)) {
+          patientName = patient.name;
+          patientEmail = patient.email || undefined;
+        }
       } catch (error) {
         console.error('Error fetching patient info:', error);
         // Continue without patient info
@@ -100,6 +104,7 @@ export async function POST(request: NextRequest) {
       sessionId,
       patientId,
       patientName,
+      patientEmail,
       additionalTags: ['ai-chat', model],
     });
 

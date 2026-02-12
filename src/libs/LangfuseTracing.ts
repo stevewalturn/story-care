@@ -36,6 +36,7 @@ export type TraceMetadata = {
   organizationId?: string;
   patientId?: string; // Patient's database UUID
   patientName?: string; // Patient's name
+  patientEmail?: string; // Patient's email for filtering
   sessionId?: string; // Therapy session ID
   tags?: string[];
   metadata?: Record<string, unknown>;
@@ -175,6 +176,7 @@ export function createTrace(
       organizationId: options?.organizationId,
       patientId: options?.patientId,
       patientName: options?.patientName,
+      patientEmail: options?.patientEmail,
     },
   });
 }

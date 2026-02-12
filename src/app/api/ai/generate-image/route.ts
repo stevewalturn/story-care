@@ -143,15 +143,19 @@ export async function POST(request: NextRequest) {
     // Fetch patient info for tracing (if sessionId provided)
     let tracePatientId: string | undefined;
     let tracePatientName: string | undefined;
+    let tracePatientEmail: string | undefined;
     if (sessionId) {
       try {
         const sessionWithPatient = await db.query.sessions.findFirst({
           where: eq(sessions.id, sessionId),
-          with: { patient: { columns: { id: true, name: true } } },
+          with: { patient: { columns: { id: true, name: true, email: true } } },
         });
         tracePatientId = sessionWithPatient?.patientId || undefined;
         const sessionPatient = sessionWithPatient?.patient;
-        tracePatientName = sessionPatient && !Array.isArray(sessionPatient) ? sessionPatient.name : undefined;
+        if (sessionPatient && !Array.isArray(sessionPatient)) {
+          tracePatientName = sessionPatient.name;
+          tracePatientEmail = sessionPatient.email || undefined;
+        }
       } catch (error) {
         console.error('Error fetching patient info for trace:', error);
       }
@@ -160,11 +164,12 @@ export async function POST(request: NextRequest) {
       try {
         const patientUser = await db.query.users.findFirst({
           where: eq(users.id, patientId),
-          columns: { name: true },
+          columns: { name: true, email: true },
         });
         tracePatientName = patientUser?.name || undefined;
+        tracePatientEmail = patientUser?.email || undefined;
       } catch (error) {
-        console.error('Error fetching patient name for trace:', error);
+        console.error('Error fetching patient info for trace:', error);
       }
     }
 
@@ -174,6 +179,7 @@ export async function POST(request: NextRequest) {
       sessionId,
       patientId: tracePatientId,
       patientName: tracePatientName,
+      patientEmail: tracePatientEmail,
       additionalTags: ['generate-image', model],
     });
 

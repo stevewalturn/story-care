@@ -1,10 +1,13 @@
 import type { NextRequest } from 'next/server';
+import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { db } from '@/libs/DB';
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
 import { flushLangfuse } from '@/libs/Langfuse';
 import { createTextGeneration, createTrace, endTextGeneration } from '@/libs/LangfuseTracing';
 import { openai } from '@/libs/OpenAI';
+import { users } from '@/models/Schema';
 import { buildTraceMetadata } from '@/utils/TraceMetadataBuilder';
 
 const requestSchema = z.object({
@@ -108,11 +111,24 @@ Focus on moments of:
 
 Create vivid, cinematic image prompts that would be therapeutic for the patient to see.`;
 
+    // Fetch patient email for tracing
+    let patientEmail: string | undefined;
+    try {
+      const patient = await db.query.users.findFirst({
+        where: eq(users.id, validated.patientId),
+        columns: { email: true },
+      });
+      patientEmail = patient?.email || undefined;
+    } catch (error) {
+      console.error('Error fetching patient email for trace:', error);
+    }
+
     // Build trace metadata for observability
     const traceMetadata = buildTraceMetadata({
       user,
       patientId: validated.patientId,
       patientName: validated.patientName,
+      patientEmail,
       additionalTags: ['generate-scenes', validated.model],
     });
 

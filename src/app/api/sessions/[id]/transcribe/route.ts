@@ -78,14 +78,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
     // Fetch patient info for tracing
     let patientId: string | undefined;
     let patientName: string | undefined;
+    let patientEmail: string | undefined;
     try {
       const sessionWithPatient = await db.query.sessions.findFirst({
         where: eq(sessions.id, id),
-        with: { patient: { columns: { id: true, name: true } } },
+        with: { patient: { columns: { id: true, name: true, email: true } } },
       });
       patientId = sessionWithPatient?.patientId || undefined;
       const sessionPatient = sessionWithPatient?.patient;
-      patientName = sessionPatient && !Array.isArray(sessionPatient) ? sessionPatient.name : undefined;
+      if (sessionPatient && !Array.isArray(sessionPatient)) {
+        patientName = sessionPatient.name;
+        patientEmail = sessionPatient.email || undefined;
+      }
     } catch (error) {
       console.error('Error fetching patient info for trace:', error);
     }
@@ -96,6 +100,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       sessionId: id,
       patientId,
       patientName,
+      patientEmail,
       additionalTags: ['transcribe', 'deepgram'],
     });
 

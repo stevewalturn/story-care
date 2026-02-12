@@ -104,17 +104,19 @@ export async function POST(request: NextRequest) {
 
     // Call Suno API to start music generation
     try {
-      // Fetch patient name for tracing
+      // Fetch patient info for tracing
       let patientName: string | undefined;
+      let patientEmail: string | undefined;
       if (patientId) {
         try {
           const patient = await db.query.users.findFirst({
             where: eq(users.id, patientId),
-            columns: { name: true },
+            columns: { name: true, email: true },
           });
           patientName = patient?.name || undefined;
+          patientEmail = patient?.email || undefined;
         } catch (error) {
-          console.error('Error fetching patient name:', error);
+          console.error('Error fetching patient info:', error);
         }
       }
 
@@ -124,6 +126,7 @@ export async function POST(request: NextRequest) {
         sessionId: validated.sessionId,
         patientId,
         patientName,
+        patientEmail,
         additionalTags: ['generate-music', validated.model],
       });
 
