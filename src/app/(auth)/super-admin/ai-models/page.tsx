@@ -17,13 +17,9 @@ import {
   DollarSign,
   Eye,
   EyeOff,
-  FileText,
   Image,
-  Mic,
-  Music,
   Plus,
   Search,
-  Type,
   Video,
   X,
 } from 'lucide-react';
@@ -40,10 +36,6 @@ const CATEGORIES: { id: Category; label: string; icon: React.ReactNode }[] = [
   { id: 'image_to_image', label: 'Image to Image', icon: <Image className="h-4 w-4" /> },
   { id: 'image_to_video', label: 'Image to Video', icon: <Video className="h-4 w-4" /> },
   { id: 'text_to_video', label: 'Text to Video', icon: <Video className="h-4 w-4" /> },
-  { id: 'text_to_text', label: 'Text to Text', icon: <Type className="h-4 w-4" /> },
-  { id: 'image_to_text', label: 'Image to Text', icon: <FileText className="h-4 w-4" /> },
-  { id: 'music_generation', label: 'Music', icon: <Music className="h-4 w-4" /> },
-  { id: 'transcription', label: 'Transcription', icon: <Mic className="h-4 w-4" /> },
 ];
 
 const STATUS_COLORS: Record<ModelStatus, string> = {

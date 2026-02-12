@@ -16,10 +16,6 @@ const CATEGORY_OPTIONS: { value: ModelCategory; label: string }[] = [
   { value: 'image_to_image', label: 'Image to Image' },
   { value: 'image_to_video', label: 'Image to Video' },
   { value: 'text_to_video', label: 'Text to Video' },
-  { value: 'text_to_text', label: 'Text to Text' },
-  { value: 'image_to_text', label: 'Image to Text' },
-  { value: 'music_generation', label: 'Music Generation' },
-  { value: 'transcription', label: 'Transcription' },
 ];
 
 const PRICING_UNIT_OPTIONS: { value: string; label: string }[] = [
