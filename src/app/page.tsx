@@ -63,7 +63,7 @@ export default function LandingPage() {
                 Sign in
               </Link>
               <Link
-                href="/sign-up"
+                href="/sign-in"
                 className="group relative overflow-hidden rounded-full bg-gradient-to-r from-purple-600 to-violet-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 transition-all hover:shadow-xl hover:shadow-purple-500/40"
               >
                 <span className="relative z-10">Get Started</span>
@@ -126,7 +126,7 @@ export default function LandingPage() {
             {/* CTA Button */}
             <div className={`flex items-center justify-center transition-all delay-500 duration-700 ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
               <Link
-                href="/sign-up"
+                href="/sign-in"
                 className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-purple-600 to-violet-600 px-10 py-5 text-lg font-semibold text-white shadow-2xl shadow-purple-500/30 transition-all hover:-translate-y-1 hover:shadow-purple-500/50"
               >
                 <span className="relative z-10 flex items-center gap-2">
@@ -351,7 +351,7 @@ export default function LandingPage() {
                 Join hundreds of therapists creating meaningful therapeutic experiences with StoryCare
               </p>
               <Link
-                href="/sign-up"
+                href="/sign-in"
                 className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-white px-10 py-5 text-lg font-semibold text-purple-600 shadow-2xl transition-all hover:-translate-y-1 hover:shadow-white/25"
               >
                 <span className="relative z-10 flex items-center gap-2">

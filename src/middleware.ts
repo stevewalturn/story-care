@@ -18,8 +18,8 @@ const protectedRoutes = [
   '/patient',
 ];
 
-// Auth pages (sign-in, sign-up)
-const authPages = ['/sign-in', '/sign-up'];
+// Auth pages (sign-in)
+const authPages = ['/sign-in'];
 
 // Check if the request path starts with any protected route
 function isProtectedRoute(pathname: string): boolean {
@@ -95,12 +95,13 @@ export default async function middleware(request: NextRequest) {
     'Content-Security-Policy',
     [
       'default-src \'self\'',
-      'script-src \'self\' \'unsafe-inline\' \'unsafe-eval\' https://cdn.jsdelivr.net https://*.firebaseapp.com https://*.googleapis.com',
+      'script-src \'self\' \'unsafe-inline\' \'unsafe-eval\' https://cdn.jsdelivr.net https://*.firebaseapp.com https://*.googleapis.com https://widget.intercom.io https://js.intercomcdn.com',
       'style-src \'self\' \'unsafe-inline\'',
       'img-src \'self\' data: https: blob:',
-      'font-src \'self\' data:',
-      'connect-src \'self\' https://*.firebaseapp.com https://*.googleapis.com https://*.deepgram.com https://api.openai.com https://storage.googleapis.com',
-      'media-src \'self\' https://storage.googleapis.com blob:',
+      'font-src \'self\' data: https://js.intercomcdn.com',
+      'connect-src \'self\' https://*.firebaseapp.com https://*.googleapis.com https://*.deepgram.com https://api.openai.com https://storage.googleapis.com https://*.intercom.io https://*.intercomcdn.com https://*.intercomassets.com',
+      'media-src \'self\' https://storage.googleapis.com blob: https://js.intercomcdn.com',
+      'frame-src \'self\' https://intercom-sheets.com https://*.intercom.io',
       'object-src \'none\'',
       'base-uri \'self\'',
       'form-action \'self\'',

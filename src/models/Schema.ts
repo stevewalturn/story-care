@@ -389,6 +389,10 @@ export const usersSchema: any = pgTable('users', {
   invitationTokenExpiresAt: timestamp('invitation_token_expires_at'),
   invitationSentAt: timestamp('invitation_sent_at'),
 
+  // Password reset token (secure, one-time use)
+  passwordResetToken: varchar('password_reset_token', { length: 64 }).unique(),
+  passwordResetTokenExpiresAt: timestamp('password_reset_token_expires_at'),
+
   // Soft delete for HIPAA compliance
   deletedAt: timestamp('deleted_at'),
 });

@@ -533,12 +533,12 @@ function SetupAccountForm() {
         {/* Footer Links */}
         {currentStep === 'email' && (
           <div className="mt-6 text-center text-sm text-gray-600">
-            <p>Don't have an invitation?</p>
+            <p>Already have an account?</p>
             <Link
-              href="/sign-up"
+              href="/sign-in"
               className="font-medium text-purple-600 hover:text-purple-700"
             >
-              Create a new organization instead
+              Sign in
             </Link>
           </div>
         )}

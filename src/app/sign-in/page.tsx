@@ -1,6 +1,5 @@
 'use client';
 
-import { Building2, UserPlus } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -226,54 +225,6 @@ function SignInForm() {
             </Button>
           </form>
 
-        </div>
-
-        {/* New Account Options */}
-        <div className="mt-8">
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="bg-gradient-to-br from-purple-50 via-white to-purple-50 px-4 font-medium text-gray-600">
-                Don't have an account yet?
-              </span>
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* Set Up Account Card */}
-            <Link
-              href="/setup-account"
-              className="group rounded-xl border-2 border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-purple-400 hover:shadow-md"
-            >
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100 text-purple-600 transition-colors group-hover:bg-purple-600 group-hover:text-white">
-                <UserPlus className="h-6 w-6" />
-              </div>
-              <h3 className="mb-2 text-lg font-semibold text-gray-900 transition-colors group-hover:text-purple-600">
-                Set Up Your Account
-              </h3>
-              <p className="text-sm text-gray-600">
-                Already invited by your organization? Create your password to get started.
-              </p>
-            </Link>
-
-            {/* Create Organization Card */}
-            <Link
-              href="/sign-up"
-              className="group rounded-xl border-2 border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-purple-400 hover:shadow-md"
-            >
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100 text-purple-600 transition-colors group-hover:bg-purple-600 group-hover:text-white">
-                <Building2 className="h-6 w-6" />
-              </div>
-              <h3 className="mb-2 text-lg font-semibold text-gray-900 transition-colors group-hover:text-purple-600">
-                Create New Organization
-              </h3>
-              <p className="text-sm text-gray-600">
-                Starting a new organization? Sign up to become an admin.
-              </p>
-            </Link>
-          </div>
         </div>
       </div>
     </div>

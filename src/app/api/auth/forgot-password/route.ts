@@ -1,8 +1,11 @@
+import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { adminAuth } from '@/libs/FirebaseAdmin';
+import { db } from '@/libs/DB';
 import { isPauboxConfigured } from '@/libs/Paubox';
+import { users } from '@/models/Schema';
 import { sendPasswordResetEmail } from '@/services/EmailService';
+import { generateInvitationToken } from '@/utils/InvitationTokens';
 import { authRateLimit, checkRateLimit, getClientIP } from '@/utils/RateLimiter';
 
 const forgotPasswordSchema = z.object({
@@ -43,13 +46,36 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Look up user by email in DB
+    const [user] = await db
+      .select({ id: users.id, firebaseUid: users.firebaseUid })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    // If not found, return generic success to prevent enumeration
+    if (!user || !user.firebaseUid) {
+      return NextResponse.json(GENERIC_SUCCESS);
+    }
+
+    // Generate token and store with 1-hour expiry
+    const token = generateInvitationToken();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await db
+      .update(users)
+      .set({
+        passwordResetToken: token,
+        passwordResetTokenExpiresAt: expiresAt,
+      })
+      .where(eq(users.id, user.id));
+
+    // Build reset URL and send email
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const resetLink = await adminAuth.generatePasswordResetLink(email, {
-      url: `${appUrl}/sign-in`,
-    });
+    const resetLink = `${appUrl}/reset-password?token=${token}`;
 
     if (!isPauboxConfigured()) {
-      console.warn('Paubox not configured — password reset link generated but email not sent');
+      console.warn('Paubox not configured — password reset token generated but email not sent');
       return NextResponse.json(GENERIC_SUCCESS);
     }
 
@@ -61,14 +87,8 @@ export async function POST(request: Request) {
     if (!result.success) {
       console.error('Failed to send password reset email:', result.error);
     }
-  } catch (error: any) {
-    // Firebase throws if the user doesn't exist — silently handle it
-    const code = error?.code || error?.errorInfo?.code || '';
-    if (code === 'auth/user-not-found' || code === 'auth/email-not-found') {
-      console.log('Password reset requested for non-existent email');
-    } else {
-      console.error('Error generating password reset link:', error);
-    }
+  } catch (error) {
+    console.error('Error processing password reset:', error);
   }
 
   // Always return success to prevent email enumeration

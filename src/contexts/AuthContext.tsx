@@ -228,7 +228,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         // Redirect to sign-in if not on a public path
         if (typeof window !== 'undefined') {
-          const publicPaths = ['/sign-in', '/sign-up', '/'];
+          const publicPaths = ['/sign-in', '/'];
           const currentPath = window.location.pathname;
           if (!publicPaths.some(path => currentPath.includes(path))) {
             router.push('/sign-in');
