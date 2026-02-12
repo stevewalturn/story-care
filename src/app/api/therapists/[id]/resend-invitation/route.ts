@@ -70,6 +70,14 @@ export async function POST(
       }
     }
 
+    // Block resend for pending_approval users
+    if (therapist.status === 'pending_approval') {
+      return NextResponse.json(
+        { error: 'Cannot resend invitation. This invitation is pending administrator approval.' },
+        { status: 400 },
+      );
+    }
+
     // Verify therapist is in 'invited' status
     if (therapist.status !== 'invited') {
       return NextResponse.json(

@@ -21,6 +21,7 @@ import {
   Mic,
   Settings,
   Sparkles,
+  UserCheck,
   Users,
 } from 'lucide-react';
 
@@ -95,6 +96,12 @@ export const navigationConfig: NavigationConfig = {
       href: '/super-admin/users',
       icon: Users,
       description: 'User management across organizations',
+    },
+    {
+      name: 'Pending Invitations',
+      href: '/super-admin/pending-invitations',
+      icon: UserCheck,
+      description: 'Review and approve user invitation requests',
     },
     {
       name: 'Audit Logs',

@@ -15,7 +15,7 @@ type TherapistHeaderProps = {
     id: string;
     name: string;
     email: string;
-    status: 'active' | 'inactive' | 'invited';
+    status: 'active' | 'inactive' | 'invited' | 'pending_approval' | 'rejected';
     avatarUrl?: string | null;
     licenseNumber?: string | null;
     specialty?: string | null;
@@ -41,7 +41,7 @@ export function TherapistDetailHeader({
 }: TherapistHeaderProps) {
   const router = useRouter();
 
-  const canToggleStatus = therapist.status !== 'invited';
+  const canToggleStatus = therapist.status !== 'invited' && therapist.status !== 'pending_approval' && therapist.status !== 'rejected';
   const isActive = therapist.status === 'active';
 
   return (
@@ -84,17 +84,25 @@ export function TherapistDetailHeader({
                     ? 'bg-green-100 text-green-700'
                     : therapist.status === 'invited'
                       ? 'bg-blue-100 text-blue-700'
-                      : 'bg-gray-100 text-gray-700'
+                      : therapist.status === 'pending_approval'
+                        ? 'bg-amber-100 text-amber-700'
+                        : therapist.status === 'rejected'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-gray-100 text-gray-700'
                 }`}
                 title={
                   therapist.status === 'active'
                     ? 'User has completed account setup and can access the platform'
                     : therapist.status === 'invited'
                       ? 'User has been sent an invitation email but hasn\'t set up their account yet'
-                      : 'User account is inactive'
+                      : therapist.status === 'pending_approval'
+                        ? 'Invitation is awaiting administrator approval'
+                        : therapist.status === 'rejected'
+                          ? 'Invitation was rejected by an administrator'
+                          : 'User account is inactive'
                 }
               >
-                {therapist.status}
+                {therapist.status === 'pending_approval' ? 'Awaiting Approval' : therapist.status === 'rejected' ? 'Rejected' : therapist.status}
               </span>
             </div>
             <p className="mt-1 text-sm text-gray-600">{therapist.email}</p>

@@ -136,23 +136,26 @@ export function MediaDetailsModal({
     }
   };
 
-  // Handle download - uses server-side proxy to bypass CORS
-  const handleDownload = () => {
+  // Handle download - fetches as blob to bypass cross-origin download restrictions
+  const handleDownload = async () => {
     const extension = media.mediaType === 'image' ? 'png' : media.mediaType === 'video' ? 'mp4' : 'mp3';
     const filename = `${media.title.replace(/[^a-z0-9]/gi, '_')}.${extension}`;
 
-    if (!media.mediaUrl.startsWith('http')) {
-      // Use download proxy for GCS paths
-      window.location.href = `/api/media/download?path=${encodeURIComponent(media.mediaUrl)}&filename=${encodeURIComponent(filename)}`;
-    } else {
-      // For external URLs, try direct download (fallback to new tab if blocked)
+    try {
+      const response = await fetch(media.mediaUrl);
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = media.mediaUrl;
+      a.href = blobUrl;
       a.download = filename;
-      a.target = '_blank';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      // Fallback: open in new tab
+      window.open(media.mediaUrl, '_blank');
     }
   };
 

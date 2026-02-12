@@ -108,12 +108,22 @@ export async function verifyIdToken(token: string) {
       throw new Error('User not found in database. Please complete registration or contact your administrator.');
     }
 
-    // 5. Block inactive users from logging in
+    // 5. Block pending_approval users from logging in
+    if (dbUser.status === 'pending_approval') {
+      throw new Error('Your invitation is pending administrator approval. Please wait for approval before signing in.');
+    }
+
+    // 6. Block rejected users from logging in
+    if (dbUser.status === 'rejected') {
+      throw new Error('Your invitation request has been declined. Please contact your administrator.');
+    }
+
+    // 7. Block inactive users from logging in
     if (dbUser.status === 'inactive') {
       throw new Error('Account is deactivated. Please contact your administrator.');
     }
 
-    // 6. Block soft-deleted users from logging in
+    // 8. Block soft-deleted users from logging in
     if (dbUser.deletedAt) {
       throw new Error('Account has been removed. Please contact your administrator.');
     }
@@ -126,7 +136,7 @@ export async function verifyIdToken(token: string) {
       email: decodedToken.email || null,
       emailVerified: decodedToken.email_verified || false,
       role: dbUser.role as 'super_admin' | 'org_admin' | 'therapist' | 'patient',
-      status: dbUser.status as 'invited' | 'active' | 'inactive',
+      status: dbUser.status as 'pending_approval' | 'invited' | 'active' | 'inactive' | 'rejected',
       avatarUrl: dbUser.avatarUrl || null,
     };
   } catch (error) {

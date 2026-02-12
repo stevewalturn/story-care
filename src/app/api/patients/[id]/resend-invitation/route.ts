@@ -82,6 +82,14 @@ export async function POST(
     }
     // Super admins can resend for any patient
 
+    // Block resend for pending_approval users
+    if (patient.status === 'pending_approval') {
+      return NextResponse.json(
+        { error: 'Cannot resend invitation. This invitation is pending administrator approval.' },
+        { status: 400 },
+      );
+    }
+
     // Verify patient is in 'invited' status
     if (patient.status !== 'invited') {
       return NextResponse.json(

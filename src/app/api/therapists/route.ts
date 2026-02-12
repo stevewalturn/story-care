@@ -170,11 +170,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate secure invitation token
-    const invitationToken = generateInvitationToken();
-    const invitationTokenExpiresAt = calculateExpirationDate(7); // 7 days expiry
+    // Determine if approval is needed (non-super-admin invitations require approval)
+    const requiresApproval = authUser.role !== 'super_admin';
+    const therapistStatus = requiresApproval ? 'pending_approval' : 'invited';
 
-    // Create invited therapist
+    // Only generate token if sending invitation immediately (super admin bypass)
+    const invitationToken = requiresApproval ? null : generateInvitationToken();
+    const invitationTokenExpiresAt = requiresApproval ? null : calculateExpirationDate(7); // 7 days expiry
+
+    // Create therapist
     const therapistResult = await db
       .insert(users)
       .values({
@@ -184,11 +188,12 @@ export async function POST(request: NextRequest) {
         specialty: validated.specialty || null,
         role: 'therapist',
         organizationId: authUser.organizationId, // null for super_admin is OK
-        status: 'invited', // Will be activated when they sign in
+        status: therapistStatus,
         firebaseUid: null, // Will be linked when they sign in
         invitationToken,
         invitationTokenExpiresAt,
-        invitationSentAt: new Date(),
+        invitationSentAt: requiresApproval ? null : new Date(),
+        invitedBy: authUser.dbUserId,
         createdAt: new Date(),
         updatedAt: new Date(),
       })
@@ -203,7 +208,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send invitation email
+    // If pending approval, return early without sending email
+    if (requiresApproval) {
+      return NextResponse.json(
+        {
+          therapist,
+          emailSent: false,
+          message: 'Therapist created and is pending administrator approval. The invitation email will be sent once approved.',
+        },
+        { status: 201 },
+      );
+    }
+
+    // Send invitation email (super admin bypass)
     let emailSent = false;
     let emailError: string | null = null;
 
@@ -234,7 +251,7 @@ export async function POST(request: NextRequest) {
         inviterName: authUser.name || 'Admin', // Use actual inviter name
         organizationName,
         setupAccountUrl,
-        expiresAt: invitationTokenExpiresAt,
+        expiresAt: invitationTokenExpiresAt || undefined,
       });
 
       emailSent = true;

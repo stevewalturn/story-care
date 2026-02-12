@@ -470,24 +470,28 @@ export function MediaTab({
     setEditingMedia(item);
   };
 
-  // Handle download - uses server-side proxy to bypass CORS
-  const handleDownload = (item: any) => {
+  // Handle download - fetches as blob to bypass cross-origin download restrictions
+  const handleDownload = async (item: any) => {
     setActiveMenuId(null);
     const extension = item.mediaType === 'image' ? 'png' : item.mediaType === 'video' ? 'mp4' : 'mp3';
     const filename = `${item.title?.replace(/[^a-z0-9]/gi, '_') || 'media'}.${extension}`;
+    const url = getMediaUrl(item.mediaUrl);
 
-    if (!item.mediaUrl?.startsWith('http')) {
-      // Use download proxy for GCS paths
-      window.location.href = `/api/media/download?path=${encodeURIComponent(item.mediaUrl)}&filename=${encodeURIComponent(filename)}`;
-    } else {
-      // For external URLs, try direct download
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = item.mediaUrl;
+      a.href = blobUrl;
       a.download = filename;
-      a.target = '_blank';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      // Fallback: open in new tab
+      window.open(url, '_blank');
     }
   };
 

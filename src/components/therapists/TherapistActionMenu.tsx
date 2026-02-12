@@ -14,7 +14,7 @@ type Therapist = {
   id: string;
   name: string;
   email: string;
-  status: 'active' | 'inactive' | 'invited' | 'deleted';
+  status: 'active' | 'inactive' | 'invited' | 'deleted' | 'pending_approval' | 'rejected';
   patientCount?: number;
   licenseNumber?: string | null;
   specialty?: string | null;
@@ -131,8 +131,8 @@ export function TherapistActionMenu({
     };
   }, [showMenu]);
 
-  // Only show status toggle for active/inactive users, not invited or deleted
-  const canToggleStatus = therapist.status !== 'invited' && therapist.status !== 'deleted';
+  // Only show status toggle for active/inactive users, not invited, deleted, pending_approval, or rejected
+  const canToggleStatus = therapist.status === 'active' || therapist.status === 'inactive';
   const isActive = therapist.status === 'active';
   const isDeleted = therapist.status === 'deleted';
 

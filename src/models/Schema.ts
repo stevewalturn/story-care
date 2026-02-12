@@ -30,9 +30,11 @@ export const userRoleEnum = pgEnum('user_role', [
   'patient',
 ]);
 export const userStatusEnum = pgEnum('user_status', [
+  'pending_approval', // Awaiting super admin approval before invitation is sent
   'invited', // Pre-created by org admin/super admin, waiting for first sign-in
   'active',
   'inactive',
+  'rejected', // Super admin rejected the invitation request
   'deleted', // Soft-deleted users
 ]);
 export const organizationStatusEnum = pgEnum('organization_status', [
@@ -388,6 +390,14 @@ export const usersSchema: any = pgTable('users', {
   invitationToken: varchar('invitation_token', { length: 64 }).unique(),
   invitationTokenExpiresAt: timestamp('invitation_token_expires_at'),
   invitationSentAt: timestamp('invitation_sent_at'),
+
+  // Invitation approval tracking
+  invitedBy: uuid('invited_by'), // Who created the invitation
+  approvedBy: uuid('approved_by'), // Super admin who approved
+  approvedAt: timestamp('approved_at'),
+  rejectedBy: uuid('rejected_by'), // Super admin who rejected
+  rejectedAt: timestamp('rejected_at'),
+  rejectionReason: text('rejection_reason'),
 
   // Password reset token (secure, one-time use)
   passwordResetToken: varchar('password_reset_token', { length: 64 }).unique(),

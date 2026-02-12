@@ -118,17 +118,26 @@ export default function UsersPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    const styles = {
+    const styles: Record<string, string> = {
       active: 'bg-green-100 text-green-700',
+      invited: 'bg-blue-100 text-blue-700',
       pending: 'bg-yellow-100 text-yellow-700',
+      pending_approval: 'bg-amber-100 text-amber-700',
+      rejected: 'bg-red-100 text-red-700',
       suspended: 'bg-red-100 text-red-700',
+      inactive: 'bg-gray-100 text-gray-700',
+    };
+
+    const labels: Record<string, string> = {
+      pending_approval: 'Awaiting Approval',
+      rejected: 'Rejected',
     };
 
     return (
       <span
-        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[status as keyof typeof styles] || styles.pending}`}
+        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[status] || styles.pending}`}
       >
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {labels[status] || status.charAt(0).toUpperCase() + status.slice(1)}
       </span>
     );
   };

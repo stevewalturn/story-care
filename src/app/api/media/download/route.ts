@@ -77,8 +77,20 @@ export async function GET(request: NextRequest) {
     // Get the file content
     const blob = await response.blob();
 
-    // Determine content type
-    const contentType = response.headers.get('content-type') || 'application/octet-stream';
+    // Determine content type from filename extension, falling back to response header
+    const extensionMap: Record<string, string> = {
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      gif: 'image/gif',
+      webp: 'image/webp',
+      mp4: 'video/mp4',
+      webm: 'video/webm',
+      mp3: 'audio/mpeg',
+      wav: 'audio/wav',
+    };
+    const ext = filename.split('.').pop()?.toLowerCase() || '';
+    const contentType = extensionMap[ext] || response.headers.get('content-type') || 'application/octet-stream';
 
     // Return with download headers
     return new NextResponse(blob, {

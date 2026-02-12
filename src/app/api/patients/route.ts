@@ -334,13 +334,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Determine status: 'invited' if sending invitation, 'active' otherwise
+    // Determine status and whether approval is needed
     const shouldSendInvitation = validated.email && validated.sendInvitation;
-    const patientStatus = shouldSendInvitation ? 'invited' : 'active';
+    const requiresApproval = shouldSendInvitation && authUser.role !== 'super_admin';
 
-    // Generate secure invitation token if sending invitation
-    const invitationToken = shouldSendInvitation ? generateInvitationToken() : null;
-    const invitationTokenExpiresAt = shouldSendInvitation ? calculateExpirationDate(7) : null;
+    // If approval required: pending_approval (no token, no email)
+    // If super admin sending invitation: invited (token + email immediately)
+    // If no invitation: active
+    const patientStatus = requiresApproval
+      ? 'pending_approval'
+      : shouldSendInvitation ? 'invited' : 'active';
+
+    // Only generate token if sending invitation immediately (super admin bypass)
+    const invitationToken = (shouldSendInvitation && !requiresApproval) ? generateInvitationToken() : null;
+    const invitationTokenExpiresAt = (shouldSendInvitation && !requiresApproval) ? calculateExpirationDate(7) : null;
 
     // Create patient - IMPORTANT: Inherit organizationId from therapist
     const patientResult = await db
@@ -358,7 +365,8 @@ export async function POST(request: NextRequest) {
         firebaseUid: shouldSendInvitation ? null : undefined, // null for invited, undefined for active
         invitationToken,
         invitationTokenExpiresAt,
-        invitationSentAt: shouldSendInvitation ? new Date() : null,
+        invitationSentAt: (shouldSendInvitation && !requiresApproval) ? new Date() : null,
+        invitedBy: authUser.dbUserId,
         createdAt: new Date(),
         updatedAt: new Date(),
       })
@@ -373,7 +381,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send invitation email if requested
+    // If pending approval, return early without sending email
+    if (requiresApproval) {
+      return NextResponse.json(
+        {
+          patient,
+          emailSent: false,
+          message: 'Patient created and is pending administrator approval. The invitation email will be sent once approved.',
+        },
+        { status: 201 },
+      );
+    }
+
+    // Send invitation email if requested (super admin bypass or no approval needed)
     let emailSent = false;
     let emailError: string | null = null;
 

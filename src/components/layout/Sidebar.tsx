@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { getNavigationForRole } from '@/config/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePendingInvitationCount } from '@/hooks/usePendingInvitationCount';
 
 export function Sidebar() {
   const { dbUser } = useAuth();
@@ -15,6 +16,7 @@ export function Sidebar() {
 
   // Get navigation items based on user role
   const navItems = dbUser?.role ? getNavigationForRole(dbUser.role) : [];
+  const { count: pendingCount } = usePendingInvitationCount();
 
   // Check if a nav item is active - prefer exact match or longest matching path
   const isItemActive = (itemHref: string): boolean => {
@@ -86,6 +88,8 @@ export function Sidebar() {
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = isItemActive(item.href);
+          const badgeCount = item.href === '/super-admin/pending-invitations' ? pendingCount : null;
+          const badgeText = item.badge || (badgeCount && badgeCount > 0 ? String(badgeCount) : null);
           return (
             <Link
               key={item.href}
@@ -97,13 +101,20 @@ export function Sidebar() {
               }`}
               title={isCollapsed ? item.name : item.description}
             >
-              <Icon className={`h-5 w-5 flex-shrink-0 ${isCollapsed ? '' : 'mr-3'}`} />
+              <div className="relative flex-shrink-0">
+                <Icon className={`h-5 w-5 ${isCollapsed ? '' : 'mr-3'}`} />
+                {isCollapsed && badgeText && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                    {badgeText}
+                  </span>
+                )}
+              </div>
               {!isCollapsed && (
                 <>
                   {item.name}
-                  {item.badge && (
+                  {badgeText && (
                     <span className="ml-auto rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600">
-                      {item.badge}
+                      {badgeText}
                     </span>
                   )}
                 </>

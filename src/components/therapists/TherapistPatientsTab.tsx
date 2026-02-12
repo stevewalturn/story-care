@@ -230,10 +230,14 @@ export function TherapistPatientsTab({ patients, therapistId, onAssignPatients, 
                               ? 'bg-green-100 text-green-700'
                               : patient.status === 'invited'
                                 ? 'bg-blue-100 text-blue-700'
-                                : 'bg-gray-100 text-gray-700'
+                                : patient.status === 'pending_approval'
+                                  ? 'bg-amber-100 text-amber-700'
+                                  : patient.status === 'rejected'
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-gray-100 text-gray-700'
                           }`}
                         >
-                          {patient.status}
+                          {patient.status === 'pending_approval' ? 'Awaiting Approval' : patient.status === 'rejected' ? 'Rejected' : patient.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-900">

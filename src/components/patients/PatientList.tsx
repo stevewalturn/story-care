@@ -23,7 +23,7 @@ type Patient = {
   pageCount?: number;
   surveyCount?: number;
   reflectionCount?: number;
-  status?: 'active' | 'invited' | 'inactive';
+  status?: 'active' | 'invited' | 'inactive' | 'pending_approval' | 'rejected';
 };
 
 type PatientListProps = {
@@ -230,8 +230,14 @@ export function PatientList({
                         if (status === 'active') {
                           return { bg: 'bg-green-50 text-green-700', label: 'Active' };
                         }
+                        if (status === 'pending_approval') {
+                          return { bg: 'bg-amber-50 text-amber-700', label: 'Awaiting Approval' };
+                        }
                         if (status === 'invited') {
-                          return { bg: 'bg-amber-50 text-amber-700', label: 'Pending' };
+                          return { bg: 'bg-blue-50 text-blue-700', label: 'Invited' };
+                        }
+                        if (status === 'rejected') {
+                          return { bg: 'bg-red-50 text-red-700', label: 'Rejected' };
                         }
                         return { bg: 'bg-gray-100 text-gray-600', label: 'Inactive' };
                       };

@@ -102,6 +102,17 @@ export const updateTherapistStatusSchema = z.object({
   status: z.enum(['active', 'inactive']),
 });
 
+/**
+ * Schema for approving or rejecting a pending invitation
+ */
+export const approveInvitationSchema = z.object({
+  decision: z.enum(['approve', 'reject']),
+  rejectionReason: z.string()
+    .max(1000, 'Rejection reason must not exceed 1000 characters')
+    .optional(),
+});
+
+export type ApproveInvitationInput = z.infer<typeof approveInvitationSchema>;
 export type InviteTherapistInput = z.infer<typeof inviteTherapistSchema>;
 export type CreatePatientInput = z.infer<typeof createPatientSchema>;
 export type InvitePatientInput = z.infer<typeof invitePatientSchema>;
