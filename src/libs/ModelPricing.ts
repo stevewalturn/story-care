@@ -181,7 +181,11 @@ export const VIDEO_MODEL_PRICING: Record<string, number> = {
   'veo3-fast-i2v': 0.08,
   'veo2-i2v': 0.40,
   'seedance-v1.5-pro-i2v': 0.0823,
+  'seedance-v1.5-pro-fast-i2v': 0.0741,
   'seedance-v1-pro-fast-i2v': 0.0102,
+  'seedance-v1-pro-i2v-1080p': 0.1020,
+  'seedance-v1-pro-i2v-720p': 0.0510,
+  'seedance-v1-pro-i2v-480p': 0.0255,
   'kling-2.6-pro-i2v': 0.0595,
   'kling-video-o1-i2v': 0.476,
   'kling-2.5-turbo-pro-i2v': 0.2975,
@@ -208,7 +212,9 @@ export const VIDEO_MODEL_PRICING: Record<string, number> = {
   'magi-1-24b': 0.32,
 
   // Budget tier
+  'seedance-v1-lite-i2v-1080p': 0.0765,
   'seedance-v1-lite-i2v-720p': 0.0272,
+  'seedance-v1-lite-i2v-480p': 0.0136,
   'wan-2.6-i2v': 0.07,
   'wan-2.5-i2v': 0.035,
   'wan-2.5-fast-i2v': 0.068,

@@ -232,6 +232,7 @@ export const VIDEO_GENERATION_MODELS = {
     { value: 'veo3.1-i2v', label: 'Veo 3.1', description: 'Google flagship, motion-rich' },
     { value: 'veo3-i2v', label: 'Veo 3', description: 'Google premium quality' },
     { value: 'seedance-v1.5-pro-i2v', label: 'Seedance v1.5 Pro', description: 'Audio-visual sync, cinematic' },
+    { value: 'seedance-v1.5-pro-fast-i2v', label: 'Seedance v1.5 Pro Fast', description: 'Fast cinematic generation' },
     { value: 'kling-2.6-pro-i2v', label: 'Kling 2.6 Pro', description: 'Sound generation, dynamics' },
   ],
 
@@ -263,6 +264,9 @@ export const VIDEO_GENERATION_MODELS = {
     { value: 'vidu-start-end-2.0', label: 'Vidu Start-End 2.0', description: 'Frame interpolation' },
     { value: 'pika-2.0-turbo-i2v', label: 'Pika 2.0 Turbo', description: 'Fast turbo mode' },
     { value: 'pixverse-4.5-fast-i2v', label: 'PixVerse 4.5 Fast', description: 'Fast generation' },
+    { value: 'seedance-v1-pro-i2v-1080p', label: 'Seedance v1 Pro 1080p', description: 'Pro quality, 1080p output' },
+    { value: 'seedance-v1-pro-i2v-720p', label: 'Seedance v1 Pro 720p', description: 'Pro quality, 720p output' },
+    { value: 'seedance-v1-pro-i2v-480p', label: 'Seedance v1 Pro 480p', description: 'Pro quality, 480p output' },
     { value: 'magi-1-24b', label: 'Magi 1 24B', description: 'Large model' },
   ],
 
@@ -275,7 +279,9 @@ export const VIDEO_GENERATION_MODELS = {
     { value: 'ltx-2-fast-i2v', label: 'LTX-2 Fast', description: 'Smooth, coherent motion' },
     { value: 'ltx-video-097-i2v', label: 'LTX Video 0.97', description: '720p output' },
     { value: 'seedance-v1-pro-fast-i2v', label: 'Seedance v1 Pro Fast', description: 'Cinematic motion, low cost' },
-    { value: 'seedance-v1-lite-i2v-720p', label: 'Seedance v1 Lite i2v', description: 'Lite model, low latency, 720p' },
+    { value: 'seedance-v1-lite-i2v-1080p', label: 'Seedance v1 Lite 1080p', description: 'Lite model, 1080p output' },
+    { value: 'seedance-v1-lite-i2v-720p', label: 'Seedance v1 Lite 720p', description: 'Lite model, low latency, 720p' },
+    { value: 'seedance-v1-lite-i2v-480p', label: 'Seedance v1 Lite 480p', description: 'Lite model, lowest cost, 480p' },
     { value: 'hailuo-2.3-fast-i2v', label: 'Hailuo 2.3 Fast', description: 'Rapid generation' },
     { value: 'kling-effects', label: 'Kling Effects', description: 'Special effects' },
   ],
@@ -387,6 +393,7 @@ export function getAtlasCloudVideoModelId(internalId: string): string {
     'veo3.1-i2v': 'google/veo3.1/image-to-video',
     'veo3-i2v': 'google/veo3/image-to-video',
     'seedance-v1.5-pro-i2v': 'bytedance/seedance-v1.5-pro/image-to-video',
+    'seedance-v1.5-pro-fast-i2v': 'bytedance/seedance-v1.5-pro-fast/image-to-video',
     'kling-2.6-pro-i2v': 'kwaivgi/kling-v2.6-pro/image-to-video',
 
     // ===== PREMIUM =====
@@ -424,7 +431,12 @@ export function getAtlasCloudVideoModelId(internalId: string): string {
     'ltx-2-fast-i2v': 'lightricks/ltx-2-fast/image-to-video',
     'ltx-video-097-i2v': 'atlascloud/ltx-video-v097/i2v-720p',
     'seedance-v1-pro-fast-i2v': 'bytedance/seedance-v1-pro-fast/image-to-video',
+    'seedance-v1-pro-i2v-1080p': 'bytedance/seedance-v1-pro-i2v-1080p',
+    'seedance-v1-pro-i2v-720p': 'bytedance/seedance-v1-pro-i2v-720p',
+    'seedance-v1-pro-i2v-480p': 'bytedance/seedance-v1-pro-i2v-480p',
+    'seedance-v1-lite-i2v-1080p': 'bytedance/seedance-v1-lite-i2v-1080p',
     'seedance-v1-lite-i2v-720p': 'bytedance/seedance-v1-lite-i2v-720p',
+    'seedance-v1-lite-i2v-480p': 'bytedance/seedance-v1-lite-i2v-480p',
     'hailuo-2.3-fast-i2v': 'minimax/hailuo-2.3/fast',
     'kling-effects': 'kwaivgi/kling-effects',
 
