@@ -6,8 +6,6 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { resetPassword } from '@/libs/Firebase';
-import { humanizeFirebaseError } from '@/utils/FirebaseErrorMessages';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -20,13 +18,30 @@ export default function ForgotPasswordPage() {
     setError('');
     setLoading(true);
 
-    const { error: resetError } = await resetPassword(email);
+    try {
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
 
-    if (resetError) {
-      setError(humanizeFirebaseError(resetError));
-      setLoading(false);
-    } else {
+      if (response.status === 429) {
+        setError('Too many requests. Please try again later.');
+        setLoading(false);
+        return;
+      }
+
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.error || 'Something went wrong. Please try again.');
+        setLoading(false);
+        return;
+      }
+
       setSuccess(true);
+    } catch {
+      setError('Unable to connect. Please check your internet connection and try again.');
+    } finally {
       setLoading(false);
     }
   };

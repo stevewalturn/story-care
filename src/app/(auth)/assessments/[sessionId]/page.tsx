@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, ChevronLeft } from 'lucide-react';
+import { Check, ChevronLeft, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -8,6 +8,7 @@ import { AssessmentProgressBar } from '@/components/assessments/AssessmentProgre
 import { InstrumentTypeBadge } from '@/components/assessments/InstrumentTypeBadge';
 import { QuestionStepper } from '@/components/assessments/QuestionStepper';
 import { ScoreSummary } from '@/components/assessments/ScoreSummary';
+import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -87,6 +88,10 @@ export default function ActiveAssessmentPage() {
   const [saving, setSaving] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [completionResult, setCompletionResult] = useState<CompletionResult | null>(null);
+  const [clinicianNotes, setClinicianNotes] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [abandoning, setAbandoning] = useState(false);
+  const [showAbandonDialog, setShowAbandonDialog] = useState(false);
 
   // Fetch session data
   useEffect(() => {
@@ -100,6 +105,7 @@ export default function ActiveAssessmentPage() {
 
         const data = await response.json();
         setSession(data.session);
+        setClinicianNotes(data.session.clinicianNotes || '');
 
         // Restore existing answers
         const existingAnswers: Record<string, number> = {};
@@ -164,7 +170,7 @@ export default function ActiveAssessmentPage() {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
+          body: JSON.stringify({ clinicianNotes: clinicianNotes || null }),
         },
       );
 
@@ -180,6 +186,45 @@ export default function ActiveAssessmentPage() {
       setError(err instanceof Error ? err.message : 'Failed to complete assessment');
     } finally {
       setCompleting(false);
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!user?.uid || savingNotes) return;
+    setSavingNotes(true);
+
+    try {
+      await authenticatedFetch(`/api/assessments/${sessionId}`, user, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clinicianNotes: clinicianNotes || null }),
+      });
+    } catch (err) {
+      console.error('Error saving notes:', err);
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
+  const handleAbandon = async () => {
+    if (!user?.uid || abandoning) return;
+    setAbandoning(true);
+
+    try {
+      const response = await authenticatedFetch(`/api/assessments/${sessionId}`, user, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'abandoned' }),
+      });
+
+      if (response.ok && session) {
+        router.push(`/admin/patients/${session.patientId}`);
+      }
+    } catch (err) {
+      console.error('Error abandoning assessment:', err);
+    } finally {
+      setAbandoning(false);
+      setShowAbandonDialog(false);
     }
   };
 
@@ -283,6 +328,31 @@ export default function ActiveAssessmentPage() {
               clinicalCutoffs={session.instrument.clinicalCutoffs}
               interpretation={interpretation}
             />
+
+            {/* Clinician Notes */}
+            <div className="mt-6 border-t border-gray-100 pt-6">
+              <label htmlFor="clinician-notes-completed" className="mb-2 block text-sm font-medium text-gray-700">
+                Clinician Notes
+              </label>
+              <textarea
+                id="clinician-notes-completed"
+                value={clinicianNotes}
+                onChange={e => setClinicianNotes(e.target.value)}
+                placeholder="Add clinical observations, interpretations, or follow-up notes..."
+                rows={4}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+              />
+              <div className="mt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSaveNotes}
+                  disabled={savingNotes}
+                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {savingNotes ? 'Saving...' : 'Save Notes'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -361,11 +431,46 @@ export default function ActiveAssessmentPage() {
             ))}
           </div>
 
+          {/* Clinician Notes */}
+          <div className="mt-6 border-t border-gray-100 pt-6">
+            <label htmlFor="clinician-notes-active" className="mb-2 block text-sm font-medium text-gray-700">
+              Clinician Notes
+            </label>
+            <textarea
+              id="clinician-notes-active"
+              value={clinicianNotes}
+              onChange={e => setClinicianNotes(e.target.value)}
+              placeholder="Add clinical observations or notes during administration..."
+              rows={3}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+            />
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleSaveNotes}
+                disabled={savingNotes}
+                className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                {savingNotes ? 'Saving...' : 'Save Notes'}
+              </button>
+            </div>
+          </div>
+
           {/* Footer */}
-          <div className="mt-8 flex items-center justify-between border-t border-gray-100 pt-6">
-            <span className="text-xs text-gray-400">
-              {saving ? 'Saving...' : 'Auto-saved'}
-            </span>
+          <div className="mt-6 flex items-center justify-between border-t border-gray-100 pt-6">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowAbandonDialog(true)}
+                className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+              >
+                <XCircle className="h-4 w-4" />
+                Abandon
+              </button>
+              <span className="text-xs text-gray-400">
+                {saving ? 'Saving...' : 'Auto-saved'}
+              </span>
+            </div>
 
             {allAnswered
               ? (
@@ -387,6 +492,18 @@ export default function ActiveAssessmentPage() {
           </div>
         </div>
       </div>
+
+      {/* Abandon Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        isOpen={showAbandonDialog}
+        onClose={() => setShowAbandonDialog(false)}
+        onConfirm={handleAbandon}
+        title="Abandon Assessment"
+        message="Are you sure you want to abandon this assessment? The session will be marked as abandoned and responses will be preserved but the assessment cannot be resumed."
+        isDeleting={abandoning}
+        confirmLabel="Abandon"
+        deletingLabel="Abandoning..."
+      />
     </div>
   );
 }

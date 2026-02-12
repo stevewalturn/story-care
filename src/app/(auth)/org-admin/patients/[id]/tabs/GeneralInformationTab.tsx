@@ -1,6 +1,6 @@
 'use client';
 
-import { Edit2, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Edit2, Loader2, Plus, Trash2, UserCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -13,7 +13,13 @@ type GeneralInformationTabProps = {
   patientId: string;
 };
 
-type EditSection = 'personal' | 'address' | 'contact' | 'emergency' | null;
+type EditSection = 'personal' | 'address' | 'contact' | 'emergency' | 'therapist' | null;
+
+type Therapist = {
+  id: string;
+  name: string;
+  patientCount: number;
+};
 
 type PatientData = {
   firstName: string;
@@ -81,6 +87,14 @@ export function GeneralInformationTab({ patientId }: GeneralInformationTabProps)
   const [patientData, setPatientData] = useState<PatientData>(initialPatientData);
   const [originalData, setOriginalData] = useState<PatientData>(initialPatientData);
 
+  // Therapist assignment state
+  const [therapistId, setTherapistId] = useState<string | null>(null);
+  const [therapistName, setTherapistName] = useState<string | null>(null);
+  const [selectedTherapistId, setSelectedTherapistId] = useState<string>('');
+  const [therapists, setTherapists] = useState<Therapist[]>([]);
+  const [loadingTherapists, setLoadingTherapists] = useState(false);
+  const [savingTherapist, setSavingTherapist] = useState(false);
+
   // Fetch patient data and reference images from API
   useEffect(() => {
     if (!user?.uid || !patientId) return;
@@ -146,6 +160,10 @@ export function GeneralInformationTab({ patientId }: GeneralInformationTabProps)
 
           setPatientData(loadedData);
           setOriginalData(loadedData);
+
+          // Set therapist assignment data
+          setTherapistId(patient.therapistId || null);
+          setTherapistName(data.therapistName || null);
         }
       } catch (error) {
         console.error('Error fetching patient:', error);
@@ -233,6 +251,66 @@ export function GeneralInformationTab({ patientId }: GeneralInformationTabProps)
     setPatientData({ ...originalData });
     setSaveError(null);
     setEditingSection(null);
+  };
+
+  // Fetch org therapists when entering therapist edit mode
+  const handleEditTherapist = async () => {
+    setEditingSection('therapist');
+    setSelectedTherapistId(therapistId || '');
+    if (therapists.length === 0) {
+      setLoadingTherapists(true);
+      try {
+        const response = await authenticatedFetch('/api/therapists', user);
+        if (response.ok) {
+          const data = await response.json();
+          setTherapists(data.therapists || []);
+        }
+      } catch (error) {
+        console.error('Error fetching therapists:', error);
+      } finally {
+        setLoadingTherapists(false);
+      }
+    }
+  };
+
+  const handleSaveTherapist = async () => {
+    if (!user?.uid) return;
+
+    try {
+      setSavingTherapist(true);
+      setSaveError(null);
+      setSaveSuccess(false);
+
+      const newTherapistId = selectedTherapistId || null;
+
+      const response = await authenticatedFetch(`/api/patients/${patientId}`, user, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ therapistId: newTherapistId }),
+      });
+
+      if (response.ok) {
+        setTherapistId(newTherapistId);
+        // Find therapist name from the list
+        if (newTherapistId) {
+          const matched = therapists.find(t => t.id === newTherapistId);
+          setTherapistName(matched?.name ?? null);
+        } else {
+          setTherapistName(null);
+        }
+        setSaveSuccess(true);
+        setEditingSection(null);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        const errorData = await response.json();
+        setSaveError(errorData.error || 'Failed to update therapist assignment');
+      }
+    } catch (error) {
+      console.error('Error saving therapist:', error);
+      setSaveError('An error occurred while saving. Please try again.');
+    } finally {
+      setSavingTherapist(false);
+    }
   };
 
   // Handle reference image upload (supports both file input and drag & drop)
@@ -812,6 +890,94 @@ export function GeneralInformationTab({ patientId }: GeneralInformationTabProps)
             <div>
               <div className="text-sm text-gray-500">Email</div>
               <div className="font-medium text-gray-900">{patientData.emergencyContactEmail || '-'}</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Assigned Therapist */}
+      <div className="rounded-xl bg-gray-50 p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-semibold text-gray-900">Assigned Therapist</h2>
+          {editingSection !== 'therapist' && (
+            <button
+              type="button"
+              onClick={handleEditTherapist}
+              className="flex items-center gap-1.5 text-sm text-purple-600 hover:text-purple-700"
+            >
+              <Edit2 className="h-4 w-4" />
+              Reassign
+            </button>
+          )}
+        </div>
+
+        {editingSection === 'therapist' ? (
+          <div className="space-y-4">
+            {loadingTherapists ? (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading therapists...
+              </div>
+            ) : (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Select Therapist
+                </label>
+                <select
+                  value={selectedTherapistId}
+                  onChange={e => setSelectedTherapistId(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 focus:outline-none"
+                >
+                  <option value="">Unassigned</option>
+                  {therapists.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                      {' '}
+                      (
+                      {t.patientCount}
+                      {' '}
+                      patients)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setEditingSection(null);
+                  setSaveError(null);
+                }}
+                disabled={savingTherapist}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSaveTherapist} disabled={savingTherapist || loadingTherapists}>
+                {savingTherapist ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : 'Save'}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
+              <UserCheck className="h-5 w-5 text-purple-600" />
+            </div>
+            <div>
+              <div className="font-medium text-gray-900">
+                {therapistName || 'Unassigned'}
+              </div>
+              {!therapistName && (
+                <div className="text-sm text-gray-500">
+                  No therapist assigned to this patient
+                </div>
+              )}
             </div>
           </div>
         )}

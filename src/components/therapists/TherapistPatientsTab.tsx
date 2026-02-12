@@ -5,10 +5,11 @@
 
 'use client';
 
-import { Calendar, User, Users } from 'lucide-react';
+import { Calendar, Loader2, User, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/contexts/AuthContext';
 
 type Patient = {
   id: string;
@@ -22,13 +23,87 @@ type Patient = {
   lastSessionDate?: string | null;
 };
 
-type TherapistPatientsTabProps = {
-  patients: Patient[];
-  onAssignPatients?: () => void;
+type TherapistInfo = {
+  id: string;
+  name: string;
+  patientCount: number;
 };
 
-export function TherapistPatientsTab({ patients, onAssignPatients }: TherapistPatientsTabProps) {
+type TherapistPatientsTabProps = {
+  patients: Patient[];
+  therapistId: string;
+  onAssignPatients?: () => void;
+  onPatientReassigned?: () => void;
+};
+
+export function TherapistPatientsTab({ patients, therapistId, onAssignPatients, onPatientReassigned }: TherapistPatientsTabProps) {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Reassign modal state
+  const [reassignPatient, setReassignPatient] = useState<Patient | null>(null);
+  const [therapists, setTherapists] = useState<TherapistInfo[]>([]);
+  const [loadingTherapists, setLoadingTherapists] = useState(false);
+  const [selectedTherapistId, setSelectedTherapistId] = useState('');
+  const [reassigning, setReassigning] = useState(false);
+  const [reassignError, setReassignError] = useState('');
+
+  const openReassignModal = async (patient: Patient) => {
+    setReassignPatient(patient);
+    setSelectedTherapistId('');
+    setReassignError('');
+
+    if (therapists.length === 0) {
+      setLoadingTherapists(true);
+      try {
+        const idToken = await user?.getIdToken();
+        const response = await fetch('/api/therapists', {
+          headers: { Authorization: `Bearer ${idToken}` },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          // Exclude current therapist from the list
+          setTherapists((data.therapists || []).filter((t: TherapistInfo) => t.id !== therapistId));
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingTherapists(false);
+      }
+    }
+  };
+
+  const handleReassign = async () => {
+    if (!reassignPatient || !selectedTherapistId) return;
+
+    setReassigning(true);
+    setReassignError('');
+
+    try {
+      const idToken = await user?.getIdToken();
+      const response = await fetch(`/api/patients/${reassignPatient.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ therapistId: selectedTherapistId }),
+      });
+
+      if (response.ok) {
+        setReassignPatient(null);
+        onPatientReassigned?.();
+      } else {
+        const data = await response.json();
+        setReassignError(data.error || 'Failed to reassign patient');
+      }
+    } catch (err) {
+      console.error(err);
+      setReassignError('Network error. Please try again.');
+    } finally {
+      setReassigning(false);
+    }
+  };
 
   const filteredPatients = patients.filter(
     patient =>
@@ -192,6 +267,13 @@ export function TherapistPatientsTab({ patients, onAssignPatients }: TherapistPa
                             )}
                       </td>
                       <td className="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => openReassignModal(patient)}
+                          className="mr-3 text-purple-600 hover:text-purple-900"
+                        >
+                          Reassign
+                        </button>
                         <Link
                           href={`/org-admin/patients/${patient.id}`}
                           className="text-purple-600 hover:text-purple-900"
@@ -220,6 +302,86 @@ export function TherapistPatientsTab({ patients, onAssignPatients }: TherapistPa
           patients
         </p>
       </div>
+
+      {/* Reassign Modal */}
+      {reassignPatient && (
+        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black p-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Reassign Patient</h3>
+              <button
+                type="button"
+                onClick={() => setReassignPatient(null)}
+                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="mb-4 text-sm text-gray-600">
+              Reassign
+              {' '}
+              <span className="font-semibold">{reassignPatient.name}</span>
+              {' '}
+              to a different therapist.
+            </p>
+
+            {reassignError && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {reassignError}
+              </div>
+            )}
+
+            {loadingTherapists ? (
+              <div className="flex items-center gap-2 py-4 text-sm text-gray-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading therapists...
+              </div>
+            ) : (
+              <div className="mb-4">
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Select Therapist
+                </label>
+                <select
+                  value={selectedTherapistId}
+                  onChange={e => setSelectedTherapistId(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
+                >
+                  <option value="">Select a therapist</option>
+                  {therapists.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                      {' '}
+                      (
+                      {t.patientCount}
+                      {' '}
+                      patients)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setReassignPatient(null)} disabled={reassigning}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleReassign}
+                disabled={reassigning || !selectedTherapistId}
+              >
+                {reassigning ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Reassigning...
+                  </>
+                ) : 'Reassign'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

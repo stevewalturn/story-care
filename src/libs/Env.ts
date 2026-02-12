@@ -53,6 +53,9 @@ export const Env = createEnv({
     // Analytics
     NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
     NEXT_PUBLIC_POSTHOG_HOST: z.string().optional(),
+
+    // Intercom (Customer Support)
+    NEXT_PUBLIC_INTERCOM_APP_ID: z.string().optional(),
   },
   shared: {
     NODE_ENV: z.enum(['test', 'development', 'production']).optional(),
@@ -109,6 +112,9 @@ export const Env = createEnv({
     // Analytics
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+
+    // Intercom (Customer Support)
+    NEXT_PUBLIC_INTERCOM_APP_ID: process.env.NEXT_PUBLIC_INTERCOM_APP_ID,
 
     // Shared
     NODE_ENV: process.env.NODE_ENV,

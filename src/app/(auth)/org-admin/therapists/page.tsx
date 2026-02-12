@@ -398,13 +398,21 @@ export default function TherapistsPage() {
                     ? This action cannot be undone.
                   </p>
                   {selectedTherapist.patientCount && selectedTherapist.patientCount > 0 && (
-                    <p className="mt-2 text-sm text-amber-600">
-                      This therapist has
-                      {' '}
-                      {selectedTherapist.patientCount}
-                      {' '}
-                      assigned patient(s). You must reassign them before deleting.
-                    </p>
+                    <div className="mt-2">
+                      <p className="text-sm text-amber-600">
+                        This therapist has
+                        {' '}
+                        {selectedTherapist.patientCount}
+                        {' '}
+                        assigned patient(s). Reassign all patients before deleting this therapist.
+                      </p>
+                      <Link
+                        href={`/org-admin/therapists/${selectedTherapist.id}`}
+                        className="mt-1 inline-block text-sm font-medium text-purple-600 hover:text-purple-700"
+                      >
+                        View Patients
+                      </Link>
+                    </div>
                   )}
                   {actionError && (
                     <p className="mt-2 text-sm text-red-600">{actionError}</p>
@@ -429,7 +437,7 @@ export default function TherapistsPage() {
                 <button
                   type="button"
                   onClick={handleDeleteConfirm}
-                  disabled={actionLoading}
+                  disabled={actionLoading || (selectedTherapist.patientCount != null && selectedTherapist.patientCount > 0)}
                   className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {actionLoading

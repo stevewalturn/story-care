@@ -165,3 +165,23 @@ export const listAssessmentSessionsQuerySchema = z.object({
 });
 
 export type ListAssessmentSessionsQueryInput = z.infer<typeof listAssessmentSessionsQuerySchema>;
+
+export const updateAssessmentSessionSchema = z.object({
+  clinicianNotes: z.string().optional().nullable(),
+  timepoint: assessmentTimepointSchema.optional(),
+  status: z.enum(['abandoned']).optional(),
+});
+
+export type UpdateAssessmentSessionInput = z.infer<typeof updateAssessmentSessionSchema>;
+
+export const listAllAssessmentSessionsQuerySchema = z.object({
+  patientId: z.string().uuid().optional(),
+  instrumentId: z.string().uuid().optional(),
+  status: assessmentSessionStatusSchema.optional(),
+  timepoint: assessmentTimepointSchema.optional(),
+  search: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type ListAllAssessmentSessionsQueryInput = z.infer<typeof listAllAssessmentSessionsQuerySchema>;

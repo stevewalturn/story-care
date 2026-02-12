@@ -28,6 +28,7 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { AddModelModal } from '@/components/super-admin/AddModelModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -508,34 +509,39 @@ export default function SuperAdminAiModelsPage() {
         )}
 
         {/* Add Model Modal */}
-        {addingModel && (
-          <AddModelModal
-            onClose={() => setAddingModel(false)}
-            onSave={async (data) => {
-              try {
-                const response = await authenticatedFetch(
-                  '/api/super-admin/ai-models',
-                  user,
-                  {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data),
-                  },
-                );
+        <AddModelModal
+          isOpen={addingModel}
+          onClose={() => setAddingModel(false)}
+          onSave={async (data) => {
+            try {
+              const response = await authenticatedFetch(
+                '/api/super-admin/ai-models',
+                user,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(data),
+                },
+              );
 
-                if (!response.ok) {
-                  const err = await response.json();
-                  throw new Error(err.error || 'Failed to create model');
+              if (!response.ok) {
+                const err = await response.json();
+                const errorMsg = err.error || 'Failed to create model';
+                // If duplicate modelId, show error on the modelId field
+                if (response.status === 409) {
+                  return { error: errorMsg, field: 'modelId' };
                 }
-
-                await fetchModels();
-                setAddingModel(false);
-              } catch (err) {
-                alert(err instanceof Error ? err.message : 'Failed to create model');
+                return { error: errorMsg };
               }
-            }}
-          />
-        )}
+
+              await fetchModels();
+              setAddingModel(false);
+              return {};
+            } catch (err) {
+              return { error: err instanceof Error ? err.message : 'Failed to create model' };
+            }
+          }}
+        />
 
         {/* Edit Modal */}
         {editingModel && (
@@ -680,260 +686,6 @@ function ModelEditModal({ model, onClose, onSave }: ModelEditModalProps) {
               <Check className="h-4 w-4" />
             )}
             Save Changes
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Add Model Modal Component
- */
-const CATEGORY_OPTIONS: { value: ModelCategory; label: string }[] = [
-  { value: 'text_to_image', label: 'Text to Image' },
-  { value: 'image_to_image', label: 'Image to Image' },
-  { value: 'image_to_video', label: 'Image to Video' },
-  { value: 'text_to_video', label: 'Text to Video' },
-  { value: 'text_to_text', label: 'Text to Text' },
-  { value: 'image_to_text', label: 'Image to Text' },
-  { value: 'music_generation', label: 'Music Generation' },
-  { value: 'transcription', label: 'Transcription' },
-];
-
-const PRICING_UNIT_OPTIONS = [
-  { value: 'per_image', label: 'Per Image' },
-  { value: 'per_second', label: 'Per Second' },
-  { value: 'per_minute', label: 'Per Minute' },
-  { value: 'per_1k_tokens', label: 'Per 1K Tokens' },
-  { value: 'per_request', label: 'Per Request' },
-];
-
-type AddModelModalProps = {
-  onClose: () => void;
-  onSave: (data: Record<string, unknown>) => Promise<void>;
-};
-
-function AddModelModal({ onClose, onSave }: AddModelModalProps) {
-  const [modelId, setModelId] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [category, setCategory] = useState<ModelCategory>('image_to_video');
-  const [provider, setProvider] = useState('');
-  const [providerGroup, setProviderGroup] = useState('');
-  const [status, setStatus] = useState<ModelStatus>('active');
-  const [costPerUnit, setCostPerUnit] = useState('');
-  const [pricingUnit, setPricingUnit] = useState('');
-  const [apiModelId, setApiModelId] = useState('');
-  const [apiProvider, setApiProvider] = useState('atlascloud');
-  const [description, setDescription] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  const handleSave = async () => {
-    if (!modelId.trim() || !displayName.trim() || !provider.trim()) return;
-    setSaving(true);
-    try {
-      await onSave({
-        modelId: modelId.trim(),
-        displayName: displayName.trim(),
-        category,
-        provider: provider.trim(),
-        providerGroup: providerGroup.trim() || null,
-        status,
-        costPerUnit: costPerUnit || null,
-        pricingUnit: pricingUnit || null,
-        apiModelId: apiModelId.trim() || null,
-        apiProvider: apiProvider.trim() || null,
-        description: description.trim() || null,
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">Add New Model</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600" type="button">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          {/* Model ID */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Model ID
-              <span className="text-red-500"> *</span>
-            </label>
-            <input
-              type="text"
-              value={modelId}
-              onChange={e => setModelId(e.target.value)}
-              placeholder="e.g. seedance-v1-lite-i2v-720p"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
-            />
-          </div>
-
-          {/* Display Name */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Display Name
-              <span className="text-red-500"> *</span>
-            </label>
-            <input
-              type="text"
-              value={displayName}
-              onChange={e => setDisplayName(e.target.value)}
-              placeholder="e.g. Seedance v1 Lite i2v 720p"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
-            />
-          </div>
-
-          {/* Category */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Category
-              <span className="text-red-500"> *</span>
-            </label>
-            <select
-              value={category}
-              onChange={e => setCategory(e.target.value as ModelCategory)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
-            >
-              {CATEGORY_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Provider */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Provider
-              <span className="text-red-500"> *</span>
-            </label>
-            <input
-              type="text"
-              value={provider}
-              onChange={e => setProvider(e.target.value)}
-              placeholder="e.g. ByteDance"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
-            />
-          </div>
-
-          {/* Provider Group */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Provider Group</label>
-            <input
-              type="text"
-              value={providerGroup}
-              onChange={e => setProviderGroup(e.target.value)}
-              placeholder="Optional"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
-            />
-          </div>
-
-          {/* Status */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
-            <select
-              value={status}
-              onChange={e => setStatus(e.target.value as ModelStatus)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
-            >
-              {STATUS_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Cost and Pricing Unit - side by side */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Cost Per Unit ($)</label>
-              <input
-                type="number"
-                step="0.000001"
-                value={costPerUnit}
-                onChange={e => setCostPerUnit(e.target.value)}
-                placeholder="0.00"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Pricing Unit</label>
-              <select
-                value={pricingUnit}
-                onChange={e => setPricingUnit(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
-              >
-                <option value="">Select unit...</option>
-                {PRICING_UNIT_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* API Model ID */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">API Model ID</label>
-            <input
-              type="text"
-              value={apiModelId}
-              onChange={e => setApiModelId(e.target.value)}
-              placeholder="e.g. bytedance/seedance-v1-lite-i2v-720p"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
-            />
-          </div>
-
-          {/* API Provider */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">API Provider</label>
-            <input
-              type="text"
-              value={apiProvider}
-              onChange={e => setApiProvider(e.target.value)}
-              placeholder="e.g. atlascloud"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
-            />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
-            <textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Optional model description"
-              rows={2}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
-            />
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            type="button"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving || !modelId.trim() || !displayName.trim() || !provider.trim()}
-            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
-            type="button"
-          >
-            {saving ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            ) : (
-              <Plus className="h-4 w-4" />
-            )}
-            Add Model
           </button>
         </div>
       </div>

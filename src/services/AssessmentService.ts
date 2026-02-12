@@ -368,6 +368,134 @@ export async function listPatientAssessments(
   }));
 }
 
+export async function updateAssessmentSession(
+  id: string,
+  data: {
+    clinicianNotes?: string | null;
+    timepoint?: AssessmentTimepoint;
+    status?: 'abandoned';
+  },
+) {
+  const [session] = await db
+    .select()
+    .from(assessmentSessionsSchema)
+    .where(eq(assessmentSessionsSchema.id, id))
+    .limit(1);
+
+  if (!session) return null;
+
+  // Abandoned sessions: reject all updates
+  if (session.status === 'abandoned') {
+    throw new Error('Cannot update an abandoned assessment');
+  }
+
+  // Completed sessions: only clinicianNotes allowed
+  if (session.status === 'completed') {
+    if (data.timepoint || data.status) {
+      throw new Error('Completed assessments can only update clinician notes');
+    }
+  }
+
+  const updateSet: Record<string, unknown> = { updatedAt: new Date() };
+
+  if (data.clinicianNotes !== undefined) {
+    updateSet.clinicianNotes = data.clinicianNotes;
+  }
+
+  if (data.timepoint && session.status === 'in_progress') {
+    updateSet.timepoint = data.timepoint;
+  }
+
+  if (data.status === 'abandoned' && session.status === 'in_progress') {
+    updateSet.status = 'abandoned';
+  }
+
+  const [updated] = await db
+    .update(assessmentSessionsSchema)
+    .set(updateSet)
+    .where(eq(assessmentSessionsSchema.id, id))
+    .returning();
+
+  return updated;
+}
+
+export async function listAssessments(params: {
+  therapistId?: string;
+  organizationId?: string;
+  patientId?: string;
+  instrumentId?: string;
+  status?: AssessmentSessionStatus;
+  timepoint?: AssessmentTimepoint;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const conditions = [];
+
+  if (params.therapistId) {
+    conditions.push(eq(assessmentSessionsSchema.therapistId, params.therapistId));
+  }
+  if (params.organizationId) {
+    conditions.push(eq(assessmentSessionsSchema.organizationId, params.organizationId));
+  }
+  if (params.patientId) {
+    conditions.push(eq(assessmentSessionsSchema.patientId, params.patientId));
+  }
+  if (params.instrumentId) {
+    conditions.push(eq(assessmentSessionsSchema.instrumentId, params.instrumentId));
+  }
+  if (params.status) {
+    conditions.push(eq(assessmentSessionsSchema.status, params.status));
+  }
+  if (params.timepoint) {
+    conditions.push(eq(assessmentSessionsSchema.timepoint, params.timepoint));
+  }
+  if (params.search) {
+    const searchPattern = `%${params.search}%`;
+    conditions.push(
+      or(
+        ilike(assessmentInstrumentsSchema.name, searchPattern),
+        ilike(assessmentInstrumentsSchema.fullName, searchPattern),
+        ilike(usersSchema.name, searchPattern),
+      )!,
+    );
+  }
+
+  const results = await db
+    .select({
+      session: assessmentSessionsSchema,
+      instrumentName: assessmentInstrumentsSchema.name,
+      instrumentFullName: assessmentInstrumentsSchema.fullName,
+      instrumentType: assessmentInstrumentsSchema.instrumentType,
+      itemCount: assessmentInstrumentsSchema.itemCount,
+      patientName: usersSchema.name,
+      patientEmail: usersSchema.email,
+    })
+    .from(assessmentSessionsSchema)
+    .innerJoin(
+      assessmentInstrumentsSchema,
+      eq(assessmentSessionsSchema.instrumentId, assessmentInstrumentsSchema.id),
+    )
+    .innerJoin(
+      usersSchema,
+      eq(assessmentSessionsSchema.patientId, usersSchema.id),
+    )
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(assessmentSessionsSchema.createdAt))
+    .limit(params.limit ?? 50)
+    .offset(params.offset ?? 0);
+
+  return results.map(r => ({
+    ...r.session,
+    instrumentName: r.instrumentName,
+    instrumentFullName: r.instrumentFullName,
+    instrumentType: r.instrumentType,
+    itemCount: r.itemCount,
+    patientName: r.patientName,
+    patientEmail: r.patientEmail,
+  }));
+}
+
 export async function deleteAssessmentSession(id: string) {
   // Only allow deleting in-progress sessions
   const [session] = await db

@@ -1404,6 +1404,72 @@ The StoryCare Team
 }
 
 /**
+ * Generate password reset email content
+ */
+function generatePasswordResetEmailContent(params: {
+  resetLink: string;
+}) {
+  const subject = 'Reset Your StoryCare Password';
+
+  const bodyText = `
+You recently requested to reset your password for your StoryCare account.
+
+Click the link below to reset your password:
+${params.resetLink}
+
+This link will expire in 1 hour. If you did not request a password reset, you can safely ignore this email. Your password will not be changed.
+
+Best regards,
+The StoryCare Team
+  `.trim();
+
+  const bodyHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">Reset Your Password</h1>
+  </div>
+
+  <div style="background: white; padding: 30px; border: 1px solid #E5E7EB; border-top: none; border-radius: 0 0 12px 12px;">
+    <p style="font-size: 16px; margin-bottom: 20px;">
+      You recently requested to reset your password for your StoryCare account.
+    </p>
+
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${params.resetLink}" style="background: #4F46E5; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
+        Reset Password
+      </a>
+    </div>
+
+    <div style="background: #FEF3C7; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #F59E0B;">
+      <p style="margin: 0; font-size: 14px; color: #92400E;">
+        This link will expire in 1 hour. If you did not request a password reset, you can safely ignore this email. Your password will not be changed.
+      </p>
+    </div>
+
+    <p style="font-size: 14px; color: #6B7280; margin-top: 30px; padding-top: 20px; border-top: 1px solid #E5E7EB;">
+      Best regards,<br>
+      The StoryCare Team
+    </p>
+  </div>
+
+  <div style="text-align: center; padding: 20px; font-size: 12px; color: #9CA3AF;">
+    <p>This is a secure, HIPAA-compliant message from StoryCare.</p>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  return { subject, bodyText, bodyHtml };
+}
+
+/**
  * Generate survey reminder email content
  */
 function generateSurveyReminderEmailContent(params: {
@@ -1492,6 +1558,60 @@ The StoryCare Team
   `.trim();
 
   return { subject, bodyText, bodyHtml };
+}
+
+/**
+ * Send password reset email via Paubox (no DB notification record — transient email)
+ */
+export async function sendPasswordResetEmail(params: {
+  recipientEmail: string;
+  resetLink: string;
+}): Promise<{ success: boolean; error?: string }> {
+  if (!isPauboxConfigured()) {
+    console.warn('Paubox not configured, cannot send password reset email');
+    return { success: false, error: 'Email service not configured' };
+  }
+
+  const emailSettings = await getEmailSettings();
+
+  if (!emailSettings.enabled) {
+    console.warn('Email notifications are disabled in platform settings');
+    return { success: false, error: 'Email notifications disabled' };
+  }
+
+  const { subject, bodyText, bodyHtml } = generatePasswordResetEmailContent({
+    resetLink: params.resetLink,
+  });
+
+  try {
+    const paubox = getPauboxClient();
+
+    const message: PauboxMessage = {
+      recipients: [params.recipientEmail],
+      headers: {
+        subject,
+        from: `${emailSettings.fromName} <${emailSettings.fromAddress}>`,
+      },
+      content: {
+        'text/html': bodyHtml,
+        'text/plain': bodyText,
+      },
+    };
+
+    const result = await paubox.sendEmail(message);
+
+    if (result.success) {
+      return { success: true };
+    }
+
+    return { success: false, error: result.error || 'Failed to send email' };
+  } catch (error) {
+    console.error('Failed to send password reset email via Paubox:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to send email',
+    };
+  }
 }
 
 /**

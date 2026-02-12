@@ -53,15 +53,38 @@ export function AssignPatientsModal({
 
     try {
       const idToken = await user?.getIdToken();
-      const response = await fetch('/api/patients?unassigned=true', {
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-        },
-      });
+      // Fetch patients and therapists in parallel to resolve therapist names
+      const [patientsRes, therapistsRes] = await Promise.all([
+        fetch('/api/patients', {
+          headers: { Authorization: `Bearer ${idToken}` },
+        }),
+        fetch('/api/therapists', {
+          headers: { Authorization: `Bearer ${idToken}` },
+        }),
+      ]);
 
-      if (response.ok) {
-        const data = await response.json();
-        setPatients(data.patients || []);
+      if (patientsRes.ok) {
+        const patientsData = await patientsRes.json();
+        const allPatients: Patient[] = patientsData.patients || [];
+
+        // Build therapist name map
+        const therapistMap: Record<string, string> = {};
+        if (therapistsRes.ok) {
+          const therapistsData = await therapistsRes.json();
+          for (const t of therapistsData.therapists || []) {
+            therapistMap[t.id] = t.name;
+          }
+        }
+
+        // Enrich patients with therapist names, exclude those already assigned to this therapist
+        const enriched = allPatients
+          .filter(p => p.therapistId !== therapistId)
+          .map(p => ({
+            ...p,
+            therapistName: p.therapistId ? (therapistMap[p.therapistId] || 'Unknown') : null,
+          }));
+
+        setPatients(enriched);
       } else {
         setError('Failed to load patients');
       }
@@ -183,7 +206,7 @@ export function AssignPatientsModal({
                   <div className="p-12 text-center">
                     <User className="mx-auto h-12 w-12 text-gray-400" />
                     <p className="mt-2 text-sm text-gray-500">
-                      {searchQuery ? 'No patients found' : 'No unassigned patients available'}
+                      {searchQuery ? 'No patients found' : 'No patients available to assign'}
                     </p>
                   </div>
                 )

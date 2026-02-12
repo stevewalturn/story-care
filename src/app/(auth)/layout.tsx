@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
+import { IntercomProvider } from '@/components/analytics/IntercomProvider';
 import { MobileHeader } from '@/components/layout/MobileHeader';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { TopBar } from '@/components/layout/TopBar';
@@ -104,7 +105,9 @@ function AuthLayoutContent({ children }: { children: React.ReactNode }) {
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <AuthLayoutContent>{children}</AuthLayoutContent>
+      <IntercomProvider>
+        <AuthLayoutContent>{children}</AuthLayoutContent>
+      </IntercomProvider>
     </AuthProvider>
   );
 }

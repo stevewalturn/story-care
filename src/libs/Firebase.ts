@@ -5,7 +5,6 @@ import {
   createUserWithEmailAndPassword,
   getAuth,
   onAuthStateChanged,
-  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
 } from 'firebase/auth';
@@ -73,22 +72,6 @@ export const logOut = async () => {
 
 export const onAuthChange = (callback: (user: User | null) => void) => {
   return onAuthStateChanged(auth, callback);
-};
-
-export const resetPassword = async (email: string) => {
-  console.log('[Firebase] resetPassword called for:', email);
-  if (!auth) {
-    console.error('[Firebase] auth not initialized');
-    return { error: 'auth/not-initialized' };
-  }
-  try {
-    await sendPasswordResetEmail(auth, email);
-    console.log('[Firebase] Password reset email sent successfully');
-    return { error: null };
-  } catch (error: any) {
-    console.error('[Firebase] Password reset error:', error);
-    return { error: error.code || error.message };
-  }
 };
 
 export { auth };

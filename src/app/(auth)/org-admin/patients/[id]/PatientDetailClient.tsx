@@ -1,6 +1,6 @@
 'use client';
 
-import { Book, Calendar, MessageCircle, SlidersHorizontal } from 'lucide-react';
+import { Book, Calendar, MessageCircle, SlidersHorizontal, UserCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
@@ -25,6 +25,7 @@ type Patient = {
   lastName: string;
   avatar?: string;
   referenceImageUrl?: string;
+  therapistName?: string | null;
   pageCount: number;
   surveyCount: number;
   reflectionCount: number;
@@ -60,6 +61,7 @@ export function PatientDetailClient({ patientId }: PatientDetailClientProps) {
           lastName: data.patient.name.split(' ').slice(1).join(' ') || '',
           avatar: data.patient.avatarUrl || data.patient.referenceImageUrl,
           referenceImageUrl: data.patient.referenceImageUrl,
+          therapistName: data.therapistName || null,
           pageCount: data.pageCount || 0,
           surveyCount: data.surveyCount || 0,
           reflectionCount: data.reflectionCount || 0,
@@ -168,6 +170,11 @@ export function PatientDetailClient({ patientId }: PatientDetailClientProps) {
                   {' '}
                   Sessions
                 </span>
+              </div>
+              <span className="mx-2 text-gray-300">•</span>
+              <div className="flex items-center gap-1">
+                <UserCheck className="h-4 w-4" />
+                <span>{patient.therapistName || 'Unassigned'}</span>
               </div>
             </div>
           </div>

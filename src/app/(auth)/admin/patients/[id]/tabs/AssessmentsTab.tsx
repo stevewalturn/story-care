@@ -1,9 +1,10 @@
 'use client';
 
-import { ClipboardList, Plus } from 'lucide-react';
+import { ClipboardList, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { InstrumentTypeBadge } from '@/components/assessments/InstrumentTypeBadge';
 import { NewAssessmentModal } from '@/components/assessments/NewAssessmentModal';
+import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 
@@ -41,6 +42,8 @@ export function AssessmentsTab({ patientId }: AssessmentsTabProps) {
   const [assessments, setAssessments] = useState<AssessmentSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewModal, setShowNewModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchAssessments = async () => {
     if (!user?.uid || !patientId) return;
@@ -78,6 +81,26 @@ export function AssessmentsTab({ patientId }: AssessmentsTabProps) {
     setShowNewModal(false);
     // Navigate to the assessment form
     window.location.href = `/assessments/${sessionId}`;
+  };
+
+  const handleDelete = async () => {
+    if (!user?.uid || !deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      const response = await authenticatedFetch(
+        `/api/assessments/${deleteTarget}`,
+        user,
+        { method: 'DELETE' },
+      );
+      if (response.ok) {
+        setDeleteTarget(null);
+        fetchAssessments();
+      }
+    } catch (error) {
+      console.error('Error deleting assessment:', error);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   if (loading) {
@@ -137,6 +160,9 @@ export function AssessmentsTab({ patientId }: AssessmentsTabProps) {
                     <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                       Status
                     </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
@@ -188,6 +214,21 @@ export function AssessmentsTab({ patientId }: AssessmentsTabProps) {
                                 </span>
                               )}
                       </td>
+                      <td className="px-6 py-4 text-right whitespace-nowrap">
+                        {assessment.status === 'in_progress' && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTarget(assessment.id);
+                            }}
+                            className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                            title="Delete assessment"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -203,6 +244,16 @@ export function AssessmentsTab({ patientId }: AssessmentsTabProps) {
           onCreated={handleSessionCreated}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="Delete Assessment"
+        message="Are you sure you want to delete this in-progress assessment? All responses will be permanently lost."
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

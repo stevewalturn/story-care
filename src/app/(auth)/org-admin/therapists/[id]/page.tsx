@@ -366,7 +366,12 @@ export default function TherapistDetailPage() {
         {activeTab === 'patients' && (
           <TherapistPatientsTab
             patients={therapistDetails.recentPatients}
+            therapistId={therapistDetails.therapist.id}
             onAssignPatients={() => setShowAssignModal(true)}
+            onPatientReassigned={() => {
+              setSuccessMessage('Patient reassigned successfully');
+              fetchTherapistDetails();
+            }}
           />
         )}
         {activeTab === 'sessions' && (
@@ -498,13 +503,25 @@ export default function TherapistDetailPage() {
                     ? This action cannot be undone.
                   </p>
                   {therapistDetails.metrics.totalPatients > 0 && (
-                    <p className="mt-2 text-sm text-amber-600">
-                      This therapist has
-                      {' '}
-                      {therapistDetails.metrics.totalPatients}
-                      {' '}
-                      assigned patient(s). You must reassign them before deleting.
-                    </p>
+                    <div className="mt-2">
+                      <p className="text-sm text-amber-600">
+                        This therapist has
+                        {' '}
+                        {therapistDetails.metrics.totalPatients}
+                        {' '}
+                        assigned patient(s). Reassign all patients before deleting this therapist.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowDeleteConfirm(false);
+                          setActiveTab('patients');
+                        }}
+                        className="mt-1 text-sm font-medium text-purple-600 hover:text-purple-700"
+                      >
+                        View Patients
+                      </button>
+                    </div>
                   )}
                   {actionError && (
                     <p className="mt-2 text-sm text-red-600">{actionError}</p>
@@ -528,7 +545,7 @@ export default function TherapistDetailPage() {
                 <button
                   type="button"
                   onClick={handleDeleteConfirm}
-                  disabled={actionLoading}
+                  disabled={actionLoading || therapistDetails.metrics.totalPatients > 0}
                   className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {actionLoading

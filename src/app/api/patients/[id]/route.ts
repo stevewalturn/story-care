@@ -106,6 +106,17 @@ export async function GET(
     const reflectionCount = reflectionCountResult[0]?.count ?? 0;
     const sessionCount = sessionCountResult[0]?.count ?? 0;
 
+    // Fetch therapist name if patient has a therapist assigned
+    let therapistName: string | null = null;
+    if (patient.therapistId) {
+      const [therapist] = await db
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.id, patient.therapistId))
+        .limit(1);
+      therapistName = therapist?.name ?? null;
+    }
+
     // Generate presigned URLs for patient images (HIPAA compliant, 1-hour expiration)
     const patientWithSignedUrls = {
       ...patient,
@@ -122,6 +133,7 @@ export async function GET(
 
     return NextResponse.json({
       patient: patientWithSignedUrls,
+      therapistName,
       pageCount,
       surveyCount,
       reflectionCount,
