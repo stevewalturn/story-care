@@ -223,8 +223,48 @@ export const IMAGE_GENERATION_MODELS = {
   ],
 } as const;
 
-// Video Generation Models - AtlasCloud Image-to-Video (46 models)
+// Video Generation Models - AtlasCloud Image-to-Video & Text-to-Video
 export const VIDEO_GENERATION_MODELS = {
+  // ===== TEXT-TO-VIDEO (Featured) =====
+  'Text-to-Video (Featured)': [
+    { value: 'veo3.1-t2v', label: 'Veo 3.1 T2V', description: 'Google flagship, no image needed' },
+    { value: 'veo3.1-fast-t2v', label: 'Veo 3.1 Fast T2V', description: 'Google fast, no image needed' },
+    { value: 'seedance-v1.5-pro-t2v', label: 'Seedance v1.5 Pro T2V', description: 'Cinematic, no image needed' },
+    { value: 'seedance-v1.5-pro-fast-t2v', label: 'Seedance v1.5 Pro Fast T2V', description: 'Fast cinematic, no image needed' },
+    { value: 'sora-2-t2v-pro', label: 'Sora 2 Pro T2V', description: 'OpenAI flagship, no image needed' },
+    { value: 'kling-2.6-pro-t2v', label: 'Kling 2.6 Pro T2V', description: 'Dynamics, no image needed' },
+    { value: 'kling-2.5-turbo-pro-t2v', label: 'Kling 2.5 Turbo Pro T2V', description: 'Fast turbo, no image needed' },
+    { value: 'kling-video-o1-t2v', label: 'Kling Video O1 T2V', description: 'Physics simulation, no image needed' },
+  ],
+
+  // ===== TEXT-TO-VIDEO (Standard) =====
+  'Text-to-Video (Standard)': [
+    { value: 'hailuo-2.3-t2v-pro', label: 'Hailuo 2.3 T2V Pro', description: 'Character continuity, no image needed' },
+    { value: 'hailuo-2.3-t2v-standard', label: 'Hailuo 2.3 T2V Standard', description: 'Smooth motion, no image needed' },
+    { value: 'pixverse-4.5-t2v', label: 'PixVerse 4.5 T2V', description: 'Fast generation, no image needed' },
+    { value: 'pika-2.2-t2v', label: 'Pika 2.2 T2V', description: 'Creative video, no image needed' },
+    { value: 'pika-2.0-turbo-t2v', label: 'Pika 2.0 Turbo T2V', description: 'Fast turbo, no image needed' },
+    { value: 'ray-2-t2v', label: 'Ray 2 T2V', description: 'Ray-traced quality, no image needed' },
+    { value: 'ray-2-flash-t2v', label: 'Ray 2 Flash T2V', description: 'Fast ray-traced, no image needed' },
+    { value: 'hunyuan-video-t2v', label: 'Hunyuan Video T2V', description: 'Hunyuan quality, no image needed' },
+    { value: 'ltx-2-pro-t2v', label: 'LTX-2 Pro T2V', description: 'Longer, higher-res, no image needed' },
+    { value: 'ltx-2-fast-t2v', label: 'LTX-2 Fast T2V', description: 'Fast coherent motion, no image needed' },
+    { value: 'seedance-v1-pro-t2v-1080p', label: 'Seedance v1 Pro T2V 1080p', description: 'Pro quality 1080p, no image needed' },
+    { value: 'seedance-v1-pro-t2v-720p', label: 'Seedance v1 Pro T2V 720p', description: 'Pro quality 720p, no image needed' },
+    { value: 'seedance-v1-pro-t2v-480p', label: 'Seedance v1 Pro T2V 480p', description: 'Pro quality 480p, no image needed' },
+  ],
+
+  // ===== TEXT-TO-VIDEO (Budget) =====
+  'Text-to-Video (Budget)': [
+    { value: 'wan-2.6-t2v', label: 'Wan 2.6 T2V', description: 'Good fidelity, no image needed' },
+    { value: 'wan-2.5-t2v', label: 'Wan 2.5 T2V', description: 'Good balance, no image needed' },
+    { value: 'wan-2.5-fast-t2v', label: 'Wan 2.5 Fast T2V', description: 'Fast mode, no image needed' },
+    { value: 'seedance-v1-pro-fast-t2v', label: 'Seedance v1 Pro Fast T2V', description: 'Cinematic low cost, no image needed' },
+    { value: 'seedance-v1-lite-t2v-1080p', label: 'Seedance v1 Lite T2V 1080p', description: 'Lite 1080p, no image needed' },
+    { value: 'seedance-v1-lite-t2v-720p', label: 'Seedance v1 Lite T2V 720p', description: 'Lite 720p, no image needed' },
+    { value: 'seedance-v1-lite-t2v-480p', label: 'Seedance v1 Lite T2V 480p', description: 'Lite lowest cost, no image needed' },
+  ],
+
   // ===== FEATURED (Best Quality) =====
   'Featured': [
     { value: 'sora-2-i2v-pro', label: 'Sora 2 Pro', description: 'OpenAI flagship, best quality' },
@@ -387,6 +427,40 @@ export function getAllVideoModelsFlat() {
  */
 export function getAtlasCloudVideoModelId(internalId: string): string {
   const modelMapping: Record<string, string> = {
+    // ===== TEXT-TO-VIDEO (Featured) =====
+    'veo3.1-t2v': 'google/veo3.1/text-to-video',
+    'veo3.1-fast-t2v': 'google/veo3.1-fast/text-to-video',
+    'seedance-v1.5-pro-t2v': 'bytedance/seedance-v1.5-pro/text-to-video',
+    'seedance-v1.5-pro-fast-t2v': 'bytedance/seedance-v1.5-pro-fast/text-to-video',
+    'sora-2-t2v-pro': 'openai/sora-2/text-to-video-pro',
+    'kling-2.6-pro-t2v': 'kwaivgi/kling-v2.6-pro/text-to-video',
+    'kling-2.5-turbo-pro-t2v': 'kwaivgi/kling-v2.5-turbo-pro/text-to-video',
+    'kling-video-o1-t2v': 'kwaivgi/kling-video-o1/text-to-video',
+
+    // ===== TEXT-TO-VIDEO (Standard) =====
+    'hailuo-2.3-t2v-pro': 'minimax/hailuo-2.3/t2v-pro',
+    'hailuo-2.3-t2v-standard': 'minimax/hailuo-2.3/t2v-standard',
+    'pixverse-4.5-t2v': 'pixverse/pixverse-v4.5-t2v',
+    'pika-2.2-t2v': 'pika/v2.2-t2v',
+    'pika-2.0-turbo-t2v': 'pika/v2.0-turbo-t2v',
+    'ray-2-t2v': 'luma/ray-2-t2v',
+    'ray-2-flash-t2v': 'luma/ray-2-flash-t2v',
+    'hunyuan-video-t2v': 'hunyuan/hunyuan-video-t2v',
+    'ltx-2-pro-t2v': 'lightricks/ltx-2-pro/text-to-video',
+    'ltx-2-fast-t2v': 'lightricks/ltx-2-fast/text-to-video',
+    'seedance-v1-pro-t2v-1080p': 'bytedance/seedance-v1-pro-t2v-1080p',
+    'seedance-v1-pro-t2v-720p': 'bytedance/seedance-v1-pro-t2v-720p',
+    'seedance-v1-pro-t2v-480p': 'bytedance/seedance-v1-pro-t2v-480p',
+
+    // ===== TEXT-TO-VIDEO (Budget) =====
+    'wan-2.6-t2v': 'alibaba/wan-2.6/text-to-video',
+    'wan-2.5-t2v': 'alibaba/wan-2.5/text-to-video',
+    'wan-2.5-fast-t2v': 'alibaba/wan-2.5/text-to-video-fast',
+    'seedance-v1-pro-fast-t2v': 'bytedance/seedance-v1-pro-fast/text-to-video',
+    'seedance-v1-lite-t2v-1080p': 'bytedance/seedance-v1-lite-t2v-1080p',
+    'seedance-v1-lite-t2v-720p': 'bytedance/seedance-v1-lite-t2v-720p',
+    'seedance-v1-lite-t2v-480p': 'bytedance/seedance-v1-lite-t2v-480p',
+
     // ===== FEATURED =====
     'sora-2-i2v-pro': 'openai/sora-2/image-to-video-pro',
     'sora-2-i2v': 'openai/sora-2/image-to-video',

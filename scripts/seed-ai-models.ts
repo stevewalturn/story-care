@@ -223,11 +223,15 @@ async function seedAiModels() {
     for (const model of models) {
       const pricing = VIDEO_MODEL_PRICING[model.value];
 
+      // Determine category: T2V models use text_to_video, others use image_to_video
+      const isT2V = model.value.includes('-t2v') || groupName.toLowerCase().includes('text-to-video');
+      const videoCategory: ModelCategory = isT2V ? 'text_to_video' : 'image_to_video';
+
       modelsToInsert.push({
         modelId: model.value,
         displayName: model.label,
         description: (model as any).description || null,
-        category: 'image_to_video',
+        category: videoCategory,
         provider: extractProvider(groupName),
         providerGroup: groupName,
         status: 'active',

@@ -148,8 +148,39 @@ export type AtlasImageModel
     | 'american-comic-style';
 
 export type AtlasVideoModel
+  // Text-to-Video (Featured)
+  = | 'veo3.1-t2v'
+    | 'veo3.1-fast-t2v'
+    | 'seedance-v1.5-pro-t2v'
+    | 'seedance-v1.5-pro-fast-t2v'
+    | 'sora-2-t2v-pro'
+    | 'kling-2.6-pro-t2v'
+    | 'kling-2.5-turbo-pro-t2v'
+    | 'kling-video-o1-t2v'
+  // Text-to-Video (Standard)
+    | 'hailuo-2.3-t2v-pro'
+    | 'hailuo-2.3-t2v-standard'
+    | 'pixverse-4.5-t2v'
+    | 'pika-2.2-t2v'
+    | 'pika-2.0-turbo-t2v'
+    | 'ray-2-t2v'
+    | 'ray-2-flash-t2v'
+    | 'hunyuan-video-t2v'
+    | 'ltx-2-pro-t2v'
+    | 'ltx-2-fast-t2v'
+    | 'seedance-v1-pro-t2v-1080p'
+    | 'seedance-v1-pro-t2v-720p'
+    | 'seedance-v1-pro-t2v-480p'
+  // Text-to-Video (Budget)
+    | 'wan-2.6-t2v'
+    | 'wan-2.5-t2v'
+    | 'wan-2.5-fast-t2v'
+    | 'seedance-v1-pro-fast-t2v'
+    | 'seedance-v1-lite-t2v-1080p'
+    | 'seedance-v1-lite-t2v-720p'
+    | 'seedance-v1-lite-t2v-480p'
   // Featured
-  = | 'sora-2-i2v-pro'
+    | 'sora-2-i2v-pro'
     | 'sora-2-i2v'
     | 'veo3.1-i2v'
     | 'veo3-i2v'
@@ -2145,12 +2176,14 @@ function buildVideoRequestBody(
     prompt: options.prompt,
   };
 
+  // Detect T2V models - they don't include the image field
+  const isT2V = atlasModel.includes('t2v') || atlasModel.includes('text-to-video');
+
   switch (family) {
     case 'seedance': {
-      // Per IMAGE_TO_VIDEO.md: aspect_ratio, camera_fixed, duration, generate_audio, resolution, seed
       return {
         ...baseParams,
-        image: options.referenceImage || '',
+        ...(isT2V ? {} : { image: options.referenceImage || '' }),
         aspect_ratio: '16:9',
         camera_fixed: false,
         duration: options.duration || 5,
@@ -2161,10 +2194,9 @@ function buildVideoRequestBody(
     }
 
     case 'kling-standard': {
-      // Per IMAGE_TO_VIDEO.md: cfg_scale, duration, negative_prompt, sound
       return {
         ...baseParams,
-        image: options.referenceImage || '',
+        ...(isT2V ? {} : { image: options.referenceImage || '' }),
         cfg_scale: 0.5,
         duration: options.duration || 5,
         negative_prompt: '',
@@ -2173,17 +2205,15 @@ function buildVideoRequestBody(
     }
 
     case 'kling-o1': {
-      // Per IMAGE_TO_VIDEO.md: aspect_ratio, duration, last_image
       return {
         ...baseParams,
-        image: options.referenceImage || '',
+        ...(isT2V ? {} : { image: options.referenceImage || '' }),
         aspect_ratio: '16:9',
         duration: options.duration || 5,
       };
     }
 
     case 'kling-multi': {
-      // Per IMAGE_TO_VIDEO.md: images array, aspect_ratio, duration, negative_prompt
       return {
         ...baseParams,
         images: options.referenceImage ? [options.referenceImage] : [],
@@ -2203,10 +2233,9 @@ function buildVideoRequestBody(
     }
 
     case 'veo': {
-      // Per IMAGE_TO_VIDEO.md: aspect_ratio, duration, generate_audio, negative_prompt, resolution, seed
       return {
         ...baseParams,
-        image: options.referenceImage || '',
+        ...(isT2V ? {} : { image: options.referenceImage || '' }),
         aspect_ratio: '16:9',
         duration: options.duration || 8,
         generate_audio: true,
@@ -2217,7 +2246,6 @@ function buildVideoRequestBody(
     }
 
     case 'veo-ref': {
-      // Per IMAGE_TO_VIDEO.md: images array, generate_audio, negative_prompt, resolution, seed
       return {
         ...baseParams,
         images: options.referenceImage ? [options.referenceImage] : [],
@@ -2229,46 +2257,41 @@ function buildVideoRequestBody(
     }
 
     case 'sora': {
-      // Per IMAGE_TO_VIDEO.md: Basic params only (no seed for Sora)
       return {
         ...baseParams,
-        image: options.referenceImage || '',
+        ...(isT2V ? {} : { image: options.referenceImage || '' }),
         duration: options.duration || 8,
       };
     }
 
     case 'sora-dev': {
-      // Per IMAGE_TO_VIDEO.md: Basic params + size
       return {
         ...baseParams,
-        image: options.referenceImage || '',
+        ...(isT2V ? {} : { image: options.referenceImage || '' }),
         duration: options.duration || 10,
         size: '720*1280',
       };
     }
 
     case 'hailuo': {
-      // Per IMAGE_TO_VIDEO.md: duration, enable_prompt_expansion
       return {
         ...baseParams,
-        image: options.referenceImage || '',
+        ...(isT2V ? {} : { image: options.referenceImage || '' }),
         duration: options.duration || 6,
         enable_prompt_expansion: false,
       };
     }
 
     case 'luma': {
-      // Per IMAGE_TO_VIDEO.md: size, duration (STRING not number!)
       return {
         ...baseParams,
-        image: options.referenceImage || '',
+        ...(isT2V ? {} : { image: options.referenceImage || '' }),
         size: '1280*720',
         duration: String(options.duration || 5),
       };
     }
 
     case 'vidu': {
-      // Per IMAGE_TO_VIDEO.md: images array, aspect_ratio, seed, movement_amplitude
       return {
         ...baseParams,
         images: options.referenceImage ? [options.referenceImage] : [],
@@ -2279,10 +2302,9 @@ function buildVideoRequestBody(
     }
 
     case 'wan-video': {
-      // Per IMAGE_TO_VIDEO.md: enable_prompt_expansion, negative_prompt, resolution, seed
       return {
         ...baseParams,
-        image: options.referenceImage || '',
+        ...(isT2V ? {} : { image: options.referenceImage || '' }),
         duration: options.duration || 5,
         enable_prompt_expansion: false,
         negative_prompt: '',
@@ -2292,10 +2314,9 @@ function buildVideoRequestBody(
     }
 
     case 'ltx': {
-      // Per IMAGE_TO_VIDEO.md: duration, generate_audio
       return {
         ...baseParams,
-        image: options.referenceImage || '',
+        ...(isT2V ? {} : { image: options.referenceImage || '' }),
         duration: options.duration || 8,
         generate_audio: true,
       };
@@ -2313,7 +2334,7 @@ function buildVideoRequestBody(
       // Generic fallback
       return {
         ...baseParams,
-        image: options.referenceImage || '',
+        ...(isT2V ? {} : { image: options.referenceImage || '' }),
         duration: options.duration || 5,
         seed: options.seed ?? -1,
       };

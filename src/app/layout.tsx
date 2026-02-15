@@ -17,7 +17,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'StoryCare - AI-Powered Narrative Therapy Platform',
+  title: 'StoryCare | Digital Narrative Therapy',
   description: 'Transform therapy sessions into healing stories with AI-powered transcription, analysis, and multimedia storytelling.',
   icons: [
     {

@@ -169,6 +169,40 @@ export const IMAGE_MODEL_PRICING: Record<string, number> = {
  * Video generation pricing (per second)
  */
 export const VIDEO_MODEL_PRICING: Record<string, number> = {
+  // Text-to-Video (Featured)
+  'veo3.1-t2v': 0.16,
+  'veo3.1-fast-t2v': 0.08,
+  'seedance-v1.5-pro-t2v': 0.0823,
+  'seedance-v1.5-pro-fast-t2v': 0.0741,
+  'sora-2-t2v-pro': 0.15,
+  'kling-2.6-pro-t2v': 0.2975,
+  'kling-2.5-turbo-pro-t2v': 0.2975,
+  'kling-video-o1-t2v': 0.476,
+
+  // Text-to-Video (Standard)
+  'hailuo-2.3-t2v-pro': 0.098,
+  'hailuo-2.3-t2v-standard': 0.28,
+  'pixverse-4.5-t2v': 0.25,
+  'pika-2.2-t2v': 0.20,
+  'pika-2.0-turbo-t2v': 0.20,
+  'ray-2-t2v': 0.40,
+  'ray-2-flash-t2v': 0.20,
+  'hunyuan-video-t2v': 0.08,
+  'ltx-2-pro-t2v': 0.06,
+  'ltx-2-fast-t2v': 0.04,
+  'seedance-v1-pro-t2v-1080p': 0.102,
+  'seedance-v1-pro-t2v-720p': 0.051,
+  'seedance-v1-pro-t2v-480p': 0.0255,
+
+  // Text-to-Video (Budget)
+  'wan-2.6-t2v': 0.07,
+  'wan-2.5-t2v': 0.035,
+  'wan-2.5-fast-t2v': 0.068,
+  'seedance-v1-pro-fast-t2v': 0.0102,
+  'seedance-v1-lite-t2v-1080p': 0.0765,
+  'seedance-v1-lite-t2v-720p': 0.0272,
+  'seedance-v1-lite-t2v-480p': 0.0136,
+
   // Featured/Premium tier
   'sora-2-i2v-pro': 0.20,
   'sora-2-i2v': 0.20,

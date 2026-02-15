@@ -39,6 +39,11 @@ export default async function middleware(request: NextRequest) {
   const isApiRoute = pathname.startsWith('/api/');
 
   if (!isApiRoute) {
+    // Redirect root to sign-in (landing page is now on a separate deployment)
+    if (pathname === '/') {
+      return NextResponse.redirect(new URL('/sign-in', request.url));
+    }
+
     // Check if the route is protected
     if (isProtectedRoute(pathname)) {
       // Get the session token from cookies

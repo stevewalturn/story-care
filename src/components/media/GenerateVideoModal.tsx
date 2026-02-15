@@ -242,7 +242,10 @@ export function GenerateVideoModal({
       return;
     }
 
-    if (!selectedImage) {
+    const currentModelData = findModel(selectedModel);
+    const isT2V = currentModelData?.category === 'text_to_video';
+
+    if (!isT2V && !selectedImage) {
       setError('Please select a reference image');
       toast.error('Please select a reference image');
       return;
@@ -255,10 +258,13 @@ export function GenerateVideoModal({
     try {
       const idToken = await user?.getIdToken();
 
-      // Get the image URL (handle GCS paths)
-      const imageUrl = selectedImage.imageUrl.startsWith('http')
-        ? selectedImage.imageUrl
-        : `/api/media/signed-url?path=${encodeURIComponent(selectedImage.imageUrl)}`;
+      // Get the image URL (handle GCS paths) - only for I2V models
+      let imageUrl: string | undefined;
+      if (selectedImage) {
+        imageUrl = selectedImage.imageUrl.startsWith('http')
+          ? selectedImage.imageUrl
+          : `/api/media/signed-url?path=${encodeURIComponent(selectedImage.imageUrl)}`;
+      }
 
       // Build request body
       const requestBody = {
@@ -267,7 +273,7 @@ export function GenerateVideoModal({
         style,
         motion,
         model: selectedModel,
-        referenceImage: imageUrl,
+        ...(imageUrl ? { referenceImage: imageUrl } : {}),
         sessionId,
         patientId,
       };
@@ -378,6 +384,7 @@ export function GenerateVideoModal({
   }
 
   const currentModel = findModel(selectedModel);
+  const isTextToVideo = currentModel?.category === 'text_to_video';
 
   return (
     <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black p-4">
@@ -391,7 +398,9 @@ export function GenerateVideoModal({
             <div>
               <h2 className="text-xl font-bold text-gray-900">Generate Video</h2>
               <p className="text-sm text-gray-600">
-                Select a reference image and animate it into a video
+                {isTextToVideo
+                  ? 'Create a video from your text prompt'
+                  : 'Select a reference image and animate it into a video'}
               </p>
             </div>
           </div>
@@ -406,117 +415,119 @@ export function GenerateVideoModal({
         <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-2">
           {/* Left Column - Configuration */}
           <div className="space-y-5">
-            {/* Reference Image Section */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-700">Reference Image</span>
-                <span title="Select an image to animate into video">
-                  <HelpCircle className="h-4 w-4 text-gray-400" />
-                </span>
-                {patientName && !hasPreSelectedImage && (
-                  <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
-                    {patientName}
+            {/* Reference Image Section - only shown for I2V models */}
+            {!isTextToVideo && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700">Reference Image</span>
+                  <span title="Select an image to animate into video">
+                    <HelpCircle className="h-4 w-4 text-gray-400" />
                   </span>
-                )}
-              </div>
+                  {patientName && !hasPreSelectedImage && (
+                    <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
+                      {patientName}
+                    </span>
+                  )}
+                </div>
 
-              {/* Pre-selected image from media library */}
-              {hasPreSelectedImage && referenceImage && (
-                <div className="rounded-lg border-2 border-purple-200 bg-purple-50 p-4">
-                  <div className="flex items-center gap-4">
-                    <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg">
-                      <img
-                        src={referenceImage.url}
-                        alt={referenceImage.title}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{referenceImage.title}</p>
-                      <div className="mt-1 flex items-center gap-1 text-xs text-purple-600">
-                        <Check className="h-3 w-3" />
-                        <span>Ready to animate</span>
+                {/* Pre-selected image from media library */}
+                {hasPreSelectedImage && referenceImage && (
+                  <div className="rounded-lg border-2 border-purple-200 bg-purple-50 p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg">
+                        <img
+                          src={referenceImage.url}
+                          alt={referenceImage.title}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{referenceImage.title}</p>
+                        <div className="mt-1 flex items-center gap-1 text-xs text-purple-600">
+                          <Check className="h-3 w-3" />
+                          <span>Ready to animate</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Patient reference images selection */}
-              {!hasPreSelectedImage && (
-                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                  {loadingReferenceImages ? (
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading reference images...
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex flex-wrap gap-3">
-                        {patientReferenceImages.map(img => (
-                          <button
-                            key={img.id}
-                            type="button"
-                            onClick={() => setSelectedRefImageId(img.id)}
-                            className={`relative h-20 w-20 overflow-hidden rounded-lg border-3 transition-all ${
-                              selectedRefImageId === img.id
-                                ? 'border-purple-500 shadow-lg shadow-purple-200'
-                                : 'border-gray-200 opacity-70 hover:border-gray-300 hover:opacity-100'
-                            }`}
-                          >
-                            <img
-                              src={img.imageUrl.startsWith('http') ? img.imageUrl : `/api/media/signed-url?path=${encodeURIComponent(img.imageUrl)}`}
-                              alt={img.label || 'Reference'}
-                              className="h-full w-full object-cover"
-                            />
-                            {selectedRefImageId === img.id && (
-                              <div className="absolute inset-0 flex items-center justify-center bg-purple-500/20">
-                                <Check className="h-6 w-6 text-purple-600" />
-                              </div>
-                            )}
-                          </button>
-                        ))}
-
-                        {/* Upload new reference image */}
-                        <label
-                          className={`flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed bg-white transition-colors ${
-                            isDragging
-                              ? 'border-purple-500 bg-purple-50'
-                              : 'border-gray-300 hover:border-purple-400 hover:bg-gray-50'
-                          }`}
-                          onDragEnter={handleDragEnter}
-                          onDragOver={handleDragOver}
-                          onDragLeave={handleDragLeave}
-                          onDrop={handleDrop}
-                          title="Click or drag to add reference image"
-                        >
-                          {savingAsReference ? (
-                            <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
-                          ) : (
-                            <>
-                              <Plus className="h-6 w-6 text-gray-400" />
-                              <span className="mt-1 text-xs text-gray-400">Add</span>
-                            </>
-                          )}
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleReferenceImageUpload}
-                            className="hidden"
-                          />
-                        </label>
+                {/* Patient reference images selection */}
+                {!hasPreSelectedImage && (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    {loadingReferenceImages ? (
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading reference images...
                       </div>
+                    ) : (
+                      <>
+                        <div className="flex flex-wrap gap-3">
+                          {patientReferenceImages.map(img => (
+                            <button
+                              key={img.id}
+                              type="button"
+                              onClick={() => setSelectedRefImageId(img.id)}
+                              className={`relative h-20 w-20 overflow-hidden rounded-lg border-3 transition-all ${
+                                selectedRefImageId === img.id
+                                  ? 'border-purple-500 shadow-lg shadow-purple-200'
+                                  : 'border-gray-200 opacity-70 hover:border-gray-300 hover:opacity-100'
+                              }`}
+                            >
+                              <img
+                                src={img.imageUrl.startsWith('http') ? img.imageUrl : `/api/media/signed-url?path=${encodeURIComponent(img.imageUrl)}`}
+                                alt={img.label || 'Reference'}
+                                className="h-full w-full object-cover"
+                              />
+                              {selectedRefImageId === img.id && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-purple-500/20">
+                                  <Check className="h-6 w-6 text-purple-600" />
+                                </div>
+                              )}
+                            </button>
+                          ))}
 
-                      {patientReferenceImages.length === 0 && (
-                        <p className="mt-3 text-xs text-gray-500">
-                          No reference images yet. Upload an image to use as the starting frame.
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+                          {/* Upload new reference image */}
+                          <label
+                            className={`flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed bg-white transition-colors ${
+                              isDragging
+                                ? 'border-purple-500 bg-purple-50'
+                                : 'border-gray-300 hover:border-purple-400 hover:bg-gray-50'
+                            }`}
+                            onDragEnter={handleDragEnter}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            title="Click or drag to add reference image"
+                          >
+                            {savingAsReference ? (
+                              <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
+                            ) : (
+                              <>
+                                <Plus className="h-6 w-6 text-gray-400" />
+                                <span className="mt-1 text-xs text-gray-400">Add</span>
+                              </>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleReferenceImageUpload}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+
+                        {patientReferenceImages.length === 0 && (
+                          <p className="mt-3 text-xs text-gray-500">
+                            No reference images yet. Upload an image to use as the starting frame.
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Video Model Selection */}
             <div className="space-y-2">
@@ -668,7 +679,7 @@ export function GenerateVideoModal({
             {/* Generate Button */}
             <Button
               onClick={handleGenerate}
-              disabled={!prompt.trim() || !selectedImage || isGenerating}
+              disabled={!prompt.trim() || (!isTextToVideo && !selectedImage) || isGenerating}
               variant="primary"
               className="w-full"
             >
@@ -742,10 +753,21 @@ export function GenerateVideoModal({
               ) : (
                 <div className="p-8 text-center">
                   <Film className="mx-auto mb-4 h-16 w-16 text-gray-400" />
-                  <p className="mb-2 text-sm text-gray-600">No image selected</p>
-                  <p className="text-xs text-gray-500">
-                    Select a reference image to preview
-                  </p>
+                  {isTextToVideo ? (
+                    <>
+                      <p className="mb-2 text-sm text-gray-600">Text-to-Video mode</p>
+                      <p className="text-xs text-gray-500">
+                        Enter a prompt and generate a video directly
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="mb-2 text-sm text-gray-600">No image selected</p>
+                      <p className="text-xs text-gray-500">
+                        Select a reference image to preview
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
             </div>

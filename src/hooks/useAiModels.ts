@@ -146,10 +146,28 @@ export function useImageModels(requiresReference: boolean = false) {
 }
 
 /**
- * Hook to fetch video models
+ * Hook to fetch video models (both Image-to-Video and Text-to-Video)
  */
 export function useVideoModels() {
-  return useModelsForCategory('image_to_video');
+  const { models: i2vModels, allModels: allI2v, loading: l1, error: e1, findModel: findI2v } = useModelsForCategory('image_to_video');
+  const { models: t2vModels, allModels: allT2v, loading: l2, error: e2, findModel: findT2v } = useModelsForCategory('text_to_video');
+
+  // Merge with T2V models first so users see them at the top
+  const models = { ...t2vModels, ...i2vModels };
+  const allModels = [...allT2v, ...allI2v];
+
+  const findModel = useCallback(
+    (modelId: string) => findT2v(modelId) || findI2v(modelId),
+    [findT2v, findI2v],
+  );
+
+  return {
+    models,
+    allModels,
+    loading: l1 || l2,
+    error: e1 || e2,
+    findModel,
+  };
 }
 
 /**

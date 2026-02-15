@@ -114,7 +114,7 @@ function SignInForm() {
               StoryCare
             </h1>
           </Link>
-          <p className="mt-2 text-gray-600">Digital Therapeutic Platform</p>
+          <p className="mt-2 text-gray-600">Digital Narrative Therapy</p>
         </div>
 
         {/* Sign In Form */}
