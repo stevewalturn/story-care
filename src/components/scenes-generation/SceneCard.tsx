@@ -439,7 +439,7 @@ export const SceneCard = function SceneCard({ ref, scene, onUpdate, onDelete, on
           {/* Generate Video Button */}
           <button
             onClick={() => onAnimateVideo?.(scene.id)}
-            disabled={!scene.imageUrl || scene.status === 'animating' || scene.status === 'generating_image'}
+            disabled={scene.status === 'animating' || scene.status === 'generating_image'}
             className="flex flex-1 items-center justify-center gap-2 rounded-lg border-2 border-purple-600 bg-white px-3 py-2.5 text-sm font-medium text-purple-600 transition-colors hover:bg-purple-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Video className="h-4 w-4" />

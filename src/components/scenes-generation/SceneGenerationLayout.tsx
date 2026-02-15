@@ -806,7 +806,7 @@ export function SceneGenerationLayout({
 
   const handleAnimateVideo = async (id: string) => {
     const scene = scenes.find(s => s.id === id);
-    if (!scene || !scene.imageUrl) return;
+    if (!scene) return;
 
     if (!user) {
       toast.error('Please sign in to generate videos');
@@ -827,7 +827,7 @@ export function SceneGenerationLayout({
         prompt: scene.prompt,
         title: scene.title,
         model: selectedVideoModel, // Use selected video model from TopBar
-        referenceImage: scene.imageUrl,
+        ...(scene.imageUrl ? { referenceImage: scene.imageUrl } : {}),
         patientId: patient.id,
         sessionId,
         duration: 5,
