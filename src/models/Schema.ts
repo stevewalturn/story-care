@@ -1901,6 +1901,20 @@ export const assessmentResponsesSchema = pgTable('assessment_responses', {
 }));
 
 // ============================================================================
+// FEATURE TOGGLES
+// ============================================================================
+
+export const featureTogglesSchema = pgTable('feature_toggles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: varchar('key', { length: 100 }).unique().notNull(),
+  label: varchar('label', { length: 255 }).notNull(),
+  description: text('description'),
+  enabled: boolean('enabled').notNull().default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================================================
 // TABLE ALIASES (for convenience)
 // ============================================================================
 
@@ -1951,6 +1965,7 @@ export const assessmentInstruments = assessmentInstrumentsSchema;
 export const assessmentInstrumentItems = assessmentInstrumentItemsSchema;
 export const assessmentSessions = assessmentSessionsSchema;
 export const assessmentResponses = assessmentResponsesSchema;
+export const featureToggles = featureTogglesSchema;
 
 // ============================================================================
 // DRIZZLE RELATIONS (Required for .with() query syntax)
@@ -2259,3 +2274,7 @@ export type AssessmentTimepoint = typeof assessmentTimepointEnum.enumValues[numb
 export type AssessmentSessionStatus = typeof assessmentSessionStatusEnum.enumValues[number];
 export type InstrumentStatus = typeof instrumentStatusEnum.enumValues[number];
 export type AssessmentItemType = typeof assessmentItemTypeEnum.enumValues[number];
+
+// Feature toggle types
+export type FeatureToggle = typeof featureTogglesSchema.$inferSelect;
+export type NewFeatureToggle = typeof featureTogglesSchema.$inferInsert;

@@ -33,6 +33,7 @@
     "db:delete-therapist-prompts": "NODE_ENV=development node --env-file=.env.local -r esbuild-register scripts/delete-therapist-prompts.ts",
     "db:seed-ai-models": "NODE_ENV=development node --env-file=.env.local -r esbuild-register scripts/seed-ai-models.ts",
     "db:seed-assessments": "NODE_ENV=development node --env-file=.env.local -r esbuild-register scripts/seed-assessment-instruments.ts",
+    "db:seed-feature-toggles": "NODE_ENV=development node --env-file=.env.local -r esbuild-register scripts/seed-feature-toggles.ts",
     "storybook": "storybook dev -p 6006",
     "storybook:test": "vitest run --config .storybook/vitest.config.mts",
     "build-storybook": "storybook build"
