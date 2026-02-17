@@ -53,9 +53,17 @@ export async function POST(request: Request) {
       .where(eq(users.email, email))
       .limit(1);
 
-    // If not found or deleted/inactive, return generic success to prevent enumeration
-    if (!user || !user.firebaseUid || user.deletedAt || user.status === 'deleted' || user.status === 'inactive') {
+    // If not found, return generic success to prevent email enumeration
+    if (!user || !user.firebaseUid) {
       return NextResponse.json(GENERIC_SUCCESS);
+    }
+
+    // Deleted/inactive users get an explicit error
+    if (user.deletedAt || user.status === 'deleted' || user.status === 'inactive') {
+      return NextResponse.json(
+        { error: 'This account has been removed. Please contact your administrator.' },
+        { status: 403 },
+      );
     }
 
     // Generate token and store with 1-hour expiry
