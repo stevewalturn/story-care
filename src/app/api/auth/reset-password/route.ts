@@ -38,6 +38,8 @@ export async function POST(request: Request) {
         id: users.id,
         firebaseUid: users.firebaseUid,
         passwordResetTokenExpiresAt: users.passwordResetTokenExpiresAt,
+        deletedAt: users.deletedAt,
+        status: users.status,
       })
       .from(users)
       .where(eq(users.passwordResetToken, validated.token))
@@ -47,6 +49,13 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Invalid or expired reset link.' },
         { status: 400 },
+      );
+    }
+
+    if (user.deletedAt || user.status === 'deleted' || user.status === 'inactive') {
+      return NextResponse.json(
+        { error: 'This account has been removed. Please contact your administrator.' },
+        { status: 403 },
       );
     }
 

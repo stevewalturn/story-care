@@ -28,6 +28,13 @@ export async function POST(request: Request) {
       .where(eq(users.firebaseUid, uid))
       .limit(1);
 
+    if (existingUser?.deletedAt || existingUser?.status === 'deleted' || existingUser?.status === 'inactive') {
+      return NextResponse.json(
+        { error: 'Account has been removed. Please contact your administrator.' },
+        { status: 403 },
+      );
+    }
+
     if (!existingUser) {
       // Check if user exists by email (user created before Firebase auth)
       const [userByEmail] = await db
@@ -35,6 +42,13 @@ export async function POST(request: Request) {
         .from(users)
         .where(eq(users.email, email || ''))
         .limit(1);
+
+      if (userByEmail?.deletedAt || userByEmail?.status === 'deleted' || userByEmail?.status === 'inactive') {
+        return NextResponse.json(
+          { error: 'Account has been removed. Please contact your administrator.' },
+          { status: 403 },
+        );
+      }
 
       if (userByEmail) {
         // Update existing user with Firebase UID

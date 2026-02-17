@@ -48,13 +48,13 @@ export async function POST(request: Request) {
   try {
     // Look up user by email in DB
     const [user] = await db
-      .select({ id: users.id, firebaseUid: users.firebaseUid })
+      .select({ id: users.id, firebaseUid: users.firebaseUid, deletedAt: users.deletedAt, status: users.status })
       .from(users)
       .where(eq(users.email, email))
       .limit(1);
 
-    // If not found, return generic success to prevent enumeration
-    if (!user || !user.firebaseUid) {
+    // If not found or deleted/inactive, return generic success to prevent enumeration
+    if (!user || !user.firebaseUid || user.deletedAt || user.status === 'deleted' || user.status === 'inactive') {
       return NextResponse.json(GENERIC_SUCCESS);
     }
 
