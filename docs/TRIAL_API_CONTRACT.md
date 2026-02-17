@@ -9,7 +9,7 @@ External clinical trial admin systems can create patients in StoryCare via this 
 | Environment | URL |
 |---|---|
 | Local | `http://localhost:3000` |
-| Production | TBD |
+| Production | `https://app.storycare.health` |
 
 ---
 
@@ -110,13 +110,13 @@ Create a new trial patient in the Sage Health organization.
 
 ```bash
 # Create patient
-curl -X POST https://<host>/api/trial/patients \
+curl -X POST https://app.storycare.health/api/trial/patients \
   -H "Content-Type: application/json" \
   -H "X-API-Key: <TRIAL_API_KEY>" \
   -d '{"email":"jane.doe@example.com","firstName":"Jane","lastName":"Doe"}'
 
 # Duplicate call returns 200 with existing ID
-curl -X POST https://<host>/api/trial/patients \
+curl -X POST https://app.storycare.health/api/trial/patients \
   -H "Content-Type: application/json" \
   -H "X-API-Key: <TRIAL_API_KEY>" \
   -d '{"email":"jane.doe@example.com","firstName":"Jane","lastName":"Doe"}'
