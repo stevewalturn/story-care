@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { and, desc, eq, gte, lte } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import {
@@ -10,10 +10,13 @@ import {
   surveyResponsesSchema,
   users,
 } from '@/models/Schema';
+import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
 
 // GET /api/dashboard/recent-responses - Get recent reflection and survey responses
 export async function GET(request: NextRequest) {
   try {
+    const user = await requireAuth(request);
+
     const { searchParams } = new URL(request.url);
     const limit = Number.parseInt(searchParams.get('limit') || '10', 10);
     const startDateParam = searchParams.get('startDate');
@@ -27,26 +30,51 @@ export async function GET(request: NextRequest) {
       endDate.setHours(23, 59, 59, 999);
     }
 
-    // Build date conditions for reflection responses
-    const reflectionDateConditions: ReturnType<typeof eq>[] = [];
-    if (startDate) {
-      reflectionDateConditions.push(gte(reflectionResponsesSchema.createdAt, startDate));
-    }
-    if (endDate) {
-      reflectionDateConditions.push(lte(reflectionResponsesSchema.createdAt, endDate));
+    // Get org-scoped patient IDs
+    const organizationId = user.organizationId;
+    let orgPatientIds: string[] | null = null;
+    if (organizationId) {
+      const orgPatients = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(
+          eq(users.role, 'patient'),
+          eq(users.organizationId, organizationId),
+          isNull(users.deletedAt),
+        ));
+      orgPatientIds = orgPatients.map(p => p.id);
+
+      if (orgPatientIds.length === 0) {
+        return NextResponse.json({ reflections: [], surveys: [] });
+      }
     }
 
-    // Build date conditions for survey responses
-    const surveyDateConditions: ReturnType<typeof eq>[] = [];
+    // Build conditions for reflection responses
+    const reflectionConditions: ReturnType<typeof eq>[] = [];
     if (startDate) {
-      surveyDateConditions.push(gte(surveyResponsesSchema.createdAt, startDate));
+      reflectionConditions.push(gte(reflectionResponsesSchema.createdAt, startDate));
     }
     if (endDate) {
-      surveyDateConditions.push(lte(surveyResponsesSchema.createdAt, endDate));
+      reflectionConditions.push(lte(reflectionResponsesSchema.createdAt, endDate));
+    }
+    if (orgPatientIds && orgPatientIds.length > 0) {
+      reflectionConditions.push(inArray(reflectionResponsesSchema.patientId, orgPatientIds));
+    }
+
+    // Build conditions for survey responses
+    const surveyConditions: ReturnType<typeof eq>[] = [];
+    if (startDate) {
+      surveyConditions.push(gte(surveyResponsesSchema.createdAt, startDate));
+    }
+    if (endDate) {
+      surveyConditions.push(lte(surveyResponsesSchema.createdAt, endDate));
+    }
+    if (orgPatientIds && orgPatientIds.length > 0) {
+      surveyConditions.push(inArray(surveyResponsesSchema.patientId, orgPatientIds));
     }
 
     // Fetch recent reflection responses
-    const reflectionQuery = db
+    const recentReflections = await db
       .select({
         id: reflectionResponsesSchema.id,
         patientId: reflectionResponsesSchema.patientId,
@@ -64,20 +92,13 @@ export async function GET(request: NextRequest) {
         reflectionQuestionsSchema,
         eq(reflectionResponsesSchema.questionId, reflectionQuestionsSchema.id),
       )
-      .leftJoin(storyPagesSchema, eq(reflectionResponsesSchema.pageId, storyPagesSchema.id));
-
-    // Apply date filtering if conditions exist
-    const recentReflections = reflectionDateConditions.length > 0
-      ? await reflectionQuery
-          .where(and(...reflectionDateConditions))
-          .orderBy(desc(reflectionResponsesSchema.createdAt))
-          .limit(limit)
-      : await reflectionQuery
-          .orderBy(desc(reflectionResponsesSchema.createdAt))
-          .limit(limit);
+      .leftJoin(storyPagesSchema, eq(reflectionResponsesSchema.pageId, storyPagesSchema.id))
+      .where(reflectionConditions.length > 0 ? and(...reflectionConditions) : undefined)
+      .orderBy(desc(reflectionResponsesSchema.createdAt))
+      .limit(limit);
 
     // Fetch recent survey responses
-    const surveyQuery = db
+    const recentSurveys = await db
       .select({
         id: surveyResponsesSchema.id,
         patientId: surveyResponsesSchema.patientId,
@@ -93,23 +114,19 @@ export async function GET(request: NextRequest) {
       .from(surveyResponsesSchema)
       .leftJoin(users, eq(surveyResponsesSchema.patientId, users.id))
       .leftJoin(surveyQuestionsSchema, eq(surveyResponsesSchema.questionId, surveyQuestionsSchema.id))
-      .leftJoin(storyPagesSchema, eq(surveyResponsesSchema.pageId, storyPagesSchema.id));
-
-    // Apply date filtering if conditions exist
-    const recentSurveys = surveyDateConditions.length > 0
-      ? await surveyQuery
-          .where(and(...surveyDateConditions))
-          .orderBy(desc(surveyResponsesSchema.createdAt))
-          .limit(limit)
-      : await surveyQuery
-          .orderBy(desc(surveyResponsesSchema.createdAt))
-          .limit(limit);
+      .leftJoin(storyPagesSchema, eq(surveyResponsesSchema.pageId, storyPagesSchema.id))
+      .where(surveyConditions.length > 0 ? and(...surveyConditions) : undefined)
+      .orderBy(desc(surveyResponsesSchema.createdAt))
+      .limit(limit);
 
     return NextResponse.json({
       reflections: recentReflections,
       surveys: recentSurveys,
     });
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      return handleAuthError(error);
+    }
     console.error('Error fetching recent responses:', error);
     return NextResponse.json(
       { error: 'Failed to fetch recent responses' },

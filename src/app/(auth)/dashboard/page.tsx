@@ -150,7 +150,7 @@ export default function DashboardPage() {
     try {
       setLoading(true);
       const dateParams = buildDateParams();
-      const url = `/api/dashboard/stats?therapistId=${user.uid}${dateParams ? `&${dateParams}` : ''}`;
+      const url = `/api/dashboard/stats${dateParams ? `?${dateParams}` : ''}`;
       const response = await authenticatedFetch(url, user);
       if (response.ok) {
         const data = await response.json();

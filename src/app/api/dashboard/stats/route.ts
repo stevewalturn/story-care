@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { and, count, eq, gte, isNull, lte } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { getClientInfo, logAudit } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
@@ -30,14 +30,22 @@ export async function GET(request: NextRequest) {
       endDate.setHours(23, 59, 59, 999);
     }
 
-    // Convert Firebase UID to database UUID if provided
-    let therapistDbId: string | null = null;
+    // Patients cannot access dashboard stats
+    if (user.role === 'patient') {
+      return NextResponse.json(
+        { error: 'Forbidden: Patients cannot access dashboard stats' },
+        { status: 403 },
+      );
+    }
 
-    // For therapists: only show their own stats
-    // For org_admin/super_admin: can view any therapist's stats in their org
-    if (user.role === 'therapist') {
-      therapistDbId = user.dbUserId;
-    } else if ((user.role === 'org_admin' || user.role === 'super_admin') && therapistFirebaseUid) {
+    // Determine organization scope
+    // For therapists: show org-wide stats (not just their own patients)
+    // For org_admin/super_admin: show org-wide or all stats
+    const organizationId = user.organizationId;
+
+    // If an admin passes a specific therapistId, resolve it for filtering
+    let therapistDbId: string | null = null;
+    if ((user.role === 'org_admin' || user.role === 'super_admin') && therapistFirebaseUid) {
       const [therapist] = await db
         .select({ id: users.id })
         .from(users)
@@ -45,39 +53,45 @@ export async function GET(request: NextRequest) {
         .limit(1);
 
       therapistDbId = therapist?.id || null;
-    } else if (user.role === 'patient') {
-      // Patients cannot access dashboard stats
-      return NextResponse.json(
-        { error: 'Forbidden: Patients cannot access dashboard stats' },
-        { status: 403 },
-      );
     }
 
-    // Count active patients (patients with therapistId who are active and not deleted)
+    // Count active patients scoped by organization (or specific therapist for admins)
+    const patientConditions = [
+      eq(users.role, 'patient'),
+      eq(users.status, 'active'),
+      isNull(users.deletedAt),
+    ];
+    if (therapistDbId) {
+      patientConditions.push(eq(users.therapistId, therapistDbId));
+    } else if (organizationId) {
+      patientConditions.push(eq(users.organizationId, organizationId));
+    }
+
     const activePatientsResult = await db
       .select({ count: count() })
       .from(users)
-      .where(
-        therapistDbId
-          ? and(
-              eq(users.role, 'patient'),
-              eq(users.therapistId, therapistDbId),
-              eq(users.status, 'active'),
-              isNull(users.deletedAt),
-            )
-          : and(
-              eq(users.role, 'patient'),
-              eq(users.status, 'active'),
-              isNull(users.deletedAt),
-            ),
-      );
+      .where(and(...patientConditions));
 
     const activePatients = activePatientsResult[0]?.count || 0;
 
-    // Count published pages with date filtering
+    // Count published pages with date filtering, scoped by organization
     const publishedPagesConditions = [eq(storyPagesSchema.status, 'published')];
     if (therapistDbId) {
       publishedPagesConditions.push(eq(storyPagesSchema.createdByTherapistId, therapistDbId));
+    } else if (organizationId) {
+      // Get all therapist IDs in this organization
+      const orgTherapists = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(
+          eq(users.role, 'therapist'),
+          eq(users.organizationId, organizationId),
+          isNull(users.deletedAt),
+        ));
+      const orgTherapistIds = orgTherapists.map(t => t.id);
+      if (orgTherapistIds.length > 0) {
+        publishedPagesConditions.push(inArray(storyPagesSchema.createdByTherapistId, orgTherapistIds));
+      }
     }
     if (startDate) {
       publishedPagesConditions.push(gte(storyPagesSchema.publishedAt, startDate));
@@ -93,76 +107,67 @@ export async function GET(request: NextRequest) {
 
     const publishedPages = publishedPagesResult[0]?.count || 0;
 
-    // Count survey responses (for patients of this therapist) with date filtering
-    const surveyDateConditions: ReturnType<typeof eq>[] = [];
+    // Count survey responses scoped by organization with date filtering
+    const surveyConditions: ReturnType<typeof eq>[] = [];
     if (startDate) {
-      surveyDateConditions.push(gte(surveyResponsesSchema.createdAt, startDate));
+      surveyConditions.push(gte(surveyResponsesSchema.createdAt, startDate));
     }
     if (endDate) {
-      surveyDateConditions.push(lte(surveyResponsesSchema.createdAt, endDate));
+      surveyConditions.push(lte(surveyResponsesSchema.createdAt, endDate));
     }
 
-    let surveyResponses = 0;
+    // Get patient IDs for scoping (by therapist or organization)
+    let scopedPatientIds: string[] | null = null;
     if (therapistDbId) {
-      // Get patient IDs for this therapist
       const therapistPatients = await db
         .select({ id: users.id })
         .from(users)
         .where(and(eq(users.role, 'patient'), eq(users.therapistId, therapistDbId)));
+      scopedPatientIds = therapistPatients.map(p => p.id);
+    } else if (organizationId) {
+      const orgPatients = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(
+          eq(users.role, 'patient'),
+          eq(users.organizationId, organizationId),
+          isNull(users.deletedAt),
+        ));
+      scopedPatientIds = orgPatients.map(p => p.id);
+    }
 
-      const patientIds = therapistPatients.map(p => p.id);
-
-      if (patientIds.length > 0) {
-        // Count survey responses from these patients
-        const surveyResponsesResult = await db
-          .select({ count: count() })
-          .from(surveyResponsesSchema)
-          .where(surveyDateConditions.length > 0 ? and(...surveyDateConditions) : undefined);
-
-        surveyResponses = surveyResponsesResult[0]?.count || 0;
+    let surveyResponses = 0;
+    if (scopedPatientIds === null || scopedPatientIds.length > 0) {
+      if (scopedPatientIds && scopedPatientIds.length > 0) {
+        surveyConditions.push(inArray(surveyResponsesSchema.patientId, scopedPatientIds));
       }
-    } else {
       const surveyResponsesResult = await db
         .select({ count: count() })
         .from(surveyResponsesSchema)
-        .where(surveyDateConditions.length > 0 ? and(...surveyDateConditions) : undefined);
+        .where(surveyConditions.length > 0 ? and(...surveyConditions) : undefined);
 
       surveyResponses = surveyResponsesResult[0]?.count || 0;
     }
 
-    // Count reflection responses (written reflections for patients of this therapist) with date filtering
-    const reflectionDateConditions: ReturnType<typeof eq>[] = [];
+    // Count reflection responses scoped by organization with date filtering
+    const reflectionConditions: ReturnType<typeof eq>[] = [];
     if (startDate) {
-      reflectionDateConditions.push(gte(reflectionResponsesSchema.createdAt, startDate));
+      reflectionConditions.push(gte(reflectionResponsesSchema.createdAt, startDate));
     }
     if (endDate) {
-      reflectionDateConditions.push(lte(reflectionResponsesSchema.createdAt, endDate));
+      reflectionConditions.push(lte(reflectionResponsesSchema.createdAt, endDate));
     }
 
+    // Reuse scopedPatientIds from above
     let writtenReflections = 0;
-    if (therapistDbId) {
-      // Get patient IDs for this therapist
-      const therapistPatients = await db
-        .select({ id: users.id })
-        .from(users)
-        .where(and(eq(users.role, 'patient'), eq(users.therapistId, therapistDbId)));
-
-      const patientIds = therapistPatients.map(p => p.id);
-
-      if (patientIds.length > 0) {
-        // Count reflection responses from these patients
-        const reflectionResponsesResult = await db
-          .select({ count: count() })
-          .from(reflectionResponsesSchema)
-          .where(reflectionDateConditions.length > 0 ? and(...reflectionDateConditions) : undefined);
-
-        writtenReflections = reflectionResponsesResult[0]?.count || 0;
+    if (scopedPatientIds === null || scopedPatientIds.length > 0) {
+      if (scopedPatientIds && scopedPatientIds.length > 0) {
+        reflectionConditions.push(inArray(reflectionResponsesSchema.patientId, scopedPatientIds));
       }
-    } else {
       const reflectionResponsesResult = await db
         .select({ count: count() })
         .from(reflectionResponsesSchema)
-        .where(reflectionDateConditions.length > 0 ? and(...reflectionDateConditions) : undefined);
+        .where(reflectionConditions.length > 0 ? and(...reflectionConditions) : undefined);
 
       writtenReflections = reflectionResponsesResult[0]?.count || 0;
     }
