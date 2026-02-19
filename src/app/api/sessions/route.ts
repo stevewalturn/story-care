@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { and, desc, eq, gte, inArray, isNull, lte, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { logPHIAccess } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     const groupIdFilter = searchParams.get('groupId');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
+    const archivedFilter = searchParams.get('archived');
 
     // 3. BUILD WHERE CONDITIONS
     const whereConditions = [];
@@ -30,6 +31,13 @@ export async function GET(request: NextRequest) {
     } else {
       whereConditions.push(eq(sessions.therapistId, user.dbUserId)); // Therapist sees only their sessions
       whereConditions.push(isNull(sessions.deletedAt)); // Filter out soft-deleted sessions
+    }
+
+    // Archive filter: default to non-archived, allow ?archived=true for archived view
+    if (archivedFilter === 'true') {
+      whereConditions.push(isNotNull(sessions.archivedAt));
+    } else {
+      whereConditions.push(isNull(sessions.archivedAt));
     }
 
     // Optional patient filter - include both individual sessions AND group sessions where patient is a member
@@ -208,6 +216,7 @@ export async function GET(request: NextRequest) {
         createdAt: session.createdAt,
         updatedAt: session.updatedAt,
         lastOpenedAt: session.lastOpenedAt,
+        archivedAt: session.archivedAt,
         patient,
         group: group ? {
           id: group.id,

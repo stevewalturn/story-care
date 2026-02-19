@@ -195,17 +195,17 @@ export async function PUT(
       );
     }
 
-    // 3. UPDATE SESSION
+    // 3. UPDATE SESSION - only set fields that were provided
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+    if (title !== undefined) updateData.title = title;
+    if (sessionDate !== undefined) updateData.sessionDate = sessionDate;
+    if (audioUrl !== undefined) updateData.audioUrl = audioUrl;
+    if (audioDurationSeconds !== undefined) updateData.audioDurationSeconds = audioDurationSeconds;
+    if (transcriptionStatus !== undefined) updateData.transcriptionStatus = transcriptionStatus;
+
     const [updatedSession] = await db
       .update(sessions)
-      .set({
-        title,
-        sessionDate,
-        audioUrl,
-        audioDurationSeconds,
-        transcriptionStatus,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(sessions.id, id))
       .returning();
 

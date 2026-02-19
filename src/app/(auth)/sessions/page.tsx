@@ -1,12 +1,14 @@
 'use client';
 
 import type { TherapeuticDomain } from '@/models/Schema';
-import { Check, ChevronDown, MessageCircle, Mic, Plus, Search, SlidersHorizontal, Users } from 'lucide-react';
+import { Archive, Check, ChevronDown, MessageCircle, Mic, Plus, Search, SlidersHorizontal, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GroupDetailView } from '@/components/sessions/GroupDetailView';
 import { PatientDetailView } from '@/components/sessions/PatientDetailView';
+import { SessionActionMenu } from '@/components/sessions/SessionActionMenu';
 import { Button } from '@/components/ui/Button';
+import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog';
 import { StackedAvatars } from '@/components/ui/StackedAvatars';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -36,6 +38,7 @@ type Session = {
   moduleName?: string;
   moduleDomain?: TherapeuticDomain;
   moduleId?: string;
+  archivedAt?: string | null;
 };
 
 type SelectedPatient = {
@@ -57,6 +60,15 @@ export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'all' | 'patients' | 'groups'>('all');
+  const [archiveView, setArchiveView] = useState<'active' | 'archived'>('active');
+
+  // Inline editing state
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+
+  // Delete confirmation state
+  const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Detail view state
   const [selectedPatient, setSelectedPatient] = useState<SelectedPatient | null>(null);
@@ -80,14 +92,7 @@ export default function SessionsPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch sessions from API when user is available
-  useEffect(() => {
-    if (user?.uid) {
-      fetchSessions();
-    }
-  }, [user]);
-
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     if (!user?.uid) {
       return;
     }
@@ -95,7 +100,8 @@ export default function SessionsPage() {
     try {
       setIsLoading(true);
       const idToken = await user.getIdToken();
-      const response = await fetch(`/api/sessions?therapistId=${user.uid}`, {
+      const archivedParam = archiveView === 'archived' ? '&archived=true' : '';
+      const response = await fetch(`/api/sessions?therapistId=${user.uid}${archivedParam}`, {
         headers: {
           Authorization: `Bearer ${idToken}`,
         },
@@ -124,6 +130,7 @@ export default function SessionsPage() {
           moduleId: session.moduleId,
           moduleName: session.module?.name,
           moduleDomain: session.module?.domain,
+          archivedAt: session.archivedAt,
         }));
 
         setSessions(formattedSessions);
@@ -133,7 +140,14 @@ export default function SessionsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, archiveView]);
+
+  // Fetch sessions from API when user is available or archive view changes
+  useEffect(() => {
+    if (user?.uid) {
+      fetchSessions();
+    }
+  }, [user, fetchSessions]);
 
   // Get patients with their session counts for card view
   const patientsWithSessions = useMemo(() => {
@@ -389,6 +403,84 @@ export default function SessionsPage() {
     }
   };
 
+  // Session lifecycle handlers
+  const handleSaveTitle = async (sessionId: string) => {
+    if (!user?.uid || !editingTitle.trim()) return;
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title: editingTitle.trim() }),
+      });
+      if (response.ok) {
+        setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: editingTitle.trim() } : s));
+      }
+    } catch (error) {
+      console.error('Error renaming session:', error);
+    } finally {
+      setEditingSessionId(null);
+      setEditingTitle('');
+    }
+  };
+
+  const handleArchiveSession = async (sessionId: string) => {
+    if (!user?.uid) return;
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch(`/api/sessions/${sessionId}/archive`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      if (response.ok) {
+        setSessions(prev => prev.filter(s => s.id !== sessionId));
+      }
+    } catch (error) {
+      console.error('Error archiving session:', error);
+    }
+  };
+
+  const handleUnarchiveSession = async (sessionId: string) => {
+    if (!user?.uid) return;
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch(`/api/sessions/${sessionId}/archive`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      if (response.ok) {
+        setSessions(prev => prev.filter(s => s.id !== sessionId));
+      }
+    } catch (error) {
+      console.error('Error unarchiving session:', error);
+    }
+  };
+
+  const handleDeleteSession = async () => {
+    if (!user?.uid || !deleteSessionId) return;
+    try {
+      setIsDeleting(true);
+      const idToken = await user.getIdToken();
+      const response = await fetch(`/api/sessions/${deleteSessionId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      if (response.ok) {
+        setSessions(prev => prev.filter(s => s.id !== deleteSessionId));
+      }
+    } catch (error) {
+      console.error('Error deleting session:', error);
+    } finally {
+      setIsDeleting(false);
+      setDeleteSessionId(null);
+    }
+  };
+
+  const deleteSessionTitle = sessions.find(s => s.id === deleteSessionId)?.title || 'this session';
+
   // Render detail view if selected
   if (selectedPatient) {
     return (
@@ -441,8 +533,35 @@ export default function SessionsPage() {
           </div>
         </div>
 
+        {/* Active / Archived Toggle */}
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setArchiveView('active')}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+              archiveView === 'active'
+                ? 'bg-purple-100 text-purple-700'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Active
+          </button>
+          <button
+            type="button"
+            onClick={() => setArchiveView('archived')}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+              archiveView === 'archived'
+                ? 'bg-purple-100 text-purple-700'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            <Archive className="h-3.5 w-3.5" />
+            Archived
+          </button>
+        </div>
+
         {/* Recent Sessions Section */}
-        {recentSessions.length > 0 && (
+        {archiveView === 'active' && recentSessions.length > 0 && (
           <div className="mt-6 mb-4">
             <h2 className="mb-3 text-sm font-medium text-gray-700">Recent</h2>
             <div className="scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 flex gap-3 overflow-x-auto pb-2">
@@ -611,15 +730,21 @@ export default function SessionsPage() {
                 ? (
                     <div className="py-16 text-center">
                       <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
-                        <Users className="h-8 w-8 text-gray-400" />
+                        {archiveView === 'archived'
+                          ? <Archive className="h-8 w-8 text-gray-400" />
+                          : <Users className="h-8 w-8 text-gray-400" />}
                       </div>
                       <h3 className="mb-2 text-lg font-semibold text-gray-900">
-                        {sessions.length === 0 ? 'No sessions yet' : 'No matching sessions'}
+                        {archiveView === 'archived'
+                          ? 'No archived sessions'
+                          : sessions.length === 0 ? 'No sessions yet' : 'No matching sessions'}
                       </h3>
                       <p className="mb-6 text-gray-500">
-                        {sessions.length === 0 ? 'Create a session to get started' : 'Try adjusting your search'}
+                        {archiveView === 'archived'
+                          ? 'Sessions you archive will appear here'
+                          : sessions.length === 0 ? 'Create a session to get started' : 'Try adjusting your search'}
                       </p>
-                      {sessions.length === 0 ? (
+                      {archiveView === 'active' && sessions.length === 0 ? (
                         <Button
                           variant="primary"
                           onClick={() => handleNewSession()}
@@ -627,73 +752,112 @@ export default function SessionsPage() {
                           <Plus className="mr-2 h-5 w-5" />
                           New Session
                         </Button>
-                      ) : (
+                      ) : archiveView === 'active' && searchTerm ? (
                         <Button
                           variant="secondary"
                           onClick={() => setSearchTerm('')}
                         >
                           Clear search
                         </Button>
-                      )}
+                      ) : null}
                     </div>
                   )
                 : (
                     <div className="space-y-2">
                       {allSessionsSorted.map(session => (
-                        <button
+                        <div
                           key={session.id}
-                          type="button"
-                          onClick={() => router.push(`/sessions/${session.id}/transcript`)}
                           className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 text-left transition-all hover:border-purple-300 hover:bg-purple-50"
                         >
-                          {/* Avatar */}
-                          {session.type === 'group'
-                            ? (
-                                <StackedAvatars members={session.groupMembers || []} size="md" maxVisible={3} />
-                              )
-                            : (
-                                session.patientAvatarUrl || session.patientReferenceImageUrl
-                                  ? (
-                                      <img
-                                        src={session.patientAvatarUrl || session.patientReferenceImageUrl}
-                                        alt={session.patientName || ''}
-                                        className="h-10 w-10 rounded-full object-cover"
-                                      />
-                                    )
-                                  : (
-                                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
-                                        <span className="text-sm font-medium text-purple-700">
-                                          {session.patientName?.charAt(0) || '?'}
-                                        </span>
-                                      </div>
-                                    )
-                              )}
+                          {/* Clickable area */}
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/sessions/${session.id}/transcript`)}
+                            className="flex min-w-0 flex-1 items-center gap-3"
+                          >
+                            {/* Avatar */}
+                            {session.type === 'group'
+                              ? (
+                                  <StackedAvatars members={session.groupMembers || []} size="md" maxVisible={3} />
+                                )
+                              : (
+                                  session.patientAvatarUrl || session.patientReferenceImageUrl
+                                    ? (
+                                        <img
+                                          src={session.patientAvatarUrl || session.patientReferenceImageUrl}
+                                          alt={session.patientName || ''}
+                                          className="h-10 w-10 rounded-full object-cover"
+                                        />
+                                      )
+                                    : (
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
+                                          <span className="text-sm font-medium text-purple-700">
+                                            {session.patientName?.charAt(0) || '?'}
+                                          </span>
+                                        </div>
+                                      )
+                                )}
 
-                          {/* Session info */}
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="truncate font-medium text-gray-900">
-                                {session.type === 'group'
-                                  ? getDisplayGroupName({ name: session.groupName, members: session.groupMembers || [] })
-                                  : session.patientName}
-                              </p>
-                              {session.sessionDate && (
-                                <span className="text-sm text-gray-500">
-                                  {formatSessionDate(session.sessionDate)}
+                            {/* Session info */}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="truncate font-medium text-gray-900">
+                                  {session.type === 'group'
+                                    ? getDisplayGroupName({ name: session.groupName, members: session.groupMembers || [] })
+                                    : session.patientName}
+                                </p>
+                                {session.sessionDate && (
+                                  <span className="text-sm text-gray-500">
+                                    {formatSessionDate(session.sessionDate)}
+                                  </span>
+                                )}
+                                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                                  {session.type === 'group' ? 'Group' : 'Individual'}
                                 </span>
-                              )}
-                              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
-                                {session.type === 'group' ? 'Group' : 'Individual'}
-                              </span>
+                              </div>
+                              {editingSessionId === session.id
+                                ? (
+                                    <input
+                                      type="text"
+                                      value={editingTitle}
+                                      onChange={e => setEditingTitle(e.target.value)}
+                                      onBlur={() => handleSaveTitle(session.id)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleSaveTitle(session.id);
+                                        if (e.key === 'Escape') {
+                                          setEditingSessionId(null);
+                                          setEditingTitle('');
+                                        }
+                                      }}
+                                      onClick={e => e.stopPropagation()}
+                                      // eslint-disable-next-line jsx-a11y/no-autofocus -- intentional: user just clicked Rename
+                                      autoFocus
+                                      className="w-full rounded border border-purple-300 px-1.5 py-0.5 text-sm text-gray-700 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
+                                    />
+                                  )
+                                : (
+                                    <p className="truncate text-sm text-gray-500">{session.title}</p>
+                                  )}
                             </div>
-                            <p className="truncate text-sm text-gray-500">{session.title}</p>
-                          </div>
 
-                          {/* Date */}
-                          <p className="text-sm whitespace-nowrap text-gray-500">
-                            {formatRelativeTime(session.date)}
-                          </p>
-                        </button>
+                            {/* Date */}
+                            <p className="text-sm whitespace-nowrap text-gray-500">
+                              {formatRelativeTime(session.date)}
+                            </p>
+                          </button>
+
+                          {/* Action Menu */}
+                          <SessionActionMenu
+                            isArchived={archiveView === 'archived'}
+                            onRename={() => {
+                              setEditingSessionId(session.id);
+                              setEditingTitle(session.title);
+                            }}
+                            onArchive={() => handleArchiveSession(session.id)}
+                            onUnarchive={() => handleUnarchiveSession(session.id)}
+                            onDelete={() => setDeleteSessionId(session.id)}
+                          />
+                        </div>
                       ))}
                     </div>
                   )
@@ -845,6 +1009,16 @@ export default function SessionsPage() {
                       </div>
                     )
               )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationDialog
+        isOpen={!!deleteSessionId}
+        onClose={() => setDeleteSessionId(null)}
+        onConfirm={handleDeleteSession}
+        title="Delete Session"
+        message={`Are you sure you want to delete "${deleteSessionTitle}"? This action cannot be undone.`}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }
