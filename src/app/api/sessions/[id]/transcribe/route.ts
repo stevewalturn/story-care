@@ -8,6 +8,7 @@ import { generatePresignedUrl } from '@/libs/GCS';
 import { requireSessionAccess } from '@/middleware/RBACMiddleware';
 import { sessions, speakers, transcripts, utterances } from '@/models/Schema';
 import { handleAuthError } from '@/utils/AuthHelpers';
+import { getSessionPatients } from '@/utils/SessionPatients';
 import { buildTraceMetadata } from '@/utils/TraceMetadataBuilder';
 
 type RouteContext = {
@@ -75,32 +76,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Failed to generate audio URL' }, { status: 500 });
     }
 
-    // Fetch patient info for tracing
-    let patientId: string | undefined;
-    let patientName: string | undefined;
-    let patientEmail: string | undefined;
-    try {
-      const sessionWithPatient = await db.query.sessions.findFirst({
-        where: eq(sessions.id, id),
-        with: { patient: { columns: { id: true, name: true, email: true } } },
-      });
-      patientId = sessionWithPatient?.patientId || undefined;
-      const sessionPatient = sessionWithPatient?.patient;
-      if (sessionPatient && !Array.isArray(sessionPatient)) {
-        patientName = sessionPatient.name;
-        patientEmail = sessionPatient.email || undefined;
-      }
-    } catch (error) {
-      console.error('Error fetching patient info for trace:', error);
-    }
+    // Fetch patient info for tracing (individual + group sessions)
+    const patients = await getSessionPatients(id);
 
     // Build trace metadata for observability
     const traceMetadata = buildTraceMetadata({
       user,
       sessionId: id,
-      patientId,
-      patientName,
-      patientEmail,
+      patients,
       additionalTags: ['transcribe', 'deepgram'],
     });
 

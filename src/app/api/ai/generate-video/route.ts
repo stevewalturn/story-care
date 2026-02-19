@@ -5,10 +5,11 @@ import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { uploadFile } from '@/libs/GCS';
 import { generateVideo } from '@/libs/VideoGeneration';
-import { mediaLibrary, users } from '@/models/Schema';
+import { mediaLibrary } from '@/models/Schema';
 import { VideoService } from '@/services/VideoService';
 import { VideoTaskService } from '@/services/VideoTaskService';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
+import { getPatientById, getSessionPatients } from '@/utils/SessionPatients';
 import { buildTraceMetadata } from '@/utils/TraceMetadataBuilder';
 
 // POST /api/ai/generate-video - Generate video
@@ -36,36 +37,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. GET PATIENT ID from session if not provided
+    // 2. GET PATIENT ID and GROUP ID from session if not provided
     let finalPatientId = patientId;
-    let patientName: string | undefined;
-    let patientEmail: string | undefined;
     let groupId = null;
 
     if (!finalPatientId && sessionId) {
       const session = await db.query.sessions.findFirst({
         where: (sessions, { eq }) => eq(sessions.id, sessionId),
-        with: { patient: { columns: { id: true, name: true, email: true } } },
       });
       finalPatientId = session?.patientId;
-      const sessionPatient = session?.patient;
-      if (sessionPatient && !Array.isArray(sessionPatient)) {
-        patientName = sessionPatient.name;
-        patientEmail = sessionPatient.email || undefined;
-      }
       groupId = session?.groupId;
-    } else if (finalPatientId) {
-      // Fetch patient info if we have patient ID
-      try {
-        const patient = await db.query.users.findFirst({
-          where: eq(users.id, finalPatientId),
-          columns: { name: true, email: true },
-        });
-        patientName = patient?.name || undefined;
-        patientEmail = patient?.email || undefined;
-      } catch (error) {
-        console.error('Error fetching patient info:', error);
-      }
     }
 
     // For group sessions, patientId can be null - media belongs to the group/session
@@ -74,6 +55,13 @@ export async function POST(request: NextRequest) {
         { error: 'Either patient ID, group ID, or session ID is required' },
         { status: 400 },
       );
+    }
+
+    // Fetch patient info for tracing (individual + group sessions)
+    let patients = sessionId ? await getSessionPatients(sessionId) : [];
+    if (patients.length === 0 && finalPatientId) {
+      const patient = await getPatientById(finalPatientId);
+      if (patient) patients = [patient];
     }
 
     // 3. CREATE TASK ID
@@ -109,9 +97,7 @@ export async function POST(request: NextRequest) {
     const traceMetadata = buildTraceMetadata({
       user,
       sessionId,
-      patientId: finalPatientId,
-      patientName,
-      patientEmail,
+      patients,
       additionalTags: ['generate-video', model],
     });
 
@@ -124,7 +110,6 @@ export async function POST(request: NextRequest) {
       duration,
       fps,
       patientId: finalPatientId,
-      patientName,
       sessionId,
       title,
       therapistId: user.dbUserId,
@@ -165,7 +150,6 @@ type VideoGenParams = {
   duration: number;
   fps: number;
   patientId: string;
-  patientName?: string;
   sessionId?: string;
   title: string;
   therapistId: string;

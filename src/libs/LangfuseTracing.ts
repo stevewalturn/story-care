@@ -34,9 +34,7 @@ export type TraceMetadata = {
   userName?: string; // Display name
   userRole?: 'super_admin' | 'org_admin' | 'therapist' | 'patient';
   organizationId?: string;
-  patientId?: string; // Patient's database UUID
-  patientName?: string; // Patient's name
-  patientEmail?: string; // Patient's email for filtering
+  patients?: Array<{ id: string; name?: string; email?: string }>; // All patients (individual or group)
   sessionId?: string; // Therapy session ID
   tags?: string[];
   metadata?: Record<string, unknown>;
@@ -174,9 +172,7 @@ export function createTrace(
       userName: options?.userName,
       userRole: options?.userRole,
       organizationId: options?.organizationId,
-      patientId: options?.patientId,
-      patientName: options?.patientName,
-      patientEmail: options?.patientEmail,
+      patients: options?.patients,
     },
   });
 }

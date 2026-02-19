@@ -6,8 +6,9 @@ import { db } from '@/libs/DB';
 import { generatePresignedUrl, uploadFile } from '@/libs/GCS';
 import { generateImage } from '@/libs/ImageGeneration';
 import { parseAtlasError } from '@/libs/providers/AtlasCloud';
-import { mediaLibrary, sessions, users } from '@/models/Schema';
+import { mediaLibrary, sessions } from '@/models/Schema';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
+import { getPatientById, getSessionPatients } from '@/utils/SessionPatients';
 import { buildTraceMetadata } from '@/utils/TraceMetadataBuilder';
 
 /**
@@ -140,46 +141,18 @@ export async function POST(request: NextRequest) {
 
     console.log('[API /api/ai/generate-image] Calling generateImage with model:', model);
 
-    // Fetch patient info for tracing (if sessionId provided)
-    let tracePatientId: string | undefined;
-    let tracePatientName: string | undefined;
-    let tracePatientEmail: string | undefined;
-    if (sessionId) {
-      try {
-        const sessionWithPatient = await db.query.sessions.findFirst({
-          where: eq(sessions.id, sessionId),
-          with: { patient: { columns: { id: true, name: true, email: true } } },
-        });
-        tracePatientId = sessionWithPatient?.patientId || undefined;
-        const sessionPatient = sessionWithPatient?.patient;
-        if (sessionPatient && !Array.isArray(sessionPatient)) {
-          tracePatientName = sessionPatient.name;
-          tracePatientEmail = sessionPatient.email || undefined;
-        }
-      } catch (error) {
-        console.error('Error fetching patient info for trace:', error);
-      }
-    } else if (patientId) {
-      tracePatientId = patientId;
-      try {
-        const patientUser = await db.query.users.findFirst({
-          where: eq(users.id, patientId),
-          columns: { name: true, email: true },
-        });
-        tracePatientName = patientUser?.name || undefined;
-        tracePatientEmail = patientUser?.email || undefined;
-      } catch (error) {
-        console.error('Error fetching patient info for trace:', error);
-      }
+    // Fetch patient info for tracing (individual + group sessions)
+    let patients = sessionId ? await getSessionPatients(sessionId) : [];
+    if (patients.length === 0 && patientId) {
+      const patient = await getPatientById(patientId);
+      if (patient) patients = [patient];
     }
 
     // Build trace metadata for observability
     const traceMetadata = buildTraceMetadata({
       user,
       sessionId,
-      patientId: tracePatientId,
-      patientName: tracePatientName,
-      patientEmail: tracePatientEmail,
+      patients,
       additionalTags: ['generate-image', model],
     });
 

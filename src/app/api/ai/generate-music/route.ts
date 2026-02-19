@@ -4,8 +4,9 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/libs/DB';
 import { generateSunoMusic } from '@/libs/SunoAI';
-import { musicGenerationTasksSchema, sessionsSchema, users } from '@/models/Schema';
+import { musicGenerationTasksSchema, sessionsSchema } from '@/models/Schema';
 import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
+import { getPatientById, getSessionPatients } from '@/utils/SessionPatients';
 import { buildTraceMetadata } from '@/utils/TraceMetadataBuilder';
 
 const requestSchema = z.object({
@@ -104,29 +105,18 @@ export async function POST(request: NextRequest) {
 
     // Call Suno API to start music generation
     try {
-      // Fetch patient info for tracing
-      let patientName: string | undefined;
-      let patientEmail: string | undefined;
-      if (patientId) {
-        try {
-          const patient = await db.query.users.findFirst({
-            where: eq(users.id, patientId),
-            columns: { name: true, email: true },
-          });
-          patientName = patient?.name || undefined;
-          patientEmail = patient?.email || undefined;
-        } catch (error) {
-          console.error('Error fetching patient info:', error);
-        }
+      // Fetch patient info for tracing (individual + group sessions)
+      let patients = validated.sessionId ? await getSessionPatients(validated.sessionId) : [];
+      if (patients.length === 0 && patientId) {
+        const patient = await getPatientById(patientId);
+        if (patient) patients = [patient];
       }
 
       // Build trace metadata for observability
       const traceMetadata = buildTraceMetadata({
         user,
         sessionId: validated.sessionId,
-        patientId,
-        patientName,
-        patientEmail,
+        patients,
         additionalTags: ['generate-music', validated.model],
       });
 

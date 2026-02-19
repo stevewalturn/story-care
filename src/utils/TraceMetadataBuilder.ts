@@ -5,13 +5,12 @@
 
 import type { TraceMetadata } from '@/libs/LangfuseTracing';
 import type { AuthenticatedUser } from '@/types/Organization';
+import type { SessionPatient } from '@/utils/SessionPatients';
 
 export type TraceContext = {
   user: AuthenticatedUser;
   sessionId?: string;
-  patientId?: string;
-  patientName?: string;
-  patientEmail?: string;
+  patients?: SessionPatient[];
   additionalTags?: string[];
   additionalMetadata?: Record<string, unknown>;
 };
@@ -22,11 +21,11 @@ export type TraceContext = {
  *
  * @example
  * const user = await requireTherapist(request);
+ * const patients = await getSessionPatients(sessionId);
  * const traceMetadata = buildTraceMetadata({
  *   user,
  *   sessionId,
- *   patientId: session?.patientId,
- *   patientName: session?.patient?.name,
+ *   patients,
  *   additionalTags: ['ai-chat', model],
  * });
  */
@@ -34,12 +33,15 @@ export function buildTraceMetadata(context: TraceContext): TraceMetadata {
   const {
     user,
     sessionId,
-    patientId,
-    patientName,
-    patientEmail,
+    patients = [],
     additionalTags = [],
     additionalMetadata = {},
   } = context;
+
+  // Generate a patient:email tag for each patient
+  const patientTags = patients
+    .filter(p => p.email)
+    .map(p => `patient:${p.email}`);
 
   return {
     userId: user.dbUserId,
@@ -48,14 +50,16 @@ export function buildTraceMetadata(context: TraceContext): TraceMetadata {
     userName: user.name,
     userRole: user.role,
     organizationId: user.organizationId || undefined,
-    patientId,
-    patientName,
-    patientEmail,
+    patients: patients.map(p => ({
+      id: p.id,
+      name: p.name,
+      email: p.email || undefined,
+    })),
     sessionId,
     tags: [
       user.role,
       ...(user.email ? [`email:${user.email}`] : []),
-      ...(patientEmail ? [`patient-email:${patientEmail}`] : []),
+      ...patientTags,
       ...(user.organizationId ? [`org:${user.organizationId}`] : []),
       ...additionalTags,
     ],

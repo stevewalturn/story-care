@@ -15,6 +15,7 @@ import {
 import { getOrCreateSessionSummary } from '@/services/SessionSummaryService';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 import { aiRateLimit, checkRateLimit, getClientIP } from '@/utils/RateLimiter';
+import { getSessionPatients } from '@/utils/SessionPatients';
 import { buildTraceMetadata } from '@/utils/TraceMetadataBuilder';
 
 // POST /api/ai/chat - Chat with AI assistant
@@ -76,35 +77,14 @@ export async function POST(request: NextRequest) {
       await requireSessionAccess(request, sessionId);
     }
 
-    // 4.5. FETCH PATIENT INFO for tracing (if sessionId provided)
-    let patientId: string | undefined;
-    let patientName: string | undefined;
-    let patientEmail: string | undefined;
-    if (sessionId) {
-      try {
-        const sessionWithPatient = await db.query.sessions.findFirst({
-          where: eq(sessions.id, sessionId),
-          with: { patient: { columns: { id: true, name: true, email: true } } },
-        });
-        patientId = sessionWithPatient?.patientId || undefined;
-        const patient = sessionWithPatient?.patient;
-        if (patient && !Array.isArray(patient)) {
-          patientName = patient.name;
-          patientEmail = patient.email || undefined;
-        }
-      } catch (error) {
-        console.error('Error fetching patient info:', error);
-        // Continue without patient info
-      }
-    }
+    // 4.5. FETCH PATIENT INFO for tracing (individual + group sessions)
+    const patients = sessionId ? await getSessionPatients(sessionId) : [];
 
     // Build trace metadata for observability (early for service calls)
     const traceMetadata = buildTraceMetadata({
       user,
       sessionId,
-      patientId,
-      patientName,
-      patientEmail,
+      patients,
       additionalTags: ['ai-chat', model],
     });
 

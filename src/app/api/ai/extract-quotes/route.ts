@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { generateText } from '@/libs/TextGeneration';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 import { aiRateLimit, checkRateLimit, getClientIP } from '@/utils/RateLimiter';
+import { getSessionPatients } from '@/utils/SessionPatients';
 import { buildTraceMetadata } from '@/utils/TraceMetadataBuilder';
 
 export type ExtractedQuote = {
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     // Validate input
     const body = await request.json();
-    const { text, model = 'gemini-2.5-flash' } = body;
+    const { text, model = 'gemini-2.5-flash', sessionId } = body;
 
     if (!text || typeof text !== 'string') {
       return NextResponse.json(
@@ -44,6 +45,9 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
+
+    // Fetch patient info for tracing (if sessionId provided)
+    const patients = sessionId ? await getSessionPatients(sessionId) : [];
 
     // Build extraction prompt
     const systemPrompt = `You are a precise text extraction assistant. Your task is to extract all quotes from the given text.
@@ -82,6 +86,8 @@ Return ONLY a valid JSON array, no other text:
     // Build trace metadata for observability
     const traceMetadata = buildTraceMetadata({
       user,
+      sessionId,
+      patients,
       additionalTags: ['extract-quotes', model],
     });
 
