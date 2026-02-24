@@ -29,6 +29,24 @@ type TranscriptViewerClientProps = {
   sessionId: string;
 };
 
+// Helper: resolve speaker display name from API response context
+function resolveSpeakerDisplayName(speaker: any, apiData: any): string {
+  // 1. Explicit speaker name (from labeling)
+  if (speaker.speakerName?.trim()) return speaker.speakerName.trim();
+
+  // 2. Resolve from linked userId via session context
+  if (speaker.userId) {
+    if (speaker.userId === apiData.sessionContext?.therapistId) {
+      return apiData.sessionContext.therapistName || speaker.speakerLabel || 'Unknown';
+    }
+    const matchedPatient = apiData.therapistPatients?.find((p: any) => p.id === speaker.userId);
+    if (matchedPatient?.name) return matchedPatient.name;
+  }
+
+  // 3. Fallback to raw label
+  return speaker.speakerLabel || 'Unknown';
+}
+
 export function TranscriptViewerClient({
   sessionId,
 }: TranscriptViewerClientProps) {
@@ -154,12 +172,15 @@ export function TranscriptViewerClient({
       const speakersResponse = await authenticatedFetch(`/api/sessions/${sessionId}/speakers`, user);
       if (speakersResponse.ok) {
         const speakersData = await speakersResponse.json();
-        setFetchedSpeakers(speakersData.speakers.map((s: any) => ({
-          id: s.id,
-          name: s.speakerName || s.speakerLabel || 'Unknown',
-          type: s.speakerType || 'patient',
-          initial: (s.speakerName || s.speakerLabel || 'U').charAt(0).toUpperCase(),
-        })));
+        setFetchedSpeakers(speakersData.speakers.map((s: any) => {
+          const name = resolveSpeakerDisplayName(s, speakersData);
+          return {
+            id: s.id,
+            name,
+            type: s.speakerType || 'patient',
+            initial: name.charAt(0).toUpperCase(),
+          };
+        }));
       }
 
       // Re-fetch utterances to get updated speaker names
@@ -283,12 +304,15 @@ export function TranscriptViewerClient({
         const speakersResponse = await authenticatedFetch(`/api/sessions/${sessionId}/speakers`, user);
         if (speakersResponse.ok) {
           const speakersData = await speakersResponse.json();
-          setFetchedSpeakers(speakersData.speakers.map((s: any) => ({
-            id: s.id,
-            name: s.speakerName || s.speakerLabel || 'Unknown',
-            type: s.speakerType || 'patient',
-            initial: (s.speakerName || s.speakerLabel || 'U').charAt(0).toUpperCase(),
-          })));
+          setFetchedSpeakers(speakersData.speakers.map((s: any) => {
+            const name = resolveSpeakerDisplayName(s, speakersData);
+            return {
+              id: s.id,
+              name,
+              type: s.speakerType || 'patient',
+              initial: name.charAt(0).toUpperCase(),
+            };
+          }));
         }
       } catch (err) {
         console.error('Error fetching transcript:', err);
