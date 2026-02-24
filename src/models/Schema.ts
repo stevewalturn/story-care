@@ -2004,6 +2004,10 @@ export const speakersRelations = relations(speakers, ({ one, many }) => ({
     fields: [speakers.transcriptId],
     references: [transcripts.id],
   }),
+  user: one(users, {
+    fields: [speakers.userId],
+    references: [users.id],
+  }),
   utterances: many(utterances),
 }));
 

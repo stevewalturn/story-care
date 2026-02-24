@@ -4,9 +4,9 @@
  * Used to attach patient tags to Langfuse traces.
  */
 
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { db } from '@/libs/DB';
-import { sessions, users } from '@/models/Schema';
+import { sessions, speakers, transcripts, users } from '@/models/Schema';
 
 export type SessionPatient = {
   id: string;
@@ -15,50 +15,117 @@ export type SessionPatient = {
 };
 
 /**
- * Fetch all patients associated with a session.
- * - Individual session: returns the single patient
- * - Group session: returns all group members' patients
- * Returns empty array on error (non-blocking for tracing).
+ * Fetch patients via session-level FKs (patientId or groupId).
  */
-export async function getSessionPatients(sessionId: string): Promise<SessionPatient[]> {
-  try {
-    const session = await db.query.sessions.findFirst({
-      where: eq(sessions.id, sessionId),
-      with: {
-        patient: { columns: { id: true, name: true, email: true } },
-        group: {
-          with: {
-            members: {
-              with: {
-                patient: { columns: { id: true, name: true, email: true } },
-              },
+async function getSessionPatientsFromRelations(sessionId: string): Promise<SessionPatient[]> {
+  const session = await db.query.sessions.findFirst({
+    where: eq(sessions.id, sessionId),
+    with: {
+      patient: { columns: { id: true, name: true, email: true } },
+      group: {
+        with: {
+          members: {
+            with: {
+              patient: { columns: { id: true, name: true, email: true } },
             },
           },
         },
       },
-    });
+    },
+  });
 
-    if (!session) return [];
+  if (!session) return [];
 
-    // Group session: return all member patients
-    if (session.groupId && session.group && !Array.isArray(session.group)) {
-      const group = session.group as { members?: Array<{ patient: SessionPatient | null }> };
-      const members = group.members || [];
-      return members
-        .map(m => m.patient)
-        .filter((p): p is SessionPatient => p != null);
+  // Group session: return all member patients
+  if (session.groupId && session.group && !Array.isArray(session.group)) {
+    const group = session.group as { members?: Array<{ patient: SessionPatient | null }> };
+    const members = group.members || [];
+    return members
+      .map(m => m.patient)
+      .filter((p): p is SessionPatient => p != null);
+  }
+
+  // Individual session: return the single patient
+  if (session.patient && !Array.isArray(session.patient)) {
+    return [{
+      id: session.patient.id,
+      name: session.patient.name,
+      email: session.patient.email,
+    }];
+  }
+
+  return [];
+}
+
+/**
+ * Fetch patients via speakers table fallback.
+ * Looks for speakers with speakerType 'patient' or 'group_member' that have a userId set.
+ */
+async function getSessionPatientsFromSpeakers(sessionId: string): Promise<SessionPatient[]> {
+  // Get transcript IDs for this session
+  const sessionTranscripts = await db
+    .select({ id: transcripts.id })
+    .from(transcripts)
+    .where(eq(transcripts.sessionId, sessionId));
+
+  if (sessionTranscripts.length === 0) return [];
+
+  const transcriptIds = sessionTranscripts.map(t => t.id);
+
+  // Find speakers that are patients/group_members with a linked userId
+  const patientSpeakers = await db
+    .select({ userId: speakers.userId })
+    .from(speakers)
+    .where(
+      inArray(speakers.transcriptId, transcriptIds),
+    )
+    .then(rows =>
+      rows.filter(
+        r => r.userId != null,
+      ),
+    );
+
+  if (patientSpeakers.length === 0) return [];
+
+  // Deduplicate user IDs
+  const uniqueUserIds = [...new Set(patientSpeakers.map(s => s.userId!))];
+
+  // Fetch user details
+  const patientUsers = await db
+    .select({ id: users.id, name: users.name, email: users.email })
+    .from(users)
+    .where(inArray(users.id, uniqueUserIds));
+
+  return patientUsers.map(u => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+  }));
+}
+
+/**
+ * Fetch all patients associated with a session.
+ * Resolution priority:
+ * 1. Session patientId — individual session direct FK
+ * 2. Session groupId -> group members — group session FK
+ * 3. Speakers fallback — speakers with speakerType patient/group_member and userId set
+ * Returns empty array on error (non-blocking for tracing).
+ */
+export async function getSessionPatients(sessionId: string): Promise<SessionPatient[]> {
+  try {
+    // Try session-level FKs first (patientId / groupId)
+    const patients = await getSessionPatientsFromRelations(sessionId);
+    if (patients.length > 0) return patients;
+
+    // Fallback: resolve from speakers table
+    console.log(`[SessionPatients] No patients from session FKs for session ${sessionId}, trying speakers fallback`);
+    const speakerPatients = await getSessionPatientsFromSpeakers(sessionId);
+
+    if (speakerPatients.length === 0) {
+      console.log(`[SessionPatients] No patients found for session ${sessionId}`);
     }
 
-    // Individual session: return the single patient
-    if (session.patient && !Array.isArray(session.patient)) {
-      return [{
-        id: session.patient.id,
-        name: session.patient.name,
-        email: session.patient.email,
-      }];
-    }
-
-    return [];
+    return speakerPatients;
   } catch (error) {
     console.error('Error fetching session patients:', error);
     return [];
