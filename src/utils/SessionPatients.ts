@@ -4,7 +4,7 @@
  * Used to attach patient tags to Langfuse traces.
  */
 
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { sessions, speakers, transcripts, users } from '@/models/Schema';
 
@@ -34,7 +34,12 @@ async function getSessionPatientsFromRelations(sessionId: string): Promise<Sessi
     },
   });
 
-  if (!session) return [];
+  if (!session) {
+    console.log(`[SessionPatients] Session ${sessionId} not found`);
+    return [];
+  }
+
+  console.log(`[SessionPatients] Session ${sessionId}: patientId=${session.patientId ?? 'null'}, groupId=${session.groupId ?? 'null'}`);
 
   // Group session: return all member patients
   if (session.groupId && session.group && !Array.isArray(session.group)) {
@@ -47,6 +52,7 @@ async function getSessionPatientsFromRelations(sessionId: string): Promise<Sessi
 
   // Individual session: return the single patient
   if (session.patient && !Array.isArray(session.patient)) {
+    console.log(`[SessionPatients] Found patient from relation: id=${session.patient.id}, name=${session.patient.name}, email=${session.patient.email ?? 'null'}`);
     return [{
       id: session.patient.id,
       name: session.patient.name,
@@ -54,6 +60,7 @@ async function getSessionPatientsFromRelations(sessionId: string): Promise<Sessi
     }];
   }
 
+  console.log(`[SessionPatients] Session ${sessionId} has patientId=${session.patientId ?? 'null'} but patient relation is empty`);
   return [];
 }
 
@@ -77,7 +84,10 @@ async function getSessionPatientsFromSpeakers(sessionId: string): Promise<Sessio
     .select({ userId: speakers.userId })
     .from(speakers)
     .where(
-      inArray(speakers.transcriptId, transcriptIds),
+      and(
+        inArray(speakers.transcriptId, transcriptIds),
+        inArray(speakers.speakerType, ['patient', 'group_member']),
+      ),
     )
     .then(rows =>
       rows.filter(

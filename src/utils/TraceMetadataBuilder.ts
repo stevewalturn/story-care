@@ -38,10 +38,13 @@ export function buildTraceMetadata(context: TraceContext): TraceMetadata {
     additionalMetadata = {},
   } = context;
 
-  // Generate a patient:email tag for each patient
-  const patientTags = patients
-    .filter(p => p.email)
-    .map(p => `patient:${p.email}`);
+  // Generate patient tags: patient:email when available, patient-name:Name as fallback
+  console.log(`[TraceMetadata] Building metadata with ${patients.length} patient(s):`, patients.map(p => ({ id: p.id, name: p.name, email: p.email ?? 'null' })));
+  const patientTags = [
+    ...patients.filter(p => p.email).map(p => `patient:${p.email}`),
+    ...patients.map(p => `patient-name:${p.name}`),
+  ];
+  console.log(`[TraceMetadata] Generated patient tags:`, patientTags);
 
   return {
     userId: user.dbUserId,

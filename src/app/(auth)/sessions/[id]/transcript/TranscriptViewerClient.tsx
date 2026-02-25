@@ -837,7 +837,7 @@ export function TranscriptViewerClient({
                 setAssignedModule(module);
                 if (module.aiPromptText) {
                   setAiSystemPrompt(module.aiPromptText);
-                  setAiUserText('Analyze this therapy session');
+                  setAiUserText(`Analyze this therapy session + ${module.name}`);
                 }
               }}
               onTextSelection={handleAITextSelection}
@@ -1001,7 +1001,7 @@ export function TranscriptViewerClient({
             // Auto-execute the module's Base Analysis Prompt
             if (module.aiPromptText) {
               setAiSystemPrompt(module.aiPromptText);
-              setAiUserText('Analyze this therapy session');
+              setAiUserText(`Analyze this therapy session + ${module.name}`);
             }
           }}
         />

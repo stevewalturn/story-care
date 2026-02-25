@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Copy, Download, Edit2, Lock, Plus, Trash2 } from 'lucide-react';
+import { Check, Copy, Download, Edit2, Lock, LockOpen, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SaveNoteModal } from '@/components/sessions/SaveNoteModal';
 import { HTMLContent } from '@/components/ui/HTMLContent';
@@ -22,6 +22,7 @@ type Note = {
   createdAt: string;
   sessionId?: string;
   sessionTitle?: string;
+  therapistId: string;
 };
 
 type PatientOption = {
@@ -31,7 +32,7 @@ type PatientOption = {
 };
 
 export function NotesTab({ patientId }: NotesTabProps) {
-  const { user } = useAuth();
+  const { user, dbUser } = useAuth();
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showNewNoteModal, setShowNewNoteModal] = useState(false);
@@ -233,6 +234,36 @@ export function NotesTab({ patientId }: NotesTabProps) {
     }
   };
 
+  // Handler for unlocking note (only note creator can unlock)
+  const handleUnlockNote = async (noteId: string) => {
+    if (!confirm('Are you sure you want to unlock this note? It will become editable again.')) {
+      return;
+    }
+
+    try {
+      const response = await authenticatedFetch(`/api/notes/${noteId}/lock`, user, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'unlock' }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to unlock note');
+      }
+
+      // Refresh notes list
+      const params = new URLSearchParams({ patientId });
+      const notesResponse = await authenticatedFetch(`/api/notes?${params.toString()}`, user);
+      if (notesResponse.ok) {
+        const data = await notesResponse.json();
+        setNotes(data.notes || []);
+      }
+    } catch (error) {
+      console.error('Error unlocking note:', error);
+      alert('Failed to unlock note');
+    }
+  };
+
   return (
     <>
       {/* Notes Header with New Note Button */}
@@ -344,6 +375,16 @@ export function NotesTab({ patientId }: NotesTabProps) {
                           <Lock className="h-4 w-4" />
                         </button>
                       </>
+                    )}
+                    {/* Unlock button — only visible to note creator */}
+                    {note.status === 'locked' && note.therapistId === dbUser?.id && (
+                      <button
+                        onClick={() => handleUnlockNote(note.id)}
+                        className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-green-600"
+                        title="Unlock note"
+                      >
+                        <LockOpen className="h-4 w-4" />
+                      </button>
                     )}
                   </div>
                 </div>
@@ -468,6 +509,32 @@ export function NotesTab({ patientId }: NotesTabProps) {
                   >
                     <Edit2 className="h-3 w-3" />
                     Edit
+                  </button>
+                )}
+                {/* Lock button - hidden when already locked */}
+                {viewingNote.status !== 'locked' && (
+                  <button
+                    onClick={async () => {
+                      await handleLockNote(viewingNote.id);
+                      setViewingNote(null);
+                    }}
+                    className="flex items-center gap-1 rounded px-2 py-1 text-xs text-amber-600 transition-colors hover:bg-amber-50"
+                  >
+                    <Lock className="h-3 w-3" />
+                    Lock
+                  </button>
+                )}
+                {/* Unlock button - only visible to note creator */}
+                {viewingNote.status === 'locked' && viewingNote.therapistId === dbUser?.id && (
+                  <button
+                    onClick={async () => {
+                      await handleUnlockNote(viewingNote.id);
+                      setViewingNote(null);
+                    }}
+                    className="flex items-center gap-1 rounded px-2 py-1 text-xs text-green-600 transition-colors hover:bg-green-50"
+                  >
+                    <LockOpen className="h-3 w-3" />
+                    Unlock
                   </button>
                 )}
               </div>

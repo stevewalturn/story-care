@@ -6,7 +6,6 @@
 'use client';
 
 import { Calendar, Clock, FileText, Users } from 'lucide-react';
-import Link from 'next/link';
 import { useState } from 'react';
 
 type Session = {
@@ -150,16 +149,13 @@ export function TherapistSessionsTab({ sessions }: TherapistSessionsTabProps) {
               >
                 Status
               </th>
-              <th scope="col" className="relative px-6 py-3">
-                <span className="sr-only">Actions</span>
-              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {filteredSessions.length === 0
               ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center">
+                    <td colSpan={6} className="px-6 py-12 text-center">
                       <p className="text-sm text-gray-500">No sessions found matching your filters</p>
                     </td>
                   </tr>
@@ -229,14 +225,6 @@ export function TherapistSessionsTab({ sessions }: TherapistSessionsTabProps) {
                         >
                           {session.transcriptionStatus}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
-                        <Link
-                          href={`/org-admin/sessions/${session.id}`}
-                          className="text-purple-600 hover:text-purple-900"
-                        >
-                          View
-                        </Link>
                       </td>
                     </tr>
                   ))

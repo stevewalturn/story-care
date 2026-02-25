@@ -87,10 +87,12 @@ export async function PATCH(
       return NextResponse.json({ note: updatedNote });
     }
 
-    // Unlock: only org_admin / super_admin
-    if (user.role !== 'org_admin' && user.role !== 'super_admin') {
+    // Unlock: note creator or org_admin / super_admin
+    const isNoteCreator = existingNote.therapistId === user.dbUserId;
+    const isAdmin = user.role === 'org_admin' || user.role === 'super_admin';
+    if (!isNoteCreator && !isAdmin) {
       return NextResponse.json(
-        { error: 'Forbidden: Only admins can unlock notes' },
+        { error: 'Forbidden: Only the note creator or admins can unlock notes' },
         { status: 403 },
       );
     }

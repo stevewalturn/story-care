@@ -7,15 +7,17 @@
 
 import type { NotesTabProps } from '../types/transcript.types';
 import type { PatientOption } from '@/components/sessions/SaveNoteModal';
-import { Check, Copy, Download, Edit2, Lock, Trash2 } from 'lucide-react';
+import { Check, Copy, Download, Edit2, Lock, LockOpen, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SaveNoteModal } from '@/components/sessions/SaveNoteModal';
 import { HTMLContent } from '@/components/ui/HTMLContent';
 import { Modal } from '@/components/ui/Modal';
+import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 import { downloadAsTextFile, htmlToMarkdown } from '@/utils/FileDownloadHelpers';
 
 export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKey, selectedPatient, isReadOnly = false }: NotesTabProps) {
+  const { dbUser } = useAuth();
   const [notes, setNotes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showNewNoteModal, setShowNewNoteModal] = useState(false);
@@ -242,6 +244,39 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
     }
   };
 
+  // Handler for unlocking note (only note creator can unlock)
+  const handleUnlockNote = async (noteId: string) => {
+    if (!confirm('Are you sure you want to unlock this note? It will become editable again.')) {
+      return;
+    }
+
+    try {
+      const response = await authenticatedFetch(`/api/notes/${noteId}/lock`, user, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'unlock' }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to unlock note');
+      }
+
+      // Refresh notes list
+      const params = new URLSearchParams({ sessionId });
+      if (selectedPatient && selectedPatient !== 'all') {
+        params.append('patientId', selectedPatient);
+      }
+      const notesResponse = await authenticatedFetch(`/api/notes?${params.toString()}`, user);
+      if (notesResponse.ok) {
+        const data = await notesResponse.json();
+        setNotes(data.notes || []);
+      }
+    } catch (error) {
+      console.error('Error unlocking note:', error);
+      alert('Failed to unlock note');
+    }
+  };
+
   return (
     <>
       {/* Notes Header with New Note Button */}
@@ -352,6 +387,16 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
                             <Lock className="h-4 w-4" />
                           </button>
                         </>
+                      )}
+                      {/* Unlock button — only visible to note creator */}
+                      {note.status === 'locked' && !isReadOnly && note.therapistId === dbUser?.id && (
+                        <button
+                          onClick={() => handleUnlockNote(note.id)}
+                          className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-green-600"
+                          title="Unlock note"
+                        >
+                          <LockOpen className="h-4 w-4" />
+                        </button>
                       )}
                     </div>
                   </div>
@@ -472,6 +517,32 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
                   >
                     <Edit2 className="h-3 w-3" />
                     Edit
+                  </button>
+                )}
+                {/* Lock button - hidden when already locked or read-only */}
+                {viewingNote.status !== 'locked' && !isReadOnly && (
+                  <button
+                    onClick={async () => {
+                      await handleLockNote(viewingNote.id);
+                      setViewingNote(null);
+                    }}
+                    className="flex items-center gap-1 rounded px-2 py-1 text-xs text-amber-600 transition-colors hover:bg-amber-50"
+                  >
+                    <Lock className="h-3 w-3" />
+                    Lock
+                  </button>
+                )}
+                {/* Unlock button - only visible to note creator */}
+                {viewingNote.status === 'locked' && !isReadOnly && viewingNote.therapistId === dbUser?.id && (
+                  <button
+                    onClick={async () => {
+                      await handleUnlockNote(viewingNote.id);
+                      setViewingNote(null);
+                    }}
+                    className="flex items-center gap-1 rounded px-2 py-1 text-xs text-green-600 transition-colors hover:bg-green-50"
+                  >
+                    <LockOpen className="h-3 w-3" />
+                    Unlock
                   </button>
                 )}
               </div>

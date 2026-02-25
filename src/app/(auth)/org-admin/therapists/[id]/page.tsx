@@ -11,10 +11,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { AssignPatientsModal } from '@/components/therapists/AssignPatientsModal';
 import { EditTherapistModal } from '@/components/therapists/EditTherapistModal';
 import { TherapistActivityTab } from '@/components/therapists/TherapistActivityTab';
+import { TherapistSessionsTab } from '@/components/therapists/TherapistSessionsTab';
 import { TherapistDetailHeader } from '@/components/therapists/TherapistDetailHeader';
 import { TherapistOverviewTab } from '@/components/therapists/TherapistOverviewTab';
 import { TherapistPatientsTab } from '@/components/therapists/TherapistPatientsTab';
-import { TherapistSessionsTab } from '@/components/therapists/TherapistSessionsTab';
 import { useAuth } from '@/contexts/AuthContext';
 
 type TabType = 'overview' | 'patients' | 'sessions' | 'activity';
