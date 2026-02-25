@@ -6,7 +6,7 @@
 
 import { and, eq, inArray } from 'drizzle-orm';
 import { db } from '@/libs/DB';
-import { sessions, speakers, transcripts, users } from '@/models/Schema';
+import { groupMembers, sessions, speakers, transcripts, users } from '@/models/Schema';
 
 export type SessionPatient = {
   id: string;
@@ -16,23 +16,13 @@ export type SessionPatient = {
 
 /**
  * Fetch patients via session-level FKs (patientId or groupId).
+ * Uses explicit separate queries instead of nested .with() to avoid Drizzle relation errors.
  */
 async function getSessionPatientsFromRelations(sessionId: string): Promise<SessionPatient[]> {
-  const session = await db.query.sessions.findFirst({
-    where: eq(sessions.id, sessionId),
-    with: {
-      patient: { columns: { id: true, name: true, email: true } },
-      group: {
-        with: {
-          members: {
-            with: {
-              patient: { columns: { id: true, name: true, email: true } },
-            },
-          },
-        },
-      },
-    },
-  });
+  const [session] = await db
+    .select({ patientId: sessions.patientId, groupId: sessions.groupId })
+    .from(sessions)
+    .where(eq(sessions.id, sessionId));
 
   if (!session) {
     console.log(`[SessionPatients] Session ${sessionId} not found`);
@@ -41,26 +31,34 @@ async function getSessionPatientsFromRelations(sessionId: string): Promise<Sessi
 
   console.log(`[SessionPatients] Session ${sessionId}: patientId=${session.patientId ?? 'null'}, groupId=${session.groupId ?? 'null'}`);
 
-  // Group session: return all member patients
-  if (session.groupId && session.group && !Array.isArray(session.group)) {
-    const group = session.group as { members?: Array<{ patient: SessionPatient | null }> };
-    const members = group.members || [];
-    return members
-      .map(m => m.patient)
-      .filter((p): p is SessionPatient => p != null);
+  // Individual session: fetch the linked patient directly
+  if (session.patientId) {
+    const [patient] = await db
+      .select({ id: users.id, name: users.name, email: users.email })
+      .from(users)
+      .where(eq(users.id, session.patientId));
+
+    if (patient) {
+      console.log(`[SessionPatients] Found patient: id=${patient.id}, name=${patient.name}, email=${patient.email ?? 'null'}`);
+      return [{ id: patient.id, name: patient.name, email: patient.email }];
+    }
+
+    console.log(`[SessionPatients] patientId=${session.patientId} set but user not found`);
+    return [];
   }
 
-  // Individual session: return the single patient
-  if (session.patient && !Array.isArray(session.patient)) {
-    console.log(`[SessionPatients] Found patient from relation: id=${session.patient.id}, name=${session.patient.name}, email=${session.patient.email ?? 'null'}`);
-    return [{
-      id: session.patient.id,
-      name: session.patient.name,
-      email: session.patient.email,
-    }];
+  // Group session: fetch all member patients via join
+  if (session.groupId) {
+    const members = await db
+      .select({ id: users.id, name: users.name, email: users.email })
+      .from(groupMembers)
+      .innerJoin(users, eq(groupMembers.patientId, users.id))
+      .where(eq(groupMembers.groupId, session.groupId));
+
+    console.log(`[SessionPatients] Found ${members.length} group member(s) for group ${session.groupId}`);
+    return members.map(m => ({ id: m.id, name: m.name, email: m.email }));
   }
 
-  console.log(`[SessionPatients] Session ${sessionId} has patientId=${session.patientId ?? 'null'} but patient relation is empty`);
   return [];
 }
 
