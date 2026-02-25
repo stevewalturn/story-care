@@ -215,6 +215,10 @@ export async function POST(request: NextRequest) {
             blockSettings.mediaUrl = gcsPath;
           }
         }
+        // Never persist displayUrl — it's a transient presigned URL for client display only
+        if (blockSettings) {
+          delete blockSettings.displayUrl;
+        }
 
         const [createdBlock] = await db.insert(pageBlocks).values({
           pageId: page.id,

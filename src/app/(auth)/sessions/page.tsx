@@ -810,6 +810,13 @@ export default function SessionsPage() {
                                     ? getDisplayGroupName({ name: session.groupName, members: session.groupMembers || [] })
                                     : session.patientName}
                                 </p>
+                                {session.title && (
+                                  <span className="truncate text-sm text-gray-500">
+                                    —
+                                    {' '}
+                                    {session.title}
+                                  </span>
+                                )}
                                 {session.sessionDate && (
                                   <span className="text-sm text-gray-500">
                                     {formatSessionDate(session.sessionDate)}
@@ -824,29 +831,25 @@ export default function SessionsPage() {
                                   </span>
                                 )}
                               </div>
-                              {editingSessionId === session.id && !session.isReadOnly
-                                ? (
-                                    <input
-                                      type="text"
-                                      value={editingTitle}
-                                      onChange={e => setEditingTitle(e.target.value)}
-                                      onBlur={() => handleSaveTitle(session.id)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') handleSaveTitle(session.id);
-                                        if (e.key === 'Escape') {
-                                          setEditingSessionId(null);
-                                          setEditingTitle('');
-                                        }
-                                      }}
-                                      onClick={e => e.stopPropagation()}
-                                      // eslint-disable-next-line jsx-a11y/no-autofocus -- intentional: user just clicked Rename
-                                      autoFocus
-                                      className="w-full rounded border border-purple-300 px-1.5 py-0.5 text-sm text-gray-700 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
-                                    />
-                                  )
-                                : (
-                                    <p className="truncate text-sm text-gray-500">{session.title}</p>
-                                  )}
+                              {editingSessionId === session.id && !session.isReadOnly && (
+                                <input
+                                  type="text"
+                                  value={editingTitle}
+                                  onChange={e => setEditingTitle(e.target.value)}
+                                  onBlur={() => handleSaveTitle(session.id)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSaveTitle(session.id);
+                                    if (e.key === 'Escape') {
+                                      setEditingSessionId(null);
+                                      setEditingTitle('');
+                                    }
+                                  }}
+                                  onClick={e => e.stopPropagation()}
+                                  // eslint-disable-next-line jsx-a11y/no-autofocus -- intentional: user just clicked Rename
+                                  autoFocus
+                                  className="w-full rounded border border-purple-300 px-1.5 py-0.5 text-sm text-gray-700 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
+                                />
+                              )}
                             </div>
 
                             {/* Date */}

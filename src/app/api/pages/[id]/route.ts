@@ -253,6 +253,10 @@ export async function PUT(request: NextRequest, context: RouteContext) {
             blockSettings.mediaUrl = gcsPath;
           }
         }
+        // Never persist displayUrl — it's a transient presigned URL for client display only
+        if (blockSettings) {
+          delete blockSettings.displayUrl;
+        }
 
         const [createdBlock] = await db.insert(pageBlocks).values({
           pageId: id,

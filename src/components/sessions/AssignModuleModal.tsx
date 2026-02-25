@@ -18,7 +18,7 @@ type AssignModuleModalProps = {
   sessionTitle: string;
   currentModuleId?: string | null;
   onClose: () => void;
-  onAssigned: () => void;
+  onAssigned: (module: TreatmentModule) => void;
 };
 
 export function AssignModuleModal({
@@ -86,7 +86,7 @@ export function AssignModuleModal({
         throw new Error(data.error || 'Failed to assign module');
       }
 
-      onAssigned();
+      onAssigned(selectedModule!);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {

@@ -988,10 +988,14 @@ export function TranscriptViewerClient({
           sessionTitle={sessionTitle}
           currentModuleId={assignedModule?.id}
           onClose={() => setIsAssignModuleModalOpen(false)}
-          onAssigned={() => {
+          onAssigned={(module) => {
             setIsAssignModuleModalOpen(false);
-            // Refresh session data to get updated module
-            window.location.reload();
+            setAssignedModule(module);
+            // Auto-execute the module's Base Analysis Prompt
+            if (module.aiPromptText) {
+              setAiSystemPrompt(module.aiPromptText);
+              setAiUserText('Analyze this therapy session');
+            }
           }}
         />
       )}
