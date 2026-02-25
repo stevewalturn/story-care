@@ -1,6 +1,6 @@
 'use client';
 
-import { Pencil, Play, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
 import { useAuth } from '@/contexts/AuthContext';
