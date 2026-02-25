@@ -62,7 +62,7 @@ export async function GET(
     const patientGroupIds = patientGroups.map(g => g.groupId).filter((gid): gid is string => gid !== null);
 
     // Fetch all stats counts in parallel
-    const [pageCountResult, surveyCountResult, reflectionCountResult, sessionCountResult] = await Promise.all([
+    const [pageCountResult, surveyCountResult, reflectionCountResult, sessionCountResult, notesCountResult, quotesCountResult] = await Promise.all([
       // Count story pages
       db.select({ count: count() })
         .from(storyPages)
@@ -99,12 +99,24 @@ export async function GET(
                 eq(sessions.patientId, id),
               ),
             ),
+
+      // Count notes for this patient
+      db.select({ count: count() })
+        .from(notes)
+        .where(eq(notes.patientId, id)),
+
+      // Count quotes for this patient
+      db.select({ count: count() })
+        .from(quotes)
+        .where(eq(quotes.patientId, id)),
     ]);
 
     const pageCount = pageCountResult[0]?.count ?? 0;
     const surveyCount = surveyCountResult[0]?.count ?? 0;
     const reflectionCount = reflectionCountResult[0]?.count ?? 0;
     const sessionCount = sessionCountResult[0]?.count ?? 0;
+    const notesCount = notesCountResult[0]?.count ?? 0;
+    const quotesCount = quotesCountResult[0]?.count ?? 0;
 
     // Fetch therapist name if patient has a therapist assigned
     let therapistName: string | null = null;
@@ -138,6 +150,8 @@ export async function GET(
       surveyCount,
       reflectionCount,
       sessionCount,
+      notesCount,
+      quotesCount,
     });
   } catch (error) {
     if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('Forbidden'))) {

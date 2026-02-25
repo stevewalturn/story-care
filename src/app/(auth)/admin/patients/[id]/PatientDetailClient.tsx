@@ -1,6 +1,6 @@
 'use client';
 
-import { Book, Calendar, MessageCircle, SlidersHorizontal } from 'lucide-react';
+import { Book, Calendar, FileText, MessageCircle, Quote, SlidersHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
@@ -8,12 +8,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch } from '@/utils/AuthenticatedFetch';
 import { AssessmentsTab } from './tabs/AssessmentsTab';
 import { GeneralInformationTab } from './tabs/GeneralInformationTab';
+import { NotesTab } from './tabs/NotesTab';
 import { PagesTab } from './tabs/PagesTab';
+import { QuotesTab } from './tabs/QuotesTab';
 import { ReflectionsTab } from './tabs/ReflectionsTab';
 import { SessionsTab } from './tabs/SessionsTab';
 import { SurveyResponsesTab } from './tabs/SurveyResponsesTab';
 
-type Tab = 'sessions' | 'pages' | 'survey-responses' | 'reflections' | 'assessments' | 'general-info';
+type Tab = 'sessions' | 'pages' | 'survey-responses' | 'reflections' | 'assessments' | 'notes' | 'quotes' | 'general-info';
 
 type PatientDetailClientProps = {
   patientId: string;
@@ -30,6 +32,8 @@ type Patient = {
   surveyCount: number;
   reflectionCount: number;
   sessionCount: number;
+  notesCount: number;
+  quotesCount: number;
 };
 
 export function PatientDetailClient({ patientId }: PatientDetailClientProps) {
@@ -65,6 +69,8 @@ export function PatientDetailClient({ patientId }: PatientDetailClientProps) {
           surveyCount: data.surveyCount || 0,
           reflectionCount: data.reflectionCount || 0,
           sessionCount: data.sessionCount || 0,
+          notesCount: data.notesCount || 0,
+          quotesCount: data.quotesCount || 0,
         });
       } catch (err) {
         console.error('Error fetching patient:', err);
@@ -109,6 +115,8 @@ export function PatientDetailClient({ patientId }: PatientDetailClientProps) {
     { id: 'survey-responses', label: 'Survey Responses' },
     { id: 'reflections', label: 'Reflections' },
     { id: 'assessments', label: 'Assessments' },
+    { id: 'notes', label: 'Notes' },
+    { id: 'quotes', label: 'Quotes' },
     { id: 'general-info', label: 'General Information' },
   ];
 
@@ -171,6 +179,24 @@ export function PatientDetailClient({ patientId }: PatientDetailClientProps) {
                   Sessions
                 </span>
               </div>
+              <span className="mx-2 text-gray-300">•</span>
+              <div className="flex items-center gap-1">
+                <FileText className="h-4 w-4" />
+                <span>
+                  {patient.notesCount}
+                  {' '}
+                  Notes
+                </span>
+              </div>
+              <span className="mx-2 text-gray-300">•</span>
+              <div className="flex items-center gap-1">
+                <Quote className="h-4 w-4" />
+                <span>
+                  {patient.quotesCount}
+                  {' '}
+                  Quotes
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -203,6 +229,8 @@ export function PatientDetailClient({ patientId }: PatientDetailClientProps) {
         {activeTab === 'survey-responses' && <SurveyResponsesTab patientId={patientId} />}
         {activeTab === 'reflections' && <ReflectionsTab patientId={patientId} />}
         {activeTab === 'assessments' && <AssessmentsTab patientId={patientId} />}
+        {activeTab === 'notes' && <NotesTab patientId={patientId} />}
+        {activeTab === 'quotes' && <QuotesTab patientId={patientId} />}
         {activeTab === 'general-info' && <GeneralInformationTab patientId={patientId} />}
       </div>
     </div>

@@ -95,6 +95,7 @@ export type AIAssistantPanelProps = {
   currentSelectedText?: string; // Selected text from transcript for prompt context
   onPromptSent: () => void;
   onAssignModule?: () => void;
+  onModuleAssigned?: (module: TreatmentModule) => void;
   onTextSelection: () => void;
   onOpenImageModal?: (data: {
     prompt: string;

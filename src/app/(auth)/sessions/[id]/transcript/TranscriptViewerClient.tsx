@@ -833,6 +833,13 @@ export function TranscriptViewerClient({
                 setSelectedText('');
               }}
               onAssignModule={(isArchived || isReadOnly) ? undefined : () => setIsAssignModuleModalOpen(true)}
+              onModuleAssigned={(isArchived || isReadOnly) ? undefined : (module) => {
+                setAssignedModule(module);
+                if (module.aiPromptText) {
+                  setAiSystemPrompt(module.aiPromptText);
+                  setAiUserText('Analyze this therapy session');
+                }
+              }}
               onTextSelection={handleAITextSelection}
               onOpenImageModal={(isArchived || isReadOnly) ? undefined : handleOpenImageModal}
               onOpenVideoModal={(isArchived || isReadOnly) ? undefined : handleOpenVideoModal}

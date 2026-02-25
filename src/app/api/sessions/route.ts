@@ -61,6 +61,25 @@ export async function GET(request: NextRequest) {
         accessConditions.push(inArray(sessions.groupId, patientGroupIdsForAccess)); // Group sessions with my patients
       }
 
+      // Include sessions for patients the therapist has previously created sessions for
+      // (historical access after patient reassignment — shown as "View Only" via isReadOnly flag)
+      const historicalPatientRows = await db
+        .selectDistinct({ patientId: sessions.patientId })
+        .from(sessions)
+        .where(
+          and(
+            eq(sessions.therapistId, user.dbUserId),
+            isNotNull(sessions.patientId),
+          ),
+        );
+      const historicalPatientIds = historicalPatientRows
+        .map(r => r.patientId)
+        .filter((id): id is string => id !== null && !therapistPatientIds.includes(id));
+
+      if (historicalPatientIds.length > 0) {
+        accessConditions.push(inArray(sessions.patientId, historicalPatientIds));
+      }
+
       whereConditions.push(or(...accessConditions)!);
       whereConditions.push(isNull(sessions.deletedAt)); // Filter out soft-deleted sessions
     }
