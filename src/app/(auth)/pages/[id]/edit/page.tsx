@@ -30,6 +30,7 @@ export default function EditPagePage({ params }: { params: Promise<{ id: string 
     title: string;
     blocks: ContentBlock[];
     patientId: string;
+    isReadOnly?: boolean;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -186,6 +187,7 @@ export default function EditPagePage({ params }: { params: Promise<{ id: string 
         title: page.title,
         blocks: transformedBlocks,
         patientId: page.patientId,
+        isReadOnly: page.isReadOnly ?? false,
       });
     } catch (error) {
       console.error('Failed to load page:', error);
@@ -267,6 +269,7 @@ export default function EditPagePage({ params }: { params: Promise<{ id: string 
         onSave={handleSavePage}
         onClose={handleClose}
         isSaving={isSaving}
+        isReadOnly={pageData.isReadOnly}
       />
     </div>
   );

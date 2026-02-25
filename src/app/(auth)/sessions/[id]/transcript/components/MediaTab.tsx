@@ -51,6 +51,7 @@ export function MediaTab({
   mediaFilter = 'all',
   selectedPatient = 'all',
   onTaskComplete,
+  isReadOnly = false,
 }: MediaTabProps) {
   const [media, setMedia] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -1135,17 +1136,19 @@ export function MediaTab({
                 </button>
 
                 {/* Edit Details */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditDetails(item);
-                    setMenuPosition(null);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  <Edit className="h-4 w-4 text-gray-400" />
-                  Edit Details
-                </button>
+                {!isReadOnly && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditDetails(item);
+                      setMenuPosition(null);
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <Edit className="h-4 w-4 text-gray-400" />
+                    Edit Details
+                  </button>
+                )}
 
                 {/* Download */}
                 <button
@@ -1160,68 +1163,72 @@ export function MediaTab({
                   Download
                 </button>
 
-                <div className="my-1 border-t border-gray-100" />
+                {!isReadOnly && (
+                  <>
+                    <div className="my-1 border-t border-gray-100" />
 
-                {/* Extract Last Frame (video only) */}
-                {item.mediaType === 'video' && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleExtractFrame(item);
-                      setMenuPosition(null);
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <Image className="h-4 w-4 text-gray-400" />
-                    Extract Last Frame
-                  </button>
+                    {/* Extract Last Frame (video only) */}
+                    {item.mediaType === 'video' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleExtractFrame(item);
+                          setMenuPosition(null);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <Image className="h-4 w-4 text-gray-400" />
+                        Extract Last Frame
+                      </button>
+                    )}
+
+                    {/* Animate (image only) */}
+                    {item.mediaType === 'image' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAnimate(item);
+                          setMenuPosition(null);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <Film className="h-4 w-4 text-gray-400" />
+                        Animate
+                      </button>
+                    )}
+
+                    {/* Generate New Version - images and videos with generation prompt */}
+                    {(item.mediaType === 'image' || item.mediaType === 'video') && item.generationPrompt && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleGenerateNewVersion(item);
+                          setMenuPosition(null);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <Sparkles className="h-4 w-4 text-gray-400" />
+                        Generate New Version
+                      </button>
+                    )}
+
+                    <div className="my-1 border-t border-gray-100" />
+
+                    {/* Delete */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMenuId(null);
+                        setMenuPosition(null);
+                        setDeletingMedia(item);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete
+                    </button>
+                  </>
                 )}
-
-                {/* Animate (image only) */}
-                {item.mediaType === 'image' && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAnimate(item);
-                      setMenuPosition(null);
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <Film className="h-4 w-4 text-gray-400" />
-                    Animate
-                  </button>
-                )}
-
-                {/* Generate New Version - images and videos with generation prompt */}
-                {(item.mediaType === 'image' || item.mediaType === 'video') && item.generationPrompt && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleGenerateNewVersion(item);
-                      setMenuPosition(null);
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <Sparkles className="h-4 w-4 text-gray-400" />
-                    Generate New Version
-                  </button>
-                )}
-
-                <div className="my-1 border-t border-gray-100" />
-
-                {/* Delete */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveMenuId(null);
-                    setMenuPosition(null);
-                    setDeletingMedia(item);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </button>
               </>
             );
           })()}

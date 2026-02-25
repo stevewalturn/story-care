@@ -7,7 +7,7 @@
 
 import type { NotesTabProps } from '../types/transcript.types';
 import type { PatientOption } from '@/components/sessions/SaveNoteModal';
-import { Check, Copy, Download, Edit2, Trash2 } from 'lucide-react';
+import { Check, Copy, Download, Edit2, Lock, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SaveNoteModal } from '@/components/sessions/SaveNoteModal';
 import { HTMLContent } from '@/components/ui/HTMLContent';
@@ -15,7 +15,7 @@ import { Modal } from '@/components/ui/Modal';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 import { downloadAsTextFile, htmlToMarkdown } from '@/utils/FileDownloadHelpers';
 
-export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKey, selectedPatient }: NotesTabProps) {
+export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKey, selectedPatient, isReadOnly = false }: NotesTabProps) {
   const [notes, setNotes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showNewNoteModal, setShowNewNoteModal] = useState(false);
@@ -209,6 +209,39 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
     }
   };
 
+  // Handler for locking note
+  const handleLockNote = async (noteId: string) => {
+    if (!confirm('Are you sure? Once locked, this note cannot be edited or deleted.')) {
+      return;
+    }
+
+    try {
+      const response = await authenticatedFetch(`/api/notes/${noteId}/lock`, user, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'lock' }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to lock note');
+      }
+
+      // Refresh notes list
+      const params = new URLSearchParams({ sessionId });
+      if (selectedPatient && selectedPatient !== 'all') {
+        params.append('patientId', selectedPatient);
+      }
+      const notesResponse = await authenticatedFetch(`/api/notes?${params.toString()}`, user);
+      if (notesResponse.ok) {
+        const data = await notesResponse.json();
+        setNotes(data.notes || []);
+      }
+    } catch (error) {
+      console.error('Error locking note:', error);
+      alert('Failed to lock note');
+    }
+  };
+
   return (
     <>
       {/* Notes Header with New Note Button */}
@@ -219,15 +252,17 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
             {notes.length}
             )
           </h3>
-          <button
-            onClick={() => setShowNewNoteModal(true)}
-            className="flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-purple-700"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            New Note
-          </button>
+          {!isReadOnly && (
+            <button
+              onClick={() => setShowNewNoteModal(true)}
+              className="flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-purple-700"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              New Note
+            </button>
+          )}
         </div>
       </div>
 
@@ -260,9 +295,17 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
                   key={note.id}
                   className="rounded-lg border border-gray-200 bg-white p-4 transition-all hover:border-purple-500 hover:shadow-sm"
                 >
-                  {/* Header with Copy/Edit/Delete buttons */}
+                  {/* Header with Copy/Edit/Delete/Lock buttons */}
                   <div className="mb-2 flex items-start justify-between">
-                    <h4 className="font-medium text-gray-900">{note.title || 'Untitled Note'}</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-medium text-gray-900">{note.title || 'Untitled Note'}</h4>
+                      {note.status === 'locked' && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                          <Lock className="h-3 w-3" />
+                          Locked
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-1">
                       <span className="text-xs text-gray-500">
                         {note.createdAt ? new Date(note.createdAt).toLocaleDateString() : ''}
@@ -279,25 +322,37 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
                           <Copy className="h-4 w-4" />
                         )}
                       </button>
-                      {/* Edit button */}
-                      <button
-                        onClick={() => {
-                          setEditingNote(note);
-                          setShowEditNoteModal(true);
-                        }}
-                        className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-purple-600"
-                        title="Edit note"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                      {/* Delete button */}
-                      <button
-                        onClick={() => handleDeleteNote(note.id)}
-                        className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-red-600"
-                        title="Delete note"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {note.status !== 'locked' && !isReadOnly && (
+                        <>
+                          {/* Edit button */}
+                          <button
+                            onClick={() => {
+                              setEditingNote(note);
+                              setShowEditNoteModal(true);
+                            }}
+                            className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-purple-600"
+                            title="Edit note"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          {/* Delete button */}
+                          <button
+                            onClick={() => handleDeleteNote(note.id)}
+                            className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-red-600"
+                            title="Delete note"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                          {/* Lock button */}
+                          <button
+                            onClick={() => handleLockNote(note.id)}
+                            className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-amber-600"
+                            title="Lock note"
+                          >
+                            <Lock className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -405,18 +460,20 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
                   <Download className="h-3 w-3" />
                   Download
                 </button>
-                {/* Edit button */}
-                <button
-                  onClick={() => {
-                    setViewingNote(null);
-                    setEditingNote(viewingNote);
-                    setShowEditNoteModal(true);
-                  }}
-                  className="flex items-center gap-1 rounded px-2 py-1 text-xs text-purple-600 transition-colors hover:bg-purple-50"
-                >
-                  <Edit2 className="h-3 w-3" />
-                  Edit
-                </button>
+                {/* Edit button - hidden when locked or read-only */}
+                {viewingNote.status !== 'locked' && !isReadOnly && (
+                  <button
+                    onClick={() => {
+                      setViewingNote(null);
+                      setEditingNote(viewingNote);
+                      setShowEditNoteModal(true);
+                    }}
+                    className="flex items-center gap-1 rounded px-2 py-1 text-xs text-purple-600 transition-colors hover:bg-purple-50"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                    Edit
+                  </button>
+                )}
               </div>
             </div>
 

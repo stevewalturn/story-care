@@ -93,6 +93,7 @@ export function AIAssistantPanel({
   onLibraryRefresh,
   onClose: _onClose,
   onJumpToTimestamp,
+  isArchived = false,
 }: AIAssistantPanelProps) {
   // Get dbUser for avatar
   const { dbUser } = useAuth();
@@ -1422,9 +1423,9 @@ Remember: ONLY output the JSON object. Nothing else.`;
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             rows={2}
-            placeholder="Chat about the transcript, or select text to begin"
+            placeholder={isArchived ? 'Chat is disabled for archived sessions' : 'Chat about the transcript, or select text to begin'}
             className="w-full resize-none bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
-            disabled={isLoading}
+            disabled={isLoading || isArchived}
             style={{
               minHeight: '48px',
               maxHeight: '120px',
@@ -1514,7 +1515,8 @@ Remember: ONLY output the JSON object. Nothing else.`;
                 )}
               </div>
 
-              {/* Prompt Button with Dropdown */}
+              {/* Prompt Button with Dropdown (hidden when archived) */}
+              {!isArchived && (<>
               <div className="relative">
                 <button
                   type="button"
@@ -1638,6 +1640,7 @@ Remember: ONLY output the JSON object. Nothing else.`;
               >
                 <Settings className="h-4 w-4" />
               </button>
+              </>)}
 
             </div>
 
@@ -1645,7 +1648,7 @@ Remember: ONLY output the JSON object. Nothing else.`;
             <button
               type="button"
               onClick={() => handleSendMessage()}
-              disabled={isLoading || (!prompt.trim() && !selectedSystemPrompt)}
+              disabled={isLoading || isArchived || (!prompt.trim() && !selectedSystemPrompt)}
               className="flex items-center justify-center rounded-full bg-gray-900 text-white transition-all hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300"
               style={{
                 width: '32px',

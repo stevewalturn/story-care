@@ -36,6 +36,8 @@ type StoryPage = {
   blockCount: number;
   status: 'draft' | 'published' | 'archived';
   patientId: string;
+  isOwner?: boolean;
+  isReadOnly?: boolean;
 };
 
 type Patient = {
@@ -94,6 +96,8 @@ export function PagesClient() {
         ...p,
         createdAt: new Date(p.createdAt),
         updatedAt: new Date(p.updatedAt),
+        isOwner: p.isOwner ?? true,
+        isReadOnly: p.isReadOnly ?? false,
       })));
     } catch (error) {
       console.error('Failed to fetch pages:', error);
@@ -749,7 +753,7 @@ export function PagesClient() {
                     }`}
                   >
                     {/* Selection Checkbox */}
-                    {isSelectionMode && (
+                    {isSelectionMode && !page.isReadOnly && (
                       <div className="absolute top-3 left-3 z-10">
                         <input
                           type="checkbox"
@@ -772,6 +776,11 @@ export function PagesClient() {
                             {page.title}
                           </h4>
                         </div>
+                        {page.isReadOnly && (
+                          <span className="ml-2 flex-shrink-0 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700">
+                            View Only
+                          </span>
+                        )}
                         <div className={`ml-2 flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
                           page.status === 'published'
                             ? 'bg-green-100 text-green-700'
@@ -802,33 +811,37 @@ export function PagesClient() {
 
                       {/* Actions */}
                       <div className="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditPage(page.id);
-                          }}
-                          className="flex-1"
-                        >
-                          <Edit2 className="mr-1.5 h-3.5 w-3.5" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant={page.status === 'published' ? 'ghost' : 'primary'}
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleTogglePublish(page.id, page.status);
-                          }}
-                          title={page.status === 'published' ? 'Unpublish' : 'Publish'}
-                        >
-                          {page.status === 'published' ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Upload className="h-4 w-4" />
-                          )}
-                        </Button>
+                        {!page.isReadOnly && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditPage(page.id);
+                            }}
+                            className="flex-1"
+                          >
+                            <Edit2 className="mr-1.5 h-3.5 w-3.5" />
+                            Edit
+                          </Button>
+                        )}
+                        {!page.isReadOnly && (
+                          <Button
+                            variant={page.status === 'published' ? 'ghost' : 'primary'}
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleTogglePublish(page.id, page.status);
+                            }}
+                            title={page.status === 'published' ? 'Unpublish' : 'Publish'}
+                          >
+                            {page.status === 'published' ? (
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <Upload className="h-4 w-4" />
+                            )}
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -840,17 +853,19 @@ export function PagesClient() {
                         >
                           <Share2 className="h-4 w-4 text-purple-600" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeletePage(page.id);
-                          }}
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4 text-red-600" />
-                        </Button>
+                        {!page.isReadOnly && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeletePage(page.id);
+                            }}
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-600" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>

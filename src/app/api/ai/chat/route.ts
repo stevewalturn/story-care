@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 import { logPHIAccess } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { generateText } from '@/libs/TextGeneration';
-import { requireSessionAccess } from '@/middleware/RBACMiddleware';
+import { requireWritableSession } from '@/middleware/RBACMiddleware';
 import { aiChatMessages, sessions } from '@/models/Schema';
 import {
   generateChatSummary,
@@ -72,9 +72,9 @@ export async function POST(request: NextRequest) {
     console.log('[Chat API] Last message length:', messages?.[messages.length - 1]?.content?.length);
     console.log('[Chat API] Session ID:', sessionId);
 
-    // 4. AUTHORIZATION: If sessionId provided, verify user has access
+    // 4. AUTHORIZATION: If sessionId provided, verify user has write access (not archived)
     if (sessionId) {
-      await requireSessionAccess(request, sessionId);
+      await requireWritableSession(request, sessionId);
     }
 
     // 4.5. FETCH PATIENT INFO for tracing (individual + group sessions)

@@ -5,9 +5,10 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { handleRBACError, requireWritableSession } from '@/middleware/RBACMiddleware';
 import { getModuleById } from '@/services/ModuleService';
 import { assignModuleToSession } from '@/services/SessionService';
-import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
+import { handleAuthError } from '@/utils/AuthHelpers';
 import { assignModuleToSessionSchema } from '@/validations/ModuleValidation';
 
 /**
@@ -20,15 +21,7 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const user = await requireAuth(request);
-
-    // Only therapists and admins can assign modules
-    if (user.role === 'patient') {
-      return NextResponse.json(
-        { error: 'Forbidden: Patients cannot assign modules' },
-        { status: 403 },
-      );
-    }
+    const user = await requireWritableSession(request, id);
 
     const body = await request.json();
     const validated = assignModuleToSessionSchema.parse(body);
@@ -76,6 +69,9 @@ export async function POST(
     );
   } catch (error) {
     console.error('Error assigning module to session:', error);
+    if (error instanceof Error && (error.message.includes('Forbidden') || error.message.includes('not found'))) {
+      return handleRBACError(error);
+    }
     if (error instanceof Error && error.message.includes('validation')) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }

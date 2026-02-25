@@ -39,6 +39,8 @@ type Session = {
   moduleDomain?: TherapeuticDomain;
   moduleId?: string;
   archivedAt?: string | null;
+  isOwner?: boolean;
+  isReadOnly?: boolean;
 };
 
 type SelectedPatient = {
@@ -131,6 +133,8 @@ export default function SessionsPage() {
           moduleName: session.module?.name,
           moduleDomain: session.module?.domain,
           archivedAt: session.archivedAt,
+          isOwner: session.isOwner ?? true,
+          isReadOnly: session.isReadOnly ?? false,
         }));
 
         setSessions(formattedSessions);
@@ -814,8 +818,13 @@ export default function SessionsPage() {
                                 <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
                                   {session.type === 'group' ? 'Group' : 'Individual'}
                                 </span>
+                                {session.isReadOnly && (
+                                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                                    View Only
+                                  </span>
+                                )}
                               </div>
-                              {editingSessionId === session.id
+                              {editingSessionId === session.id && !session.isReadOnly
                                 ? (
                                     <input
                                       type="text"
@@ -849,6 +858,7 @@ export default function SessionsPage() {
                           {/* Action Menu */}
                           <SessionActionMenu
                             isArchived={archiveView === 'archived'}
+                            isReadOnly={session.isReadOnly}
                             onRename={() => {
                               setEditingSessionId(session.id);
                               setEditingTitle(session.title);

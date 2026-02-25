@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { asc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
+import { handleRBACError, requireWritableSession } from '@/middleware/RBACMiddleware';
 import { groupMembers, sessions, speakers, transcripts, users, utterances } from '@/models/Schema';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 
@@ -176,33 +177,13 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    // 1. AUTHENTICATE
-    const user = await requireTherapist(request);
-
-    // 2. AWAIT PARAMS
+    // 1. AWAIT PARAMS
     const { id: sessionId } = await params;
 
-    // 3. VERIFY SESSION ACCESS
-    const session = await db.query.sessions.findFirst({
-      where: eq(sessions.id, sessionId),
-    });
+    // 2. AUTHENTICATE & VERIFY WRITE ACCESS (not archived)
+    const user = await requireWritableSession(request, sessionId);
 
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Session not found' },
-        { status: 404 },
-      );
-    }
-
-    // Verify therapist owns this session
-    if (user.role === 'therapist' && session.therapistId !== user.dbUserId) {
-      return NextResponse.json(
-        { error: 'Forbidden: You do not have access to this session' },
-        { status: 403 },
-      );
-    }
-
-    // 4. GET TRANSCRIPT FOR THIS SESSION
+    // 3. GET TRANSCRIPT FOR THIS SESSION
     const transcript = await db.query.transcripts.findFirst({
       where: eq(transcripts.sessionId, sessionId),
     });
@@ -322,6 +303,9 @@ export async function PUT(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error updating speakers:', error);
+    if (error instanceof Error && (error.message.includes('Forbidden') || error.message.includes('not found'))) {
+      return handleRBACError(error);
+    }
     return handleAuthError(error);
   }
 }

@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { and, desc, eq, ilike, inArray } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { getClientInfo, logAudit } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
@@ -41,14 +41,16 @@ export async function GET(request: NextRequest) {
 
     // Role-based access control (HIPAA compliance)
     if (user.role === 'therapist') {
-      // HIPAA: Therapists can only see scenes for patients currently assigned to them
-      // This prevents access to data from patients who have been reassigned
+      // Therapists see: scenes for their assigned patients + scenes they created (even if patient reassigned)
       const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
-      if (therapistPatientIds.length === 0) {
-        // No patients assigned - return empty result
-        return NextResponse.json({ scenes: [] });
+
+      const accessConditions = [
+        eq(scenes.createdByTherapistId, user.dbUserId), // Scenes I created
+      ];
+      if (therapistPatientIds.length > 0) {
+        accessConditions.push(inArray(scenes.patientId, therapistPatientIds)); // Scenes for my assigned patients
       }
-      filters.push(inArray(scenes.patientId, therapistPatientIds));
+      filters.push(or(...accessConditions)!);
     } else if (user.role === 'patient') {
       // Patients can only see their own scenes
       filters.push(eq(scenes.patientId, user.dbUserId));

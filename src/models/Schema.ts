@@ -140,6 +140,7 @@ export const questionTypeEnum = pgEnum('question_type', [
   'scale',
   'emotion',
 ]);
+export const noteStatusEnum = pgEnum('note_status', ['draft', 'locked']);
 export const auditActionEnum = pgEnum('audit_action', [
   'create',
   'read',
@@ -801,6 +802,11 @@ export const notesSchema = pgTable('notes', {
   // Context
   sessionId: uuid('session_id').references(() => sessionsSchema.id),
   tags: text('tags').array(),
+
+  // Lock status
+  status: noteStatusEnum('status').default('draft').notNull(),
+  lockedAt: timestamp('locked_at'),
+  lockedBy: uuid('locked_by').references(() => usersSchema.id),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

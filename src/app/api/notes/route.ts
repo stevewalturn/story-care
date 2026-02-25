@@ -26,6 +26,9 @@ export async function GET(request: NextRequest) {
         title: notes.title,
         content: notes.content,
         tags: notes.tags,
+        status: notes.status,
+        lockedAt: notes.lockedAt,
+        lockedBy: notes.lockedBy,
         createdAt: notes.createdAt,
         updatedAt: notes.updatedAt,
         patientId: notes.patientId,
@@ -41,16 +44,17 @@ export async function GET(request: NextRequest) {
 
     // Filter by user role (HIPAA compliance)
     if (user.role === 'therapist') {
-      // HIPAA: Therapists can only see notes for patients currently assigned to them
-      // This prevents access to data from patients who have been reassigned
+      // Therapists see: notes for their assigned patients + notes they created (even if patient reassigned)
       const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
       console.log('[API/notes] Therapist patient IDs:', therapistPatientIds);
-      if (therapistPatientIds.length === 0) {
-        // No patients assigned - return empty result
-        console.log('[API/notes] No patients assigned to therapist, returning empty');
-        return NextResponse.json({ notes: [] });
+
+      const accessConditions = [
+        eq(notes.therapistId, user.dbUserId), // Notes I created
+      ];
+      if (therapistPatientIds.length > 0) {
+        accessConditions.push(inArray(notes.patientId, therapistPatientIds)); // Notes for my assigned patients
       }
-      filters.push(inArray(notes.patientId, therapistPatientIds));
+      filters.push(or(...accessConditions)!);
     } else if (user.role === 'patient') {
       // Patient can only see their own notes
       filters.push(eq(notes.patientId, user.dbUserId));

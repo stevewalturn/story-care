@@ -12,7 +12,7 @@ import { SaveQuoteModal } from '@/components/sessions/SaveQuoteModal';
 import { HTMLContent } from '@/components/ui/HTMLContent';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 
-export function QuotesTab({ sessionId, user, refreshKey, selectedPatient, onEditQuote, onDeleteQuote, onJumpToTimestamp }: QuotesTabProps) {
+export function QuotesTab({ sessionId, user, refreshKey, selectedPatient, onEditQuote, onDeleteQuote, onJumpToTimestamp, isReadOnly = false }: QuotesTabProps) {
   const [quotes, setQuotes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showNewQuoteModal, setShowNewQuoteModal] = useState(false);
@@ -138,13 +138,15 @@ export function QuotesTab({ sessionId, user, refreshKey, selectedPatient, onEdit
             {quotes.length}
             )
           </h3>
-          <button
-            onClick={() => setShowNewQuoteModal(true)}
-            className="flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-purple-700"
-          >
-            <Plus className="h-4 w-4" />
-            New Quote
-          </button>
+          {!isReadOnly && (
+            <button
+              onClick={() => setShowNewQuoteModal(true)}
+              className="flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-purple-700"
+            >
+              <Plus className="h-4 w-4" />
+              New Quote
+            </button>
+          )}
         </div>
       </div>
 

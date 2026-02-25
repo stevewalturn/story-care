@@ -3,8 +3,8 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { getClientInfo, logAudit, logPHIDelete, logPHIUpdate } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
-import { notes } from '@/models/Schema';
-import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
+import { notes, users } from '@/models/Schema';
+import { getTherapistPatientIds, handleAuthError, requireAuth } from '@/utils/AuthHelpers';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -34,12 +34,18 @@ export async function GET(
       );
     }
 
-    // Authorization check: Only therapist who created note or admin can view
+    // Authorization check: creator, assigned therapist, or admin can view
     if (user.role === 'therapist' && note.therapistId !== user.dbUserId) {
-      return NextResponse.json(
-        { error: 'Forbidden: You do not have access to this note' },
-        { status: 403 },
-      );
+      // Check if therapist is assigned to the note's patient
+      const patient = await db.query.users.findFirst({
+        where: eq(users.id, note.patientId),
+      });
+      if (!patient || patient.therapistId !== user.dbUserId) {
+        return NextResponse.json(
+          { error: 'Forbidden: You do not have access to this note' },
+          { status: 403 },
+        );
+      }
     }
 
     if (user.role === 'patient' && note.patientId !== user.dbUserId) {
@@ -104,10 +110,27 @@ export async function PUT(
       );
     }
 
-    // Therapists can only update their own notes
-    if (user.role === 'therapist' && existingNote.therapistId !== user.dbUserId) {
+    // Therapists must be BOTH the creator AND currently assigned to the patient to edit
+    if (user.role === 'therapist') {
+      if (existingNote.therapistId !== user.dbUserId) {
+        return NextResponse.json(
+          { error: 'Forbidden: Only the note creator can edit this note' },
+          { status: 403 },
+        );
+      }
+      const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+      if (!therapistPatientIds.includes(existingNote.patientId)) {
+        return NextResponse.json(
+          { error: 'Forbidden: Patient is no longer assigned to you' },
+          { status: 403 },
+        );
+      }
+    }
+
+    // Prevent editing locked notes
+    if (existingNote.status === 'locked') {
       return NextResponse.json(
-        { error: 'Forbidden: You do not have access to this note' },
+        { error: 'Forbidden: This note is locked and cannot be edited' },
         { status: 403 },
       );
     }
@@ -192,10 +215,27 @@ export async function DELETE(
       );
     }
 
-    // Therapists can only delete their own notes
-    if (user.role === 'therapist' && existingNote.therapistId !== user.dbUserId) {
+    // Therapists must be BOTH the creator AND currently assigned to the patient to delete
+    if (user.role === 'therapist') {
+      if (existingNote.therapistId !== user.dbUserId) {
+        return NextResponse.json(
+          { error: 'Forbidden: Only the note creator can delete this note' },
+          { status: 403 },
+        );
+      }
+      const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+      if (!therapistPatientIds.includes(existingNote.patientId)) {
+        return NextResponse.json(
+          { error: 'Forbidden: Patient is no longer assigned to you' },
+          { status: 403 },
+        );
+      }
+    }
+
+    // Prevent deleting locked notes
+    if (existingNote.status === 'locked') {
       return NextResponse.json(
-        { error: 'Forbidden: You do not have access to this note' },
+        { error: 'Forbidden: This note is locked and cannot be deleted' },
         { status: 403 },
       );
     }

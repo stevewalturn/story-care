@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { extractGcsPath, generatePresignedUrl, generatePresignedUrlsForMedia } from '@/libs/GCS';
 import { mediaLibrary, sceneAudioTracks, sceneClips, scenes, users, videoProcessingJobs } from '@/models/Schema';
+import { getTherapistPatientIds, handleAuthError, requireAuth } from '@/utils/AuthHelpers';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -11,10 +12,11 @@ type RouteContext = {
 
 // GET /api/scenes/[id] - Get single scene with clips
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   context: RouteContext,
 ) {
   try {
+    const user = await requireAuth(request);
     const { id: sceneId } = await context.params;
 
     // Get scene with patient details
@@ -40,6 +42,19 @@ export async function GET(
     }
 
     const scene = sceneWithPatient.scene;
+
+    // Authorization: creator, assigned therapist, or admin can view
+    if (user.role === 'therapist' && scene.createdByTherapistId !== user.dbUserId) {
+      const patient = await db.query.users.findFirst({
+        where: eq(users.id, scene.patientId),
+      });
+      if (!patient || patient.therapistId !== user.dbUserId) {
+        return NextResponse.json(
+          { error: 'Forbidden: You do not have access to this scene' },
+          { status: 403 },
+        );
+      }
+    }
 
     // Generate presigned URLs for scene's video and thumbnail
     const assembledVideoUrl = scene.assembledVideoUrl
@@ -91,10 +106,7 @@ export async function GET(
     return NextResponse.json({ scene: sceneResponse, clips });
   } catch (error) {
     console.error('Error fetching scene:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch scene' },
-      { status: 500 },
-    );
+    return handleAuthError(error);
   }
 }
 
@@ -104,7 +116,40 @@ export async function PUT(
   context: RouteContext,
 ) {
   try {
+    const user = await requireAuth(request);
     const { id: sceneId } = await context.params;
+
+    // Fetch existing scene to check ownership
+    const [existingScene] = await db
+      .select()
+      .from(scenes)
+      .where(eq(scenes.id, sceneId))
+      .limit(1);
+
+    if (!existingScene) {
+      return NextResponse.json(
+        { error: 'Scene not found' },
+        { status: 404 },
+      );
+    }
+
+    // Therapists must be BOTH the creator AND currently assigned to the patient to edit
+    if (user.role === 'therapist') {
+      if (existingScene.createdByTherapistId !== user.dbUserId) {
+        return NextResponse.json(
+          { error: 'Forbidden: Only the scene creator can edit this scene' },
+          { status: 403 },
+        );
+      }
+      const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+      if (!therapistPatientIds.includes(existingScene.patientId)) {
+        return NextResponse.json(
+          { error: 'Forbidden: Patient is no longer assigned to you' },
+          { status: 403 },
+        );
+      }
+    }
+
     const body = await request.json();
     const {
       title,
@@ -153,19 +198,17 @@ export async function PUT(
     return NextResponse.json({ scene: updatedScene });
   } catch (error) {
     console.error('Error updating scene:', error);
-    return NextResponse.json(
-      { error: 'Failed to update scene' },
-      { status: 500 },
-    );
+    return handleAuthError(error);
   }
 }
 
 // DELETE /api/scenes/[id] - Delete scene
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   context: RouteContext,
 ) {
   try {
+    const user = await requireAuth(request);
     const { id: sceneId } = await context.params;
 
     // Check if scene exists first
@@ -180,6 +223,23 @@ export async function DELETE(
         { error: 'Scene not found' },
         { status: 404 },
       );
+    }
+
+    // Therapists must be BOTH the creator AND currently assigned to the patient to delete
+    if (user.role === 'therapist') {
+      if (existingScene.createdByTherapistId !== user.dbUserId) {
+        return NextResponse.json(
+          { error: 'Forbidden: Only the scene creator can delete this scene' },
+          { status: 403 },
+        );
+      }
+      const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+      if (!therapistPatientIds.includes(existingScene.patientId)) {
+        return NextResponse.json(
+          { error: 'Forbidden: Patient is no longer assigned to you' },
+          { status: 403 },
+        );
+      }
     }
 
     // Import pageBlocksSchema to delete related records
@@ -221,9 +281,6 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting scene:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete scene' },
-      { status: 500 },
-    );
+    return handleAuthError(error);
   }
 }

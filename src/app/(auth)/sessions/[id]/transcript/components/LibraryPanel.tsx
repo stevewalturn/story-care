@@ -25,6 +25,8 @@ type ExtendedLibraryPanelProps = LibraryPanelProps & {
   onOpenGenerateMusicLyrical?: () => void;
   onOpenGenerateMusicInstrumental?: () => void;
   onOpenGenerateScene?: () => void;
+  isArchived?: boolean;
+  isReadOnly?: boolean;
 };
 
 export function LibraryPanel({
@@ -46,6 +48,8 @@ export function LibraryPanel({
   onOpenGenerateMusicLyrical,
   onOpenGenerateMusicInstrumental,
   onOpenGenerateScene,
+  isArchived = false,
+  isReadOnly = false,
 }: ExtendedLibraryPanelProps) {
   // Main tab state for switching between Media, Quotes, Notes, Profile
   const [activeTab, setActiveTab] = useState<'media' | 'quotes' | 'notes' | 'profile'>('media');
@@ -231,8 +235,8 @@ export function LibraryPanel({
               </>
             </div>
             <div className="flex items-center gap-1">
-              {/* Add/Upload Button - Only show on Media tab */}
-              {activeTab === 'media' && (
+              {/* Add/Upload Button - Only show on Media tab (hide when archived) */}
+              {activeTab === 'media' && !isArchived && (
                 <button
                   onClick={onOpenUpload}
                   className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
@@ -241,8 +245,8 @@ export function LibraryPanel({
                   <Plus className="h-4 w-4" />
                 </button>
               )}
-              {/* Create/Generate Button - Only show on Media tab */}
-              {activeTab === 'media' && (
+              {/* Create/Generate Button - Only show on Media tab (hide when archived) */}
+              {activeTab === 'media' && !isArchived && (
                 <div className="relative" ref={createDropdownRef}>
                   <button
                     onClick={() => setShowCreateDropdown(!showCreateDropdown)}
@@ -371,6 +375,7 @@ export function LibraryPanel({
             mediaFilter={mediaFilter}
             selectedPatient={selectedPatient}
             onTaskComplete={onTaskComplete}
+            isReadOnly={isReadOnly}
           />
         )}
 
@@ -383,6 +388,7 @@ export function LibraryPanel({
             onEditQuote={onEditQuote}
             onDeleteQuote={onDeleteQuote}
             onJumpToTimestamp={onJumpToTimestamp}
+            isReadOnly={isReadOnly}
           />
         )}
 
@@ -393,6 +399,7 @@ export function LibraryPanel({
             sessionData={sessionData}
             refreshKey={refreshKey}
             selectedPatient={selectedPatient}
+            isReadOnly={isReadOnly}
           />
         )}
 

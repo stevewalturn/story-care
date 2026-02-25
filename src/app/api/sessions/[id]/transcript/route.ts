@@ -3,6 +3,7 @@ import { asc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { generatePresignedUrl } from '@/libs/GCS';
+import { handleRBACError, requireWritableSession } from '@/middleware/RBACMiddleware';
 import { speakers, transcripts, users, utterances } from '@/models/Schema';
 
 // GET /api/sessions/[id]/transcript - Get transcript and utterances
@@ -120,6 +121,10 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+
+    // Verify user has write access (not archived)
+    await requireWritableSession(request, id);
+
     const body = await request.json();
     const { fullText, utterances: utterancesData } = body;
 
@@ -180,6 +185,9 @@ export async function POST(
 
     return NextResponse.json({ transcript }, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && (error.message.includes('Forbidden') || error.message.includes('Unauthorized'))) {
+      return handleRBACError(error);
+    }
     console.error('Error saving transcript:', error);
     return NextResponse.json(
       { error: 'Failed to save transcript' },

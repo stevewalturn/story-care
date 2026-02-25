@@ -54,6 +54,7 @@ export function TranscriptPanel({
   onOpenAnalyzeModal,
   onOpenSpeakerLabeling,
   audioDurationSeconds,
+  isArchived = false,
 }: TranscriptPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
@@ -922,8 +923,8 @@ export function TranscriptPanel({
         isVisible={showSelectionMenu}
         position={selectionMenuPosition}
         selectedText={selectedText}
-        onSaveQuote={handleSaveQuote}
-        onAnalyze={handleAnalyze}
+        onSaveQuote={isArchived ? undefined : handleSaveQuote}
+        onAnalyze={isArchived ? undefined : handleAnalyze}
         onCopy={handleCopy}
         onClose={handleCloseSelectionMenu}
       />

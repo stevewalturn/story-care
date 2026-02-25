@@ -40,6 +40,9 @@ export const Env = createEnv({
 
     // Trial Patient API
     TRIAL_API_KEY: z.string().min(1).optional(),
+
+    // Intercom (Identity Verification)
+    INTERCOM_SECRET_KEY: z.string().min(1).optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().optional(),
@@ -102,6 +105,9 @@ export const Env = createEnv({
 
     // Trial Patient API
     TRIAL_API_KEY: process.env.TRIAL_API_KEY,
+
+    // Intercom (Identity Verification)
+    INTERCOM_SECRET_KEY: process.env.INTERCOM_SECRET_KEY,
 
     // Client vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,

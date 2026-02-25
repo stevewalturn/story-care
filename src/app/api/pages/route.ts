@@ -1,10 +1,11 @@
 import type { NextRequest } from 'next/server';
-import { and, desc, eq, notInArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, notInArray, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { verifyIdToken } from '@/libs/FirebaseAdmin';
 import { extractGcsPath } from '@/libs/GCS';
 import { pageBlocks, reflectionQuestions, storyPages, surveyQuestions, therapistPatientArchives, users } from '@/models/Schema';
+import { getTherapistPatientIds } from '@/utils/AuthHelpers';
 
 // GET /api/pages - List story pages
 export async function GET(request: NextRequest) {
@@ -89,17 +90,25 @@ export async function GET(request: NextRequest) {
 
         const archivedPatientIds = archivedPatientRows.map(row => row.patientId);
 
-        // Filter: pages created by this therapist AND not for archived patients
+        // Therapists see: pages they created + pages for their assigned patients
+        const therapistPatientIds = await getTherapistPatientIds(currentUser.id);
+        const accessConditions = [
+          eq(storyPages.createdByTherapistId, currentUser.id), // Pages I created
+        ];
+        if (therapistPatientIds.length > 0) {
+          accessConditions.push(inArray(storyPages.patientId, therapistPatientIds)); // Pages for my assigned patients
+        }
+
+        // Exclude archived patients
         if (archivedPatientIds.length > 0) {
           query = query.where(
             and(
-              eq(storyPages.createdByTherapistId, currentUser.id),
+              or(...accessConditions),
               notInArray(storyPages.patientId, archivedPatientIds),
             ),
           ) as any;
         } else {
-          // No archived patients, just filter by therapist
-          query = query.where(eq(storyPages.createdByTherapistId, currentUser.id)) as any;
+          query = query.where(or(...accessConditions)) as any;
         }
       }
       // For org_admin and super_admin, show all pages (no filtering)

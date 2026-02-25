@@ -3,7 +3,9 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { generatePresignedUrl } from '@/libs/GCS';
+import { handleRBACError, requireStoryPageAccess } from '@/middleware/RBACMiddleware';
 import { pageBlocks, patientPageInteractions, reflectionQuestions, reflectionResponses, scenes, storyPages, surveyQuestions, surveyResponses } from '@/models/Schema';
+import { getTherapistPatientIds, handleAuthError } from '@/utils/AuthHelpers';
 import { extractGcsPath } from '@/utils/GCSUtils';
 
 type RouteContext = {
@@ -141,6 +143,38 @@ export async function GET(request: NextRequest, context: RouteContext) {
 export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
+
+    // Auth + RBAC check
+    const user = await requireStoryPageAccess(request, id);
+
+    // Fetch page to check ownership
+    const [existingPage] = await db
+      .select()
+      .from(storyPages)
+      .where(eq(storyPages.id, id))
+      .limit(1);
+
+    if (!existingPage) {
+      return NextResponse.json({ error: 'Page not found' }, { status: 404 });
+    }
+
+    // Therapists must be BOTH the creator AND currently assigned to the patient to edit
+    if (user.role === 'therapist') {
+      if (existingPage.createdByTherapistId !== user.dbUserId) {
+        return NextResponse.json(
+          { error: 'Forbidden: Only the page creator can edit this page' },
+          { status: 403 },
+        );
+      }
+      const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+      if (!therapistPatientIds.includes(existingPage.patientId)) {
+        return NextResponse.json(
+          { error: 'Forbidden: Patient is no longer assigned to you' },
+          { status: 403 },
+        );
+      }
+    }
+
     const body = await request.json();
     const { title, blocks, status, patientId } = body;
 
@@ -268,17 +302,48 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ page });
   } catch (error) {
     console.error('Error updating page:', error);
-    return NextResponse.json(
-      { error: 'Failed to update page' },
-      { status: 500 },
-    );
+    if (error instanceof Error && error.message.includes('Forbidden')) {
+      return handleRBACError(error);
+    }
+    return handleAuthError(error);
   }
 }
 
 // DELETE /api/pages/[id] - Delete page
-export async function DELETE(_request: NextRequest, context: RouteContext) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
+
+    // Auth + RBAC check
+    const user = await requireStoryPageAccess(request, id);
+
+    // Fetch page to check ownership
+    const [existingPage] = await db
+      .select()
+      .from(storyPages)
+      .where(eq(storyPages.id, id))
+      .limit(1);
+
+    if (!existingPage) {
+      return NextResponse.json({ error: 'Page not found' }, { status: 404 });
+    }
+
+    // Therapists must be BOTH the creator AND currently assigned to the patient to delete
+    if (user.role === 'therapist') {
+      if (existingPage.createdByTherapistId !== user.dbUserId) {
+        return NextResponse.json(
+          { error: 'Forbidden: Only the page creator can delete this page' },
+          { status: 403 },
+        );
+      }
+      const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+      if (!therapistPatientIds.includes(existingPage.patientId)) {
+        return NextResponse.json(
+          { error: 'Forbidden: Patient is no longer assigned to you' },
+          { status: 403 },
+        );
+      }
+    }
 
     // Get block IDs for this page to delete associated responses
     const blocks = await db
@@ -327,9 +392,9 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting page:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete page' },
-      { status: 500 },
-    );
+    if (error instanceof Error && error.message.includes('Forbidden')) {
+      return handleRBACError(error);
+    }
+    return handleAuthError(error);
   }
 }

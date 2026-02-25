@@ -6,7 +6,7 @@ import { db } from '@/libs/DB';
 import { generatePresignedUrlsForMedia } from '@/libs/GCS';
 import { requireMediaAccess } from '@/middleware/RBACMiddleware';
 import { mediaLibrary, musicGenerationTasks } from '@/models/Schema';
-import { handleAuthError } from '@/utils/AuthHelpers';
+import { getTherapistPatientIds, handleAuthError } from '@/utils/AuthHelpers';
 
 // GET /api/media/[id]
 export async function GET(
@@ -62,6 +62,30 @@ export async function PUT(
     // Verify user has access to this media
     const user = await requireMediaAccess(request, id);
 
+    // Therapists must be BOTH the creator AND currently assigned to the patient to edit
+    if (user.role === 'therapist') {
+      const [media] = await db
+        .select({ createdByTherapistId: mediaLibrary.createdByTherapistId, patientId: mediaLibrary.patientId })
+        .from(mediaLibrary)
+        .where(eq(mediaLibrary.id, id))
+        .limit(1);
+      if (media) {
+        if (media.createdByTherapistId !== user.dbUserId) {
+          return NextResponse.json(
+            { error: 'Forbidden: Only the media creator can edit this media' },
+            { status: 403 },
+          );
+        }
+        const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+        if (!therapistPatientIds.includes(media.patientId)) {
+          return NextResponse.json(
+            { error: 'Forbidden: Patient is no longer assigned to you' },
+            { status: 403 },
+          );
+        }
+      }
+    }
+
     const body = await request.json();
     const { title, tags, thumbnailUrl, description, notes } = body;
 
@@ -114,6 +138,30 @@ export async function PATCH(
 
     // Verify user has access to this media
     const user = await requireMediaAccess(request, id);
+
+    // Therapists must be BOTH the creator AND currently assigned to the patient to edit
+    if (user.role === 'therapist') {
+      const [media] = await db
+        .select({ createdByTherapistId: mediaLibrary.createdByTherapistId, patientId: mediaLibrary.patientId })
+        .from(mediaLibrary)
+        .where(eq(mediaLibrary.id, id))
+        .limit(1);
+      if (media) {
+        if (media.createdByTherapistId !== user.dbUserId) {
+          return NextResponse.json(
+            { error: 'Forbidden: Only the media creator can edit this media' },
+            { status: 403 },
+          );
+        }
+        const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+        if (!therapistPatientIds.includes(media.patientId)) {
+          return NextResponse.json(
+            { error: 'Forbidden: Patient is no longer assigned to you' },
+            { status: 403 },
+          );
+        }
+      }
+    }
 
     const body = await request.json();
     const { title, tags, thumbnailUrl, description, notes } = body;
@@ -171,6 +219,30 @@ export async function DELETE(
 
     // Verify user has access to this media
     const user = await requireMediaAccess(request, id);
+
+    // Therapists must be BOTH the creator AND currently assigned to the patient to delete
+    if (user.role === 'therapist') {
+      const [media] = await db
+        .select({ createdByTherapistId: mediaLibrary.createdByTherapistId, patientId: mediaLibrary.patientId })
+        .from(mediaLibrary)
+        .where(eq(mediaLibrary.id, id))
+        .limit(1);
+      if (media) {
+        if (media.createdByTherapistId !== user.dbUserId) {
+          return NextResponse.json(
+            { error: 'Forbidden: Only the media creator can delete this media' },
+            { status: 403 },
+          );
+        }
+        const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+        if (!therapistPatientIds.includes(media.patientId)) {
+          return NextResponse.json(
+            { error: 'Forbidden: Patient is no longer assigned to you' },
+            { status: 403 },
+          );
+        }
+      }
+    }
 
     // Clear foreign key references in music_generation_tasks before deleting
     await db

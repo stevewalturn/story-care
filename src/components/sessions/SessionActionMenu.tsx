@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 
 type SessionActionMenuProps = {
   isArchived: boolean;
+  isReadOnly?: boolean;
   onRename: () => void;
   onArchive: () => void;
   onUnarchive: () => void;
@@ -14,6 +15,7 @@ type SessionActionMenuProps = {
 
 export function SessionActionMenu({
   isArchived,
+  isReadOnly = false,
   onRename,
   onArchive,
   onUnarchive,
@@ -92,6 +94,11 @@ export function SessionActionMenu({
       document.removeEventListener('keydown', handleEscape);
     };
   }, [showMenu]);
+
+  // Hide menu entirely for read-only sessions
+  if (isReadOnly) {
+    return null;
+  }
 
   return (
     <div className="relative">

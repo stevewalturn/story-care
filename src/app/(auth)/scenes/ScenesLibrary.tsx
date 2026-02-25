@@ -34,6 +34,8 @@ type Scene = {
   createdAt: string;
   updatedAt: string;
   job?: JobData | null;
+  isOwner?: boolean;
+  isReadOnly?: boolean;
 };
 
 type ScenesLibraryProps = {
@@ -280,6 +282,7 @@ export function ScenesLibrary({ onEditScene, onCreateNew }: ScenesLibraryProps) 
               <SceneCard
                 key={scene.id}
                 scene={scene}
+                isReadOnly={scene.isReadOnly}
                 onEdit={() => onEditScene(scene.id)}
                 onDelete={() => handleDeleteScene(scene.id)}
               />
@@ -296,11 +299,12 @@ export function ScenesLibrary({ onEditScene, onCreateNew }: ScenesLibraryProps) 
  */
 type SceneCardProps = {
   scene: Scene;
+  isReadOnly?: boolean;
   onEdit: () => void;
   onDelete: () => void;
 };
 
-function SceneCard({ scene, onEdit, onDelete }: SceneCardProps) {
+function SceneCard({ scene, isReadOnly = false, onEdit, onDelete }: SceneCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
 
@@ -390,72 +394,74 @@ function SceneCard({ scene, onEdit, onDelete }: SceneCardProps) {
         )}
 
         {/* Actions Menu */}
-        <div className="absolute top-2 right-2">
-          <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="rounded-lg bg-black/50 p-1.5 text-white hover:bg-black/70"
-            type="button"
-          >
-            <MoreVertical className="h-4 w-4" />
-          </button>
+        {!isReadOnly && (
+          <div className="absolute top-2 right-2">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="rounded-lg bg-black/50 p-1.5 text-white hover:bg-black/70"
+              type="button"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </button>
 
-          {showMenu && (
-            <>
-              {/* Backdrop */}
-              <div
-                className="fixed inset-0 z-10"
-                onClick={() => setShowMenu(false)}
-                onKeyDown={e => e.key === 'Escape' && setShowMenu(false)}
-              />
+            {showMenu && (
+              <>
+                {/* Backdrop */}
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowMenu(false)}
+                  onKeyDown={e => e.key === 'Escape' && setShowMenu(false)}
+                />
 
-              {/* Menu */}
-              <div className="absolute right-0 z-20 mt-2 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                <button
-                  onClick={() => {
-                    setShowMenu(false);
-                    if (!isProcessing) onEdit();
-                  }}
-                  disabled={isProcessing}
-                  className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm ${isProcessing ? 'cursor-not-allowed text-gray-400' : 'text-gray-700 hover:bg-gray-100'}`}
-                  type="button"
-                >
-                  <Film className="h-4 w-4" />
-                  Edit Scene
-                  {' '}
-                  {isProcessing && '(Processing)'}
-                </button>
-
-                {scene.assembledVideoUrl && (
+                {/* Menu */}
+                <div className="absolute right-0 z-20 mt-2 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
                   <button
                     onClick={() => {
                       setShowMenu(false);
-                      setIsViewerOpen(true);
+                      if (!isProcessing) onEdit();
                     }}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                    disabled={isProcessing}
+                    className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm ${isProcessing ? 'cursor-not-allowed text-gray-400' : 'text-gray-700 hover:bg-gray-100'}`}
                     type="button"
                   >
-                    <Play className="h-4 w-4" />
-                    Watch Video
+                    <Film className="h-4 w-4" />
+                    Edit Scene
+                    {' '}
+                    {isProcessing && '(Processing)'}
                   </button>
-                )}
 
-                <hr className="my-1" />
+                  {scene.assembledVideoUrl && (
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        setIsViewerOpen(true);
+                      }}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                      type="button"
+                    >
+                      <Play className="h-4 w-4" />
+                      Watch Video
+                    </button>
+                  )}
 
-                <button
-                  onClick={() => {
-                    setShowMenu(false);
-                    onDelete();
-                  }}
-                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                  type="button"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+                  <hr className="my-1" />
+
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      onDelete();
+                    }}
+                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                    type="button"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -473,7 +479,14 @@ function SceneCard({ scene, onEdit, onDelete }: SceneCardProps) {
           </p>
         )}
         <div className="flex items-center justify-between text-xs text-gray-500">
-          <span>{scene.patientName || 'Unknown Patient'}</span>
+          <div className="flex items-center gap-1.5">
+            <span>{scene.patientName || 'Unknown Patient'}</span>
+            {isReadOnly && (
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                View Only
+              </span>
+            )}
+          </div>
           <span>{new Date(scene.updatedAt).toLocaleDateString()}</span>
         </div>
       </button>

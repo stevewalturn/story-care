@@ -5,11 +5,12 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { handleRBACError, requireWritableSession } from '@/middleware/RBACMiddleware';
 import {
   getSessionWithModule,
   updateSessionModuleAnalysis,
 } from '@/services/SessionService';
-import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
+import { handleAuthError } from '@/utils/AuthHelpers';
 import { analyzeSessionWithModuleSchema } from '@/validations/ModuleValidation';
 
 /**
@@ -22,15 +23,7 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const user = await requireAuth(request);
-
-    // Only therapists and admins can run analysis
-    if (user.role === 'patient') {
-      return NextResponse.json(
-        { error: 'Forbidden: Patients cannot run analysis' },
-        { status: 403 },
-      );
-    }
+    await requireWritableSession(request, id);
 
     const body = await request.json();
     // Validate request body (validation result currently unused but kept for consistency)
@@ -92,6 +85,9 @@ export async function POST(
       sessionModule: updatedSessionModule,
     });
   } catch (error) {
+    if (error instanceof Error && (error.message.includes('Forbidden') || error.message.includes('not found'))) {
+      return handleRBACError(error);
+    }
     if (error instanceof Error && error.message.includes('validation')) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }

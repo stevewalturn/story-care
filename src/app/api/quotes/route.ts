@@ -46,14 +46,16 @@ export async function GET(request: NextRequest) {
 
     // Role-based access control (HIPAA compliance)
     if (user.role === 'therapist') {
-      // HIPAA: Therapists can only see quotes for patients currently assigned to them
-      // This prevents access to data from patients who have been reassigned
+      // Therapists see: quotes for their assigned patients + quotes they created (even if patient reassigned)
       const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
-      if (therapistPatientIds.length === 0) {
-        // No patients assigned - return empty result
-        return NextResponse.json({ quotes: [] });
+
+      const accessConditions = [
+        eq(quotes.createdByTherapistId, user.dbUserId), // Quotes I created
+      ];
+      if (therapistPatientIds.length > 0) {
+        accessConditions.push(inArray(quotes.patientId, therapistPatientIds)); // Quotes for my assigned patients
       }
-      filters.push(inArray(quotes.patientId, therapistPatientIds));
+      filters.push(or(...accessConditions)!);
     } else if (user.role === 'patient') {
       // Patients can only see their own quotes
       filters.push(eq(quotes.patientId, user.dbUserId));

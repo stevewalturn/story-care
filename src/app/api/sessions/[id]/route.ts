@@ -4,9 +4,9 @@ import { NextResponse } from 'next/server';
 import { logPHIAccess, logPHIDelete, logPHIUpdate } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { generatePresignedUrl } from '@/libs/GCS';
-import { handleRBACError, requireSessionAccess } from '@/middleware/RBACMiddleware';
+import { handleRBACError, requireSessionAccess, requireWritableSession } from '@/middleware/RBACMiddleware';
 import { groupMembers, groups, sessionModules, sessions, treatmentModules, users } from '@/models/Schema';
-import { handleAuthError } from '@/utils/AuthHelpers';
+import { getTherapistPatientIds, handleAuthError } from '@/utils/AuthHelpers';
 
 // GET /api/sessions/[id] - Get single session
 // HIPAA COMPLIANCE: Requires authentication, RBAC, and logs access
@@ -35,6 +35,7 @@ export async function GET(
         therapistId: sessions.therapistId,
         patientId: sessions.patientId,
         groupId: sessions.groupId,
+        archivedAt: sessions.archivedAt,
         // Include assigned module information
         moduleId: sessionModules.moduleId,
         moduleName: treatmentModules.name,
@@ -53,11 +54,24 @@ export async function GET(
       );
     }
 
-    // Update lastOpenedAt timestamp when session is viewed
-    await db
-      .update(sessions)
-      .set({ lastOpenedAt: new Date() })
-      .where(eq(sessions.id, id));
+    // Compute ownership flags
+    const isOwner = user.role === 'therapist'
+      ? session.therapistId === user.dbUserId
+      : true;
+    let isReadOnly = false;
+    if (user.role === 'therapist') {
+      const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+      isReadOnly = session.therapistId !== user.dbUserId
+        || (session.patientId ? !therapistPatientIds.includes(session.patientId) : false);
+    }
+
+    // Only update lastOpenedAt for the session owner
+    if (isOwner) {
+      await db
+        .update(sessions)
+        .set({ lastOpenedAt: new Date() })
+        .where(eq(sessions.id, id));
+    }
 
     // Fetch patient info if individual session
     if (session.patientId) {
@@ -89,6 +103,8 @@ export async function GET(
             ...patient,
             avatarUrl: signedAvatarUrl || patient.avatarUrl,
           } : null,
+          isOwner,
+          isReadOnly,
         },
       });
     }
@@ -140,6 +156,8 @@ export async function GET(
             ...group,
             members: membersWithSignedUrls,
           },
+          isOwner,
+          isReadOnly,
         },
       });
     }
@@ -154,6 +172,8 @@ export async function GET(
       session: {
         ...session,
         audioUrl: signedAudioUrl || session.audioUrl,
+        isOwner,
+        isReadOnly,
       },
     });
   } catch (error) {
@@ -174,14 +194,10 @@ export async function PUT(
   try {
     const { id } = await params;
 
-    // 1. AUTHENTICATION & AUTHORIZATION: Verify user has access to this session
-    const user = await requireSessionAccess(request, id);
+    // 1. AUTHENTICATION & AUTHORIZATION: Verify user has write access (blocks archived sessions)
+    const user = await requireWritableSession(request, id);
 
-    // 2. VALIDATE INPUT
-    const body = await request.json();
-    const { title, sessionDate, audioUrl, audioDurationSeconds, transcriptionStatus } = body;
-
-    // Get current session for audit log
+    // Get current session
     const [currentSession] = await db
       .select()
       .from(sessions)
@@ -194,6 +210,37 @@ export async function PUT(
         { status: 404 },
       );
     }
+
+    // Check archived status
+    if (currentSession.archivedAt) {
+      return NextResponse.json(
+        { error: 'Forbidden: Session is archived (read-only)' },
+        { status: 403 },
+      );
+    }
+
+    // Therapists must be BOTH the creator AND currently assigned to the patient to edit
+    if (user.role === 'therapist') {
+      if (currentSession.therapistId !== user.dbUserId) {
+        return NextResponse.json(
+          { error: 'Forbidden: Only the session creator can edit this session' },
+          { status: 403 },
+        );
+      }
+      if (currentSession.patientId) {
+        const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+        if (!therapistPatientIds.includes(currentSession.patientId)) {
+          return NextResponse.json(
+            { error: 'Forbidden: Patient is no longer assigned to you' },
+            { status: 403 },
+          );
+        }
+      }
+    }
+
+    // 2. VALIDATE INPUT
+    const body = await request.json();
+    const { title, sessionDate, audioUrl, audioDurationSeconds, transcriptionStatus } = body;
 
     // 3. UPDATE SESSION - only set fields that were provided
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
@@ -265,6 +312,25 @@ export async function DELETE(
         { error: 'Session not found' },
         { status: 404 },
       );
+    }
+
+    // Therapists must be BOTH the creator AND currently assigned to the patient to delete
+    if (user.role === 'therapist') {
+      if (existingSession.therapistId !== user.dbUserId) {
+        return NextResponse.json(
+          { error: 'Forbidden: Only the session creator can delete this session' },
+          { status: 403 },
+        );
+      }
+      if (existingSession.patientId) {
+        const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+        if (!therapistPatientIds.includes(existingSession.patientId)) {
+          return NextResponse.json(
+            { error: 'Forbidden: Patient is no longer assigned to you' },
+            { status: 403 },
+          );
+        }
+      }
     }
 
     // 3. SOFT DELETE: Mark as deleted instead of hard delete (HIPAA compliance)

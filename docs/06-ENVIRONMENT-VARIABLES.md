@@ -19,12 +19,12 @@
 | Video Processing (Cloud Run) | 4 | 0 | 4 |
 | Observability (Langfuse) | 3 | 0 | 3 |
 | Analytics (PostHog) | 2 | 0 | 2 |
-| Customer Support (Intercom) | 1 | 0 | 1 |
+| Customer Support (Intercom) | 2 | 0 | 2 |
 | Security (Webhook) | 1 | 0 | 1 |
 | Trial API | 1 | 0 | 1 |
 | App | 1 | 0 | 1 |
 | Shared | 1 | 0 | 1 |
-| **Total** | **35** | **7** | **28** |
+| **Total** | **36** | **7** | **29** |
 
 > **Required** means the build will fail without it. **Optional** means the feature degrades gracefully or is disabled.
 
@@ -166,6 +166,7 @@ In-app customer support chat widget.
 | Variable | Required | Validation | Example | Description |
 |----------|----------|------------|---------|-------------|
 | `NEXT_PUBLIC_INTERCOM_APP_ID` | No | `z.string().optional()` | `abc123de` | Intercom application ID for the chat widget |
+| `INTERCOM_SECRET_KEY` | No | `z.string().min(1).optional()` | `xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` | Intercom identity verification secret (server-only). Found in Intercom Settings > Security > "Enforce identity on web". When set, the widget boots with a signed JWT to prevent user impersonation. |
 
 ---
 

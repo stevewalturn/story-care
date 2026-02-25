@@ -12,8 +12,8 @@ type SelectionFloatingMenuProps = {
   isVisible: boolean;
   position: { x: number; y: number };
   selectedText: string;
-  onSaveQuote: () => void;
-  onAnalyze: () => void;
+  onSaveQuote?: () => void;
+  onAnalyze?: () => void;
   onCopy: () => void;
   onClose: () => void;
 };
@@ -114,36 +114,44 @@ export function SelectionFloatingMenu({
     >
       <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white p-1 shadow-lg">
         {/* Save as Quote */}
-        <button
-          onClick={() => {
-            onSaveQuote();
-            onClose();
-          }}
-          className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-purple-50 hover:text-purple-700"
-          title="Save as Quote"
-        >
-          <Quote className="h-3.5 w-3.5" />
-          Save Quote
-        </button>
+        {onSaveQuote && (
+          <>
+            <button
+              onClick={() => {
+                onSaveQuote();
+                onClose();
+              }}
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-purple-50 hover:text-purple-700"
+              title="Save as Quote"
+            >
+              <Quote className="h-3.5 w-3.5" />
+              Save Quote
+            </button>
 
-        {/* Divider */}
-        <div className="h-5 w-px bg-gray-200" />
+            {/* Divider */}
+            <div className="h-5 w-px bg-gray-200" />
+          </>
+        )}
 
         {/* Analyze */}
-        <button
-          onClick={() => {
-            onAnalyze();
-            onClose();
-          }}
-          className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-purple-50 hover:text-purple-700"
-          title="Analyze with AI"
-        >
-          <MessageSquare className="h-3.5 w-3.5" />
-          Analyze
-        </button>
+        {onAnalyze && (
+          <>
+            <button
+              onClick={() => {
+                onAnalyze();
+                onClose();
+              }}
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-purple-50 hover:text-purple-700"
+              title="Analyze with AI"
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              Analyze
+            </button>
 
-        {/* Divider */}
-        <div className="h-5 w-px bg-gray-200" />
+            {/* Divider */}
+            <div className="h-5 w-px bg-gray-200" />
+          </>
+        )}
 
         {/* Copy */}
         <button

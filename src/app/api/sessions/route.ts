@@ -5,7 +5,7 @@ import { logPHIAccess } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { generatePresignedUrl } from '@/libs/GCS';
 import { groupMembers, groups, sessions, users } from '@/models/Schema';
-import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
+import { getTherapistPatientIds, handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 
 // GET /api/sessions - List all sessions for authenticated therapist
 // HIPAA COMPLIANCE: Requires authentication and logs access
@@ -26,10 +26,42 @@ export async function GET(request: NextRequest) {
     const whereConditions = [];
 
     // Role-based access control
+    // Track therapist's assigned patient IDs for ownership/readOnly flags
+    let therapistPatientIds: string[] = [];
     if (user.role === 'org_admin' || user.role === 'super_admin') {
       whereConditions.push(isNull(sessions.deletedAt)); // Org/Super Admin sees all sessions
     } else {
-      whereConditions.push(eq(sessions.therapistId, user.dbUserId)); // Therapist sees only their sessions
+      // Therapist sees: sessions they created + sessions for their currently-assigned patients
+      therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+
+      // Find group IDs that contain any of the therapist's assigned patients
+      let patientGroupIdsForAccess: string[] = [];
+      if (therapistPatientIds.length > 0) {
+        const patientGroups = await db
+          .select({ groupId: groupMembers.groupId })
+          .from(groupMembers)
+          .where(
+            and(
+              inArray(groupMembers.patientId, therapistPatientIds),
+              isNull(groupMembers.leftAt),
+            ),
+          );
+        patientGroupIdsForAccess = patientGroups
+          .map(g => g.groupId)
+          .filter((id): id is string => id !== null);
+      }
+
+      const accessConditions = [
+        eq(sessions.therapistId, user.dbUserId), // Sessions I created
+      ];
+      if (therapistPatientIds.length > 0) {
+        accessConditions.push(inArray(sessions.patientId, therapistPatientIds)); // Sessions for my assigned patients
+      }
+      if (patientGroupIdsForAccess.length > 0) {
+        accessConditions.push(inArray(sessions.groupId, patientGroupIdsForAccess)); // Group sessions with my patients
+      }
+
+      whereConditions.push(or(...accessConditions)!);
       whereConditions.push(isNull(sessions.deletedAt)); // Filter out soft-deleted sessions
     }
 
@@ -203,6 +235,15 @@ export async function GET(request: NextRequest) {
         referenceImageUrl: patientData.referenceImageUrl || null,
       } : null;
 
+      // Compute ownership flags for therapists
+      const isOwner = user.role === 'therapist'
+        ? session.therapistId === user.dbUserId
+        : true; // Admins always have full access
+      const isReadOnly = user.role === 'therapist'
+        ? session.therapistId !== user.dbUserId
+          || (session.patientId ? !therapistPatientIds.includes(session.patientId) : false)
+        : false; // Admins are never read-only
+
       return {
         id: session.id,
         title: session.title,
@@ -223,6 +264,8 @@ export async function GET(request: NextRequest) {
           name: group.name,
           members: session.groupId ? groupMembersMap.get(session.groupId) || [] : [],
         } : null,
+        isOwner,
+        isReadOnly,
       };
     });
 

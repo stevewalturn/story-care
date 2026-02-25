@@ -5,7 +5,7 @@ import { logPHICreate } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { transcribeAudio } from '@/libs/Deepgram';
 import { generatePresignedUrl } from '@/libs/GCS';
-import { requireSessionAccess } from '@/middleware/RBACMiddleware';
+import { requireWritableSession } from '@/middleware/RBACMiddleware';
 import { sessions, speakers, transcripts, utterances } from '@/models/Schema';
 import { handleAuthError } from '@/utils/AuthHelpers';
 import { getSessionPatients } from '@/utils/SessionPatients';
@@ -20,8 +20,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
 
-    // Verify user has access to this session
-    const user = await requireSessionAccess(request, id);
+    // Verify user has write access (not archived)
+    const user = await requireWritableSession(request, id);
 
     // Get session
     const [session] = await db

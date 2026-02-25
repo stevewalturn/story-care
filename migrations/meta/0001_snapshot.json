@@ -1,6 +1,6 @@
 {
-  "id": "86942f8f-6492-4c2e-8930-f643cc960c33",
-  "prevId": "0896e842-e142-406c-99b2-a602f7fa8731",
+  "id": "78f249d5-42b0-473d-8c77-057362404858",
+  "prevId": "86942f8f-6492-4c2e-8930-f643cc960c33",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2323,6 +2323,26 @@
           "primaryKey": false,
           "notNull": false
         },
+        "status": {
+          "name": "status",
+          "type": "note_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "locked_at": {
+          "name": "locked_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "locked_by": {
+          "name": "locked_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -2372,6 +2392,19 @@
           "tableTo": "sessions",
           "columnsFrom": [
             "session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "notes_locked_by_users_id_fk": {
+          "name": "notes_locked_by_users_id_fk",
+          "tableFrom": "notes",
+          "tableTo": "users",
+          "columnsFrom": [
+            "locked_by"
           ],
           "columnsTo": [
             "id"
@@ -6979,6 +7012,14 @@
         "processing",
         "completed",
         "failed"
+      ]
+    },
+    "public.note_status": {
+      "name": "note_status",
+      "schema": "public",
+      "values": [
+        "draft",
+        "locked"
       ]
     },
     "public.notification_status": {

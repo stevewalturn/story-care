@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { requireSessionAccess } from '@/middleware/RBACMiddleware';
+import { handleRBACError, requireWritableSession } from '@/middleware/RBACMiddleware';
 import { speakers, utterances } from '@/models/Schema';
 
 type RouteContext = {
@@ -14,7 +14,7 @@ type RouteContext = {
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
     const { id: sessionId, speakerId: currentSpeakerId, utteranceId } = await context.params;
-    await requireSessionAccess(request, sessionId);
+    await requireWritableSession(request, sessionId);
 
     const body = await request.json();
     const { newSpeakerId } = body;
@@ -104,6 +104,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       },
     });
   } catch (error) {
+    if (error instanceof Error && (error.message.includes('Forbidden') || error.message.includes('Unauthorized'))) {
+      return handleRBACError(error);
+    }
     console.error('Error reassigning utterance speaker:', error);
     return NextResponse.json(
       { error: 'Failed to reassign utterance speaker' },

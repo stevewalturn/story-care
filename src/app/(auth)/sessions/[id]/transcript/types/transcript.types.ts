@@ -77,6 +77,8 @@ export type TranscriptPanelProps = {
   onOpenAnalyzeModal?: () => void;
   // Speaker labeling modal
   onOpenSpeakerLabeling?: () => void;
+  // Archive state
+  isArchived?: boolean;
 };
 
 // Props for AIAssistantPanel
@@ -92,23 +94,23 @@ export type AIAssistantPanelProps = {
   triggerUserText?: string | null; // User's selected text from Analyze Selection modal
   currentSelectedText?: string; // Selected text from transcript for prompt context
   onPromptSent: () => void;
-  onAssignModule: () => void;
+  onAssignModule?: () => void;
   onTextSelection: () => void;
-  onOpenImageModal: (data: {
+  onOpenImageModal?: (data: {
     prompt: string;
     style?: string;
     title?: string;
     description?: string;
     sourceQuote?: string;
   }) => void;
-  onOpenVideoModal: (data: {
+  onOpenVideoModal?: (data: {
     prompt: string;
     title?: string;
     duration?: number;
     referenceImagePrompt?: string;
     sourceQuote?: string;
   }) => void;
-  onOpenMusicModal: (data: {
+  onOpenMusicModal?: (data: {
     instrumentalOption?: any;
     lyricalOption?: any;
   }) => void;
@@ -118,6 +120,8 @@ export type AIAssistantPanelProps = {
   onLibraryRefresh?: () => void;
   onClose?: () => void;
   onJumpToTimestamp?: (timestamp: number) => void; // Jump to transcript/audio position
+  // Archive state
+  isArchived?: boolean;
 };
 
 // Selected patient info for passing between components
@@ -133,7 +137,7 @@ export type LibraryPanelProps = {
   sessionId: string;
   user: User | null;
   sessionData: any;
-  onOpenUpload: () => void;
+  onOpenUpload?: () => void;
   refreshKey: number;
   onTaskComplete?: () => void;
   onClose?: () => void;
@@ -142,17 +146,22 @@ export type LibraryPanelProps = {
   onOpenGenerateVideo?: () => void;
   onOpenGenerateMusicLyrical?: () => void;
   onOpenGenerateMusicInstrumental?: () => void;
+  // Archive state
+  isArchived?: boolean;
+  // Read-only state (non-owned session after patient reassignment)
+  isReadOnly?: boolean;
 };
 
 // Props for MediaTab
 export type MediaTabProps = {
   sessionId: string;
   user: User | null;
-  onOpenUpload: () => void;
+  onOpenUpload?: () => void;
   refreshKey: number;
   mediaFilter?: 'all' | 'videos' | 'images' | 'musics';
   selectedPatient?: string;
   onTaskComplete?: () => void;
+  isReadOnly?: boolean;
 };
 
 // Props for QuotesTab
@@ -164,6 +173,7 @@ export type QuotesTabProps = {
   onEditQuote?: (quote: any) => void;
   onDeleteQuote?: (quoteId: string) => void;
   onJumpToTimestamp?: (timestamp: number) => void; // Jump to audio position
+  isReadOnly?: boolean;
 };
 
 // Props for NotesTab
@@ -173,6 +183,7 @@ export type NotesTabProps = {
   sessionData: any;
   refreshKey?: number;
   selectedPatient?: string;
+  isReadOnly?: boolean;
 };
 
 // Props for ProfileTab

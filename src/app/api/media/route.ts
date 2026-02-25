@@ -55,14 +55,16 @@ export async function GET(request: NextRequest) {
 
     // Role-based access control (HIPAA compliance)
     if (user.role === 'therapist') {
-      // HIPAA: Therapists can only see media for patients currently assigned to them
-      // This prevents access to data from patients who have been reassigned
+      // Therapists see: media for their assigned patients + media they created (even if patient reassigned)
       const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
-      if (therapistPatientIds.length === 0) {
-        // No patients assigned - return empty result
-        return NextResponse.json({ media: [] });
+
+      const accessConditions = [
+        eq(mediaLibrary.createdByTherapistId, user.dbUserId), // Media I created
+      ];
+      if (therapistPatientIds.length > 0) {
+        accessConditions.push(inArray(mediaLibrary.patientId, therapistPatientIds)); // Media for my assigned patients
       }
-      filters.push(inArray(mediaLibrary.patientId, therapistPatientIds));
+      filters.push(or(...accessConditions)!);
     } else if (user.role === 'patient') {
       // Patients can only see their own media
       filters.push(eq(mediaLibrary.patientId, user.dbUserId));

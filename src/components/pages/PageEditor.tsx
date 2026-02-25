@@ -105,6 +105,7 @@ type PageEditorProps = {
   onSave: (title: string, blocks: ContentBlock[], patientId: string | null) => void;
   onClose?: () => void;
   isSaving?: boolean;
+  isReadOnly?: boolean;
 };
 
 /**
@@ -133,6 +134,7 @@ export function PageEditor({
   onSave,
   onClose: _onClose,
   isSaving = false,
+  isReadOnly = false,
 }: PageEditorProps) {
   const { user } = useAuth();
   const [title, setTitle] = useState(initialTitle);
@@ -897,6 +899,17 @@ export function PageEditor({
 
   return (
     <div className="flex h-full flex-col bg-gray-50">
+      {/* Read-Only Banner */}
+      {isReadOnly && (
+        <div className="flex items-center gap-2 border-b border-blue-200 bg-blue-50 px-6 py-2 text-sm text-blue-800">
+          <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+          </svg>
+          View only — this page was created by another therapist.
+        </div>
+      )}
+
       {/* Header */}
       <div className="border-b border-gray-200 bg-white px-6 py-4">
         {/* Title, Patient, and Actions Row */}
@@ -907,13 +920,15 @@ export function PageEditor({
               onChange={e => setTitle(e.target.value)}
               className="text-xl font-semibold"
               placeholder="Page title..."
+              disabled={isReadOnly}
             />
           </div>
           <div className="w-56">
             <select
               value={selectedPatientId || ''}
               onChange={e => setSelectedPatientId(e.target.value || null)}
-              className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              disabled={isReadOnly}
+              className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
             >
               <option value="">Assign to patient...</option>
               {patients.map(patient => (
@@ -931,14 +946,16 @@ export function PageEditor({
             <Eye className="mr-2 h-4 w-4" />
             {showPreview ? 'Editing' : 'Preview'}
           </Button>
-          <Button
-            variant="primary"
-            onClick={() => onSave(title, blocks, selectedPatientId)}
-            disabled={blocks.length === 0 || !selectedPatientId || isSaving}
-            isLoading={isSaving}
-          >
-            Save Page
-          </Button>
+          {!isReadOnly && (
+            <Button
+              variant="primary"
+              onClick={() => onSave(title, blocks, selectedPatientId)}
+              disabled={blocks.length === 0 || !selectedPatientId || isSaving}
+              isLoading={isSaving}
+            >
+              Save Page
+            </Button>
+          )}
         </div>
       </div>
 
@@ -978,42 +995,44 @@ export function PageEditor({
                       {block.type}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        moveBlock(block.id, 'up');
-                      }}
-                      disabled={index === 0}
-                      className="rounded p-1.5 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 disabled:opacity-30"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        moveBlock(block.id, 'down');
-                      }}
-                      disabled={index === blocks.length - 1}
-                      className="rounded p-1.5 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 disabled:opacity-30"
-                    >
-                      ↓
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteBlock(block.id);
-                      }}
-                      className="rounded p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
+                  {!isReadOnly && (
+                    <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          moveBlock(block.id, 'up');
+                        }}
+                        disabled={index === 0}
+                        className="rounded p-1.5 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 disabled:opacity-30"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          moveBlock(block.id, 'down');
+                        }}
+                        disabled={index === blocks.length - 1}
+                        className="rounded p-1.5 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 disabled:opacity-30"
+                      >
+                        ↓
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteBlock(block.id);
+                        }}
+                        className="rounded p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Block Content Editor */}
                 <div className="p-4">
-                  {selectedBlockId === block.id && renderBlockEditor(block)}
+                  {selectedBlockId === block.id && !isReadOnly && renderBlockEditor(block)}
 
                   {/* Block Preview when not selected */}
                   {selectedBlockId !== block.id && (
@@ -1074,25 +1093,27 @@ export function PageEditor({
             ))}
 
             {/* Add Block Buttons */}
-            <div className="rounded-xl border-2 border-dashed border-gray-300 bg-white p-6 transition-colors hover:border-purple-300">
-              <p className="mb-4 text-center text-sm font-medium text-gray-700">
-                Add Content Block
-              </p>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {blockTypes.map(({ value, label, icon: Icon }) => (
-                  <button
-                    key={value}
-                    onClick={() => addBlock(value)}
-                    className="flex items-center gap-2.5 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-purple-500 hover:bg-purple-50 hover:shadow-md"
-                  >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shadow-sm">
-                      <Icon className="h-4 w-4 text-purple-600" />
-                    </span>
-                    <span className="font-medium text-gray-700">{label}</span>
-                  </button>
-                ))}
+            {!isReadOnly && (
+              <div className="rounded-xl border-2 border-dashed border-gray-300 bg-white p-6 transition-colors hover:border-purple-300">
+                <p className="mb-4 text-center text-sm font-medium text-gray-700">
+                  Add Content Block
+                </p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {blockTypes.map(({ value, label, icon: Icon }) => (
+                    <button
+                      key={value}
+                      onClick={() => addBlock(value)}
+                      className="flex items-center gap-2.5 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-purple-500 hover:bg-purple-50 hover:shadow-md"
+                    >
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shadow-sm">
+                        <Icon className="h-4 w-4 text-purple-600" />
+                      </span>
+                      <span className="font-medium text-gray-700">{label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {blocks.length === 0 && (
               <div className="rounded-xl border border-gray-200 bg-white py-16 text-center">

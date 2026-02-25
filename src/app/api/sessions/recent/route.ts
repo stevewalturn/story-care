@@ -1,10 +1,10 @@
 import type { NextRequest } from 'next/server';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { generatePresignedUrl } from '@/libs/GCS';
-import { sessions, users } from '@/models/Schema';
-import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
+import { groupMembers, sessions, users } from '@/models/Schema';
+import { getTherapistPatientIds, handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 import { extractGcsPath } from '@/utils/GCSUtils';
 
 // GET /api/sessions/recent - Get recent sessions for the authenticated therapist
@@ -21,10 +21,40 @@ export async function GET(request: NextRequest) {
     const whereConditions = [];
 
     // Role-based access control
+    let therapistPatientIds: string[] = [];
     if (user.role === 'org_admin' || user.role === 'super_admin') {
       whereConditions.push(isNull(sessions.deletedAt)); // Org/Super Admin sees all sessions
     } else {
-      whereConditions.push(eq(sessions.therapistId, user.dbUserId)); // Therapist sees only their sessions
+      // Therapist sees: sessions they created + sessions for their currently-assigned patients
+      therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+
+      let patientGroupIdsForAccess: string[] = [];
+      if (therapistPatientIds.length > 0) {
+        const patientGroups = await db
+          .select({ groupId: groupMembers.groupId })
+          .from(groupMembers)
+          .where(
+            and(
+              inArray(groupMembers.patientId, therapistPatientIds),
+              isNull(groupMembers.leftAt),
+            ),
+          );
+        patientGroupIdsForAccess = patientGroups
+          .map(g => g.groupId)
+          .filter((id): id is string => id !== null);
+      }
+
+      const accessConditions = [
+        eq(sessions.therapistId, user.dbUserId),
+      ];
+      if (therapistPatientIds.length > 0) {
+        accessConditions.push(inArray(sessions.patientId, therapistPatientIds));
+      }
+      if (patientGroupIdsForAccess.length > 0) {
+        accessConditions.push(inArray(sessions.groupId, patientGroupIdsForAccess));
+      }
+
+      whereConditions.push(or(...accessConditions)!);
       whereConditions.push(isNull(sessions.deletedAt)); // Filter out soft-deleted sessions
     }
 
@@ -36,6 +66,7 @@ export async function GET(request: NextRequest) {
         sessionDate: sessions.sessionDate,
         sessionType: sessions.sessionType,
         patientId: sessions.patientId,
+        therapistId: sessions.therapistId,
         audioUrl: sessions.audioUrl,
         transcriptionStatus: sessions.transcriptionStatus,
         createdAt: sessions.createdAt,
@@ -79,10 +110,20 @@ export async function GET(request: NextRequest) {
           ? await generatePresignedUrl(extractGcsPath(session.audioUrl))
           : null;
 
+        const isOwner = user.role === 'therapist'
+          ? session.therapistId === user.dbUserId
+          : true;
+        const isReadOnly = user.role === 'therapist'
+          ? session.therapistId !== user.dbUserId
+            || (session.patientId ? !therapistPatientIds.includes(session.patientId) : false)
+          : false;
+
         return {
           ...session,
           audioUrl,
           patient,
+          isOwner,
+          isReadOnly,
         };
       }),
     );

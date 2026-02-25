@@ -348,6 +348,12 @@ export function TranscriptViewerClient({
     });
   }, [fetchedSpeakers, sessionData]);
 
+  // Derive archive state from session data
+  const isArchived = useMemo(() => !!sessionData?.archivedAt, [sessionData]);
+
+  // Derive read-only state (non-owned session after patient reassignment)
+  const isReadOnly = useMemo(() => !!sessionData?.isReadOnly, [sessionData]);
+
   // Fetch AI prompts when session data loads
   useEffect(() => {
     const fetchAiPrompts = async () => {
@@ -752,6 +758,27 @@ export function TranscriptViewerClient({
 
   return (
     <>
+      {/* Archive banner */}
+      {isArchived && (
+        <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+          <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M5 3h14l-1.405 4.544A2 2 0 0115.64 9H8.36a2 2 0 01-1.955-1.456L5 3zm0 0v16a1 1 0 001 1h12a1 1 0 001-1V3" />
+          </svg>
+          This session is archived (read-only). Unarchive to make changes.
+        </div>
+      )}
+
+      {/* Read-only banner for non-owned sessions */}
+      {isReadOnly && !isArchived && (
+        <div className="flex items-center gap-2 border-b border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-800">
+          <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          View only — this session was created by another therapist.
+        </div>
+      )}
+
       {/* Three-panel workspace layout */}
       <div className="flex h-full overflow-hidden">
         {/* Left Panel - Transcript (flexible width based on panel visibility) */}
@@ -768,20 +795,21 @@ export function TranscriptViewerClient({
             utterances={utterances}
             audioUrl={audioUrl}
             onTextSelection={handleTextSelection}
-            onSaveQuote={handleSaveQuoteFromSelection}
+            onSaveQuote={(isArchived || isReadOnly) ? undefined : handleSaveQuoteFromSelection}
             user={user}
             groupName={groupName}
             sessionDate={sessionData?.sessionDate}
             speakers={speakers}
             sessionPatients={sessionPatients}
-            onSpeakerReassign={handleSpeakerReassign}
+            onSpeakerReassign={(isArchived || isReadOnly) ? undefined : handleSpeakerReassign}
             isCollapsed={isTranscriptCollapsed}
             onToggleCollapse={() => setIsTranscriptCollapsed(!isTranscriptCollapsed)}
             seekToTimestamp={seekToTimestamp}
             onSeekComplete={() => setSeekToTimestamp(null)}
             audioDurationSeconds={sessionData?.audioDurationSeconds}
-            onOpenAnalyzeModal={handleOpenAnalyzeModal}
-            onOpenSpeakerLabeling={() => setShowSpeakerLabelingModal(true)}
+            onOpenAnalyzeModal={(isArchived || isReadOnly) ? undefined : handleOpenAnalyzeModal}
+            onOpenSpeakerLabeling={(isArchived || isReadOnly) ? undefined : () => setShowSpeakerLabelingModal(true)}
+            isArchived={isArchived || isReadOnly}
           />
         </div>
 
@@ -804,15 +832,16 @@ export function TranscriptViewerClient({
                 setAiUserText(null);
                 setSelectedText('');
               }}
-              onAssignModule={() => setIsAssignModuleModalOpen(true)}
+              onAssignModule={(isArchived || isReadOnly) ? undefined : () => setIsAssignModuleModalOpen(true)}
               onTextSelection={handleAITextSelection}
-              onOpenImageModal={handleOpenImageModal}
-              onOpenVideoModal={handleOpenVideoModal}
-              onOpenMusicModal={handleOpenMusicModal}
-              onOpenSceneGeneration={handleOpenSceneGeneration}
+              onOpenImageModal={(isArchived || isReadOnly) ? undefined : handleOpenImageModal}
+              onOpenVideoModal={(isArchived || isReadOnly) ? undefined : handleOpenVideoModal}
+              onOpenMusicModal={(isArchived || isReadOnly) ? undefined : handleOpenMusicModal}
+              onOpenSceneGeneration={(isArchived || isReadOnly) ? undefined : handleOpenSceneGeneration}
               onLibraryRefresh={() => setMediaRefreshKey(prev => prev + 1)}
               onClose={() => setIsAIAssistantOpen(false)}
               onJumpToTimestamp={setSeekToTimestamp}
+              isArchived={isArchived || isReadOnly}
             />
           </div>
         )}
@@ -822,10 +851,10 @@ export function TranscriptViewerClient({
           sessionId={sessionId}
           user={user}
           sessionData={sessionData}
-          onOpenUpload={() => setShowMediaUploadModal(true)}
-          onOpenGenerateImage={() => setShowImageModal(true)}
-          onOpenGenerateVideo={() => setShowVideoModal(true)}
-          onOpenGenerateMusicLyrical={() => {
+          onOpenUpload={(isArchived || isReadOnly) ? undefined : () => setShowMediaUploadModal(true)}
+          onOpenGenerateImage={(isArchived || isReadOnly) ? undefined : () => setShowImageModal(true)}
+          onOpenGenerateVideo={(isArchived || isReadOnly) ? undefined : () => setShowVideoModal(true)}
+          onOpenGenerateMusicLyrical={(isArchived || isReadOnly) ? undefined : () => {
             setMusicModalInitialData({
               lyricalOption: {
                 title: 'Therapeutic Song',
@@ -834,7 +863,7 @@ export function TranscriptViewerClient({
             });
             setShowMusicModal(true);
           }}
-          onOpenGenerateMusicInstrumental={() => {
+          onOpenGenerateMusicInstrumental={(isArchived || isReadOnly) ? undefined : () => {
             setMusicModalInitialData({
               instrumentalOption: {
                 title: 'Therapeutic Music',
@@ -843,7 +872,7 @@ export function TranscriptViewerClient({
             });
             setShowMusicModal(true);
           }}
-          onOpenGenerateScene={() => {
+          onOpenGenerateScene={(isArchived || isReadOnly) ? undefined : () => {
             // Open scene generation with empty initial scenes
             setSceneCardData({ scenes: [] });
             setShowSceneGenerationModal(true);
@@ -851,11 +880,13 @@ export function TranscriptViewerClient({
           refreshKey={mediaRefreshKey}
           onTaskComplete={handleTaskComplete}
           onSelectedPatientChange={setSelectedPatientFromLibrary}
-          onEditQuote={quote => setEditingQuote(quote)}
-          onDeleteQuote={quote => setDeletingQuote(quote)}
+          onEditQuote={(isArchived || isReadOnly) ? undefined : quote => setEditingQuote(quote)}
+          onDeleteQuote={(isArchived || isReadOnly) ? undefined : quote => setDeletingQuote(quote)}
           isCollapsed={isLibraryCollapsed}
           onToggleCollapse={() => setIsLibraryCollapsed(!isLibraryCollapsed)}
           onJumpToTimestamp={setSeekToTimestamp}
+          isArchived={isArchived}
+          isReadOnly={isReadOnly}
         />
       </div>
 

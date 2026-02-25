@@ -2,8 +2,9 @@ import type { NextRequest } from 'next/server';
 import { eq, inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { sessions, speakers, transcripts, utterances } from '@/models/Schema';
-import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
+import { handleRBACError, requireWritableSession } from '@/middleware/RBACMiddleware';
+import { speakers, transcripts, utterances } from '@/models/Schema';
+import { handleAuthError } from '@/utils/AuthHelpers';
 
 // POST /api/sessions/[id]/speakers/merge - Merge multiple speakers into one
 export async function POST(
@@ -11,33 +12,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    // 1. AUTHENTICATE
-    const user = await requireTherapist(request);
-
-    // 2. AWAIT PARAMS
+    // 1. AWAIT PARAMS
     const { id: sessionId } = await params;
 
-    // 3. VERIFY SESSION ACCESS
-    const session = await db.query.sessions.findFirst({
-      where: eq(sessions.id, sessionId),
-    });
+    // 2. AUTHENTICATE & VERIFY WRITE ACCESS (not archived)
+    await requireWritableSession(request, sessionId);
 
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Session not found' },
-        { status: 404 },
-      );
-    }
-
-    // Verify therapist owns this session
-    if (user.role === 'therapist' && session.therapistId !== user.dbUserId) {
-      return NextResponse.json(
-        { error: 'Forbidden: You do not have access to this session' },
-        { status: 403 },
-      );
-    }
-
-    // 4. PARSE REQUEST BODY
+    // 3. PARSE REQUEST BODY
     const body = await request.json();
     const { speakerIds } = body;
 
@@ -142,6 +123,9 @@ export async function POST(
     });
   } catch (error) {
     console.error('Error merging speakers:', error);
+    if (error instanceof Error && (error.message.includes('Forbidden') || error.message.includes('not found'))) {
+      return handleRBACError(error);
+    }
     return handleAuthError(error);
   }
 }

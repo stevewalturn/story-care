@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Clapperboard, Download, Edit2, Eye, Frame, Image as ImageIcon, MoreVertical, Music, Pencil, Plus, RefreshCw, Sparkles, Trash2, Upload, Users, Video } from 'lucide-react';
+import { ChevronDown, Clapperboard, Download, Edit2, Eye, Frame, Image as ImageIcon, Lock, MoreVertical, Music, Pencil, Plus, RefreshCw, Sparkles, Trash2, Upload, Users, Video } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -526,6 +526,30 @@ export function AssetsClient() {
       alert('Failed to delete note. Please try again.');
     } finally {
       setIsDeletingNote(false);
+    }
+  };
+
+  const handleLockNote = async (noteId: string) => {
+    if (!confirm('Are you sure? Once locked, this note cannot be edited or deleted.')) {
+      return;
+    }
+
+    try {
+      const response = await authenticatedFetch(`/api/notes/${noteId}/lock`, user, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'lock' }),
+      });
+
+      if (response.ok) {
+        await loadNotes();
+        toast.success('Note locked successfully');
+      } else {
+        throw new Error('Failed to lock note');
+      }
+    } catch (error) {
+      console.error('Error locking note:', error);
+      toast.error('Failed to lock note');
     }
   };
 
@@ -1829,9 +1853,17 @@ export function AssetsClient() {
                     {/* Note Header */}
                     <div className="mb-3 flex items-start justify-between">
                       <div className="flex-1">
-                        <h3 className="mb-1 text-base font-semibold text-gray-900">
-                          {note.title || 'Untitled Note'}
-                        </h3>
+                        <div className="mb-1 flex items-center gap-2">
+                          <h3 className="text-base font-semibold text-gray-900">
+                            {note.title || 'Untitled Note'}
+                          </h3>
+                          {note.status === 'locked' && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                              <Lock className="h-3 w-3" />
+                              Locked
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-3 text-xs text-gray-500">
                           <span>{formatDate(note.createdAt)}</span>
                           {note.updatedAt && note.updatedAt !== note.createdAt && (
@@ -1857,20 +1889,31 @@ export function AssetsClient() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setEditingNote(note)}
-                          className="text-gray-400 transition-colors hover:text-purple-600"
-                          title="Edit note"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeletingNote(note)}
-                          className="text-gray-400 transition-colors hover:text-red-600"
-                          title="Delete note"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {note.status !== 'locked' && (
+                          <>
+                            <button
+                              onClick={() => setEditingNote(note)}
+                              className="text-gray-400 transition-colors hover:text-purple-600"
+                              title="Edit note"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => setDeletingNote(note)}
+                              className="text-gray-400 transition-colors hover:text-red-600"
+                              title="Delete note"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleLockNote(note.id)}
+                              className="text-gray-400 transition-colors hover:text-amber-600"
+                              title="Lock note"
+                            >
+                              <Lock className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
 

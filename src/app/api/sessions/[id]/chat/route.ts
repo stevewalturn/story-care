@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
+import { handleRBACError, requireWritableSession } from '@/middleware/RBACMiddleware';
 import { aiChatMessages } from '@/models/Schema';
 
 type RouteContext = {
@@ -40,6 +41,10 @@ export async function POST(
 ) {
   try {
     const { id: sessionId } = await context.params;
+
+    // Verify user has write access (not archived)
+    await requireWritableSession(request, sessionId);
+
     const body = await request.json();
 
     const {
@@ -77,6 +82,9 @@ export async function POST(
 
     return NextResponse.json({ message: newMessage }, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && (error.message.includes('Forbidden') || error.message.includes('Unauthorized'))) {
+      return handleRBACError(error);
+    }
     console.error('Error saving chat message:', error);
     return NextResponse.json(
       { error: 'Failed to save chat message' },

@@ -15,7 +15,7 @@ import { eq } from 'drizzle-orm';
 
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { auditLogs, users } from '@/models/Schema';
+import { auditLogs, sessions, users } from '@/models/Schema';
 import { requireAuth } from '@/utils/AuthHelpers';
 
 /**
@@ -162,6 +162,37 @@ export async function requireSessionAccess(
     return user;
   }
 
+  // Therapist assigned to the session's patient (read access to historical sessions after reassignment)
+  if (user.role === 'therapist') {
+    if (session.patientId) {
+      const patient = await db.query.users.findFirst({
+        where: eq(users.id, session.patientId),
+      });
+      if (patient?.therapistId === user.dbUserId) {
+        return user;
+      }
+    }
+    if (session.groupId) {
+      const members = await db.query.groupMembers.findMany({
+        where: (gm, { and, eq: gEq, isNull }) =>
+          and(
+            gEq(gm.groupId, session.groupId!),
+            isNull(gm.leftAt),
+          ),
+      });
+      for (const member of members) {
+        if (member.patientId) {
+          const patient = await db.query.users.findFirst({
+            where: eq(users.id, member.patientId),
+          });
+          if (patient?.therapistId === user.dbUserId) {
+            return user;
+          }
+        }
+      }
+    }
+  }
+
   // Patient accessing their own session
   if (user.role === 'patient') {
     // Individual session assigned to this patient
@@ -187,6 +218,34 @@ export async function requireSessionAccess(
   }
 
   throw new Error('Forbidden: You do not have access to this session');
+}
+
+/**
+ * Verifies user has write access to a session (not archived)
+ * Combines requireSessionAccess() with an archive check.
+ *
+ * @param request - Next.js request
+ * @param sessionId - Session UUID to check
+ * @returns Authenticated user if write access granted
+ * @throws Error if session is archived or access denied
+ */
+export async function requireWritableSession(
+  request: Request,
+  sessionId: string,
+): Promise<AuthenticatedUser> {
+  const user = await requireSessionAccess(request, sessionId);
+
+  const [session] = await db
+    .select({ archivedAt: sessions.archivedAt })
+    .from(sessions)
+    .where(eq(sessions.id, sessionId))
+    .limit(1);
+
+  if (session?.archivedAt) {
+    throw new Error('Forbidden: Session is archived (read-only)');
+  }
+
+  return user;
 }
 
 /**
@@ -314,6 +373,16 @@ export async function requireStoryPageAccess(
   // Therapist accessing page they created
   if (user.role === 'therapist' && page.createdByTherapistId === user.dbUserId) {
     return user;
+  }
+
+  // Therapist assigned to the page's patient (read access after reassignment)
+  if (user.role === 'therapist') {
+    const patient = await db.query.users.findFirst({
+      where: eq(users.id, page.patientId),
+    });
+    if (patient?.therapistId === user.dbUserId) {
+      return user;
+    }
   }
 
   // Patient accessing their own page (if published)
