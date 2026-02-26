@@ -50,6 +50,7 @@ export default function AuditLogsPage() {
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAction, setSelectedAction] = useState('all');
+  const [selectedResourceType, setSelectedResourceType] = useState('all');
   const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
     start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] || '',
     end: new Date().toISOString().split('T')[0] || '',
@@ -78,6 +79,9 @@ export default function AuditLogsPage() {
       if (selectedAction !== 'all') {
         params.append('action', selectedAction);
       }
+      if (selectedResourceType !== 'all') {
+        params.append('resourceType', selectedResourceType);
+      }
 
       const response = await fetch(`/api/super-admin/audit?${params}`, {
         headers: {
@@ -99,7 +103,7 @@ export default function AuditLogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, pagination.page, pagination.limit, searchQuery, selectedAction, dateRange]);
+  }, [user, pagination.page, pagination.limit, searchQuery, selectedAction, selectedResourceType, dateRange]);
 
   useEffect(() => {
     if (user) {
@@ -222,6 +226,30 @@ export default function AuditLogsPage() {
             <option value="update">Update</option>
             <option value="delete">Delete</option>
             <option value="export">Export</option>
+          </select>
+        </div>
+
+        <div className="w-48">
+          <select
+            value={selectedResourceType}
+            onChange={(e) => {
+              setSelectedResourceType(e.target.value);
+              setPagination(prev => ({ ...prev, page: 1 }));
+            }}
+            className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+          >
+            <option value="all">All Resources</option>
+            <option value="note">Note</option>
+            <option value="session">Session</option>
+            <option value="user">User</option>
+            <option value="media">Media</option>
+            <option value="quote">Quote</option>
+            <option value="story_page">Story Page</option>
+            <option value="scene">Scene</option>
+            <option value="transcript">Transcript</option>
+            <option value="reflection_response">Reflection Response</option>
+            <option value="survey_response">Survey Response</option>
+            <option value="auth">Auth</option>
           </select>
         </div>
 

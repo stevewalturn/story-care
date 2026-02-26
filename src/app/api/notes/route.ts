@@ -19,7 +19,10 @@ export async function GET(request: NextRequest) {
 
     console.log('[API/notes] Query params - patientId:', patientId, 'sessionId:', sessionId);
 
-    // Select with session info
+    // Alias users table for the therapist who locked the note
+    const lockerUser = users.as('locker_user');
+
+    // Select with session info and locker info
     let query = db
       .select({
         id: notes.id,
@@ -29,6 +32,8 @@ export async function GET(request: NextRequest) {
         status: notes.status,
         lockedAt: notes.lockedAt,
         lockedBy: notes.lockedBy,
+        lockedByName: lockerUser.name,
+        lockedByCredentials: lockerUser.specialty,
         createdAt: notes.createdAt,
         updatedAt: notes.updatedAt,
         patientId: notes.patientId,
@@ -37,7 +42,8 @@ export async function GET(request: NextRequest) {
         sessionTitle: sessions.title,
       })
       .from(notes)
-      .leftJoin(sessions, eq(notes.sessionId, sessions.id));
+      .leftJoin(sessions, eq(notes.sessionId, sessions.id))
+      .leftJoin(lockerUser, eq(notes.lockedBy, lockerUser.id));
 
     // Build filters
     const filters = [];

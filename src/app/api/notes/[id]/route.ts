@@ -21,9 +21,27 @@ export async function GET(
 
     const { id: noteId } = await context.params;
 
+    const lockerUser = users.as('locker_user');
+
     const [note] = await db
-      .select()
+      .select({
+        id: notes.id,
+        title: notes.title,
+        content: notes.content,
+        tags: notes.tags,
+        status: notes.status,
+        lockedAt: notes.lockedAt,
+        lockedBy: notes.lockedBy,
+        lockedByName: lockerUser.name,
+        lockedByCredentials: lockerUser.specialty,
+        createdAt: notes.createdAt,
+        updatedAt: notes.updatedAt,
+        patientId: notes.patientId,
+        therapistId: notes.therapistId,
+        sessionId: notes.sessionId,
+      })
       .from(notes)
+      .leftJoin(lockerUser, eq(notes.lockedBy, lockerUser.id))
       .where(eq(notes.id, noteId))
       .limit(1);
 

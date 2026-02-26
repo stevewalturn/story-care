@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const action = searchParams.get('action') || '';
+    const resourceType = searchParams.get('resourceType') || '';
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const page = Number.parseInt(searchParams.get('page') || '1', 10);
@@ -47,6 +48,10 @@ export async function GET(request: NextRequest) {
 
     if (action) {
       conditions.push(eq(auditLogsSchema.action, action as any));
+    }
+
+    if (resourceType) {
+      conditions.push(eq(auditLogsSchema.resourceType, resourceType));
     }
 
     if (startDate) {

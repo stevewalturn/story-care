@@ -159,12 +159,13 @@ export function EditTherapistModal({
         />
 
         <Input
-          label="Specialty (Optional)"
+          label="Credentials (Optional)"
           type="text"
           value={formData.specialty}
           onChange={e => handleChange('specialty', e.target.value)}
-          placeholder="e.g., Narrative Therapy, Trauma Therapy"
+          placeholder="e.g., APRN FNP-C PMHNP-C"
           disabled={loading}
+          helperText="Credentials appear alongside the therapist's name on all locked notes."
         />
 
         <div className="flex gap-3 pt-4">
