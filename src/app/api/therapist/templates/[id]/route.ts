@@ -140,8 +140,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Template not found' }, { status: 404 });
     }
 
-    // Check if user owns this template (can only edit own private templates)
-    if (template.scope !== 'private' || template.createdBy !== user.id) {
+    // super_admin can edit any template; others can only edit their own private templates
+    if (user.role !== 'super_admin' && (template.scope !== 'private' || template.createdBy !== user.id)) {
       return NextResponse.json(
         { error: 'You can only edit your own private templates' },
         { status: 403 },
@@ -232,8 +232,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Template not found' }, { status: 404 });
     }
 
-    // Check if user owns this template (can only delete own private templates)
-    if (template.scope !== 'private' || template.createdBy !== user.id) {
+    // super_admin can delete any template; others can only delete their own private templates
+    if (user.role !== 'super_admin' && (template.scope !== 'private' || template.createdBy !== user.id)) {
       return NextResponse.json(
         { error: 'You can only delete your own private templates' },
         { status: 403 },

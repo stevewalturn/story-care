@@ -25,12 +25,12 @@ export async function GET(request: Request) {
     const decodedToken = await verifyIdToken(token);
     const firebaseUid = decodedToken.uid;
 
-    // Get user and verify therapist or org_admin role
+    // Get user and verify therapist, org_admin, or super_admin role
     const user = await db.query.usersSchema.findFirst({
       where: eq(usersSchema.firebaseUid, firebaseUid),
     });
 
-    if (!user || (user.role !== 'therapist' && user.role !== 'org_admin')) {
+    if (!user || (user.role !== 'therapist' && user.role !== 'org_admin' && user.role !== 'super_admin')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -123,12 +123,12 @@ export async function POST(request: Request) {
     const decodedToken = await verifyIdToken(token);
     const firebaseUid = decodedToken.uid;
 
-    // Get user and verify therapist or org_admin role
+    // Get user and verify therapist, org_admin, or super_admin role
     const user = await db.query.usersSchema.findFirst({
       where: eq(usersSchema.firebaseUid, firebaseUid),
     });
 
-    if (!user || (user.role !== 'therapist' && user.role !== 'org_admin')) {
+    if (!user || (user.role !== 'therapist' && user.role !== 'org_admin' && user.role !== 'super_admin')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -149,7 +149,7 @@ export async function POST(request: Request) {
       description: description || null,
       category: category || 'custom',
       questions,
-      scope: (user.role === 'org_admin' ? 'organization' : 'private') as 'organization' | 'private',
+      scope: (user.role === 'super_admin' ? 'system' : user.role === 'org_admin' ? 'organization' : 'private') as 'system' | 'organization' | 'private',
       organizationId: user.organizationId,
       createdBy: user.id,
       status: 'active' as const,

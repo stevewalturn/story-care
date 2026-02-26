@@ -192,12 +192,13 @@ Visible in:
 
 | Action | super_admin | org_admin | therapist | patient | Conditions / Notes |
 |--------|:-----------:|:---------:|:---------:|:-------:|-------------------|
-| List templates | ⚠️ | ✅ | ✅ | ❌ | Therapist + org admin see: private (own) + org + system |
-| View template | ⚠️ | ✅ | ✅ | ❌ | Same scope rules |
-| Create `private` template | — | ✅ | ✅ | ❌ | |
-| Create `organization` template | — | ✅ | ❌ | ❌ | |
-| Edit template | — | ⚠️ | ⚠️ | ❌ | Creator or org admin |
-| Delete template | — | ⚠️ | ⚠️ | ❌ | Creator or org admin |
+| List templates | ✅ | ✅ | ✅ | ❌ | All see: private (own) + org + system |
+| View template | ✅ | ✅ | ✅ | ❌ | System: all; Org: same org; Private: creator only |
+| Create `system` template | ✅ | ❌ | ❌ | ❌ | super_admin creates system-scoped templates |
+| Create `organization` template | ✅ | ✅ | ❌ | ❌ | |
+| Create `private` template | ✅ | ✅ | ✅ | ❌ | |
+| Edit template | ✅ | ⚠️ | ⚠️ | ❌ | super_admin: any template; others: own private only |
+| Delete template | ✅ | ⚠️ | ⚠️ | ❌ | super_admin: any template; others: own private only |
 
 ---
 
@@ -224,12 +225,12 @@ Visible in:
 
 ## Known Gaps / Open Issues
 
-| # | Description | Affected endpoint | Risk |
-|---|-------------|-------------------|------|
-| G-1 | Bulk patient assign has no audit log | `POST /therapists/{id}/assign-patients` | Medium — HIPAA gap |
-| G-2 | Therapist self-reassign via API has no org boundary check on new therapist | `PUT /patients/{id}` | High |
-| G-3 | Deactivated therapist's JWT remains valid until 24-hour expiry | All routes | Low (time-bounded) |
-| G-4 | `super_admin` cannot see templates list (route excludes that role) | `GET /api/therapist/templates` | Low |
+| # | Description | Affected endpoint | Risk | Status |
+|---|-------------|-------------------|------|--------|
+| G-1 | Bulk patient assign had no audit log | `POST /therapists/{id}/assign-patients` | Medium — HIPAA gap | ✅ Fixed (BUG-03) |
+| G-2 | Therapist self-reassign via API had no org boundary check on new therapist | `PUT /patients/{id}` | High | ✅ Fixed (BUG-01) |
+| G-3 | Deactivated therapist's JWT remains valid until 24-hour expiry | All routes | Low (time-bounded) | Open |
+| G-4 | `super_admin` blocked from all template routes | `GET/POST /api/therapist/templates`, `PUT/DELETE /api/therapist/templates/[id]` | Low | ✅ Fixed |
 
 ---
 
