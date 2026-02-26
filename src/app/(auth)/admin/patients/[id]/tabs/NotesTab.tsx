@@ -20,6 +20,7 @@ type Note = {
   tags?: string[];
   status: 'draft' | 'locked';
   lockedAt?: string | null;
+  lockedBy?: string | null;
   lockedByName?: string | null;
   lockedByCredentials?: string | null;
   createdAt: string;
@@ -330,11 +331,6 @@ export function NotesTab({ patientId }: NotesTabProps) {
       ) : (
         <div className="space-y-4">
           {notes.map((note) => {
-            const shouldTruncate = note.content.length > 200;
-            const displayContent = shouldTruncate
-              ? `${note.content.slice(0, 200)}...`
-              : note.content;
-
             return (
               <div
                 key={note.id}
@@ -403,8 +399,8 @@ export function NotesTab({ patientId }: NotesTabProps) {
                         </button>
                       </>
                     )}
-                    {/* Unlock button — only visible to note creator */}
-                    {note.status === 'locked' && note.therapistId === dbUser?.id && (
+                    {/* Unlock button — only visible to the person who locked the note */}
+                    {note.status === 'locked' && note.lockedBy === dbUser?.id && (
                       <button
                         onClick={() => handleUnlockNote(note.id)}
                         className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-green-600"
@@ -416,21 +412,19 @@ export function NotesTab({ patientId }: NotesTabProps) {
                   </div>
                 </div>
 
-                {/* Note content */}
-                <HTMLContent
-                  html={displayContent}
-                  className="text-sm leading-relaxed text-gray-700"
-                />
-
-                {/* Show more button - opens modal */}
-                {shouldTruncate && (
-                  <button
-                    onClick={() => setViewingNote(note)}
-                    className="mt-2 text-xs font-medium text-purple-600 hover:text-purple-700"
-                  >
-                    Show more
-                  </button>
-                )}
+                {/* Note content — clamped to 3 lines; always show See Detail */}
+                <div className="line-clamp-3 overflow-hidden">
+                  <HTMLContent
+                    html={note.content}
+                    className="text-sm leading-relaxed text-gray-700"
+                  />
+                </div>
+                <button
+                  onClick={() => setViewingNote(note)}
+                  className="mt-2 text-xs font-medium text-purple-600 hover:text-purple-700"
+                >
+                  See Detail
+                </button>
 
                 {/* Signature block for locked notes */}
                 {note.status === 'locked' && note.lockedAt && (
@@ -558,8 +552,8 @@ export function NotesTab({ patientId }: NotesTabProps) {
                     Lock
                   </button>
                 )}
-                {/* Unlock button - only visible to note creator */}
-                {viewingNote.status === 'locked' && viewingNote.therapistId === dbUser?.id && (
+                {/* Unlock button - only visible to the person who locked the note */}
+                {viewingNote.status === 'locked' && viewingNote.lockedBy === dbUser?.id && (
                   <button
                     onClick={async () => {
                       await handleUnlockNote(viewingNote.id);

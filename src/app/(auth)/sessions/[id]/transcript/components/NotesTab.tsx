@@ -383,8 +383,8 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
                           </button>
                         </>
                       )}
-                      {/* Unlock button — only visible to note creator */}
-                      {note.status === 'locked' && !isReadOnly && note.therapistId === dbUser?.id && (
+                      {/* Unlock button — only visible to the person who locked the note */}
+                      {note.status === 'locked' && !isReadOnly && note.lockedBy === dbUser?.id && (
                         <button
                           onClick={() => handleUnlockNote(note.id)}
                           className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-green-600"
@@ -525,8 +525,8 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
                     Lock
                   </button>
                 )}
-                {/* Unlock button - only visible to note creator */}
-                {viewingNote.status === 'locked' && !isReadOnly && viewingNote.therapistId === dbUser?.id && (
+                {/* Unlock button - only visible to the person who locked the note */}
+                {viewingNote.status === 'locked' && !isReadOnly && viewingNote.lockedBy === dbUser?.id && (
                   <button
                     onClick={async () => {
                       await handleUnlockNote(viewingNote.id);

@@ -113,14 +113,6 @@ export async function PUT(
     // Require authentication
     const user = await requireAuth(request);
 
-    // Only therapists and admins can update notes
-    if (user.role !== 'therapist' && user.role !== 'org_admin' && user.role !== 'super_admin') {
-      return NextResponse.json(
-        { error: 'Forbidden: Only therapists can update notes' },
-        { status: 403 },
-      );
-    }
-
     const { id: noteId } = await context.params;
 
     // Check if note exists and user has permission
@@ -137,22 +129,26 @@ export async function PUT(
       );
     }
 
-    // Therapists must be BOTH the creator AND currently assigned to the patient to edit
-    if (user.role === 'therapist') {
-      if (existingNote.therapistId !== user.dbUserId) {
+    // Patients can only edit their own notes
+    if (user.role === 'patient') {
+      if (existingNote.patientId !== user.dbUserId) {
         return NextResponse.json(
-          { error: 'Forbidden: Only the note creator can edit this note' },
-          { status: 403 },
-        );
-      }
-      const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
-      if (!therapistPatientIds.includes(existingNote.patientId)) {
-        return NextResponse.json(
-          { error: 'Forbidden: Patient is no longer assigned to you' },
+          { error: 'Forbidden: You can only edit your own notes' },
           { status: 403 },
         );
       }
     }
+    else if (user.role === 'therapist') {
+      // Any therapist currently assigned to the patient can edit (not just the creator)
+      const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
+      if (!therapistPatientIds.includes(existingNote.patientId)) {
+        return NextResponse.json(
+          { error: 'Forbidden: Patient is not assigned to you' },
+          { status: 403 },
+        );
+      }
+    }
+    // org_admin / super_admin: no restriction
 
     // Prevent editing locked notes
     if (existingNote.status === 'locked') {
@@ -218,14 +214,6 @@ export async function DELETE(
     // Require authentication
     const user = await requireAuth(request);
 
-    // Only therapists and admins can delete notes
-    if (user.role !== 'therapist' && user.role !== 'org_admin' && user.role !== 'super_admin') {
-      return NextResponse.json(
-        { error: 'Forbidden: Only therapists can delete notes' },
-        { status: 403 },
-      );
-    }
-
     const { id: noteId } = await context.params;
 
     // Check if note exists and user has permission
@@ -242,22 +230,25 @@ export async function DELETE(
       );
     }
 
-    // Therapists must be BOTH the creator AND currently assigned to the patient to delete
+    // Patients cannot delete clinical notes
+    if (user.role === 'patient') {
+      return NextResponse.json(
+        { error: 'Forbidden: Patients cannot delete notes' },
+        { status: 403 },
+      );
+    }
+
+    // Any therapist currently assigned to the patient can delete (not just the creator)
     if (user.role === 'therapist') {
-      if (existingNote.therapistId !== user.dbUserId) {
-        return NextResponse.json(
-          { error: 'Forbidden: Only the note creator can delete this note' },
-          { status: 403 },
-        );
-      }
       const therapistPatientIds = await getTherapistPatientIds(user.dbUserId);
       if (!therapistPatientIds.includes(existingNote.patientId)) {
         return NextResponse.json(
-          { error: 'Forbidden: Patient is no longer assigned to you' },
+          { error: 'Forbidden: Patient is not assigned to you' },
           { status: 403 },
         );
       }
     }
+    // org_admin / super_admin: no restriction
 
     // Prevent deleting locked notes
     if (existingNote.status === 'locked') {
