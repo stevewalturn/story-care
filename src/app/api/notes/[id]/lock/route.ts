@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import { logPHIUpdate } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { notes } from '@/models/Schema';
-import { handleAuthError, requireAuth } from '@/utils/AuthHelpers';
+import { handleAuthError, requireAuth, verifyTherapistPatientAccess } from '@/utils/AuthHelpers';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -44,12 +44,16 @@ export async function PATCH(
     }
 
     if (action === 'lock') {
-      // Only note author (therapist) or admins can lock
-      if (user.role === 'therapist' && existingNote.therapistId !== user.dbUserId) {
-        return NextResponse.json(
-          { error: 'Forbidden: Only the note author or admins can lock this note' },
-          { status: 403 },
-        );
+      // Any therapist currently assigned to the note's patient can lock it.
+      // (Admins pass through; patients are blocked by the check below.)
+      if (user.role === 'therapist') {
+        const accessCheck = await verifyTherapistPatientAccess(user, existingNote.patientId);
+        if (!accessCheck.hasAccess) {
+          return NextResponse.json(
+            { error: 'Forbidden: You do not have access to this patient\'s notes' },
+            { status: 403 },
+          );
+        }
       }
 
       if (user.role === 'patient') {
