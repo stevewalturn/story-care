@@ -78,6 +78,13 @@ export async function requirePatientAccess(
 
   // Therapist - check if patient is assigned to them AND in same org
   if (user.role === 'therapist') {
+    // BUG-02: Only active therapists may access patient data.
+    // Deactivated therapists retain valid JWTs for up to 24 hours;
+    // checking status here ensures deactivation takes effect immediately.
+    if (user.status !== 'active') {
+      throw new Error('Forbidden: Therapist account is not active');
+    }
+
     const patient = await db.query.users.findFirst({
       where: eq(users.id, patientId),
     });
@@ -155,6 +162,13 @@ export async function requireSessionAccess(
     }
     await requireSameOrg(user, therapist.organizationId, 'session', sessionId);
     return user;
+  }
+
+  // Therapist - check active status before any access
+  // BUG-02: Deactivated therapists retain valid JWTs for up to 24 hours;
+  // checking status here ensures deactivation takes effect immediately.
+  if (user.role === 'therapist' && user.status !== 'active') {
+    throw new Error('Forbidden: Therapist account is not active');
   }
 
   // Therapist accessing their own session
@@ -295,6 +309,12 @@ export async function requireMediaAccess(
     return user;
   }
 
+  // Therapist - check active status before any access
+  // BUG-02: Same deactivation guard applied consistently across all RBAC checks.
+  if (user.role === 'therapist' && user.status !== 'active') {
+    throw new Error('Forbidden: Therapist account is not active');
+  }
+
   // Therapist accessing media they created
   if (user.role === 'therapist' && media.createdByTherapistId === user.dbUserId) {
     return user;
@@ -368,6 +388,12 @@ export async function requireStoryPageAccess(
     }
     await requireSameOrg(user, patient.organizationId, 'story_page', pageId);
     return user;
+  }
+
+  // Therapist - check active status before any access
+  // BUG-02: Same deactivation guard applied consistently across all RBAC checks.
+  if (user.role === 'therapist' && user.status !== 'active') {
+    throw new Error('Forbidden: Therapist account is not active');
   }
 
   // Therapist accessing page they created
@@ -493,6 +519,11 @@ export async function canCreateForPatient(
   // Only therapists can create for patients
   if (user.role !== 'therapist') {
     throw new Error('Forbidden: Only therapists can create patient resources');
+  }
+
+  // BUG-02: Deactivated therapists cannot create resources.
+  if (user.status !== 'active') {
+    throw new Error('Forbidden: Therapist account is not active');
   }
 
   // Check org boundary

@@ -9,7 +9,8 @@ import { inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/libs/DB';
-import { users } from '@/models/Schema';
+import { therapistPatientArchives, users } from '@/models/Schema';
+import { logAuditFromRequest } from '@/services/AuditService';
 import { handleAuthError, requireAdmin } from '@/utils/AuthHelpers';
 
 const assignPatientsSchema = z.object({
@@ -103,6 +104,14 @@ export async function POST(
       }
     }
 
+    // BUG-16B: Remove stale archive entries for all reassigned patients so their
+    // new therapist sees them in the active list by default.
+    await db.delete(therapistPatientArchives)
+      .where(inArray(therapistPatientArchives.patientId, validated.patientIds));
+
+    // BUG-14 note: Concurrent assignment of the same patients by two admins
+    // simultaneously results in a last-write-wins race. A SELECT FOR UPDATE
+    // transaction would fully prevent this; deferred given admin-only access.
     // Assign patients to therapist (update therapistId)
     await db
       .update(users)
@@ -111,6 +120,14 @@ export async function POST(
         updatedAt: new Date(),
       })
       .where(inArray(users.id, validated.patientIds));
+
+    // BUG-03: Audit log the bulk assignment (previously missing entirely).
+    await logAuditFromRequest(request, authUser, 'update', 'user', therapistId, {
+      action: 'bulk_patient_assignment',
+      assignedPatientIds: validated.patientIds,
+      assignedCount: validated.patientIds.length,
+      therapistName: therapist.name,
+    });
 
     return NextResponse.json({
       success: true,

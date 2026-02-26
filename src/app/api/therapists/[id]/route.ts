@@ -5,7 +5,7 @@
  */
 
 import type { NextRequest } from 'next/server';
-import { and, count, desc, eq, isNull } from 'drizzle-orm';
+import { and, count, desc, eq, gte, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { generatePresignedUrlsForPatients } from '@/libs/GCS';
@@ -83,16 +83,25 @@ export async function GET(
       );
     const totalPatients = Number(totalPatientsResult[0]?.count || 0);
 
-    // 2. Total sessions created by this therapist
+    // 2. Total sessions created by this therapist (excluding soft-deleted)
     const totalSessionsResult = await db
       .select({ count: count() })
       .from(sessions)
-      .where(eq(sessions.therapistId, therapist.id));
+      .where(
+        and(
+          eq(sessions.therapistId, therapist.id),
+          isNull(sessions.deletedAt),
+        ),
+      );
     const totalSessions = Number(totalSessionsResult[0]?.count || 0);
 
-    // 3. Active sessions (sessions created in the last 30 days)
+    // 3. Active sessions in the last 30 days (not soft-deleted)
+    // BUG-05: thirtyDaysAgo was computed but never applied to the query.
+    // BUG-07 (partial): also excludes soft-deleted sessions.
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // sessionDate is stored as a date string (YYYY-MM-DD), so compare as string
+    const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().slice(0, 10);
 
     const activeSessionsResult = await db
       .select({ count: count() })
@@ -100,6 +109,8 @@ export async function GET(
       .where(
         and(
           eq(sessions.therapistId, therapist.id),
+          isNull(sessions.deletedAt),
+          gte(sessions.sessionDate, thirtyDaysAgoStr),
         ),
       );
     const activeSessions = Number(activeSessionsResult[0]?.count || 0);
@@ -141,6 +152,8 @@ export async function GET(
       .limit(10);
 
     // Get session count for each recent patient
+    // BUG-06: Previously filtered by therapistId here, making counts wrong for
+    // inherited patients — now counts all sessions for the patient across any therapist.
     const recentPatientsWithSessionCount = await Promise.all(
       recentPatients.map(async (patient) => {
         const sessionCountResult = await db
@@ -149,16 +162,16 @@ export async function GET(
           .where(
             and(
               eq(sessions.patientId, patient.id),
-              eq(sessions.therapistId, therapist.id),
+              isNull(sessions.deletedAt),
             ),
           );
 
-        // Get last session date
+        // Get last session date across all therapists
         const lastSession = await db.query.sessions.findFirst({
-          where: (sessions, { and, eq }) =>
+          where: (sessions, { and, eq, isNull }) =>
             and(
               eq(sessions.patientId, patient.id),
-              eq(sessions.therapistId, therapist.id),
+              isNull(sessions.deletedAt),
             ),
           orderBy: (sessions, { desc }) => [desc(sessions.sessionDate)],
         });
@@ -177,7 +190,8 @@ export async function GET(
       1,
     );
 
-    // Fetch recent sessions (top 10)
+    // Fetch recent sessions (top 10, excluding soft-deleted)
+    // BUG-07 (complete): also exclude soft-deleted sessions from recentSessions.
     const recentSessions = await db
       .select({
         id: sessions.id,
@@ -190,7 +204,12 @@ export async function GET(
         createdAt: sessions.createdAt,
       })
       .from(sessions)
-      .where(eq(sessions.therapistId, therapist.id))
+      .where(
+        and(
+          eq(sessions.therapistId, therapist.id),
+          isNull(sessions.deletedAt),
+        ),
+      )
       .orderBy(desc(sessions.sessionDate))
       .limit(10);
 
@@ -263,6 +282,8 @@ export async function GET(
         mediaGenerated,
         lastActivityDate,
       },
+      // BUG-11: recentPatients is capped at 10. The full count is in metrics.totalPatients.
+      // Callers can show "displaying X of Y" using recentPatients.length and metrics.totalPatients.
       recentPatients: recentPatientsWithSignedUrls,
       recentSessions: recentSessionsWithPatient,
       activityLog,

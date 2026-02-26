@@ -20,6 +20,7 @@ import {
   sessions,
   storyPages,
   surveyResponses,
+  therapistPatientArchives,
   users,
 } from '@/models/Schema';
 import { handleAuthError } from '@/utils/AuthHelpers';
@@ -211,6 +212,26 @@ export async function PUT(
       updateData.name = name;
     }
     if (email !== undefined) {
+      // BUG-09: Enforce email uniqueness — prevent two patients sharing the same email.
+      if (email !== null && email !== '') {
+        const [existingUser] = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(
+            and(
+              eq(users.email, email),
+              isNull(users.deletedAt),
+            ),
+          )
+          .limit(1);
+
+        if (existingUser && existingUser.id !== id) {
+          return NextResponse.json(
+            { error: 'A user with this email already exists' },
+            { status: 409 },
+          );
+        }
+      }
       updateData.email = email;
     }
     if (referenceImageUrl !== undefined) {
@@ -277,7 +298,16 @@ export async function PUT(
     }
 
     if (therapistId !== undefined) {
-      // Validate therapist exists and belongs to the same organization (for org_admin)
+      // BUG-12: Only admins may unassign a patient (set therapistId to null).
+      // A therapist should not be able to orphan their own patient.
+      if ((therapistId === null || therapistId === '') && user.role === 'therapist') {
+        return NextResponse.json(
+          { error: 'Forbidden: Therapists cannot unassign patients from a therapist' },
+          { status: 403 },
+        );
+      }
+
+      // Validate therapist exists and belongs to the same organization
       if (therapistId !== null && therapistId !== '') {
         const [therapist] = await db
           .select()
@@ -299,14 +329,26 @@ export async function PUT(
           );
         }
 
-        // For org_admin, ensure therapist is in the same organization
-        if (user.role === 'org_admin' && therapist.organizationId !== user.organizationId) {
+        // BUG-01: Enforce org boundary for both org_admin and therapist roles —
+        // previously only org_admin had this check, allowing therapists to
+        // reassign patients to therapists in other organizations.
+        if (
+          (user.role === 'org_admin' || user.role === 'therapist')
+          && therapist.organizationId !== user.organizationId
+        ) {
           return NextResponse.json(
             { error: 'Cannot assign patient to therapist from different organization' },
             { status: 403 },
           );
         }
       }
+
+      // BUG-16A: Delete stale archive entries for this patient so the new
+      // therapist sees them in the active list and the old therapist's archive
+      // is no longer polluted with a patient they no longer manage.
+      await db.delete(therapistPatientArchives)
+        .where(eq(therapistPatientArchives.patientId, id));
+
       updateData.therapistId = therapistId || null;
     }
 
@@ -446,6 +488,12 @@ export async function DELETE(
       .set({ deletedAt: now, updatedAt: now })
       .where(eq(patientReferenceImages.patientId, id));
 
+    // 11b. BUG-08: Hard delete therapist_patient_archives for this patient.
+    // The table has onDelete: 'cascade' on its FKs, but that only fires on
+    // hard deletes. Since we soft-delete the patient, we must clean up manually.
+    await db.delete(therapistPatientArchives)
+      .where(eq(therapistPatientArchives.patientId, id));
+
     // 12. Finally, soft delete the patient user record
     await db
       .update(users)
@@ -473,6 +521,7 @@ export async function DELETE(
         'mediaLibrary',
         'sessions',
         'patientReferenceImages',
+        'therapistPatientArchives',
       ],
     });
 

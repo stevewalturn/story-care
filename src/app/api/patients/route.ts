@@ -9,6 +9,7 @@ import { and, count, desc, eq, ilike, inArray, isNull, notInArray, or } from 'dr
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { Env } from '@/libs/Env';
+import { logPHICreate } from '@/libs/AuditLogger';
 import { generatePresignedUrl, generatePresignedUrlsForPatients } from '@/libs/GCS';
 import {
   groupMembers as groupMembersSchema,
@@ -63,6 +64,14 @@ export async function GET(request: NextRequest) {
           { status: 400 },
         );
       }
+      // BUG-13: Archive view is per-therapist; it has no meaning for org_admin.
+      // Previously the param was silently ignored, which is confusing.
+      if (view === 'archived') {
+        return NextResponse.json(
+          { error: 'The "archived" view is not supported for organization admins. Use the therapistId filter to list a specific therapist\'s patients instead.' },
+          { status: 400 },
+        );
+      }
       conditions.push(eq(users.organizationId, authUser.organizationId));
     } else if (authUser.role === 'therapist') {
       // Therapists can only see their assigned patients
@@ -104,8 +113,16 @@ export async function GET(request: NextRequest) {
         { error: 'Forbidden: Insufficient permissions' },
         { status: 403 },
       );
+    } else if (authUser.role === 'super_admin') {
+      // BUG-15: Archive view is per-therapist; not applicable for super_admin.
+      if (view === 'archived') {
+        return NextResponse.json(
+          { error: 'The "archived" view is not supported for super admins.' },
+          { status: 400 },
+        );
+      }
+      // Super admins can see all patients (no org filter)
     }
-    // Super admins can see all patients (no org filter)
 
     // Search filter
     if (search) {
@@ -383,6 +400,13 @@ export async function POST(request: NextRequest) {
 
     // If pending approval, return early without sending email
     if (requiresApproval) {
+      // BUG-04: Patient creation is a PHI-creation event; must be audit logged.
+      await logPHICreate(authUser.dbUserId, 'user', patient.id, request, {
+        patientStatus: patient.status,
+        createdBy: authUser.dbUserId,
+        emailSent: false,
+      });
+
       return NextResponse.json(
         {
           patient,
@@ -423,6 +447,13 @@ export async function POST(request: NextRequest) {
         emailError = error instanceof Error ? error.message : 'Failed to send email';
       }
     }
+
+    // BUG-04: Audit log the patient creation.
+    await logPHICreate(authUser.dbUserId, 'user', patient.id, request, {
+      patientStatus: patient.status,
+      createdBy: authUser.dbUserId,
+      emailSent,
+    });
 
     return NextResponse.json(
       {
