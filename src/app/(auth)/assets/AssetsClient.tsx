@@ -50,6 +50,11 @@ export function AssetsClient() {
   const [selectedPatient, setSelectedPatient] = useState<string>('');
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
   const [patients, setPatients] = useState<any[]>([]);
+  // IDs of patients currently assigned to this therapist (subset of `patients`).
+  // Patients outside this set are "historical" — the therapist has media for them
+  // but is no longer their primary therapist. Generate/create actions are disabled
+  // for historical patients.
+  const [assignedPatientIds, setAssignedPatientIds] = useState<Set<string>>(new Set());
   const [isLoadingPatients, setIsLoadingPatients] = useState(true);
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [quotes, setQuotes] = useState<any[]>([]);
@@ -274,18 +279,41 @@ export function AssetsClient() {
 
     try {
       setIsLoadingPatients(true);
-      // Pass the therapist's Firebase UID to filter patients
-      const params = new URLSearchParams({
-        therapistId: user.uid,
-      });
 
-      const response = await authenticatedFetch(`/api/patients?${params.toString()}`, user);
-      if (response.ok) {
-        const data = await response.json();
-        setPatients(data.patients || []);
-        if (data.patients && data.patients.length > 0) {
-          setSelectedPatient(data.patients[0].id);
+      // Fetch currently-assigned patients and historical media-patients in parallel
+      const params = new URLSearchParams({ therapistId: user.uid });
+      const [assignedRes, mediaPatientRes] = await Promise.all([
+        authenticatedFetch(`/api/patients?${params.toString()}`, user),
+        authenticatedFetch('/api/media/patients', user),
+      ]);
+
+      let assignedPatients: any[] = [];
+      if (assignedRes.ok) {
+        const data = await assignedRes.json();
+        assignedPatients = data.patients || [];
+      }
+
+      const assignedIds = new Set<string>(assignedPatients.map((p: any) => p.id));
+      setAssignedPatientIds(assignedIds);
+
+      // Merge historical patients (from media library) that are no longer assigned
+      let mergedPatients = [...assignedPatients];
+      if (mediaPatientRes.ok) {
+        const mediaData = await mediaPatientRes.json();
+        const mediaPatients: any[] = mediaData.patients || [];
+        for (const mp of mediaPatients) {
+          if (!assignedIds.has(mp.id)) {
+            mergedPatients.push(mp);
+          }
         }
+      }
+
+      setPatients(mergedPatients);
+
+      // Auto-select first currently-assigned patient, falling back to first in list
+      if (mergedPatients.length > 0 && !selectedPatient) {
+        const firstAssigned = mergedPatients.find((p: any) => assignedIds.has(p.id));
+        setSelectedPatient(firstAssigned?.id || mergedPatients[0].id);
       }
     } catch (error) {
       console.error('Error loading patients:', error);
@@ -939,6 +967,9 @@ export function AssetsClient() {
   };
 
   const selectedPatientData = patients.find(p => p.id === selectedPatient);
+  // True when the selected patient is currently assigned to this therapist.
+  // Historical patients (reassigned away) can be viewed but not generated for.
+  const isCurrentlyAssigned = assignedPatientIds.has(selectedPatient);
 
   // Loading state while fetching patients
   if (isLoadingPatients) {
@@ -1132,6 +1163,8 @@ export function AssetsClient() {
                   variant="secondary"
                   size="sm"
                   onClick={handleUploadClick}
+                  disabled={!isCurrentlyAssigned}
+                  title={!isCurrentlyAssigned ? 'This patient is no longer assigned to you' : undefined}
                 >
                   <Upload className="mr-2 h-4 w-4" />
                   Import
@@ -1141,6 +1174,8 @@ export function AssetsClient() {
                     variant="primary"
                     size="sm"
                     onClick={() => setShowCreateDropdown(!showCreateDropdown)}
+                    disabled={!isCurrentlyAssigned}
+                    title={!isCurrentlyAssigned ? 'This patient is no longer assigned to you — you can view existing media but cannot generate new media' : undefined}
                   >
                     <Sparkles className="mr-2 h-4 w-4" />
                     Create Media

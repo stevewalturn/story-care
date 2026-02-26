@@ -320,11 +320,6 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
         ) : (
           <div className="space-y-4">
             {notes.map((note) => {
-              const shouldTruncate = note.content.length > 200;
-              const displayContent = shouldTruncate
-                ? `${note.content.slice(0, 200)}...`
-                : note.content;
-
               return (
                 <div
                   key={note.id}
@@ -401,21 +396,19 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
                     </div>
                   </div>
 
-                  {/* Note content */}
-                  <HTMLContent
-                    html={displayContent}
-                    className="text-sm leading-relaxed text-gray-700"
-                  />
-
-                  {/* Show more button - opens modal */}
-                  {shouldTruncate && (
-                    <button
-                      onClick={() => setViewingNote(note)}
-                      className="mt-2 text-xs font-medium text-purple-600 hover:text-purple-700"
-                    >
-                      Show more
-                    </button>
-                  )}
+                  {/* Note content — clamped to 3 lines; always show See Detail */}
+                  <div className="line-clamp-3 overflow-hidden">
+                    <HTMLContent
+                      html={note.content}
+                      className="text-sm leading-relaxed text-gray-700"
+                    />
+                  </div>
+                  <button
+                    onClick={() => setViewingNote(note)}
+                    className="mt-2 text-xs font-medium text-purple-600 hover:text-purple-700"
+                  >
+                    See Detail
+                  </button>
 
                   {/* Tags */}
                   {note.tags && note.tags.length > 0 && (

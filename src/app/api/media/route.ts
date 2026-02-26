@@ -82,13 +82,35 @@ export async function GET(request: NextRequest) {
     // Super admin: no filter (sees all)
 
     if (patientId) {
-      // HIPAA: Verify user has access to this patient before filtering
-      const accessCheck = await verifyTherapistPatientAccess(user, patientId);
-      if (!accessCheck.hasAccess) {
-        return NextResponse.json(
-          { error: accessCheck.error },
-          { status: 403 },
-        );
+      if (user.role === 'therapist') {
+        // Therapists may filter by patientId in two scenarios:
+        // 1. Patient is currently assigned to them (full access to all media)
+        // 2. Patient was previously assigned — therapist only sees media they created
+        //    (the RBAC filter above already limits this via createdByTherapistId === me)
+        // We only need to verify the patient exists and is in the same org.
+        const [targetPatient] = await db
+          .select({ id: users.id, organizationId: users.organizationId })
+          .from(users)
+          .where(eq(users.id, patientId))
+          .limit(1);
+        if (!targetPatient) {
+          return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
+        }
+        if (targetPatient.organizationId !== user.organizationId) {
+          return NextResponse.json(
+            { error: 'Forbidden: Patient not in your organization' },
+            { status: 403 },
+          );
+        }
+      } else {
+        // For org_admin, super_admin, patient — use the standard access check
+        const accessCheck = await verifyTherapistPatientAccess(user, patientId);
+        if (!accessCheck.hasAccess) {
+          return NextResponse.json(
+            { error: accessCheck.error },
+            { status: 403 },
+          );
+        }
       }
       filters.push(eq(mediaLibrary.patientId, patientId));
     }

@@ -21,8 +21,6 @@ export async function GET(
 
     const { id: noteId } = await context.params;
 
-    const lockerUser = users.as('locker_user');
-
     const [note] = await db
       .select({
         id: notes.id,
@@ -32,8 +30,6 @@ export async function GET(
         status: notes.status,
         lockedAt: notes.lockedAt,
         lockedBy: notes.lockedBy,
-        lockedByName: lockerUser.name,
-        lockedByCredentials: lockerUser.specialty,
         createdAt: notes.createdAt,
         updatedAt: notes.updatedAt,
         patientId: notes.patientId,
@@ -41,7 +37,6 @@ export async function GET(
         sessionId: notes.sessionId,
       })
       .from(notes)
-      .leftJoin(lockerUser, eq(notes.lockedBy, lockerUser.id))
       .where(eq(notes.id, noteId))
       .limit(1);
 
@@ -73,6 +68,20 @@ export async function GET(
       );
     }
 
+    // Fetch locker info if note is locked
+    let lockedByName: string | null = null;
+    let lockedByCredentials: string | null = null;
+
+    if (note.lockedBy) {
+      const [locker] = await db
+        .select({ name: users.name, specialty: users.specialty })
+        .from(users)
+        .where(eq(users.id, note.lockedBy))
+        .limit(1);
+      lockedByName = locker?.name ?? null;
+      lockedByCredentials = locker?.specialty ?? null;
+    }
+
     // Log PHI access
     await logAudit({
       userId: user.dbUserId,
@@ -82,7 +91,7 @@ export async function GET(
       ...getClientInfo(request),
     });
 
-    return NextResponse.json({ note });
+    return NextResponse.json({ note: { ...note, lockedByName, lockedByCredentials } });
   } catch (error) {
     if (error instanceof Error && error.message.includes('Unauthorized')) {
       return handleAuthError(error);

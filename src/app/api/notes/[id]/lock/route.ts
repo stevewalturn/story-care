@@ -87,12 +87,13 @@ export async function PATCH(
       return NextResponse.json({ note: updatedNote });
     }
 
-    // Unlock: note creator or org_admin / super_admin
-    const isNoteCreator = existingNote.therapistId === user.dbUserId;
-    const isAdmin = user.role === 'org_admin' || user.role === 'super_admin';
-    if (!isNoteCreator && !isAdmin) {
+    // Unlock: ONLY the person who locked the note can unlock it.
+    // This is intentionally stricter than other resource rules — it prevents
+    // even admins from overriding a therapist's deliberate lock, preserving
+    // clinical note integrity.
+    if (!existingNote.lockedBy || existingNote.lockedBy !== user.dbUserId) {
       return NextResponse.json(
-        { error: 'Forbidden: Only the note creator or admins can unlock notes' },
+        { error: 'Forbidden: Only the person who locked this note can unlock it' },
         { status: 403 },
       );
     }

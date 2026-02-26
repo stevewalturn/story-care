@@ -19,10 +19,7 @@ export async function GET(request: NextRequest) {
 
     console.log('[API/notes] Query params - patientId:', patientId, 'sessionId:', sessionId);
 
-    // Alias users table for the therapist who locked the note
-    const lockerUser = users.as('locker_user');
-
-    // Select with session info and locker info
+    // Select with session info (no alias join — post-process locker info in JS)
     let query = db
       .select({
         id: notes.id,
@@ -32,8 +29,6 @@ export async function GET(request: NextRequest) {
         status: notes.status,
         lockedAt: notes.lockedAt,
         lockedBy: notes.lockedBy,
-        lockedByName: lockerUser.name,
-        lockedByCredentials: lockerUser.specialty,
         createdAt: notes.createdAt,
         updatedAt: notes.updatedAt,
         patientId: notes.patientId,
@@ -42,8 +37,7 @@ export async function GET(request: NextRequest) {
         sessionTitle: sessions.title,
       })
       .from(notes)
-      .leftJoin(sessions, eq(notes.sessionId, sessions.id))
-      .leftJoin(lockerUser, eq(notes.lockedBy, lockerUser.id));
+      .leftJoin(sessions, eq(notes.sessionId, sessions.id));
 
     // Build filters
     const filters = [];
@@ -101,6 +95,32 @@ export async function GET(request: NextRequest) {
       console.log('[API/notes] First note patient ID:', (notesList[0] as any).patientId);
     }
 
+    // Collect unique lockedBy UUIDs from locked notes
+    const lockerIds = [...new Set(
+      notesList
+        .filter((n: any) => n.lockedBy)
+        .map((n: any) => n.lockedBy as string),
+    )];
+
+    // Batch-fetch locker name + credentials
+    const lockerMap: Record<string, { name: string; specialty: string | null }> = {};
+    if (lockerIds.length > 0) {
+      const lockers = await db
+        .select({ id: users.id, name: users.name, specialty: users.specialty })
+        .from(users)
+        .where(inArray(users.id, lockerIds));
+      for (const l of lockers) {
+        lockerMap[l.id] = { name: l.name, specialty: l.specialty };
+      }
+    }
+
+    // Merge locker info into notes
+    const notesWithLocker = notesList.map((n: any) => ({
+      ...n,
+      lockedByName: n.lockedBy ? (lockerMap[n.lockedBy]?.name ?? null) : null,
+      lockedByCredentials: n.lockedBy ? (lockerMap[n.lockedBy]?.specialty ?? null) : null,
+    }));
+
     // Log PHI access
     await logAudit({
       userId: user.dbUserId,
@@ -111,7 +131,7 @@ export async function GET(request: NextRequest) {
       metadata: { count: notesList.length, patientId, sessionId },
     });
 
-    return NextResponse.json({ notes: notesList });
+    return NextResponse.json({ notes: notesWithLocker });
   } catch (error) {
     if (error instanceof Error && error.message.includes('Unauthorized')) {
       return handleAuthError(error);
