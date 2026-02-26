@@ -111,7 +111,22 @@ export default function AuditLogsPage() {
     }
   }, [user, fetchAuditLogs]);
 
-  const getActionBadge = (action: string) => {
+  const getActionBadge = (action: string, metadata?: any) => {
+    if (action === 'update' && metadata?.lockAction === 'lock') {
+      return (
+        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700">
+          Locked
+        </span>
+      );
+    }
+    if (action === 'update' && metadata?.lockAction === 'unlock') {
+      return (
+        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-teal-100 text-teal-700">
+          Unlocked
+        </span>
+      );
+    }
+
     const styles = {
       auth_success: 'bg-green-100 text-green-700',
       auth_failed: 'bg-red-100 text-red-700',
@@ -341,7 +356,7 @@ export default function AuditLogsPage() {
                           {new Date(log.timestamp).toLocaleString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {getActionBadge(log.action)}
+                          {getActionBadge(log.action, log.metadata)}
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm">
