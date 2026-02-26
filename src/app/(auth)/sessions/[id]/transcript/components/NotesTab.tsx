@@ -16,6 +16,24 @@ import { useAuth } from '@/contexts/AuthContext';
 import { authenticatedFetch, authenticatedPost } from '@/utils/AuthenticatedFetch';
 import { downloadAsTextFile, htmlToMarkdown } from '@/utils/FileDownloadHelpers';
 
+// Format signature line for a locked note
+function formatSignature(note: any): string {
+  if (!note.lockedAt) return '';
+  const name = note.lockedByName ?? 'Unknown';
+  const credentials = note.lockedByCredentials ? `, ${note.lockedByCredentials}` : '';
+  const date = new Date(note.lockedAt).toLocaleDateString('en-US', {
+    month: '2-digit',
+    day: '2-digit',
+    year: 'numeric',
+  });
+  const time = new Date(note.lockedAt).toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+  return `Electronically signed by ${name}${credentials} on ${date} at ${time}`;
+}
+
 export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKey, selectedPatient, isReadOnly = false }: NotesTabProps) {
   const { dbUser } = useAuth();
   const [notes, setNotes] = useState<any[]>([]);
@@ -27,11 +45,14 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
   const [showEditNoteModal, setShowEditNoteModal] = useState(false);
   const [copiedNoteId, setCopiedNoteId] = useState<string | null>(null);
 
-  // Handle copy note content - converts HTML to markdown
+  // Handle copy note content - converts HTML to markdown, appends signature for locked notes
   const handleCopyNote = async (note: any) => {
     try {
       const markdownContent = htmlToMarkdown(note.content);
-      const fullText = note.title ? `# ${note.title}\n\n${markdownContent}` : markdownContent;
+      let fullText = note.title ? `# ${note.title}\n\n${markdownContent}` : markdownContent;
+      if (note.status === 'locked' && note.lockedAt) {
+        fullText += `\n\n---\n${formatSignature(note)}`;
+      }
       await navigator.clipboard.writeText(fullText);
       setCopiedNoteId(note.id);
       setTimeout(() => setCopiedNoteId(null), 2000);
@@ -40,10 +61,13 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
     }
   };
 
-  // Handle download note as .txt file
+  // Handle download note as .txt file, appends signature for locked notes
   const handleDownloadNote = (note: any) => {
     const markdownContent = htmlToMarkdown(note.content);
-    const fullText = note.title ? `# ${note.title}\n\n${markdownContent}` : markdownContent;
+    let fullText = note.title ? `# ${note.title}\n\n${markdownContent}` : markdownContent;
+    if (note.status === 'locked' && note.lockedAt) {
+      fullText += `\n\n---\n${formatSignature(note)}`;
+    }
     const prefix = note.title
       ? note.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
       : 'clinical-note';
@@ -410,6 +434,13 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
                     See Detail
                   </button>
 
+                  {/* Signature block for locked notes */}
+                  {note.status === 'locked' && note.lockedAt && (
+                    <div className="mt-3 border-t border-amber-100 pt-2 text-xs italic text-amber-700">
+                      {formatSignature(note)}
+                    </div>
+                  )}
+
                   {/* Tags */}
                   {note.tags && note.tags.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-1">
@@ -543,6 +574,13 @@ export function NotesTab({ sessionId, user, sessionData: _sessionData, refreshKe
 
             {/* Full note content */}
             <HTMLContent html={viewingNote.content} />
+
+            {/* Signature block for locked notes */}
+            {viewingNote.status === 'locked' && viewingNote.lockedAt && (
+              <div className="border-t border-amber-100 pt-3 text-xs italic text-amber-700">
+                {formatSignature(viewingNote)}
+              </div>
+            )}
 
             {/* Tags */}
             {viewingNote.tags && viewingNote.tags.length > 0 && (
