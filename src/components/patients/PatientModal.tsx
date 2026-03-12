@@ -274,7 +274,7 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
                 type="tel"
                 value={formData.phoneNumber ?? ''}
                 onChange={e => setFormData({ ...formData, phoneNumber: e.target.value })}
-                placeholder="+1 (555) 000-0000"
+                placeholder="+15550000000"
                 helperText="If provided, the patient can also set up their account via SMS."
               />
             )}

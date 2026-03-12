@@ -42,7 +42,10 @@ export function PhoneOtpVerifier({ phoneNumber, phoneMasked, onSuccess, onCancel
     sentOnceRef.current = true;
     handleSendOtp();
     return () => {
-      try { recaptchaVerifierRef.current?.clear(); } catch { /* ignore */ }
+      try {
+        recaptchaVerifierRef.current?.clear();
+      }
+      catch { /* ignore */ }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -226,10 +226,10 @@ function SetupAccountPhoneForm() {
                     setPhone(e.target.value);
                     setError('');
                   }}
-                  placeholder="+1 (555) 000-0000"
+                  placeholder="+1 555 000 0000"
                   required
                   disabled={loading}
-                  helperText="Include country code (e.g. +1 for US)"
+                  helperText="Include country code e.g. +1"
                 />
                 <Button type="submit" variant="primary" className="w-full" disabled={loading}>
                   Send Verification Code
@@ -280,7 +280,11 @@ function SetupAccountPhoneForm() {
               <button
                 type="button"
                 className="mt-3 w-full text-sm text-gray-500 hover:text-gray-700"
-                onClick={() => { setStep('enter-phone'); setInvitation(null); setError(''); }}
+                onClick={() => {
+                  setStep('enter-phone');
+                  setInvitation(null);
+                  setError('');
+                }}
               >
                 Use a different number
               </button>

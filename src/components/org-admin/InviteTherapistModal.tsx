@@ -135,7 +135,7 @@ export function InviteTherapistModal({
             type="tel"
             value={formData.phoneNumber ?? ''}
             onChange={e => handleChange('phoneNumber', e.target.value)}
-            placeholder="+1 (555) 000-0000"
+            placeholder="+15550000000"
             disabled={loading}
             helperText="If provided, the therapist can also set up their account via SMS."
           />
