@@ -10,6 +10,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 
 type OrganizationAdmin = {
   id: string;
@@ -40,6 +41,7 @@ export default function OrganizationDetailPage() {
   const router = useRouter();
   const params = useParams();
   const { user } = useAuth();
+  const { enablePhoneVerification } = useFeatureFlags();
   const [organization, setOrganization] = useState<OrganizationDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -54,6 +56,7 @@ export default function OrganizationDetailPage() {
     status: 'active' as 'active' | 'suspended',
     adminEmail: '',
     adminName: '',
+    adminPhone: '',
   });
 
   const fetchOrganization = useCallback(async () => {
@@ -74,6 +77,7 @@ export default function OrganizationDetailPage() {
           status: data.organization.status,
           adminEmail: '',
           adminName: '',
+          adminPhone: '',
         });
       } else {
         setError('Failed to load organization');
@@ -325,6 +329,25 @@ export default function OrganizationDetailPage() {
                               Leave empty to skip admin assignment
                             </p>
                           </div>
+
+                          {enablePhoneVerification && (
+                            <div>
+                              <label htmlFor="admin-phone" className="block text-sm font-medium text-gray-700">
+                                Admin Phone Number (Optional)
+                              </label>
+                              <input
+                                id="admin-phone"
+                                type="tel"
+                                value={formData.adminPhone}
+                                onChange={e => setFormData(prev => ({ ...prev, adminPhone: e.target.value }))}
+                                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                                placeholder="+1 (555) 000-0000"
+                              />
+                              <p className="mt-1 text-xs text-gray-500">
+                                If provided, the admin can also set up their account via SMS.
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -344,6 +367,7 @@ export default function OrganizationDetailPage() {
                             status: organization.status,
                             adminEmail: '',
                             adminName: '',
+                            adminPhone: '',
                           });
                         }}
                       >

@@ -77,6 +77,7 @@ export const updateOrganizationSchema = z.object({
   contactEmail: z.string().email().optional(),
   adminEmail: z.string().email().optional(),
   adminName: z.string().min(2).max(255).optional(),
+  adminPhone: z.string().max(50).optional(),
   logoUrl: z.string().url().nullable().optional(),
   primaryColor: z
     .string()

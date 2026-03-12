@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "phone_verified" boolean DEFAULT false NOT NULL;

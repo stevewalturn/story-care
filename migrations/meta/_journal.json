@@ -15,6 +15,20 @@
       "when": 1772016997800,
       "tag": "0001_gray_peter_quill",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772016997801,
+      "tag": "0002_famous_wonder_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1772016997802,
+      "tag": "0003_nervous_susan_delgado",
+      "breakpoints": true
     }
   ]
 }

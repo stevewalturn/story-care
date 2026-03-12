@@ -2,39 +2,19 @@
  * Link Firebase UID API
  * Links a Firebase UID to an invited user and activates their account
  * Called after successful Firebase account creation during setup-account flow
+ * Supports both email/password and phone number authentication
  */
 
 import type { NextRequest } from 'next/server';
 import { and, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { verifyIdToken } from '@/libs/FirebaseAdmin';
+import { adminAuth } from '@/libs/FirebaseAdmin';
 import { users } from '@/models/Schema';
 import { isTokenExpired } from '@/utils/InvitationTokens';
 
-/**
- * POST /api/auth/link-firebase-uid
- *
- * Request Body:
- * - email: User email (required, but can be provided via token lookup)
- * - token: Invitation token (optional, but preferred for security)
- *
- * Flow:
- * 1. Verify Firebase ID token to ensure authenticity
- * 2. Find invited user using token OR email
- * 3. Validate token hasn't expired (if using token)
- * 4. Update user: set firebaseUid, change status from 'invited' to 'active', clear token
- * 5. Return success
- *
- * Security:
- * - Requires valid Firebase ID token (user must be authenticated)
- * - Token-based lookup is preferred for security (prevents email guessing)
- * - Only links UIDs to users with status='invited' and firebaseUid=null
- * - Clears invitation token after successful activation
- */
 export async function POST(request: NextRequest) {
   try {
-    // Get authorization header
     const authHeader = request.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json(
@@ -45,12 +25,11 @@ export async function POST(request: NextRequest) {
 
     const idToken = authHeader.substring(7);
 
-    // Verify Firebase ID token
-    let firebaseUser;
+    // Decode the Firebase token directly (no DB lookup — user may not exist yet)
+    let decodedToken;
     try {
-      firebaseUser = await verifyIdToken(idToken);
-    } catch (error) {
-      console.error('Failed to verify Firebase ID token:', error);
+      decodedToken = await adminAuth.verifyIdToken(idToken);
+    } catch {
       return NextResponse.json(
         { error: 'Unauthorized: Invalid Firebase ID token' },
         { status: 401 },
@@ -58,9 +37,133 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { email, token } = body;
+    const { email, token, phoneVerified } = body;
 
-    // Must have either email or token
+    const signInProvider = decodedToken.firebase?.sign_in_provider;
+    const isPhoneAuth = signInProvider === 'phone';
+
+    // ─── Phone auth flow ──────────────────────────────────────────────────────
+    if (isPhoneAuth) {
+      const firebasePhone = decodedToken.phone_number;
+      if (!firebasePhone) {
+        return NextResponse.json(
+          { error: 'Phone number not found in Firebase token' },
+          { status: 400 },
+        );
+      }
+
+      let phoneUser;
+
+      if (token) {
+        // Token-based lookup (legacy: phone OTP on /setup-account)
+        const [userByToken] = await db
+          .select()
+          .from(users)
+          .where(eq(users.invitationToken, token))
+          .limit(1);
+
+        if (!userByToken) {
+          return NextResponse.json(
+            { error: 'Invalid or expired invitation token' },
+            { status: 404 },
+          );
+        }
+
+        if (isTokenExpired(userByToken.invitationTokenExpiresAt)) {
+          return NextResponse.json(
+            { error: 'Invitation token has expired. Please request a new invitation.' },
+            { status: 410 },
+          );
+        }
+
+        if (!userByToken.phoneNumber || userByToken.phoneNumber !== firebasePhone) {
+          return NextResponse.json(
+            { error: 'Forbidden: Phone number does not match the invited user' },
+            { status: 403 },
+          );
+        }
+
+        phoneUser = userByToken;
+      } else {
+        // Tokenless lookup by phone number (new: /setup-account-phone flow)
+        const [userByPhone] = await db
+          .select()
+          .from(users)
+          .where(eq(users.phoneNumber, firebasePhone))
+          .limit(1);
+
+        if (!userByPhone) {
+          return NextResponse.json(
+            { error: 'No invitation found for this phone number.' },
+            { status: 404 },
+          );
+        }
+
+        phoneUser = userByPhone;
+      }
+
+      // Idempotency check
+      if (phoneUser.firebaseUid === decodedToken.uid) {
+        return NextResponse.json({
+          success: true,
+          message: 'Account already activated',
+          user: {
+            id: phoneUser.id,
+            email: phoneUser.email,
+            name: phoneUser.name,
+            role: phoneUser.role,
+            status: phoneUser.status,
+          },
+        });
+      }
+
+      if (phoneUser.firebaseUid) {
+        return NextResponse.json(
+          { error: 'This account has already been activated. Please sign in.' },
+          { status: 409 },
+        );
+      }
+
+      const [updatedPhoneUser] = await db
+        .update(users)
+        .set({
+          firebaseUid: decodedToken.uid,
+          status: 'active',
+          phoneVerified: true,
+          invitationToken: null,
+          invitationTokenExpiresAt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, phoneUser.id))
+        .returning();
+
+      if (!updatedPhoneUser) {
+        return NextResponse.json(
+          { error: 'Failed to activate account' },
+          { status: 500 },
+        );
+      }
+
+      try {
+        await adminAuth.updateUser(decodedToken.uid, { emailVerified: true });
+      } catch (err) {
+        console.error('Failed to set emailVerified on phone user:', err);
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Account activated successfully via phone',
+        user: {
+          id: updatedPhoneUser.id,
+          email: updatedPhoneUser.email,
+          name: updatedPhoneUser.name,
+          role: updatedPhoneUser.role,
+          status: updatedPhoneUser.status,
+        },
+      });
+    }
+
+    // ─── Email/password auth flow ─────────────────────────────────────────────
     if (!email && !token) {
       return NextResponse.json(
         { error: 'Email or token is required' },
@@ -68,11 +171,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If token is provided, use it for lookup (more secure)
     let lookupEmail = email;
 
     if (token) {
-      // Find user by token first to get their email
       const [userByToken] = await db
         .select({
           email: users.email,
@@ -89,7 +190,6 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Check token expiry
       if (isTokenExpired(userByToken.invitationTokenExpiresAt)) {
         return NextResponse.json(
           { error: 'Invitation token has expired. Please request a new invitation.' },
@@ -100,19 +200,15 @@ export async function POST(request: NextRequest) {
       lookupEmail = userByToken.email;
     }
 
-    // Security: Ensure the email matches the Firebase user's email
-    if (firebaseUser.email?.toLowerCase() !== lookupEmail.toLowerCase()) {
-      console.error('Email mismatch:', {
-        requestEmail: lookupEmail,
-        firebaseEmail: firebaseUser.email,
-      });
+    // Security: email must match Firebase user's email
+    if (decodedToken.email?.toLowerCase() !== lookupEmail.toLowerCase()) {
       return NextResponse.json(
         { error: 'Forbidden: Email does not match authenticated user' },
         { status: 403 },
       );
     }
 
-    // First, check if this Firebase UID is already linked to the user (idempotent check)
+    // Idempotency: already linked?
     const [existingLinkedUser] = await db
       .select({
         id: users.id,
@@ -126,19 +222,12 @@ export async function POST(request: NextRequest) {
       .where(
         and(
           eq(users.email, lookupEmail.toLowerCase()),
-          eq(users.firebaseUid, firebaseUser.uid),
+          eq(users.firebaseUid, decodedToken.uid),
         ),
       )
       .limit(1);
 
     if (existingLinkedUser) {
-      // Already linked - this is an idempotent retry, return success
-      console.log('✅ Firebase UID already linked (idempotent):', {
-        userId: existingLinkedUser.id,
-        email: existingLinkedUser.email,
-        firebaseUid: existingLinkedUser.firebaseUid,
-      });
-
       return NextResponse.json({
         success: true,
         message: 'Account already activated',
@@ -152,7 +241,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Find invited user with this email and no Firebase UID
+    // Find invited user
     const [invitedUser] = await db
       .select({
         id: users.id,
@@ -173,53 +262,39 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (!invitedUser) {
-      // Check if user exists but with different state
       const [anyUser] = await db
-        .select({
-          id: users.id,
-          email: users.email,
-          status: users.status,
-          firebaseUid: users.firebaseUid,
-        })
+        .select({ id: users.id, status: users.status, firebaseUid: users.firebaseUid })
         .from(users)
         .where(eq(users.email, lookupEmail.toLowerCase()))
         .limit(1);
 
-      if (anyUser && anyUser.firebaseUid && anyUser.firebaseUid !== firebaseUser.uid) {
-        // User exists but linked to a different Firebase UID
+      if (anyUser?.firebaseUid && anyUser.firebaseUid !== decodedToken.uid) {
         return NextResponse.json(
-          {
-            error: 'This email is already linked to a different account. Please sign in or contact support.',
-          },
+          { error: 'This email is already linked to a different account. Please sign in or contact support.' },
           { status: 409 },
         );
       }
 
-      if (anyUser && anyUser.status === 'active') {
-        // User is already active (race condition caught)
+      if (anyUser?.status === 'active') {
         return NextResponse.json(
-          {
-            error: 'This account has already been activated. Please sign in.',
-          },
+          { error: 'This account has already been activated. Please sign in.' },
           { status: 409 },
         );
       }
 
       return NextResponse.json(
-        {
-          error: 'No pending invitation found for this email. Please contact your therapist or administrator.',
-        },
+        { error: 'No pending invitation found for this email. Please contact your therapist or administrator.' },
         { status: 404 },
       );
     }
 
-    // Link Firebase UID, activate account, and clear invitation token
     const [updatedUser] = await db
       .update(users)
       .set({
-        firebaseUid: firebaseUser.uid,
+        firebaseUid: decodedToken.uid,
         status: 'active',
-        invitationToken: null, // Clear token after successful activation
+        ...(phoneVerified === true && { phoneVerified: true }),
+        invitationToken: null,
         invitationTokenExpiresAt: null,
         updatedAt: new Date(),
       })
@@ -240,13 +315,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ Successfully linked Firebase UID and activated account:', {
-      userId: updatedUser.id,
-      email: updatedUser.email,
-      role: updatedUser.role,
-      firebaseUid: updatedUser.firebaseUid,
-      status: updatedUser.status,
-    });
+    try {
+      await adminAuth.updateUser(decodedToken.uid, { emailVerified: true });
+    } catch (err) {
+      console.error('Failed to set emailVerified on email/password user:', err);
+    }
 
     return NextResponse.json({
       success: true,
@@ -262,10 +335,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Failed to link Firebase UID:', error);
     return NextResponse.json(
-      {
-        error: 'Failed to link Firebase UID',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Failed to link Firebase UID' },
       { status: 500 },
     );
   }

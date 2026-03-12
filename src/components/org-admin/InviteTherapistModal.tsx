@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 
 type InviteTherapistModalProps = {
   isOpen: boolean;
@@ -24,11 +25,13 @@ export function InviteTherapistModal({
   onSuccess,
   idToken,
 }: InviteTherapistModalProps) {
+  const { enablePhoneVerification } = useFeatureFlags();
   const [formData, setFormData] = useState<InviteTherapistInput>({
     name: '',
     email: '',
     licenseNumber: '',
     specialty: '',
+    phoneNumber: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -60,7 +63,7 @@ export function InviteTherapistModal({
       if (response.ok) {
         setSuccess(data.message || 'Therapist invited successfully!');
         // Reset form
-        setFormData({ name: '', email: '', licenseNumber: '', specialty: '' });
+        setFormData({ name: '', email: '', licenseNumber: '', specialty: '', phoneNumber: '' });
         // Wait a moment to show success message
         setTimeout(() => {
           onSuccess();
@@ -79,7 +82,7 @@ export function InviteTherapistModal({
 
   const handleClose = () => {
     if (!loading) {
-      setFormData({ name: '', email: '', licenseNumber: '', specialty: '' });
+      setFormData({ name: '', email: '', licenseNumber: '', specialty: '', phoneNumber: '' });
       setError('');
       setSuccess('');
       onClose();
@@ -125,6 +128,18 @@ export function InviteTherapistModal({
           disabled={loading}
           helperText="The therapist can sign in using this email address"
         />
+
+        {enablePhoneVerification && (
+          <Input
+            label="Phone Number (Optional)"
+            type="tel"
+            value={formData.phoneNumber ?? ''}
+            onChange={e => handleChange('phoneNumber', e.target.value)}
+            placeholder="+1 (555) 000-0000"
+            disabled={loading}
+            helperText="If provided, the therapist can also set up their account via SMS."
+          />
+        )}
 
         <Input
           label="License Number (Optional)"

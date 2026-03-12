@@ -6,11 +6,13 @@ import { ReferenceImageGallery } from '@/components/patients/ReferenceImageGalle
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 
 type Patient = {
   id?: string;
   name: string;
   email: string;
+  phoneNumber?: string;
   referenceImageUrl?: string;
   avatarUrl?: string;
   therapistId?: string;
@@ -34,9 +36,11 @@ type PatientModalProps = {
 
 export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, therapists }: PatientModalProps) {
   const { user } = useAuth();
+  const { enablePhoneVerification } = useFeatureFlags();
   const [formData, setFormData] = useState<Patient>({
     name: '',
     email: '',
+    phoneNumber: '',
     referenceImageUrl: '',
     avatarUrl: '',
     therapistId: '',
@@ -57,6 +61,7 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
         setFormData({
           name: patient.name || '',
           email: patient.email || '',
+          phoneNumber: patient.phoneNumber || '',
           referenceImageUrl: patient.referenceImageUrl || '',
           avatarUrl: patient.avatarUrl || '',
           therapistId: patient.therapistId || '',
@@ -67,6 +72,7 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
         setFormData({
           name: '',
           email: '',
+          phoneNumber: '',
           referenceImageUrl: '',
           avatarUrl: '',
           therapistId: '',
@@ -261,6 +267,17 @@ export function PatientModal({ isOpen, onClose, onSave, patient, isOrgAdmin, the
               required
               helperText="Valid email format required"
             />
+
+            {enablePhoneVerification && (
+              <Input
+                label="Phone Number (Optional)"
+                type="tel"
+                value={formData.phoneNumber ?? ''}
+                onChange={e => setFormData({ ...formData, phoneNumber: e.target.value })}
+                placeholder="+1 (555) 000-0000"
+                helperText="If provided, the patient can also set up their account via SMS."
+              />
+            )}
 
             {/* Therapist Selection (Org Admin Only) */}
             {isOrgAdmin && therapists && therapists.length > 0 && (

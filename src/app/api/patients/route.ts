@@ -7,9 +7,9 @@
 import type { NextRequest } from 'next/server';
 import { and, count, desc, eq, ilike, inArray, isNull, notInArray, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+import { logPHICreate } from '@/libs/AuditLogger';
 import { db } from '@/libs/DB';
 import { Env } from '@/libs/Env';
-import { logPHICreate } from '@/libs/AuditLogger';
 import { generatePresignedUrl, generatePresignedUrlsForPatients } from '@/libs/GCS';
 import {
   groupMembers as groupMembersSchema,
@@ -372,6 +372,7 @@ export async function POST(request: NextRequest) {
       .values({
         name: validated.name,
         email: validated.email || null,
+        phoneNumber: validated.phoneNumber || null,
         dateOfBirth: validated.dateOfBirth ? new Date(validated.dateOfBirth) : null,
         referenceImageUrl: validated.referenceImageUrl || null,
         avatarUrl: validated.avatarUrl || null,
@@ -423,8 +424,9 @@ export async function POST(request: NextRequest) {
 
     if (shouldSendInvitation && validated.email && invitationToken) {
       try {
-        // Construct setup account URL with token
         const appUrl = Env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        // Always include the email token link so email setup always works.
+        // Phone setup (/setup-account-phone) works independently for users with a phone number.
         const setupAccountUrl = `${appUrl}/setup-account?token=${invitationToken}`;
 
         // Send invitation email

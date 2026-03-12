@@ -14,6 +14,9 @@ export const inviteTherapistSchema = z.object({
     .max(255, 'Name must not exceed 255 characters'),
   email: z.string()
     .email('Invalid email address'),
+  phoneNumber: z.string()
+    .max(50, 'Phone number must not exceed 50 characters')
+    .optional(),
   licenseNumber: z.string()
     .max(100, 'License number must not exceed 100 characters')
     .optional(),
@@ -51,6 +54,9 @@ export const invitePatientSchema = z.object({
     z.string().email('Invalid email address'),
     z.literal(''),
   ]).optional(),
+  phoneNumber: z.string()
+    .max(50, 'Phone number must not exceed 50 characters')
+    .optional(),
   dateOfBirth: z.string()
     .optional(),
   referenceImageUrl: z.string().optional(),
@@ -73,6 +79,9 @@ export const inviteOrgAdminSchema = z.object({
     .max(255, 'Name must not exceed 255 characters'),
   email: z.string()
     .email('Invalid email address'),
+  phoneNumber: z.string()
+    .max(50, 'Phone number must not exceed 50 characters')
+    .optional(),
   organizationId: z.string()
     .min(1, 'Organization ID is required'),
 });

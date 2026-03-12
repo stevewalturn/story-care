@@ -400,6 +400,9 @@ export const usersSchema: any = pgTable('users', {
   rejectedAt: timestamp('rejected_at'),
   rejectionReason: text('rejection_reason'),
 
+  // Phone verification
+  phoneVerified: boolean('phone_verified').notNull().default(false),
+
   // Password reset token (secure, one-time use)
   passwordResetToken: varchar('password_reset_token', { length: 64 }).unique(),
   passwordResetTokenExpiresAt: timestamp('password_reset_token_expires_at'),
@@ -1528,6 +1531,7 @@ export const platformSettingsSchema = pgTable('platform_settings', {
   requireEmailVerification: boolean('require_email_verification').notNull().default(true),
   enableMfaForAdmins: boolean('enable_mfa_for_admins').notNull().default(true),
   sessionTimeout: integer('session_timeout').notNull().default(15), // minutes
+  enablePhoneVerification: boolean('enable_phone_verification').notNull().default(false),
 
   // Email Configuration
   emailFromName: varchar('email_from_name', { length: 100 }).notNull().default('StoryCare'),

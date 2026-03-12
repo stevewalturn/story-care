@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
           requireEmailVerification: true,
           enableMfaForAdmins: true,
           sessionTimeout: 15,
+          enablePhoneVerification: false,
         },
       });
     }
@@ -79,6 +80,7 @@ export async function PUT(request: NextRequest) {
           requireEmailVerification: body.requireEmailVerification,
           enableMfaForAdmins: body.enableMfaForAdmins,
           sessionTimeout: body.sessionTimeout,
+          enablePhoneVerification: body.enablePhoneVerification ?? false,
           updatedBy: decodedToken.dbUserId,
           updatedAt: new Date(),
         })
@@ -96,6 +98,7 @@ export async function PUT(request: NextRequest) {
           requireEmailVerification: body.requireEmailVerification,
           enableMfaForAdmins: body.enableMfaForAdmins,
           sessionTimeout: body.sessionTimeout,
+          enablePhoneVerification: body.enablePhoneVerification ?? false,
           updatedBy: decodedToken.dbUserId,
           updatedAt: new Date(),
         })

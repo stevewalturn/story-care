@@ -12,7 +12,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { signUp } from '@/libs/Firebase';
+import { signUpNoVerification } from '@/libs/Firebase';
 import { humanizeFirebaseError } from '@/utils/FirebaseErrorMessages';
 
 type Step = 'loading' | 'email' | 'password' | 'success' | 'error';
@@ -23,6 +23,8 @@ type InvitationDetails = {
   role: string;
   organizationName: string;
   expiresAt?: string;
+  phoneNumber?: string | null;
+  phoneMasked?: string | null;
 };
 
 type ErrorState = {
@@ -79,6 +81,8 @@ function SetupAccountForm() {
           role: data.role,
           organizationName: data.organizationName,
           expiresAt: data.expiresAt,
+          phoneNumber: data.phoneNumber || null,
+          phoneMasked: data.phoneMasked || null,
         });
         setEmail(data.email);
         setCurrentStep('password');
@@ -174,8 +178,8 @@ function SetupAccountForm() {
         body: JSON.stringify({ email, password, flow: 'sign_up' }),
       }).catch(() => {});
 
-      // Create Firebase account (without email verification)
-      const { user, error: signUpError } = await signUp(email, password);
+      // Create Firebase account (token proves email ownership; Admin SDK will mark emailVerified=true)
+      const { user, error: signUpError } = await signUpNoVerification(email, password);
 
       if (signUpError) {
         // Check if account already exists
@@ -217,9 +221,7 @@ function SetupAccountForm() {
             // Successfully linked existing account
             console.log('Account linked and activated:', linkData);
             setCurrentStep('success');
-            setTimeout(() => {
-              router.push('/sign-in?setup=complete');
-            }, 2000);
+            setTimeout(() => router.push('/sign-in?setup=complete'), 2000);
             return;
           } catch (recoveryError) {
             console.error('Failed to recover existing account:', recoveryError);
@@ -281,13 +283,9 @@ function SetupAccountForm() {
           return;
         }
 
-        // Success! Move to completion step
+        // Account activated — redirect to sign-in
         setCurrentStep('success');
-
-        // Wait a moment, then redirect to sign-in
-        setTimeout(() => {
-          router.push('/sign-in?setup=complete');
-        }, 2000);
+        setTimeout(() => router.push('/sign-in?setup=complete'), 2000);
       }
     } catch (err) {
       console.error('Unexpected error during account creation:', err);
@@ -516,6 +514,7 @@ function SetupAccountForm() {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </form>
+
             </div>
           )}
 
@@ -529,9 +528,14 @@ function SetupAccountForm() {
                 Account Created!
               </h2>
               <p className="mb-6 text-gray-600">
-                Your account has been set up successfully. Redirecting you to sign in...
+                Your account is ready. Redirecting you to sign in...
               </p>
-              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
+              <Link
+                href="/sign-in?setup=complete"
+                className="inline-block rounded-lg bg-purple-600 px-6 py-2 text-sm font-medium text-white hover:bg-purple-700"
+              >
+                Go to Sign In
+              </Link>
             </div>
           )}
         </div>

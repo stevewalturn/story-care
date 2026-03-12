@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
       .values({
         name: validated.name,
         email: validated.email,
+        phoneNumber: validated.phoneNumber || null,
         role: 'org_admin',
         organizationId: validated.organizationId,
         status: 'invited', // Will be activated when they sign in
@@ -109,8 +110,9 @@ export async function POST(request: NextRequest) {
     let emailError: string | null = null;
 
     try {
-      // Construct setup account URL with token
       const appUrl = Env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      // Always include the email token link so email setup always works.
+      // Phone setup (/setup-account-phone) works independently for users with a phone number.
       const setupAccountUrl = `${appUrl}/setup-account?token=${invitationToken}`;
 
       // Send invitation email

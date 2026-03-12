@@ -1,0 +1,1 @@
+ALTER TABLE "platform_settings" ADD COLUMN "enable_phone_verification" boolean DEFAULT false NOT NULL;

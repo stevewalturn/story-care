@@ -57,7 +57,7 @@ export async function PATCH(
     const validated = updateOrganizationSchema.parse(body);
 
     // Separate admin fields from organization fields
-    const { adminEmail, adminName, ...orgData } = validated;
+    const { adminEmail, adminName, adminPhone, ...orgData } = validated;
 
     const organization = await updateOrganization(id, orgData);
 
@@ -83,6 +83,7 @@ export async function PATCH(
           organizationId: id,
           status: 'invited',
           firebaseUid: null,
+          phoneNumber: adminPhone || null,
           createdAt: new Date(),
           updatedAt: new Date(),
         })
