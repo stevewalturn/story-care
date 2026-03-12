@@ -237,13 +237,6 @@ function SetupAccountPhoneForm() {
                 </Button>
               </form>
 
-              <div className="mt-6 text-center text-sm text-gray-600">
-                Have an invitation link?
-                {' '}
-                <Link href="/setup-account" className="font-medium text-purple-600 hover:text-purple-700">
-                  Use email setup
-                </Link>
-              </div>
             </div>
           )}
 
