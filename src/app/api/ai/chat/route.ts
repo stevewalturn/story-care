@@ -14,7 +14,7 @@ import {
 } from '@/services/ChatSummaryService';
 import { getOrCreateSessionSummary } from '@/services/SessionSummaryService';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
-import { aiRateLimit, checkRateLimit, getClientIP } from '@/utils/RateLimiter';
+import { aiRateLimit, checkRateLimit } from '@/utils/RateLimiter';
 import { getSessionPatients } from '@/utils/SessionPatients';
 import { buildTraceMetadata } from '@/utils/TraceMetadataBuilder';
 
@@ -23,9 +23,11 @@ import { buildTraceMetadata } from '@/utils/TraceMetadataBuilder';
 // CRITICAL: This endpoint processes PHI (session transcripts)
 export async function POST(request: NextRequest) {
   try {
-    // 1. RATE LIMITING: Prevent AI API abuse (20 requests per hour)
-    const clientIP = getClientIP(request);
-    const rateLimitResult = checkRateLimit(`ai:${clientIP}`, aiRateLimit);
+    // 1. AUTHENTICATION: Verify user is a therapist or admin
+    const user = await requireTherapist(request);
+
+    // 2. RATE LIMITING: Per-user, per-endpoint limit to prevent AI API abuse (20 requests/hour)
+    const rateLimitResult = checkRateLimit(`ai:chat:${user.dbUserId}`, aiRateLimit);
 
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
@@ -36,9 +38,6 @@ export async function POST(request: NextRequest) {
         { status: 429 },
       );
     }
-
-    // 2. AUTHENTICATION: Verify user is a therapist or admin
-    const user = await requireTherapist(request);
 
     // 3. VALIDATE INPUT
     const body = await request.json();
@@ -306,6 +305,19 @@ Remember: PLAIN TEXT ONLY. NO JSON.`;
     });
   } catch (error) {
     console.error('AI chat error:', error);
+    // Detect AI provider quota/rate-limit errors and surface them as 429
+    const msg = error instanceof Error ? error.message : '';
+    if (
+      msg.includes('429')
+      || msg.toLowerCase().includes('resource_exhausted')
+      || msg.toLowerCase().includes('quota')
+      || msg.toLowerCase().includes('rate limit')
+    ) {
+      return NextResponse.json(
+        { error: 'The AI service is temporarily over capacity. Please try again in a few minutes.', retryAfter: 120 },
+        { status: 429 },
+      );
+    }
     return handleAuthError(error);
   }
 }

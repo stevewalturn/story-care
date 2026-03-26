@@ -14,6 +14,18 @@ export default function GlobalError(props: {
       digest: props.error.digest,
       timestamp: new Date().toISOString(),
     });
+
+    // Forward to Slack via internal API
+    fetch('/api/internal/client-error', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: props.error.message || 'React render error',
+        stack: props.error.stack,
+        url: window.location.href,
+        source: 'react',
+      }),
+    }).catch(() => {});
   }, [props.error]);
 
   return (

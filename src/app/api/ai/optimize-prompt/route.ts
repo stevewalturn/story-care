@@ -1,36 +1,20 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { verifyIdToken } from '@/libs/FirebaseAdmin';
 import { openai } from '@/libs/OpenAI';
+import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 
 const requestSchema = z.object({
   prompt: z.string().min(10),
-  model: z.string().default('gpt-4'),
+  model: z.enum(['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'gpt-4.1-mini']).default('gpt-4o-mini'),
   context: z.string().optional(),
   optimizeFor: z.enum(['image', 'video', 'both']).default('both'),
 });
 
 export async function POST(request: NextRequest) {
   try {
-    // Authentication
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 },
-      );
-    }
-
-    const token = authHeader.substring(7);
-    try {
-      await verifyIdToken(token);
-    } catch (error) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 },
-      );
-    }
+    // Authentication & authorization
+    await requireTherapist(request);
 
     // Validate request body
     const body = await request.json();
@@ -92,9 +76,6 @@ Return ONLY the optimized prompt text, no explanations or meta-commentary.`;
       );
     }
 
-    return NextResponse.json(
-      { error: 'Failed to optimize prompt' },
-      { status: 500 },
-    );
+    return handleAuthError(error);
   }
 }

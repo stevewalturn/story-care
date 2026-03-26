@@ -160,6 +160,7 @@ export function SpeakerLabeling({
     if (playingId === speaker.id && audioRef.current) {
       audioRef.current.pause();
       audioRef.current.src = '';
+      audioRef.current.load(); // Force browser to abort the fetch/buffer
       audioRef.current = null;
       setPlayingId(null);
     }
@@ -337,6 +338,7 @@ export function SpeakerLabeling({
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = ''; // Stop loading/buffering
+        audioRef.current.load(); // Force browser to abort the fetch/buffer
         audioRef.current = null; // Clear reference
       }
       setPlayingId(null);
@@ -375,6 +377,7 @@ export function SpeakerLabeling({
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.src = '';
+      audioRef.current.load(); // Force browser to abort the fetch/buffer
       audioRef.current = null;
     }
 
@@ -382,22 +385,34 @@ export function SpeakerLabeling({
     const audio = new Audio(audioUrl);
     audioRef.current = audio;
 
+    // Set playing state before await so rapid clicks see the correct state
+    // and enter the pause branch rather than creating a second Audio instance
+    setPlayingId(speakerId);
+
     audio.addEventListener('ended', () => {
+      if (audioRef.current === audio) {
+        audioRef.current = null;
+      }
       setPlayingId(null);
     });
 
     audio.addEventListener('error', () => {
       console.error('Error playing audio');
       console.error('Failed to play audio sample. The file may be corrupted or unavailable.');
+      if (audioRef.current === audio) {
+        audioRef.current = null;
+      }
       setPlayingId(null);
     });
 
     try {
       await audio.play();
-      setPlayingId(speakerId);
     } catch (error) {
       console.error('Error playing audio:', error);
       console.error('Failed to play audio. Please try again.');
+      if (audioRef.current === audio) {
+        audioRef.current = null;
+      }
       setPlayingId(null);
     }
   };

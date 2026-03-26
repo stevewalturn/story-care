@@ -23,8 +23,6 @@ export type AtlasImageModel
     | 'flux-2-flex-t2i'
     | 'flux-1.1-pro-ultra'
     | 'flux-1.1-pro'
-    | 'flux-kontext-max-t2i'
-    | 'flux-kontext-pro-t2i'
     | 'flux-dev-ultra-fast'
     | 'flux-dev-lora'
     | 'flux-dev-lora-ultra-fast'
@@ -87,18 +85,9 @@ export type AtlasImageModel
     | 'flux-2-dev-edit'
     | 'flux-2-pro-edit'
     | 'flux-2-flex-edit'
-  // Image-to-Image (Flux Kontext - Single)
-    | 'flux-kontext-max'
-    | 'flux-kontext-pro'
+  // Image-to-Image (Flux Kontext)
     | 'flux-kontext-dev'
-    | 'flux-kontext-dev-ultra-fast'
     | 'flux-kontext-dev-lora'
-    | 'flux-kontext-dev-lora-ultra-fast'
-  // Image-to-Image (Flux Kontext - Multi)
-    | 'flux-kontext-max-multi'
-    | 'flux-kontext-pro-multi'
-    | 'flux-kontext-dev-multi'
-    | 'flux-kontext-dev-multi-ultra-fast'
   // Image-to-Image (Flux Special)
     | 'flux-krea-dev-lora'
     | 'flux-fill-dev'
@@ -337,29 +326,7 @@ const MODEL_CONFIGS: Record<AtlasImageModel, ModelConfig> = {
     maxReferenceImages: 0,
     supportsPrompt: true,
   },
-  'flux-kontext-max-t2i': {
-    atlasName: 'black-forest-labs/flux-kontext-max/text-to-image',
-    minSize: '1024*1024',
-    defaultSteps: 28,
-    requiresImage: false,
-    imageField: null,
-    category: 'text-to-image',
-    defaultGuidanceScale: 3.5,
-    maxReferenceImages: 0,
-    supportsPrompt: true,
-  },
-  'flux-kontext-pro-t2i': {
-    atlasName: 'black-forest-labs/flux-kontext-pro/text-to-image',
-    minSize: '1024*1024',
-    defaultSteps: 28,
-    requiresImage: false,
-    imageField: null,
-    category: 'text-to-image',
-    defaultGuidanceScale: 3.5,
-    maxReferenceImages: 0,
-    supportsPrompt: true,
-  },
-  'flux-dev-ultra-fast': {
+    'flux-dev-ultra-fast': {
     atlasName: 'black-forest-labs/flux-dev-ultra-fast',
     minSize: '1024*1024',
     defaultSteps: 12,
@@ -918,42 +885,9 @@ const MODEL_CONFIGS: Record<AtlasImageModel, ModelConfig> = {
     supportsPrompt: true,
   },
 
-  // Flux Kontext models (singular 'image' field)
-  'flux-kontext-max': {
-    atlasName: 'black-forest-labs/flux-kontext-max',
-    minSize: '1024*1024',
-    defaultSteps: 28,
-    requiresImage: true,
-    imageField: 'image',
-    category: 'image-editing',
-    defaultGuidanceScale: 3.5,
-    maxReferenceImages: 1,
-    supportsPrompt: true,
-  },
-  'flux-kontext-pro': {
-    atlasName: 'black-forest-labs/flux-kontext-pro',
-    minSize: '1024*1024',
-    defaultSteps: 28,
-    requiresImage: true,
-    imageField: 'image',
-    category: 'image-editing',
-    defaultGuidanceScale: 3.5,
-    maxReferenceImages: 1,
-    supportsPrompt: true,
-  },
+  // Flux Kontext models (available: dev and dev-lora only)
   'flux-kontext-dev': {
     atlasName: 'black-forest-labs/flux-kontext-dev',
-    minSize: '1024*1024',
-    defaultSteps: 28,
-    requiresImage: true,
-    imageField: 'image',
-    category: 'image-editing',
-    defaultGuidanceScale: 2.5,
-    maxReferenceImages: 1,
-    supportsPrompt: true,
-  },
-  'flux-kontext-dev-ultra-fast': {
-    atlasName: 'black-forest-labs/flux-kontext-dev-ultra-fast',
     minSize: '1024*1024',
     defaultSteps: 28,
     requiresImage: true,
@@ -974,63 +908,8 @@ const MODEL_CONFIGS: Record<AtlasImageModel, ModelConfig> = {
     maxReferenceImages: 1,
     supportsPrompt: true,
   },
-  'flux-kontext-dev-lora-ultra-fast': {
-    atlasName: 'black-forest-labs/flux-kontext-dev-lora-ultra-fast',
-    minSize: '1024*1024',
-    defaultSteps: 28,
-    requiresImage: true,
-    imageField: 'image',
-    category: 'image-editing',
-    defaultGuidanceScale: 2.5,
-    maxReferenceImages: 1,
-    supportsPrompt: true,
-  },
 
-  // Flux Kontext Multi models (uses 'images' array)
-  'flux-kontext-max-multi': {
-    atlasName: 'black-forest-labs/flux-kontext-max/multi',
-    minSize: '1024*1024',
-    defaultSteps: 28,
-    requiresImage: true,
-    imageField: 'images',
-    category: 'image-editing',
-    defaultGuidanceScale: 3.5,
-    maxReferenceImages: 4,
-    supportsPrompt: true,
-  },
-  'flux-kontext-pro-multi': {
-    atlasName: 'black-forest-labs/flux-kontext-pro/multi',
-    minSize: '1024*1024',
-    defaultSteps: 28,
-    requiresImage: true,
-    imageField: 'images',
-    category: 'image-editing',
-    defaultGuidanceScale: 3.5,
-    maxReferenceImages: 4,
-    supportsPrompt: true,
-  },
-  'flux-kontext-dev-multi': {
-    atlasName: 'black-forest-labs/flux-kontext-dev/multi',
-    minSize: '1024*1024',
-    defaultSteps: 28,
-    requiresImage: true,
-    imageField: 'images',
-    category: 'image-editing',
-    defaultGuidanceScale: 2.5,
-    maxReferenceImages: 4,
-    supportsPrompt: true,
-  },
-  'flux-kontext-dev-multi-ultra-fast': {
-    atlasName: 'black-forest-labs/flux-kontext-dev/multi-ultra-fast',
-    minSize: '1024*1024',
-    defaultSteps: 28,
-    requiresImage: true,
-    imageField: 'images',
-    category: 'image-editing',
-    defaultGuidanceScale: 2.5,
-    maxReferenceImages: 4,
-    supportsPrompt: true,
-  },
+  // Flux Special models
 
   // Flux Special models
   'flux-krea-dev-lora': {
@@ -1570,17 +1449,8 @@ type ModelFamily
     | 'style-transfer'; // Uses image, minimal params
 
 function getModelFamily(model: AtlasImageModel): ModelFamily {
-  // Flux Kontext models - split by specific variant
-  // Max/Pro use minimal params: seed, image, prompt, guidance_scale, safety_tolerance
-  if (model === 'flux-kontext-max' || model === 'flux-kontext-pro') {
-    return 'flux-kontext-max-pro';
-  }
-  // Multi variants use images array
-  if (model.includes('-multi')) {
-    return 'flux-kontext-multi';
-  }
-  // Dev variants use extended params
-  if (model.startsWith('flux-kontext-dev') || model.startsWith('flux-kontext')) {
+  // Flux Kontext - only dev and dev-lora exist on Atlas Cloud
+  if (model.startsWith('flux-kontext')) {
     return 'flux-kontext-dev';
   }
 
@@ -2645,86 +2515,20 @@ export function getAtlasImageModels(): Array<{
       category: 'image-editing',
     },
 
-    // ===== FLUX KONTEXT - SINGLE IMAGE (6 models) =====
-    {
-      id: 'flux-kontext-max',
-      name: 'Flux Kontext Max',
-      description: 'Maximum quality context-aware editing',
-      pricing: '$0.08/image',
-      supportsImageToImage: true,
-      category: 'image-editing',
-    },
-    {
-      id: 'flux-kontext-pro',
-      name: 'Flux Kontext Pro',
-      description: 'Professional context-aware editing',
-      pricing: '$0.04/image',
-      supportsImageToImage: true,
-      category: 'image-editing',
-    },
+    // ===== FLUX KONTEXT (2 models) =====
     {
       id: 'flux-kontext-dev',
       name: 'Flux Kontext Dev',
-      description: 'Developer-tier context-aware editing',
-      pricing: '$0.01/image',
-      supportsImageToImage: true,
-      category: 'image-editing',
-    },
-    {
-      id: 'flux-kontext-dev-ultra-fast',
-      name: 'Flux Kontext Dev Ultra Fast',
-      description: 'Fastest Kontext model for rapid iteration',
-      pricing: '$0.008/image',
+      description: 'Context-aware image editing',
+      pricing: '$0.025/image',
       supportsImageToImage: true,
       category: 'image-editing',
     },
     {
       id: 'flux-kontext-dev-lora',
       name: 'Flux Kontext Dev LoRA',
-      description: 'Kontext with LoRA fine-tuning support',
-      pricing: '$0.012/image',
-      supportsImageToImage: true,
-      category: 'image-editing',
-    },
-    {
-      id: 'flux-kontext-dev-lora-ultra-fast',
-      name: 'Flux Kontext Dev LoRA Ultra Fast',
-      description: 'Fast Kontext with LoRA support',
-      pricing: '$0.01/image',
-      supportsImageToImage: true,
-      category: 'image-editing',
-    },
-
-    // ===== FLUX KONTEXT - MULTI IMAGE (4 models) =====
-    {
-      id: 'flux-kontext-max-multi',
-      name: 'Flux Kontext Max Multi',
-      description: 'Maximum quality with multiple reference images',
-      pricing: '$0.08/image',
-      supportsImageToImage: true,
-      category: 'image-editing',
-    },
-    {
-      id: 'flux-kontext-pro-multi',
-      name: 'Flux Kontext Pro Multi',
-      description: 'Professional multi-reference editing',
-      pricing: '$0.04/image',
-      supportsImageToImage: true,
-      category: 'image-editing',
-    },
-    {
-      id: 'flux-kontext-dev-multi',
-      name: 'Flux Kontext Dev Multi',
-      description: 'Developer multi-reference editing',
-      pricing: '$0.01/image',
-      supportsImageToImage: true,
-      category: 'image-editing',
-    },
-    {
-      id: 'flux-kontext-dev-multi-ultra-fast',
-      name: 'Flux Kontext Dev Multi Ultra Fast',
-      description: 'Fastest multi-reference editing',
-      pricing: '$0.008/image',
+      description: 'Context-aware editing with LoRA fine-tuning support',
+      pricing: '$0.03/image',
       supportsImageToImage: true,
       category: 'image-editing',
     },

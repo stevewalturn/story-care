@@ -403,6 +403,8 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
     if (playingId === speakerId) {
       if (audioRef.current) {
         audioRef.current.pause();
+        audioRef.current.src = ''; // Stop buffering
+        audioRef.current.load(); // Force browser to abort the fetch
       }
       setPlayingId(null);
       setCurrentAudioUrl(null);
@@ -453,48 +455,19 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
       }
     }
 
-    // Stop any currently playing audio
+    // Stop any currently playing audio before switching
     if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current.src = '';
+      audioRef.current.load();
     }
 
-    // Create and play new audio
-    // API returns presigned GCS URL with proper CORS headers
-    const audio = new Audio(audioUrl);
-    audioRef.current = audio;
-
-    audio.addEventListener('ended', () => {
-      setPlayingId(null);
-      setCurrentAudioUrl(null);
-    });
-
-    audio.addEventListener('error', (e) => {
-      console.error('Error playing audio:', e);
-      console.error('Audio URL:', audioUrl);
-      console.error('Audio error details:', audio.error);
-      setPlayingId(null);
-      setCurrentAudioUrl(null);
-      setLoadingAudio(null); // Ensure loading state is cleared
-      toast.error('Failed to play audio sample');
-    });
-
-    // Add 'playing' event listener to clear loading when audio actually starts
-    audio.addEventListener('playing', () => {
-      setLoadingAudio(null); // Clear loading only when audio actually starts playing
-      setPlayingId(speakerId); // Set playing state
-      setCurrentAudioUrl(audioUrl as string); // Set the current audio URL for the inline player
-    });
-
-    try {
-      setLoadingAudio(speakerId); // Show loading while audio starts
-      await audio.play(); // Start playback - loading stays visible until 'playing' event
-    } catch (error) {
-      console.error('Error playing audio:', error);
-      setLoadingAudio(null);
-      setPlayingId(null);
-      setCurrentAudioUrl(null);
-      toast.error('Failed to play audio sample');
-    }
+    // Render the <audio autoPlay> element — it becomes audioRef.current when mounted.
+    // Using a single rendered element avoids the dual-audio ref collision where
+    // new Audio() is orphaned when the DOM <audio ref={audioRef}> overwrites the ref.
+    setLoadingAudio(speakerId);
+    setPlayingId(speakerId);
+    setCurrentAudioUrl(audioUrl as string);
   };
 
   const toggleMergeSelection = (speakerId: string) => {
@@ -1058,12 +1031,21 @@ export function AssignSpeakerStep({ formData, onNext, onBack, setStepReady, step
                 <div className="mb-4 rounded-lg bg-white p-2 shadow-sm">
                   <audio
                     ref={audioRef}
+                    // eslint-disable-next-line jsx-a11y/media-has-caption
+                    autoPlay
                     controls
                     src={currentAudioUrl}
                     className="h-8 w-full"
+                    onPlaying={() => setLoadingAudio(null)}
                     onEnded={() => {
                       setPlayingId(null);
                       setCurrentAudioUrl(null);
+                    }}
+                    onError={() => {
+                      setPlayingId(null);
+                      setCurrentAudioUrl(null);
+                      setLoadingAudio(null);
+                      toast.error('Failed to play audio sample');
                     }}
                   />
                 </div>

@@ -15,7 +15,7 @@ import type {
 } from '@/types/BuildingBlocks';
 import { getBlockDefinition } from '@/config/BlockDefinitions';
 import { db } from '@/libs/DB';
-import { mediaLibrary, quotes } from '@/models/Schema';
+import { quotes } from '@/models/Schema';
 import { interpolateObject } from '@/utils/TemplateInterpolation';
 
 /**
@@ -278,68 +278,18 @@ export class WorkflowExecutor {
    */
   private async executeGenerateImageAction(
     values: Record<string, any>,
-    context: WorkflowContext,
+    _context: WorkflowContext,
   ): Promise<ActionExecutionResult> {
     try {
-      const { prompt_template, style, save_to_library } = values;
+      const { prompt_template } = values;
 
       if (!prompt_template) {
         throw new Error('Image prompt template is required');
       }
 
-      // TODO: Integrate with image generation service (DALL-E, Stability AI, etc.)
-      // For now, return placeholder result
-      const imageUrl = 'https://placeholder.com/generated-image.jpg';
-
-      let mediaId: string | undefined;
-
-      // Save to media library if requested
-      if (save_to_library && context.patientId) {
-        // Build notes with workflow context
-        const workflowNotes = JSON.stringify({
-          workflowId: context.workflowId || null,
-          style: style || null,
-          generatedAt: new Date().toISOString(),
-          source: 'workflow',
-        });
-
-        const result = await db
-          .insert(mediaLibrary)
-          .values({
-            patientId: context.patientId,
-            createdByTherapistId: context.therapistId || '',
-            mediaType: 'image',
-            mediaUrl: imageUrl,
-            title: `Generated Image`,
-            description: prompt_template,
-            generationPrompt: prompt_template,
-            sourceType: 'generated',
-            sourceSessionId: context.sessionId || null,
-            status: 'completed',
-            notes: workflowNotes,
-            tags: ['ai-generated', 'workflow'],
-          })
-          .returning();
-
-        const savedMedia = Array.isArray(result) ? result[0] : undefined;
-        if (!savedMedia) {
-          throw new Error('Failed to save media');
-        }
-
-        mediaId = savedMedia.id;
-      }
-
-      return {
-        success: true,
-        data: {
-          action: 'generate_image',
-          prompt: prompt_template,
-          style,
-          image_url: imageUrl,
-          generated: true,
-          mediaId,
-        },
-      };
+      // Image generation via workflow execution is not yet integrated.
+      // Users should use the Generate Image feature in the session Assets panel.
+      throw new Error('Image generation is not yet available in workflow execution. Please use the Generate Image button in the Assets panel.');
     } catch (error) {
       throw error;
     }
@@ -350,75 +300,18 @@ export class WorkflowExecutor {
    */
   private async executeGenerateMusicAction(
     values: Record<string, any>,
-    context: WorkflowContext,
+    _context: WorkflowContext,
   ): Promise<ActionExecutionResult> {
     try {
-      const { music_prompt, mood, duration, save_to_library, instrumental } = values;
+      const { music_prompt } = values;
 
       if (!music_prompt) {
         throw new Error('Music prompt is required');
       }
 
-      // TODO: Integrate with music generation service (Suno, etc.)
-      // For now, return placeholder result
-      const audioUrl = 'https://placeholder.com/generated-music.mp3';
-
-      let mediaId: string | undefined;
-
-      // Save to media library if requested
-      if (save_to_library && context.patientId) {
-        // Build notes with workflow context and music parameters
-        const workflowNotes = JSON.stringify({
-          workflowId: context.workflowId || null,
-          mood: mood || null,
-          duration: duration || null,
-          instrumental: instrumental === true,
-          type: instrumental === true ? 'instrumental' : 'lyrical',
-          generatedAt: new Date().toISOString(),
-          source: 'workflow',
-        });
-
-        const result = await db
-          .insert(mediaLibrary)
-          .values({
-            patientId: context.patientId,
-            createdByTherapistId: context.therapistId || '',
-            mediaType: 'audio',
-            mediaUrl: audioUrl,
-            title: `Generated Music - ${mood || (instrumental ? 'Instrumental' : 'Lyrical')}`,
-            description: music_prompt,
-            generationPrompt: music_prompt,
-            sourceType: 'generated',
-            sourceSessionId: context.sessionId || null,
-            status: 'completed',
-            durationSeconds: duration ? Math.round(duration) : null,
-            notes: workflowNotes,
-            tags: ['ai-generated', 'workflow-music', instrumental ? 'instrumental' : 'lyrical'],
-          })
-          .returning();
-
-        const savedMedia = Array.isArray(result) ? result[0] : undefined;
-        if (!savedMedia) {
-          throw new Error('Failed to save media');
-        }
-
-        mediaId = savedMedia.id;
-      }
-
-      return {
-        success: true,
-        data: {
-          action: 'generate_music',
-          prompt: music_prompt,
-          mood,
-          duration,
-          instrumental: instrumental === true,
-          type: instrumental === true ? 'instrumental' : 'lyrical',
-          audio_url: audioUrl,
-          generated: true,
-          mediaId,
-        },
-      };
+      // Music generation via workflow execution is not yet integrated.
+      // Users should use the Generate Music feature in the session Assets panel.
+      throw new Error('Music generation is not yet available in workflow execution. Please use the Generate Music button in the Assets panel.');
     } catch (error) {
       throw error;
     }

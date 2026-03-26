@@ -91,8 +91,6 @@ export async function generateImage(
     'flux-2-flex-t2i',
     'flux-1.1-pro-ultra',
     'flux-1.1-pro',
-    'flux-kontext-max-t2i',
-    'flux-kontext-pro-t2i',
     'flux-dev-ultra-fast',
     'flux-dev-lora',
     'flux-dev-lora-ultra-fast',
@@ -155,18 +153,9 @@ export async function generateImage(
     'flux-2-dev-edit',
     'flux-2-pro-edit',
     'flux-2-flex-edit',
-    // Flux Kontext (Single Image)
-    'flux-kontext-max',
-    'flux-kontext-pro',
+    // Flux Kontext
     'flux-kontext-dev',
-    'flux-kontext-dev-ultra-fast',
     'flux-kontext-dev-lora',
-    'flux-kontext-dev-lora-ultra-fast',
-    // Flux Kontext (Multi Image)
-    'flux-kontext-max-multi',
-    'flux-kontext-pro-multi',
-    'flux-kontext-dev-multi',
-    'flux-kontext-dev-multi-ultra-fast',
     // Flux Special
     'flux-krea-dev-lora',
     'flux-fill-dev',

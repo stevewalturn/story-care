@@ -24,8 +24,6 @@ export const IMAGE_GENERATION_MODELS = {
   'Text-to-Image (Flux)': [
     { value: 'flux-1.1-pro-ultra', label: 'Flux 1.1 Pro Ultra (Best)', supportsReference: false, maxReferenceImages: 0, supportsPrompt: true },
     { value: 'flux-1.1-pro', label: 'Flux 1.1 Pro', supportsReference: false, maxReferenceImages: 0, supportsPrompt: true },
-    { value: 'flux-kontext-max-t2i', label: 'Flux Kontext Max', supportsReference: false, maxReferenceImages: 0, supportsPrompt: true },
-    { value: 'flux-kontext-pro-t2i', label: 'Flux Kontext Pro', supportsReference: false, maxReferenceImages: 0, supportsPrompt: true },
     { value: 'flux-dev', label: 'Flux Dev', supportsReference: false, maxReferenceImages: 0, supportsPrompt: true },
     { value: 'flux-dev-ultra-fast', label: 'Flux Dev Ultra Fast', supportsReference: false, maxReferenceImages: 0, supportsPrompt: true },
     { value: 'flux-dev-lora', label: 'Flux Dev LoRA', supportsReference: false, maxReferenceImages: 0, supportsPrompt: true },
@@ -114,20 +112,10 @@ export const IMAGE_GENERATION_MODELS = {
     { value: 'z-image-turbo-lora', label: 'Z-Image Turbo LoRA', supportsReference: false, maxReferenceImages: 0, supportsPrompt: true },
   ],
 
-  // ===== IMAGE EDITING - FLUX KONTEXT (10 models) =====
-  'Flux Kontext (Single Image)': [
-    { value: 'flux-kontext-max', label: 'Flux Kontext Max (Best)', supportsReference: true, maxReferenceImages: 1, supportsPrompt: true },
-    { value: 'flux-kontext-pro', label: 'Flux Kontext Pro', supportsReference: true, maxReferenceImages: 1, supportsPrompt: true },
+  // ===== IMAGE EDITING - FLUX KONTEXT (2 models) =====
+  'Flux Kontext': [
     { value: 'flux-kontext-dev', label: 'Flux Kontext Dev', supportsReference: true, maxReferenceImages: 1, supportsPrompt: true },
-    { value: 'flux-kontext-dev-ultra-fast', label: 'Flux Kontext Dev Ultra Fast', supportsReference: true, maxReferenceImages: 1, supportsPrompt: true },
     { value: 'flux-kontext-dev-lora', label: 'Flux Kontext Dev LoRA', supportsReference: true, maxReferenceImages: 1, supportsPrompt: true },
-    { value: 'flux-kontext-dev-lora-ultra-fast', label: 'Flux Kontext Dev LoRA Ultra Fast', supportsReference: true, maxReferenceImages: 1, supportsPrompt: true },
-  ],
-  'Flux Kontext (Multi Image)': [
-    { value: 'flux-kontext-max-multi', label: 'Flux Kontext Max Multi (Best)', supportsReference: true, maxReferenceImages: 4, supportsPrompt: true },
-    { value: 'flux-kontext-pro-multi', label: 'Flux Kontext Pro Multi', supportsReference: true, maxReferenceImages: 4, supportsPrompt: true },
-    { value: 'flux-kontext-dev-multi', label: 'Flux Kontext Dev Multi', supportsReference: true, maxReferenceImages: 4, supportsPrompt: true },
-    { value: 'flux-kontext-dev-multi-ultra-fast', label: 'Flux Kontext Dev Multi Ultra Fast', supportsReference: true, maxReferenceImages: 4, supportsPrompt: true },
   ],
 
   // ===== IMAGE EDITING - FLUX 2 EDIT (3 models) =====
@@ -542,8 +530,6 @@ export function getAtlasCloudImageModelId(internalId: string): string {
     // ===== FLUX =====
     'flux-1.1-pro-ultra': 'black-forest-labs/flux-1.1-pro-ultra',
     'flux-1.1-pro': 'black-forest-labs/flux-1.1-pro',
-    'flux-kontext-max-t2i': 'black-forest-labs/flux-kontext-max/text-to-image',
-    'flux-kontext-pro-t2i': 'black-forest-labs/flux-kontext-pro/text-to-image',
     'flux-dev': 'black-forest-labs/flux-dev',
     'flux-dev-ultra-fast': 'black-forest-labs/flux-dev-ultra-fast',
     'flux-dev-lora': 'black-forest-labs/flux-dev-lora',

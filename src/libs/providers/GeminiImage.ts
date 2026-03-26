@@ -148,8 +148,15 @@ export async function generateImageWithGemini(
     throw new Error('Failed to get Google Cloud access token');
   }
 
+  // Priority PayGo requires the global endpoint (not regional).
+  // Enable by setting VERTEX_AI_PRIORITY_PAYGO=true in environment variables.
+  const usePriorityPaygo = process.env.VERTEX_AI_PRIORITY_PAYGO === 'true';
+
   // Vertex AI endpoint (NOT generativelanguage.googleapis.com)
-  const endpoint = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`;
+  // Global endpoint has a different hostname (no region prefix): aiplatform.googleapis.com
+  const endpoint = usePriorityPaygo
+    ? `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/global/publishers/google/models/${model}:generateContent`
+    : `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`;
 
   const requestBody: GeminiImageRequestBody = {
     contents: [
@@ -195,12 +202,20 @@ export async function generateImageWithGemini(
   };
 
   try {
+    // Build request headers — add Priority PayGo headers when enabled.
+    // Docs: https://cloud.google.com/vertex-ai/generative-ai/docs/priority-paygo
+    const requestHeaders: Record<string, string> = {
+      'Authorization': `Bearer ${accessToken.token}`,
+      'Content-Type': 'application/json',
+    };
+    if (usePriorityPaygo) {
+      requestHeaders['X-Vertex-AI-LLM-Request-Type'] = 'shared';
+      requestHeaders['X-Vertex-AI-LLM-Shared-Request-Type'] = 'priority';
+    }
+
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken.token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: requestHeaders,
       body: JSON.stringify(requestBody),
     });
 

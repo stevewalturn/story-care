@@ -47,6 +47,43 @@ type GeminiChatRequestBody = {
   };
 };
 
+// Module-level access token cache — tokens are valid ~60 min, refresh 5 min early
+let cachedAccessToken: { token: string; expiresAt: number } | null = null;
+
+async function getAccessToken(projectId: string): Promise<string> {
+  const now = Date.now();
+  if (cachedAccessToken && cachedAccessToken.expiresAt > now) {
+    return cachedAccessToken.token;
+  }
+
+  const { GoogleAuth } = await import('google-auth-library');
+  let credentials: object | undefined;
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
+    try {
+      credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY) as object;
+    } catch {
+      throw new Error('Invalid GOOGLE_SERVICE_ACCOUNT_KEY format. Must be valid JSON.');
+    }
+  }
+
+  const auth = new GoogleAuth({
+    scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+    credentials,
+    projectId,
+  });
+
+  const client = await auth.getClient();
+  const result = await client.getAccessToken();
+
+  if (!result.token) {
+    throw new Error('Failed to get Google Cloud access token');
+  }
+
+  // Cache for 55 minutes (5-min buffer before 60-min expiry)
+  cachedAccessToken = { token: result.token, expiresAt: now + 55 * 60 * 1000 };
+  return result.token;
+}
+
 export async function chatWithGemini(
   options: GeminiChatOptions,
 ): Promise<string> {
@@ -81,46 +118,42 @@ export async function chatWithGemini(
     },
   });
 
-  // Convert OpenAI-style messages to Gemini format
-  const geminiMessages = messages
+  // Concatenate ALL system messages into a single instruction string
+  const systemMessages = messages.filter(msg => msg.role === 'system');
+  const systemInstruction = systemMessages.length > 0
+    ? systemMessages.map(msg => msg.content).join('\n\n---\n\n')
+    : undefined;
+
+  // Convert non-system messages to Gemini format.
+  // Merge consecutive same-role messages — Gemini requires strict user/model alternation.
+  const rawMessages = messages
     .filter(msg => msg.role !== 'system')
     .map(msg => ({
       role: msg.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: msg.content }],
     }));
 
-  // Extract system message if present
-  const systemInstruction = messages.find(msg => msg.role === 'system')?.content;
+  const geminiMessages: GeminiMessage[] = [];
+  for (const msg of rawMessages) {
+    const last = geminiMessages[geminiMessages.length - 1];
+    if (last && last.role === msg.role) {
+      last.parts[0]!.text += '\n\n' + msg.parts[0]!.text;
+    } else {
+      geminiMessages.push({ role: msg.role, parts: [{ text: msg.parts[0]!.text }] });
+    }
+  }
 
-  // Vertex AI endpoint
-  const endpoint = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`;
+  // Priority PayGo requires the global endpoint (not regional).
+  // Enable by setting VERTEX_AI_PRIORITY_PAYGO=true in environment variables.
+  const usePriorityPaygo = process.env.VERTEX_AI_PRIORITY_PAYGO === 'true';
+  // Global endpoint has a different hostname (no region prefix): aiplatform.googleapis.com
+  // Regional endpoint: {region}-aiplatform.googleapis.com
+  const endpoint = usePriorityPaygo
+    ? `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/global/publishers/google/models/${model}:generateContent`
+    : `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`;
 
   try {
-    // Get access token
-    const { GoogleAuth } = await import('google-auth-library');
-
-    // Parse credentials from environment variable
-    let credentials;
-    if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
-      try {
-        credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
-      } catch (error) {
-        throw new Error('Invalid GOOGLE_SERVICE_ACCOUNT_KEY format. Must be valid JSON.');
-      }
-    }
-
-    const auth = new GoogleAuth({
-      scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-      credentials, // Use parsed credentials if available, otherwise falls back to default
-      projectId, // Explicitly set project ID
-    });
-
-    const client = await auth.getClient();
-    const accessToken = await client.getAccessToken();
-
-    if (!accessToken.token) {
-      throw new Error('Failed to get Google Cloud access token');
-    }
+    const token = await getAccessToken(projectId);
 
     const requestBody: GeminiChatRequestBody = {
       contents: geminiMessages,
@@ -136,15 +169,35 @@ export async function chatWithGemini(
       };
     }
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken.token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
+    // Build request headers — add Priority PayGo headers when enabled.
+    // Docs: https://cloud.google.com/vertex-ai/generative-ai/docs/priority-paygo
+    const requestHeaders: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+    if (usePriorityPaygo) {
+      // Use Priority PayGo only (no Provisioned Throughput spill-over)
+      requestHeaders['X-Vertex-AI-LLM-Request-Type'] = 'shared';
+      requestHeaders['X-Vertex-AI-LLM-Shared-Request-Type'] = 'priority';
+    }
 
+    // Retry up to 2 times on 429 with exponential backoff (1s, 2s)
+    const RETRY_DELAYS = [1000, 2000];
+    let lastResponse: Response | null = null;
+    for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
+      if (attempt > 0) {
+        await new Promise<void>(resolve => setTimeout(resolve, RETRY_DELAYS[attempt - 1]!));
+      }
+      lastResponse = await fetch(endpoint, {
+        method: 'POST',
+        headers: requestHeaders,
+        body: JSON.stringify(requestBody),
+      });
+      if (lastResponse.status !== 429) break;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const response = lastResponse!;
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Unknown error' }));
       const errorMessage = `Gemini error: ${JSON.stringify(error)}`;

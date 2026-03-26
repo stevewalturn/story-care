@@ -5,7 +5,7 @@
 
 import type { TraceMetadata } from '@/libs/LangfuseTracing';
 import type { ChatMessage } from '@/libs/TextGeneration';
-import { and, desc, eq, ne, or } from 'drizzle-orm';
+import { and, desc, eq, gt, ne, or } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { generateText } from '@/libs/TextGeneration';
 import { aiChatMessagesSchema } from '@/models/Schema';
@@ -50,7 +50,7 @@ export async function shouldGenerateChatSummary(
     return Number(messageCount[0]?.count || 0) >= threshold;
   }
 
-  // Count messages since last summary
+  // Count messages created after the last summary (filter by timestamp to avoid stale counts)
   const messagesSinceLastSummary = await db
     .select({ count: aiChatMessagesSchema.id })
     .from(aiChatMessagesSchema)
@@ -61,29 +61,11 @@ export async function shouldGenerateChatSummary(
           eq(aiChatMessagesSchema.role, 'user'),
           eq(aiChatMessagesSchema.role, 'assistant'),
         ),
+        gt(aiChatMessagesSchema.createdAt, latestSummary.createdAt),
       ),
     );
 
-  // If we don't have summaryUpToMessageId, count all messages
-  if (!latestSummary.summaryUpToMessageId) {
-    return Number(messagesSinceLastSummary[0]?.count || 0) >= threshold;
-  }
-
-  // Count messages created after the last summarized message
-  const messagesAfterSummary = await db
-    .select({ count: aiChatMessagesSchema.id })
-    .from(aiChatMessagesSchema)
-    .where(
-      and(
-        eq(aiChatMessagesSchema.sessionId, sessionId),
-        or(
-          eq(aiChatMessagesSchema.role, 'user'),
-          eq(aiChatMessagesSchema.role, 'assistant'),
-        ),
-      ),
-    );
-
-  return Number(messagesAfterSummary[0]?.count || 0) >= threshold;
+  return Number(messagesSinceLastSummary[0]?.count || 0) >= threshold;
 }
 
 /**
