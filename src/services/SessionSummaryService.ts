@@ -8,6 +8,7 @@ import type { ChatMessage } from '@/libs/TextGeneration';
 import { eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { generateText } from '@/libs/TextGeneration';
+import { truncateTranscript } from '@/utils/TranscriptFormatter';
 import {
   groupsSchema,
   sessionsSchema,
@@ -115,6 +116,9 @@ export async function generateSessionSummary(
     })
     .join('\n');
 
+  // Truncate transcript to stay within model context limits (gpt-4o-mini: 128K tokens)
+  const safeTranscript = truncateTranscript(formattedTranscript, undefined, 'gpt-4o-mini');
+
   // Get patient/group name
   const patientName = patient?.name || group?.name || 'Unknown';
 
@@ -146,7 +150,7 @@ ${treatmentModule ? `- Module: ${treatmentModule.name} (${treatmentModule.domain
 - Duration: ${session.audioDurationSeconds ? `${Math.floor(session.audioDurationSeconds / 60)} minutes` : 'Unknown'}
 
 **Transcript for analysis:**
-${formattedTranscript}`;
+${safeTranscript}`;
 
   const messages: ChatMessage[] = [
     {
@@ -170,15 +174,15 @@ ${formattedTranscript}`;
         tags: [
           ...(options.traceMetadata.tags || []),
           'session-summary',
-          'gpt-4o-mini',
+          'gemini-2.5-flash-lite',
         ],
       }
     : undefined;
 
-  // Generate summary using GPT-4o-mini (good quality, lower cost)
+  // Generate summary using Gemini Flash Lite (lowest quota usage for background summaries)
   const result = await generateText({
     messages,
-    model: 'gpt-4o-mini',
+    model: 'gemini-2.5-flash-lite',
     temperature: 0.3, // Lower temperature for consistent summaries
     maxTokens: 500, // Brief summary without quotes (200-300 words)
     traceMetadata,

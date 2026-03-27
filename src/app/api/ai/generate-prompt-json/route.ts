@@ -150,7 +150,6 @@ ${examplesText}
       return NextResponse.json(
         {
           error: 'Failed to generate valid JSON. Please try again or use a template.',
-          aiResponse: aiResponse.message, // Include for debugging
         },
         { status: 500 },
       );

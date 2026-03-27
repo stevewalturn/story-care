@@ -8,13 +8,13 @@ import {
 
 } from './LangfuseTracing';
 
-const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
-
-if (!deepgramApiKey) {
-  throw new Error('DEEPGRAM_API_KEY is not set in environment variables');
+function getDeepgramClient() {
+  const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
+  if (!deepgramApiKey) {
+    throw new Error('DEEPGRAM_API_KEY is not set in environment variables');
+  }
+  return createClient(deepgramApiKey);
 }
-
-const deepgram = createClient(deepgramApiKey);
 
 export type TranscriptionOptions = {
   language?: string;
@@ -92,7 +92,7 @@ export async function transcribeAudio(
   });
 
   try {
-    const { result, error } = await deepgram.listen.prerecorded.transcribeUrl(
+    const { result, error } = await getDeepgramClient().listen.prerecorded.transcribeUrl(
       {
         url: audioUrl,
       },
@@ -239,7 +239,7 @@ export async function transcribeAudioBuffer(
   });
 
   try {
-    const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
+    const { result, error } = await getDeepgramClient().listen.prerecorded.transcribeFile(
       audioBuffer,
       {
         language,
@@ -341,5 +341,3 @@ export async function transcribeAudioBuffer(
     throw error;
   }
 }
-
-export { deepgram };

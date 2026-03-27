@@ -43,6 +43,9 @@ export const Env = createEnv({
 
     // Intercom (Identity Verification)
     INTERCOM_SECRET_KEY: z.string().min(1).optional(),
+
+    // Slack Error Notifications
+    SLACK_ERROR_WEBHOOK_URL: z.string().url().optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().optional(),
@@ -108,6 +111,9 @@ export const Env = createEnv({
 
     // Intercom (Identity Verification)
     INTERCOM_SECRET_KEY: process.env.INTERCOM_SECRET_KEY,
+
+    // Slack Error Notifications
+    SLACK_ERROR_WEBHOOK_URL: process.env.SLACK_ERROR_WEBHOOK_URL,
 
     // Client vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,

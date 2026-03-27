@@ -3,6 +3,7 @@
  */
 
 import type { Utterance } from '@/app/(auth)/sessions/[id]/transcript/types/transcript.types';
+import { getMaxTranscriptLength } from './ModelContextLimits';
 
 /**
  * Format time from seconds to MM:SS format
@@ -85,7 +86,6 @@ export function truncateTranscript(
     effectiveMaxLength = maxLength;
   } else if (model) {
     // Use model-aware truncation if model is provided
-    const { getMaxTranscriptLength } = require('./ModelContextLimits');
     effectiveMaxLength = getMaxTranscriptLength(model);
   } else {
     // Fallback to conservative default if no model or maxLength provided

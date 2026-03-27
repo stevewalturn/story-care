@@ -682,7 +682,25 @@ ${userText}`;
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get AI response');
+        const errorData = await response.json().catch(() => ({})) as Record<string, unknown>;
+        const status = response.status;
+        let errorContent = 'Sorry, I encountered an error. Please try again.';
+        if (status === 429) {
+          const retryAfter = typeof errorData.retryAfter === 'number' ? errorData.retryAfter : null;
+          const waitMinutes = retryAfter ? Math.ceil(retryAfter / 60) : null;
+          errorContent = waitMinutes
+            ? `Too many requests. Please wait ${waitMinutes} minute${waitMinutes !== 1 ? 's' : ''} before sending another message.`
+            : 'Too many requests. Please wait a moment before trying again.';
+        } else if (status === 401 || status === 403) {
+          errorContent = 'Your session has expired. Please refresh the page and log in again.';
+        } else if (status >= 500) {
+          errorContent = 'The AI service is temporarily unavailable. Please try again in a few minutes.';
+        }
+        setMessages(prev => [
+          ...prev,
+          { role: 'assistant' as const, content: errorContent, timestamp: new Date() },
+        ]);
+        return;
       }
 
       const data = await response.json();
@@ -728,7 +746,7 @@ ${userText}`;
       console.error('Error sending message:', error);
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.', timestamp: new Date() },
+        { role: 'assistant' as const, content: 'Sorry, I encountered an error. Please check your connection and try again.', timestamp: new Date() },
       ]);
     } finally {
       setIsLoading(false);

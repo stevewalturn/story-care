@@ -1,10 +1,10 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { verifyIdToken } from '@/libs/FirebaseAdmin';
 import { flushLangfuse } from '@/libs/Langfuse';
 import { createTextGeneration, createTrace, endTextGeneration } from '@/libs/LangfuseTracing';
 import { openai } from '@/libs/OpenAI';
+import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 import { getPatientById } from '@/utils/SessionPatients';
 import { buildTraceMetadata } from '@/utils/TraceMetadataBuilder';
 
@@ -12,7 +12,7 @@ const requestSchema = z.object({
   transcriptSelection: z.string().min(50, 'Transcript selection too short'),
   patientId: z.string().uuid(),
   patientName: z.string().optional(),
-  model: z.string().default('gpt-4'),
+  model: z.enum(['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'gpt-4.1-mini']).default('gpt-4o-mini'),
   useReference: z.boolean().default(false),
   referenceImages: z.array(z.string()).optional(),
   sceneCount: z.number().min(1).max(5).default(3),
@@ -20,25 +20,8 @@ const requestSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    // Authentication
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 },
-      );
-    }
-
-    const token = authHeader.substring(7);
-    let user;
-    try {
-      user = await verifyIdToken(token);
-    } catch (error) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 },
-      );
-    }
+    // Authentication & authorization
+    const user = await requireTherapist(request);
 
     // Validate request body
     const body = await request.json();
@@ -184,7 +167,28 @@ Create vivid, cinematic image prompts that would be therapeutic for the patient 
     // Flush asynchronously
     flushLangfuse().catch(console.error);
 
-    const sceneData = JSON.parse(responseText);
+    let sceneData: unknown;
+    try {
+      sceneData = JSON.parse(responseText);
+    } catch {
+      // Fallback: try extracting JSON from markdown code fences
+      const jsonMatch = responseText.match(/```(?:json)?\n?([\s\S]*?)\n?```/);
+      if (jsonMatch?.[1]) {
+        try {
+          sceneData = JSON.parse(jsonMatch[1].trim());
+        } catch {
+          return NextResponse.json(
+            { error: 'AI returned malformed JSON. Please try again.' },
+            { status: 422 },
+          );
+        }
+      } else {
+        return NextResponse.json(
+          { error: 'AI returned malformed JSON. Please try again.' },
+          { status: 422 },
+        );
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -205,9 +209,6 @@ Create vivid, cinematic image prompts that would be therapeutic for the patient 
       );
     }
 
-    return NextResponse.json(
-      { error: 'Failed to generate scenes' },
-      { status: 500 },
-    );
+    return handleAuthError(error);
   }
 }

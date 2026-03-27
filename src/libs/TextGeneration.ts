@@ -73,14 +73,25 @@ export async function generateText(
     || model === 'gemini-1.5-flash'
   ) {
     const { chatWithGemini } = await import('./providers/GeminiChat');
-    const message = await chatWithGemini({
-      messages,
-      model: model as GeminiChatModel,
-      temperature,
-      maxTokens,
-      traceMetadata,
-    });
-    return { message, model };
+    // Fallback chain on 429/quota exhaustion: try a lighter model before giving up
+    const GEMINI_FALLBACKS: Partial<Record<GeminiChatModel, GeminiChatModel>> = {
+      'gemini-2.5-pro': 'gemini-2.5-flash',
+      'gemini-2.5-flash': 'gemini-2.5-flash-lite',
+      'gemini-2.0-flash': 'gemini-2.0-flash-lite',
+    };
+    try {
+      const message = await chatWithGemini({ messages, model: model as GeminiChatModel, temperature, maxTokens, traceMetadata });
+      return { message, model };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : '';
+      const is429 = msg.includes('429') || msg.toLowerCase().includes('resource_exhausted');
+      const fallback = is429 ? GEMINI_FALLBACKS[model as GeminiChatModel] : undefined;
+      if (fallback) {
+        const message = await chatWithGemini({ messages, model: fallback, temperature, maxTokens, traceMetadata });
+        return { message, model: fallback };
+      }
+      throw error;
+    }
   }
 
   throw new Error(`Unsupported model: ${model}`);
