@@ -214,7 +214,7 @@ export function SpeakerLabelingModal({
         </button>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           {isLoading
             ? (
                 <div className="flex min-h-[400px] items-center justify-center">

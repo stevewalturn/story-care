@@ -776,7 +776,10 @@ export default function SessionsPage() {
                           {/* Clickable area */}
                           <button
                             type="button"
-                            onClick={() => router.push(`/sessions/${session.id}/transcript`)}
+                            onClick={() => {
+                              if (editingSessionId === session.id) return;
+                              router.push(`/sessions/${session.id}/transcript`);
+                            }}
                             className="flex min-w-0 flex-1 items-center gap-3"
                           >
                             {/* Avatar */}
@@ -838,6 +841,7 @@ export default function SessionsPage() {
                                   onChange={e => setEditingTitle(e.target.value)}
                                   onBlur={() => handleSaveTitle(session.id)}
                                   onKeyDown={(e) => {
+                                    e.stopPropagation();
                                     if (e.key === 'Enter') handleSaveTitle(session.id);
                                     if (e.key === 'Escape') {
                                       setEditingSessionId(null);

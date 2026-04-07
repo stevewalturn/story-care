@@ -12,11 +12,12 @@ import {
   getLatestChatSummary,
   shouldGenerateChatSummary,
 } from '@/services/ChatSummaryService';
-import { getOrCreateSessionSummary } from '@/services/SessionSummaryService';
 import { handleAuthError, requireTherapist } from '@/utils/AuthHelpers';
 import { aiRateLimit, checkRateLimit } from '@/utils/RateLimiter';
 import { getSessionPatients } from '@/utils/SessionPatients';
 import { buildTraceMetadata } from '@/utils/TraceMetadataBuilder';
+
+export const maxDuration = 60; // Allow up to 60s for AI responses
 
 // POST /api/ai/chat - Chat with AI assistant
 // HIPAA COMPLIANCE: Requires authentication, rate limiting, and audit logging
@@ -91,13 +92,23 @@ export async function POST(request: NextRequest) {
     const contextParts: ChatMessage[] = [];
 
     // PART 1: Session Summary (CACHED - static, generated once)
+    // NOTE: We only use an existing cached summary here. Generating a new one
+    // involves a second AI call which can push total request time past the timeout.
+    // Summary generation happens via the transcript page on first load.
     if (sessionId) {
       try {
-        const sessionSummary = await getOrCreateSessionSummary(sessionId, { traceMetadata });
-        contextParts.push({
-          role: 'system',
-          content: sessionSummary,
-        });
+        const [sessionRow] = await db
+          .select({ sessionSummary: sessions.sessionSummary })
+          .from(sessions)
+          .where(eq(sessions.id, sessionId))
+          .limit(1);
+
+        if (sessionRow?.sessionSummary) {
+          contextParts.push({
+            role: 'system',
+            content: sessionRow.sessionSummary,
+          });
+        }
       } catch (error) {
         console.error('Error fetching session summary:', error);
         // Continue without session summary
