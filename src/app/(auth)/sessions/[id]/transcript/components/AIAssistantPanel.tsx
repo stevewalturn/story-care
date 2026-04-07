@@ -743,7 +743,7 @@ ${userText}`;
         currentRetryCountRef.current = 0;
       }
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Error sending message:', error instanceof Error ? error.message : String(error));
       setMessages(prev => [
         ...prev,
         { role: 'assistant' as const, content: 'Sorry, I encountered an error. Please check your connection and try again.', timestamp: new Date() },

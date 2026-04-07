@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "mcp__BetterBugs__getBugDetails",
+      "mcp__BetterBugs__getBugLogs",
+      "mcp__BetterBugs__getScreenshot"
     ],
     "deny": [],
     "ask": []
