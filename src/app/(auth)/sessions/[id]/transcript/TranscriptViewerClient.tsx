@@ -837,8 +837,11 @@ export function TranscriptViewerClient({
               onModuleAssigned={(isArchived || isReadOnly) ? undefined : (module) => {
                 setAssignedModule(module);
                 if (module.aiPromptText) {
-                  setAiSystemPrompt(module.aiPromptText);
-                  setAiUserText(`Do the analysisis of this ${module.name} module`);
+                  // Do NOT pass aiPromptText as system prompt — the chat API already
+                  // injects module context as Part 2 (route.ts). Send as free-chat
+                  // so the transcript is included via the L598 path.
+                  setAiSystemPrompt(null);
+                  setAiUserText(`Analyze this session using the ${module.name} module`);
                 }
               }}
               onTextSelection={handleAITextSelection}
@@ -999,10 +1002,11 @@ export function TranscriptViewerClient({
           onAssigned={(module) => {
             setIsAssignModuleModalOpen(false);
             setAssignedModule(module);
-            // Auto-execute the module's Base Analysis Prompt
+            // Auto-execute the module's Base Analysis Prompt via free-chat path
+            // so the transcript is included. Server injects module context via Part 2.
             if (module.aiPromptText) {
-              setAiSystemPrompt(module.aiPromptText);
-              setAiUserText(`Do the analysisis of this ${module.name} module`);
+              setAiSystemPrompt(null);
+              setAiUserText(`Analyze this session using the ${module.name} module`);
             }
           }}
         />

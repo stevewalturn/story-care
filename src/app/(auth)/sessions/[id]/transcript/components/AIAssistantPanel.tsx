@@ -559,15 +559,19 @@ export function AIAssistantPanel({
     fetchModules();
   }, [user]);
 
-  // Watch for trigger prompt from analyze modal
+  // Watch for trigger prompt from analyze modal or module assignment
   useEffect(() => {
-    if (triggerSystemPrompt && triggerUserText) {
-      // Set state like the chatbox dropdown does, then trigger send
-      // This ensures chat shows only user text, not the system prompt
-      setSelectedSystemPrompt(triggerSystemPrompt);
-      // Pass system prompt directly to bypass React state timing issue
-      // (state update is async, but handleSendMessage runs immediately)
-      handleSendMessage(triggerUserText, triggerSystemPrompt);
+    if (triggerUserText) {
+      if (triggerSystemPrompt) {
+        // Analyze Selection Modal path: fully-formed system prompt + selected clinical text.
+        // Pass system prompt directly to bypass React state timing issue.
+        setSelectedSystemPrompt(triggerSystemPrompt);
+        handleSendMessage(triggerUserText, triggerSystemPrompt);
+      } else {
+        // Module assignment path: send as free-chat (null override) so the transcript
+        // is included via the L598 guard. Server injects module context via Part 2.
+        handleSendMessage(triggerUserText, null);
+      }
       onPromptSent();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -664,8 +668,14 @@ ${userText}`;
     setPrompt('');
     setIsLoading(true);
 
-    // Clear parent's selected text state (prompt selection persists)
+    // Clear parent's selected text state
     onPromptSent();
+
+    // Auto-clear prompt state after send — prompts are one-shot task actions.
+    // User returns to free chat automatically; they can re-select if needed.
+    setSelectedPromptId('');
+    setSelectedSystemPrompt(null);
+    setSelectedPromptName(null);
 
     try {
       // Send full prompt (with system instructions) to AI
@@ -1402,7 +1412,7 @@ Remember: ONLY output the JSON object. Nothing else.`;
       {/* Chat Input - Exact Figma Specifications */}
       <div ref={inputContainerRef} className="flex-shrink-0 border-t border-gray-200 bg-white p-4">
         {/* Selected Text Context Banner */}
-        {selectedPromptId && prompt.trim() && (
+        {selectedPromptId && (
           <div className="mb-2 flex items-center gap-2 rounded-lg bg-purple-50 px-3 py-2">
             <svg className="h-4 w-4 flex-shrink-0 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1416,6 +1426,7 @@ Remember: ONLY output the JSON object. Nothing else.`;
               onClick={() => {
                 setSelectedPromptId('');
                 setSelectedSystemPrompt(null);
+                setSelectedPromptName(null);
               }}
               className="ml-auto rounded p-0.5 text-purple-400 hover:bg-purple-100 hover:text-purple-600"
             >
@@ -1428,7 +1439,7 @@ Remember: ONLY output the JSON object. Nothing else.`;
 
         {/* Chat Input Area - Exact Figma Styling */}
         <div
-          className={`border bg-white ${selectedPromptId && prompt.trim() ? 'border-purple-300 ring-1 ring-purple-100' : 'border-gray-200'}`}
+          className={`border bg-white ${selectedPromptId ? 'border-purple-300 ring-1 ring-purple-100' : 'border-gray-200'}`}
           style={{
             borderRadius: '16px',
             padding: '16px',
@@ -1564,6 +1575,23 @@ Remember: ONLY output the JSON object. Nothing else.`;
                     </button>
                     {showPromptDropdown && (
                       <div className="absolute bottom-full left-0 z-50 mb-2 max-h-96 w-72 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                        {/* Clear Prompt — only visible when a prompt is active */}
+                        {selectedPromptId && (
+                          <button
+                            onClick={() => {
+                              setSelectedPromptId('');
+                              setSelectedSystemPrompt(null);
+                              setSelectedPromptName(null);
+                              setShowPromptDropdown(false);
+                            }}
+                            className="flex w-full items-center gap-2 border-b border-gray-200 px-3 py-2.5 text-left text-sm font-medium text-gray-600 transition-colors hover:bg-red-50 hover:text-red-600"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Clear prompt — return to free chat
+                          </button>
+                        )}
                         {/* Module Prompts - Show FIRST when a module is selected */}
                         {modulePrompts.length > 0 && (
                           <>
@@ -1579,7 +1607,13 @@ Remember: ONLY output the JSON object. Nothing else.`;
                               <div key={p.id} className="relative">
                                 <button
                                   onClick={() => {
-                                    handlePromptSelection(p);
+                                    if (selectedPromptId === p.id) {
+                                      setSelectedPromptId('');
+                                      setSelectedSystemPrompt(null);
+                                      setSelectedPromptName(null);
+                                    } else {
+                                      handlePromptSelection(p);
+                                    }
                                     setShowPromptDropdown(false);
                                   }}
                                   onMouseEnter={() => setHoveredPromptId(p.id)}
@@ -1619,7 +1653,13 @@ Remember: ONLY output the JSON object. Nothing else.`;
                               <div key={p.id} className="relative">
                                 <button
                                   onClick={() => {
-                                    handlePromptSelection(p);
+                                    if (selectedPromptId === p.id) {
+                                      setSelectedPromptId('');
+                                      setSelectedSystemPrompt(null);
+                                      setSelectedPromptName(null);
+                                    } else {
+                                      handlePromptSelection(p);
+                                    }
                                     setShowPromptDropdown(false);
                                   }}
                                   onMouseEnter={() => setHoveredPromptId(p.id)}
