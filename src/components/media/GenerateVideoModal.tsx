@@ -98,12 +98,16 @@ export function GenerateVideoModal({
     ? { imageUrl: referenceImage.url, label: referenceImage.title, id: referenceImage.id, isPrimary: false }
     : selectedPatientImage;
 
-  // Reset prompt when initialPrompt changes
+  // Sync prompt only when modal opens, not on every initialPrompt change
+  // (prevents overwriting user's typed text if parent re-renders)
+  const isOpenRef = useRef(isOpen);
   useEffect(() => {
-    if (initialPrompt) {
+    const wasOpen = isOpenRef.current;
+    isOpenRef.current = isOpen;
+    if (isOpen && !wasOpen) {
       setPrompt(initialPrompt);
     }
-  }, [initialPrompt]);
+  }, [isOpen, initialPrompt]);
 
   // Fetch patient reference images
   useEffect(() => {
@@ -346,14 +350,20 @@ export function GenerateVideoModal({
           }
         } catch (pollError: any) {
           clearInterval(pollInterval);
-          const errorMsg = pollError.message || 'Failed to check video status';
+          const rawMsg: string = pollError.message || 'Failed to check video status';
+          const errorMsg = rawMsg.toLowerCase().includes('not found')
+            ? 'This model is currently unavailable. Please try using a different video model.'
+            : rawMsg;
           setError(errorMsg);
           toast.error(errorMsg);
           setIsGenerating(false);
         }
       }, 5000);
     } catch (err: any) {
-      const errorMsg = err.message || 'Failed to generate video';
+      const rawMsg: string = err.message || 'Failed to generate video';
+      const errorMsg = rawMsg.toLowerCase().includes('not found')
+        ? 'This model is currently unavailable. Please try using a different video model.'
+        : rawMsg;
       setError(errorMsg);
       toast.error(errorMsg);
       setIsGenerating(false);
