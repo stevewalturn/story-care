@@ -63,9 +63,20 @@ export default async function middleware(request: NextRequest) {
       } catch (error) {
         // Token is expired, invalid, or revoked - force re-authentication
         console.error('Invalid session token:', error);
-        const response = NextResponse.redirect(new URL('/sign-in', request.url));
+        const signInUrl = new URL('/sign-in', request.url);
+        const response = NextResponse.redirect(signInUrl);
         // Delete the invalid session cookie
         response.cookies.delete('session');
+        // Persist user-facing error message in a short-lived cookie so it
+        // survives the redirect chain (query params get lost on subsequent requests)
+        if (error instanceof Error && error.message !== 'Unauthorized') {
+          response.cookies.set('auth_error', error.message, {
+            httpOnly: false,
+            maxAge: 30, // 30 seconds — enough to survive one redirect
+            path: '/',
+            sameSite: 'lax',
+          });
+        }
         return response;
       }
     }

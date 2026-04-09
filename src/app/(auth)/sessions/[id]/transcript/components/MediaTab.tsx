@@ -52,6 +52,7 @@ export function MediaTab({
   selectedPatient = 'all',
   onTaskComplete,
   isReadOnly = false,
+  patientReferenceImage,
 }: MediaTabProps) {
   const [media, setMedia] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -1302,6 +1303,7 @@ export function MediaTab({
           initialPrompt={regeneratingMedia.generationPrompt || ''}
           patientId={selectedPatient !== 'all' ? selectedPatient : undefined}
           sessionId={sessionId}
+          patientReferenceImage={patientReferenceImage}
         />
       )}
 

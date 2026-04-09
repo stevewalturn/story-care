@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { db } from '@/libs/DB';
-import { users } from '@/models/Schema';
+import { organizationsSchema, users } from '@/models/Schema';
 
 let adminApp: App;
 
@@ -128,6 +128,17 @@ export async function verifyIdToken(token: string) {
       throw new Error('Account has been removed. Please contact your administrator.');
     }
 
+    // 9. Block users whose organization has been archived
+    if (dbUser.organizationId) {
+      const org = await db.query.organizationsSchema.findFirst({
+        where: eq(organizationsSchema.id, dbUser.organizationId),
+        columns: { status: true },
+      });
+      if (org?.status === 'archived') {
+        throw new Error('Your organization has been archived. Please contact your administrator.');
+      }
+    }
+
     return {
       uid: decodedToken.uid,
       dbUserId: dbUser.id, // Database UUID
@@ -141,6 +152,10 @@ export async function verifyIdToken(token: string) {
     };
   } catch (error) {
     console.error('Token verification failed:', error);
+    // Re-throw known user-facing errors so callers can show a meaningful message
+    if (error instanceof Error && error.message !== 'Unauthorized') {
+      throw error;
+    }
     throw new Error('Unauthorized');
   }
 }

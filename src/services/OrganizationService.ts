@@ -4,7 +4,7 @@
  */
 
 import type { OrganizationSettings } from '@/types/Organization';
-import { and, count, desc, eq } from 'drizzle-orm';
+import { and, count, desc, eq, ne } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { Env } from '@/libs/Env';
 import {
@@ -341,7 +341,7 @@ export async function getOrganizationWithMetrics(organizationId: string) {
  * List all organizations (Super Admin only)
  */
 export async function listOrganizations(params?: {
-  status?: 'active' | 'suspended';
+  status?: 'active' | 'suspended' | 'archived';
   page?: number;
   limit?: number;
 }) {
@@ -352,23 +352,18 @@ export async function listOrganizations(params?: {
   const conditions = [];
   if (params?.status) {
     conditions.push(eq(organizationsSchema.status, params.status));
+  } else {
+    // By default, exclude archived organizations
+    conditions.push(ne(organizationsSchema.status, 'archived'));
   }
 
-  const organizationsList
-    = conditions.length > 0
-      ? await db
-          .select()
-          .from(organizationsSchema)
-          .where(and(...conditions))
-          .orderBy(desc(organizationsSchema.createdAt))
-          .limit(limit)
-          .offset(offset)
-      : await db
-          .select()
-          .from(organizationsSchema)
-          .orderBy(desc(organizationsSchema.createdAt))
-          .limit(limit)
-          .offset(offset);
+  const organizationsList = await db
+    .select()
+    .from(organizationsSchema)
+    .where(and(...conditions))
+    .orderBy(desc(organizationsSchema.createdAt))
+    .limit(limit)
+    .offset(offset);
 
   // Get user count for each organization
   const organizationsWithUserCount = await Promise.all(
@@ -388,7 +383,8 @@ export async function listOrganizations(params?: {
 
   const totalResult = await db
     .select({ count: count() })
-    .from(organizationsSchema);
+    .from(organizationsSchema)
+    .where(and(...conditions));
   const total = Number(totalResult[0]?.count || 0);
 
   return {
@@ -439,6 +435,38 @@ export async function deleteOrganization(organizationId: string) {
     .returning();
 
   return deleted;
+}
+
+/**
+ * Archive organization (soft delete)
+ */
+export async function archiveOrganization(organizationId: string) {
+  const [archived] = await db
+    .update(organizationsSchema)
+    .set({
+      status: 'archived',
+      updatedAt: new Date(),
+    })
+    .where(eq(organizationsSchema.id, organizationId))
+    .returning();
+
+  return archived;
+}
+
+/**
+ * Restore archived organization
+ */
+export async function restoreOrganization(organizationId: string) {
+  const [restored] = await db
+    .update(organizationsSchema)
+    .set({
+      status: 'active',
+      updatedAt: new Date(),
+    })
+    .where(eq(organizationsSchema.id, organizationId))
+    .returning();
+
+  return restored;
 }
 
 /**

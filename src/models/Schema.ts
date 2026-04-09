@@ -40,6 +40,7 @@ export const userStatusEnum = pgEnum('user_status', [
 export const organizationStatusEnum = pgEnum('organization_status', [
   'active',
   'suspended',
+  'archived',
 ]);
 export const templateScopeEnum = pgEnum('template_scope', [
   'system',

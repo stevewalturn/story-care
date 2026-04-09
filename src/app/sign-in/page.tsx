@@ -18,13 +18,25 @@ function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Check for success message from setup-account
+  // Check for success message from setup-account or error from middleware
   useEffect(() => {
     if (searchParams.get('setup') === 'complete') {
       // Defer setState to avoid cascading renders
       queueMicrotask(() => {
         setSuccessMessage('Account created successfully! You can now sign in.');
       });
+    }
+    // Read auth error set by middleware (stored in cookie to survive redirect chain)
+    const authErrorCookie = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('auth_error='));
+    if (authErrorCookie) {
+      const message = decodeURIComponent(authErrorCookie.split('=')[1] || '');
+      if (message) {
+        queueMicrotask(() => setError(message));
+      }
+      // Clear the cookie immediately after reading
+      document.cookie = 'auth_error=; max-age=0; path=/';
     }
   }, [searchParams]);
 

@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') as
       | 'active'
       | 'suspended'
+      | 'archived'
       | null;
     const page = Number.parseInt(searchParams.get('page') || '1', 10);
     const limit = Number.parseInt(searchParams.get('limit') || '10', 10);
