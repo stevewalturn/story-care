@@ -3,7 +3,7 @@ import type { ImageGenModel } from '@/libs/ImageGeneration';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { generatePresignedUrl, uploadFile } from '@/libs/GCS';
+import { extractGcsPath, generatePresignedUrl, uploadFile } from '@/libs/GCS';
 import { generateImage } from '@/libs/ImageGeneration';
 import { parseAtlasError } from '@/libs/providers/AtlasCloud';
 import { mediaLibrary, sessions } from '@/models/Schema';
@@ -156,6 +156,19 @@ export async function POST(request: NextRequest) {
       additionalTags: ['generate-image', model],
     });
 
+    // Re-sign any GCS reference image URLs to ensure they haven't expired
+    const freshReferenceImages: string[] = referenceImages.length > 0
+      ? (await Promise.all(
+          referenceImages.map(async (url) => {
+            const gcsPath = extractGcsPath(url);
+            if (gcsPath) {
+              return await generatePresignedUrl(gcsPath, 1);
+            }
+            return url;
+          }),
+        )).filter((url): url is string => url !== null)
+      : [];
+
     // Generate image using the unified service
     const { imageUrl, model: usedModel } = await generateImage({
       prompt,
@@ -167,7 +180,7 @@ export async function POST(request: NextRequest) {
       seed,
       quality,
       style,
-      referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
+      referenceImages: freshReferenceImages.length > 0 ? freshReferenceImages : undefined,
       traceMetadata,
     });
 

@@ -163,6 +163,7 @@ export type MediaTabProps = {
   selectedPatient?: string;
   onTaskComplete?: () => void;
   isReadOnly?: boolean;
+  patientReferenceImage?: string;
 };
 
 // Props for QuotesTab

@@ -376,6 +376,7 @@ export function LibraryPanel({
             selectedPatient={selectedPatient}
             onTaskComplete={onTaskComplete}
             isReadOnly={isReadOnly}
+            patientReferenceImage={sessionData?.session?.patient?.referenceImageUrl}
           />
         )}
 

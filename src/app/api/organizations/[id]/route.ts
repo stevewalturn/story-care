@@ -10,8 +10,9 @@ import {
   requireSuperAdmin,
 } from '@/middleware/RBACMiddleware';
 import {
-  deleteOrganization,
+  archiveOrganization,
   getOrganizationWithMetrics,
+  restoreOrganization,
   updateOrganization,
 } from '@/services/OrganizationService';
 import { updateOrganizationSchema } from '@/validations/OrganizationValidation';
@@ -54,6 +55,19 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
+
+    // Handle restore action
+    if (body.action === 'restore') {
+      const restored = await restoreOrganization(id);
+      if (!restored) {
+        return NextResponse.json(
+          { error: 'Organization not found' },
+          { status: 404 },
+        );
+      }
+      return NextResponse.json({ organization: restored });
+    }
+
     const validated = updateOrganizationSchema.parse(body);
 
     // Separate admin fields from organization fields
@@ -102,7 +116,7 @@ export async function PATCH(
 }
 
 /**
- * DELETE /api/organizations/[id] - Delete organization
+ * DELETE /api/organizations/[id] - Archive organization
  */
 export async function DELETE(
   request: NextRequest,
@@ -112,9 +126,9 @@ export async function DELETE(
     await requireSuperAdmin(request);
 
     const { id } = await params;
-    const deleted = await deleteOrganization(id);
+    const archived = await archiveOrganization(id);
 
-    if (!deleted) {
+    if (!archived) {
       return NextResponse.json(
         { error: 'Organization not found' },
         { status: 404 },

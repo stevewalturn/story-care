@@ -81,15 +81,17 @@ export async function GET(
           name: users.name,
           email: users.email,
           avatarUrl: users.avatarUrl,
+          referenceImageUrl: users.referenceImageUrl,
         })
         .from(users)
         .where(eq(users.id, session.patientId))
         .limit(1);
 
       // Generate presigned URLs (HIPAA compliant, 1-hour expiration)
-      const [signedAudioUrl, signedAvatarUrl] = await Promise.all([
+      const [signedAudioUrl, signedAvatarUrl, signedReferenceUrl] = await Promise.all([
         session.audioUrl ? generatePresignedUrl(session.audioUrl, 1) : null,
         patient?.avatarUrl ? generatePresignedUrl(patient.avatarUrl, 1) : null,
+        patient?.referenceImageUrl ? generatePresignedUrl(patient.referenceImageUrl, 1) : null,
       ]);
 
       // 3. AUDIT LOG: Record PHI access
@@ -102,6 +104,7 @@ export async function GET(
           patient: patient ? {
             ...patient,
             avatarUrl: signedAvatarUrl || patient.avatarUrl,
+            referenceImageUrl: signedReferenceUrl || patient.referenceImageUrl,
           } : null,
           isOwner,
           isReadOnly,
@@ -127,6 +130,7 @@ export async function GET(
           name: users.name,
           email: users.email,
           avatarUrl: users.avatarUrl,
+          referenceImageUrl: users.referenceImageUrl,
         })
         .from(groupMembers)
         .innerJoin(users, eq(groupMembers.patientId, users.id))
@@ -137,10 +141,14 @@ export async function GET(
 
       const membersWithSignedUrls = await Promise.all(
         members.map(async (member) => {
-          const signedAvatarUrl = member.avatarUrl ? await generatePresignedUrl(member.avatarUrl, 1) : null;
+          const [signedAvatarUrl, signedRefUrl] = await Promise.all([
+            member.avatarUrl ? generatePresignedUrl(member.avatarUrl, 1) : null,
+            member.referenceImageUrl ? generatePresignedUrl(member.referenceImageUrl, 1) : null,
+          ]);
           return {
             ...member,
             avatarUrl: signedAvatarUrl || member.avatarUrl,
+            referenceImageUrl: signedRefUrl || member.referenceImageUrl,
           };
         }),
       );

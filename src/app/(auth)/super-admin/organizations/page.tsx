@@ -5,24 +5,26 @@
 
 'use client';
 
-import { AlertCircle, Building2, Calendar, CheckCircle, Plus, Trash2, Users, XCircle } from 'lucide-react';
+import { AlertCircle, Archive, Building2, Calendar, CheckCircle, Plus, RotateCcw, Trash2, Users, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { CreateOrganizationModal } from '@/components/super-admin/CreateOrganizationModal';
 import { Button } from '@/components/ui/Button';
 import { DeleteConfirmationDialog } from '@/components/ui/DeleteConfirmationDialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { authenticatedDelete } from '@/utils/AuthenticatedFetch';
+import { authenticatedDelete, authenticatedPatch } from '@/utils/AuthenticatedFetch';
 
 type Organization = {
   id: string;
   name: string;
   slug: string;
   contactEmail: string;
-  status: 'active' | 'suspended';
+  status: 'active' | 'suspended' | 'archived';
   joinCode: string;
   createdAt: string;
   userCount: number;
 };
+
+type ViewTab = 'active' | 'archived';
 
 export default function OrganizationsPage() {
   const { user } = useAuth();
@@ -35,12 +37,16 @@ export default function OrganizationsPage() {
   const [organizationToDelete, setOrganizationToDelete] = useState<Organization | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [activeTab, setActiveTab] = useState<ViewTab>('active');
 
-  const fetchOrganizations = useCallback(async () => {
+  const fetchOrganizations = useCallback(async (tab?: ViewTab) => {
     try {
+      setLoading(true);
       const token = await user?.getIdToken();
       setIdToken(token || null);
-      const response = await fetch('/api/organizations', {
+      const currentTab = tab ?? activeTab;
+      const statusParam = currentTab === 'archived' ? '?status=archived' : '';
+      const response = await fetch(`/api/organizations${statusParam}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -58,13 +64,18 @@ export default function OrganizationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, activeTab]);
 
   useEffect(() => {
     if (user) {
       fetchOrganizations();
     }
   }, [user, fetchOrganizations]);
+
+  const handleTabChange = (tab: ViewTab) => {
+    setActiveTab(tab);
+    fetchOrganizations(tab);
+  };
 
   const handleDeleteClick = (org: Organization) => {
     setOrganizationToDelete(org);
@@ -90,14 +101,14 @@ export default function OrganizationsPage() {
 
       // Remove from local state
       setOrganizations(prev => prev.filter(o => o.id !== organizationToDelete.id));
-      setSuccessMessage(`Organization "${organizationToDelete.name}" has been deleted successfully`);
+      setSuccessMessage(`Organization "${organizationToDelete.name}" has been archived successfully`);
       setDeleteModalOpen(false);
       setOrganizationToDelete(null);
 
       // Clear success message after 5 seconds
       setTimeout(() => setSuccessMessage(''), 5000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete organization');
+      setError(err instanceof Error ? err.message : 'Failed to archive organization');
       setDeleteModalOpen(false);
     } finally {
       setIsDeleting(false);
@@ -108,6 +119,30 @@ export default function OrganizationsPage() {
     if (!isDeleting) {
       setDeleteModalOpen(false);
       setOrganizationToDelete(null);
+    }
+  };
+
+  const handleRestore = async (org: Organization) => {
+    if (!user) return;
+
+    try {
+      setError('');
+      const response = await authenticatedPatch(
+        `/api/organizations/${org.id}`,
+        user,
+        { action: 'restore' },
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to restore organization');
+      }
+
+      setOrganizations(prev => prev.filter(o => o.id !== org.id));
+      setSuccessMessage(`Organization "${org.name}" has been restored successfully`);
+      setTimeout(() => setSuccessMessage(''), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to restore organization');
     }
   };
 
@@ -156,6 +191,33 @@ export default function OrganizationsPage() {
           <Plus className="mr-2 h-4 w-4" />
           Create Organization
         </Button>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-gray-200">
+        <button
+          type="button"
+          onClick={() => handleTabChange('active')}
+          className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'active'
+              ? 'border-purple-600 text-purple-600'
+              : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+          }`}
+        >
+          Active
+        </button>
+        <button
+          type="button"
+          onClick={() => handleTabChange('archived')}
+          className={`inline-flex items-center gap-1.5 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'archived'
+              ? 'border-purple-600 text-purple-600'
+              : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+          }`}
+        >
+          <Archive className="h-3.5 w-3.5" />
+          Archived
+        </button>
       </div>
 
       {/* Create Organization Modal */}
@@ -209,7 +271,7 @@ export default function OrganizationsPage() {
                     <td colSpan={5} className="px-6 py-12 text-center">
                       <Building2 className="mx-auto h-12 w-12 text-gray-400" />
                       <p className="mt-2 text-sm text-gray-500">
-                        No organizations found
+                        {activeTab === 'archived' ? 'No archived organizations' : 'No organizations found'}
                       </p>
                     </td>
                   </tr>
@@ -249,30 +311,35 @@ export default function OrganizationsPage() {
                       </td>
                       <td className="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
                         <div className="flex items-center justify-end gap-3">
-                          <a
-                            href={`/super-admin/organizations/${org.id}`}
-                            className="text-purple-600 hover:text-purple-900"
-                          >
-                            Manage
-                          </a>
-                          {org.userCount === 0
+                          {activeTab === 'archived'
                             ? (
                                 <button
-                                  onClick={() => handleDeleteClick(org)}
-                                  className="text-red-600 hover:text-red-900"
-                                  title="Delete organization"
+                                  type="button"
+                                  onClick={() => handleRestore(org)}
+                                  className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-900"
+                                  title="Restore organization"
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <RotateCcw className="h-4 w-4" />
+                                  Restore
                                 </button>
                               )
                             : (
-                                <button
-                                  disabled
-                                  className="cursor-not-allowed text-gray-400"
-                                  title="Cannot delete organization with users"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
+                                <>
+                                  <a
+                                    href={`/super-admin/organizations/${org.id}`}
+                                    className="text-purple-600 hover:text-purple-900"
+                                  >
+                                    Manage
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteClick(org)}
+                                    className="text-red-600 hover:text-red-900"
+                                    title="Archive organization"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </>
                               )}
                         </div>
                       </td>
@@ -288,13 +355,15 @@ export default function OrganizationsPage() {
         isOpen={deleteModalOpen}
         onClose={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
-        title="Delete Organization"
+        title="Archive Organization"
         message={
           organizationToDelete
-            ? `Are you sure you want to delete "${organizationToDelete.name}"? This action cannot be undone and will permanently delete all related data including groups, templates, treatment modules, and workflows.`
+            ? `Are you sure you want to archive "${organizationToDelete.name}"? Users in this organization will no longer be able to access the platform. You can restore it later from the Archived tab.`
             : ''
         }
         isDeleting={isDeleting}
+        confirmLabel="Archive"
+        deletingLabel="Archiving..."
       />
     </div>
   );
